@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "264137799530",
+    "project_id": "runrace-3c8fc",
+    "storage_bucket": "runrace-3c8fc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:264137799530:android:6650b765cdb303214d9713",
+        "android_client_info": {
+          "package_name": "com.runrace.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "264137799530-na23ub8qa3b9rddfeudie83pnsaodduu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.runrace.app",
+            "certificate_hash": "a2fcd82fba960bd56be91e4bc70c604df2aef003"
+          }
+        },
+        {
+          "client_id": "264137799530-t251ht7aemd11777vg83q5f54b74h4k8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHDv1ewRxw57UqcWe3MhE_BsbreUp5mJ8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "264137799530-t251ht7aemd11777vg83q5f54b74h4k8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

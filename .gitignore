@@ -1,0 +1,39 @@
+# Secrets & keys (never commit)
+secrets/
+*.pem
+**/firebase-service-account.json
+
+# Env (Firebase/API keys)
+.env
+.env.*
+!.env*.example
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+starter.zip
+*.tar.gz
+*.log
+
+# Backend (Java)
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Frontend (Node / Next)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel
+
+# Android (Capacitor)
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties
+frontend/android/capacitor-cordova-android-plugins/
+
+# OS
+.DS_Store
+Thumbs.db

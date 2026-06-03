@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RunRace</string>
+    <string name="title_activity_main">RunRace</string>
+    <string name="package_name">com.runrace.app</string>
+    <string name="custom_url_scheme">com.runrace.app</string>
+</resources>
