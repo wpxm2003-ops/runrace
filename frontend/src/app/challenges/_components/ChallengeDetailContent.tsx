@@ -5,7 +5,13 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { FIXED_ACTION_BOTTOM } from "@/app/_components/AppShell";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { deleteChallenge, fetchChallengeDetail, joinChallenge, type ChallengeDetail } from "@/lib/api";
+import { Skeleton } from "@/app/_components/ui/Skeleton";
+import {
+  deleteChallenge,
+  joinChallenge,
+  useChallengeDetail,
+  invalidateChallengeDetail,
+} from "@/lib/api";
 import { challengePhaseLabel } from "@/lib/challengePhase";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, challengeShareUrl, parseChallengeId } from "@/lib/challengeRoute";
@@ -13,14 +19,13 @@ import { formatDate } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
-  const { user, loading } = useAuthUser();
+  const { user } = useAuthUser();
   const confirm = useConfirm();
   const { t } = useLocale();
-  const [detail, setDetail] = useState<ChallengeDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
@@ -28,17 +33,14 @@ export default function ChallengeDetailContent() {
   const params = useParams();
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
 
-  async function loadDetail(u = user) {
-    if (!id) return;
-    setDetail(await fetchChallengeDetail(id, u));
-  }
+  const {
+    data: detail,
+    isLoading,
+    error: fetchError,
+    mutate,
+  } = useChallengeDetail(id, user);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!id) { setError(t.detail_no_id); return; }
-    loadDetail(user).catch((e) => setError(String(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, loading, user]);
+  const error = actionError ?? (fetchError ? String(fetchError) : null);
 
   async function onShare() {
     if (!id) return;
@@ -60,24 +62,26 @@ export default function ChallengeDetailContent() {
     if (!user || !detail || !id) { redirectToLogin(id ? `/challenges/${id}` : undefined); return; }
     const ok = await confirm({ title: t.detail_delete_title, message: t.detail_delete_message, confirmLabel: t.delete, destructive: true });
     if (!ok) return;
-    setError(null);
+    setActionError(null);
     try {
       await deleteChallenge(id, user, `/challenges/${id}`);
       window.location.href = "/challenges";
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) setError(String(e));
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     }
   }
 
   async function onJoin() {
     if (!user || !id) { redirectToLogin(`/challenges/${id}`); return; }
     setJoining(true);
-    setError(null);
+    setActionError(null);
     try {
       await joinChallenge(id, user, `/challenges/${id}`);
-      await loadDetail(user);
+      // SWR 캐시 무효화 → 최신 멤버 목록 자동 갱신
+      await mutate();
+      invalidateChallengeDetail(id, user.uid);
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) setError(String(e));
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     } finally {
       setJoining(false);
     }
@@ -118,9 +122,14 @@ export default function ChallengeDetailContent() {
       ) : null}
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-      {!detail ? (
-        <Card className="text-sm text-zinc-600">{t.loading}</Card>
-      ) : (
+      {isLoading && !detail ? (
+        // 첫 로드 스켈레톤 (캐시 데이터가 없을 때만)
+        <Card>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="mt-3 h-4 w-32" />
+          <Skeleton className="mt-2 h-3 w-40" />
+        </Card>
+      ) : !detail ? null : (
         <>
           <Card>
             <div className="flex items-center justify-between">

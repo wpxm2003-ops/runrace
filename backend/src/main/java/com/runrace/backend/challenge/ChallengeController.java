@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -87,10 +88,15 @@ public class ChallengeController {
   public ResponseEntity<List<ChallengeListItem>> list(Optional<AuthPrincipal> principal) {
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
     OffsetDateTime now = OffsetDateTime.now();
-    List<ChallengeListItem> items =
-        challengeService.listAll().stream()
-            .map(challenge -> toListItem(challenge, now, userId))
-            .toList();
+    List<Challenge> challenges = challengeService.listAll();
+
+    // 멤버 수를 단일 쿼리로 일괄 조회 (N+1 방지)
+    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(
+        challenges.stream().map(Challenge::getId).toList());
+
+    List<ChallengeListItem> items = challenges.stream()
+        .map(challenge -> toListItem(challenge, now, userId, memberCounts))
+        .toList();
     return ResponseEntity.ok(items);
   }
 
@@ -103,10 +109,14 @@ public class ChallengeController {
   }
 
   private ChallengeListItem toListItem(
-      Challenge challenge, OffsetDateTime now, Optional<UUID> currentUserId) {
+      Challenge challenge,
+      OffsetDateTime now,
+      Optional<UUID> currentUserId,
+      Map<Long, Long> memberCounts) {
     ChallengePhase phase = ChallengePhase.of(challenge, now);
     boolean isOwner =
         currentUserId.map(uid -> challenge.getCreator().getId().equals(uid)).orElse(false);
+    int memberCount = memberCounts.getOrDefault(challenge.getId(), 0L).intValue();
     return new ChallengeListItem(
         challenge.getId(),
         challenge.getTitle(),
@@ -114,7 +124,7 @@ public class ChallengeController {
         phase.name(),
         challenge.getStartAt().toString(),
         toIsoOrNull(challenge.getEndAt()),
-        challengeService.listMemberUserIds(challenge.getId()).size(),
+        memberCount,
         challenge.getCreatedAt().toString(),
         isOwner);
   }

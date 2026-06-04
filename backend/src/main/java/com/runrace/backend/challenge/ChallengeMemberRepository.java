@@ -2,8 +2,10 @@ package com.runrace.backend.challenge;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,5 +32,18 @@ public interface ChallengeMemberRepository extends JpaRepository<ChallengeMember
   long countByChallengeId(Long challengeId);
 
   Optional<ChallengeMember> findByChallengeIdAndUserId(Long challengeId, UUID userId);
+
+  /**
+   * 여러 챌린지의 멤버 수를 한 번의 쿼리로 조회한다.
+   * 결과: [challengeId, count] 쌍 목록.
+   * 챌린지 목록 API의 N+1 방지용.
+   */
+  @Query("""
+      select cm.challenge.id, count(cm)
+      from ChallengeMember cm
+      where cm.challenge.id in :ids
+      group by cm.challenge.id
+      """)
+  List<Object[]> countsByChallengeIdIn(@Param("ids") List<Long> ids);
 }
 

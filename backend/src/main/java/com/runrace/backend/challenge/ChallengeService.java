@@ -11,8 +11,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -157,6 +159,21 @@ public class ChallengeService {
     return challengeMemberRepository.findAllForChallenge(challengeId).stream()
         .map(member -> member.getUser().getId())
         .toList();
+  }
+
+  /**
+   * 여러 챌린지의 멤버 수를 단일 쿼리로 일괄 조회한다.
+   * 챌린지 목록 API에서 챌린지별 개별 쿼리(N+1)를 방지한다.
+   */
+  @Transactional(readOnly = true)
+  public Map<Long, Long> batchMemberCounts(List<Long> challengeIds) {
+    if (challengeIds.isEmpty()) {
+      return Map.of();
+    }
+    return challengeMemberRepository.countsByChallengeIdIn(challengeIds).stream()
+        .collect(Collectors.toMap(
+            row -> (Long) row[0],
+            row -> (Long) row[1]));
   }
 
   public BigDecimal goalKmAsDecimal(Challenge challenge) {

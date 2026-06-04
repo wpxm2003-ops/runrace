@@ -3,36 +3,19 @@
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { fetchChallenges, type ChallengeListItem } from "@/lib/api";
+import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { useChallengeList } from "@/lib/api";
 import { redirectToLogin } from "@/lib/auth";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { challengePhaseFromApi, challengePhaseLabel } from "@/lib/challengePhase";
 import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
-import { useEffect, useState } from "react";
 
 export default function ChallengesPage() {
-  const { user, loading } = useAuthUser();
+  const { user } = useAuthUser();
   const { t } = useLocale();
-  const [challenges, setChallenges] = useState<ChallengeListItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [listLoading, setListLoading] = useState(true);
-
-  async function refreshAll(u = user) {
-    setListLoading(true);
-    try {
-      setChallenges(await fetchChallenges(u));
-    } finally {
-      setListLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (loading) return;
-    refreshAll(user).catch((e) => setError(String(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user]);
+  const { data: challenges = [], isLoading, error } = useChallengeList(user);
 
   function onCreateClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (!user) {
@@ -54,13 +37,13 @@ export default function ChallengesPage() {
         </a>
       }
     >
-      {error ? <Alert className="mb-4">{error}</Alert> : null}
+      {error ? <Alert className="mb-4">{String(error)}</Alert> : null}
 
       <Card>
         <div className="text-lg font-semibold">{t.races_list_heading}</div>
         <div className="mt-3 grid gap-2">
-          {listLoading ? (
-            <div className="text-sm text-zinc-600">{t.loading}</div>
+          {isLoading ? (
+            <SkeletonLines count={3} />
           ) : challenges.length === 0 ? (
             <div className="text-sm text-zinc-600">{t.races_empty}</div>
           ) : (

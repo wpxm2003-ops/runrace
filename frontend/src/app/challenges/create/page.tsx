@@ -3,7 +3,7 @@
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { createChallenge, fetchActiveCount, type ActiveCount } from "@/lib/api";
+import { createChallenge, useActiveCount } from "@/lib/api";
 import {
   addDays,
   clampMaxMembers,
@@ -13,30 +13,24 @@ import {
 } from "@/lib/challengeForm";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function CreateChallengePage() {
   const { user } = useRequireAuth("/challenges/create");
   const { t } = useLocale();
   const today = useMemo(() => todayStr(), []);
+
   const [title, setTitle] = useState("");
   const [goalKm, setGoalKm] = useState("");
   const [maxMembers, setMaxMembers] = useState("10");
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(() => addDays(todayStr(), 1));
-  const [activeCount, setActiveCount] = useState<ActiveCount | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const { data: activeCount, error: countError } = useActiveCount(user);
   const endMin = startDate ? addDays(startDate, 1) : addDays(today, 1);
-
-  useEffect(() => {
-    if (!user) return;
-    fetchActiveCount(user).then(setActiveCount).catch((e) => setError(String(e)));
-  }, [user]);
-
-  const canCreate =
-    activeCount != null && activeCount.activeCount < activeCount.maxActive;
+  const canCreate = activeCount != null && activeCount.activeCount < activeCount.maxActive;
 
   function onStartDateChange(v: string) {
     setStartDate(v);
@@ -45,9 +39,9 @@ export default function CreateChallengePage() {
 
   async function onSubmit() {
     if (!user || !canCreate) return;
-    setError(null);
+    setFormError(null);
     const validationError = validateCreateChallengeForm({ title, goalKm, maxMembers, startDate, endDate });
-    if (validationError) { setError(validationError); return; }
+    if (validationError) { setFormError(validationError); return; }
     setSubmitting(true);
     try {
       await createChallenge(
@@ -56,11 +50,13 @@ export default function CreateChallengePage() {
       );
       window.location.href = "/challenges";
     } catch (e) {
-      setError(String(e));
+      setFormError(String(e));
     } finally {
       setSubmitting(false);
     }
   }
+
+  const error = formError ?? (countError ? String(countError) : null);
 
   return (
     <PageLayout
@@ -120,27 +116,13 @@ export default function CreateChallengePage() {
             <label className="block text-sm font-medium">
               {t.create_field_start} <span className="text-red-500">{t.create_required}</span>
             </label>
-            <input
-              type="date"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-              value={startDate}
-              min={today}
-              onChange={(e) => onStartDateChange(e.target.value)}
-              required
-            />
+            <input type="date" className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" value={startDate} min={today} onChange={(e) => onStartDateChange(e.target.value)} required />
           </div>
           <div>
             <label className="block text-sm font-medium">
               {t.create_field_end} <span className="text-red-500">{t.create_required}</span>
             </label>
-            <input
-              type="date"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-              value={endDate}
-              min={endMin}
-              onChange={(e) => setEndDate(e.target.value)}
-              required
-            />
+            <input type="date" className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" value={endDate} min={endMin} onChange={(e) => setEndDate(e.target.value)} required />
           </div>
         </div>
 
