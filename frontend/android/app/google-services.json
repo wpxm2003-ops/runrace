@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "264137799530-cbtcavebcf2ah6e4ek729adjvv4lbnf8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.runrace.app",
+            "certificate_hash": "d5d672db4974a2a2980b7edbc0e5cba3bf9f1fa5"
+          }
+        },
+        {
           "client_id": "264137799530-na23ub8qa3b9rddfeudie83pnsaodduu.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
