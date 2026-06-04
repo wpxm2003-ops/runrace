@@ -3,6 +3,7 @@
 import { useLocale } from "@/lib/i18n";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { nativeNavigate } from "@/lib/nativeNav";
 
 const CONFETTI_COLORS = ["#f59e0b", "#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899"] as const;
 const AUTO_NAVIGATE_SEC = 15;
@@ -38,7 +39,7 @@ export function WorkoutCelebration({
     if (navigatedRef.current) return;
     navigatedRef.current = true;
     onConfirm();
-    window.location.href = "/my";
+    nativeNavigate("/my");
   };
 
   useEffect(() => {

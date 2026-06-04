@@ -15,6 +15,7 @@ import {
 } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
+import { markLoggedIn } from "@/lib/AuthProvider";
 import { useLocale } from "@/lib/i18n";
 
 function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string {
@@ -53,6 +54,7 @@ function LoginContent() {
         return;
       }
       const cred = await signInWithGoogleApp();
+      markLoggedIn(); // 페이지 이동 전에 플래그 세팅 → 다음 페이지 redirect 차단
       await completeBackendLogin(cred.user);
     } catch (e) {
       setError(toSignInErrorMessage(e, t.login_popup_blocked));

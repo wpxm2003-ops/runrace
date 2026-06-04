@@ -1,6 +1,5 @@
 import { Capacitor } from "@capacitor/core";
 
-/** Capacitor APK: 정적 export는 .html 파일 — 클라이언트 라우터 대신 전체 페이지 이동 */
 export function isNativeApp(): boolean {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
 }
@@ -27,6 +26,22 @@ export function nativeHref(path: string): string {
   return `${pathname}.html${search}${hash}`;
 }
 
+/** NativeNavBootstrap이 등록한 Next.js router.push */
+type PushFn = (path: string) => void;
+let _push: PushFn | null = null;
+
+export function registerPush(fn: PushFn) {
+  _push = fn;
+}
+
+/**
+ * 앱 내 페이지 이동. router.push가 등록된 경우 SPA 전환,
+ * 미등록(초기 렌더 등)이면 fallback으로 location.assign.
+ */
 export function nativeNavigate(path: string): void {
+  if (_push) {
+    _push(path);
+    return;
+  }
   window.location.assign(nativeHref(path));
 }

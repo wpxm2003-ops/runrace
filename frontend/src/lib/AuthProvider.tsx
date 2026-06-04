@@ -9,24 +9,41 @@ interface AuthState {
   loading: boolean;
 }
 
+/** localStorage key — 앱 재시작 후에도 "이전에 로그인했음"을 기억한다 */
+export const AUTH_HINT_KEY = "runrace_logged_in";
+
+/**
+ * 로그인 성공 직후, 페이지 이동 전에 호출.
+ * 다음 페이지 로드 시 AuthProvider가 loading=true 로 시작해 redirect를 막는다.
+ */
+export function markLoggedIn() {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(AUTH_HINT_KEY, "1");
+  }
+}
+
+function getInitialState(): AuthState {
+  if (typeof window === "undefined") return { user: null, loading: true };
+
+  // Firebase가 이미 메모리에 사용자를 가지고 있으면 즉시 사용
+  if (auth.currentUser) return { user: auth.currentUser, loading: false };
+
+  // 이전에 로그인한 기록이 있으면 loading=true 로 시작 → redirect 차단
+  const hint = localStorage.getItem(AUTH_HINT_KEY) === "1";
+  return { user: null, loading: hint };
+}
+
 const AuthContext = createContext<AuthState>({ user: null, loading: true });
 
-/** 앱 전체에서 Firebase Auth 상태를 단일 인스턴스로 공유한다. */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>(() => {
-    const cached = typeof window !== "undefined" ? auth.currentUser : null;
-    return { user: cached, loading: cached === null };
-  });
+  const [state, setState] = useState<AuthState>(getInitialState);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       if (u) {
-        try {
-          await u.getIdToken();
-        } catch {
-          setState({ user: null, loading: false });
-          return;
-        }
+        localStorage.setItem(AUTH_HINT_KEY, "1");
+      } else {
+        localStorage.removeItem(AUTH_HINT_KEY);
       }
       setState({ user: u, loading: false });
     });
@@ -36,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }
 
-/** 전역 Auth 상태를 읽는다. AuthProvider 하위에서만 사용 가능. */
 export function useAuth(): AuthState {
   return useContext(AuthContext);
 }
