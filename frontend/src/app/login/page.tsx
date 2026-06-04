@@ -10,7 +10,7 @@ import {
 } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
 import { auth } from "@/lib/firebase";
-import { apiFetch } from "@/lib/api";
+import { syncBackendLogin } from "@/lib/api";
 import {
   IN_APP_LOGIN_MESSAGE,
   LOGIN_PENDING_KEY,
@@ -22,6 +22,15 @@ import {
 import { nativeNavigate } from "@/lib/nativeNav";
 import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
 
+/** 팝업 차단/취소는 안내 문구로, 그 외에는 원문 메시지로 변환. */
+function toSignInErrorMessage(e: unknown): string {
+  const msg = String(e);
+  if (/popup|blocked|closed/i.test(msg)) {
+    return "로그인 창이 차단되었습니다. Chrome 설정에서 팝업 허용 후 다시 시도해 주세요.";
+  }
+  return msg;
+}
+
 function LoginContent() {
   const searchParams = useSearchParams();
   const returnTo = safeReturnPath(searchParams.get("return"));
@@ -29,20 +38,20 @@ function LoginContent() {
   const [busy, setBusy] = useState(false);
   const inApp = isInAppBrowser();
 
-  async function afterLogin() {
+  async function completeBackendLogin(user: User) {
+    await syncBackendLogin(user);
     nativeNavigate(returnTo);
   }
 
-  async function completeBackendLogin(user: User) {
-    await apiFetch("/api/auth/login", {
-      method: "POST",
-      user,
-      redirectOn401: false,
-    });
-    await afterLogin();
+  /** redirect 방식이면 세션에 returnTo를 저장하고 true를 반환(이후 처리는 리다이렉트 핸들러). */
+  function beginRedirectFlow(): boolean {
+    if (!preferAuthRedirect()) return false;
+    sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
+    sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
+    return true;
   }
 
-  async function signInGoogle() {
+  async function signInWith(action: () => Promise<void>) {
     setError(null);
     if (inApp) {
       setError(IN_APP_LOGIN_MESSAGE);
@@ -50,59 +59,36 @@ function LoginContent() {
     }
     setBusy(true);
     try {
-      if (preferAuthRedirect()) {
-        sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
-        sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
+      await action();
+    } catch (e) {
+      setError(toSignInErrorMessage(e));
+      sessionStorage.removeItem(LOGIN_PENDING_KEY);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function signInGoogle() {
+    return signInWith(async () => {
+      if (beginRedirectFlow()) {
         await signInWithRedirect(auth, new GoogleAuthProvider());
         return;
       }
       const cred = await signInWithGoogleApp();
       await completeBackendLogin(cred.user);
-    } catch (e) {
-      const msg = String(e);
-      if (/popup|blocked|closed/i.test(msg)) {
-        setError(
-          "로그인 창이 차단되었습니다. Chrome 설정에서 팝업 허용 후 다시 시도해 주세요.",
-        );
-      } else {
-        setError(msg);
-      }
-      sessionStorage.removeItem(LOGIN_PENDING_KEY);
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
-  async function signInApple() {
-    setError(null);
-    if (inApp) {
-      setError(IN_APP_LOGIN_MESSAGE);
-      return;
-    }
-    setBusy(true);
-    try {
+  function signInApple() {
+    return signInWith(async () => {
       const provider = new OAuthProvider("apple.com");
-      if (preferAuthRedirect()) {
-        sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
-        sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
+      if (beginRedirectFlow()) {
         await signInWithRedirect(auth, provider);
         return;
       }
       const cred = await signInWithPopup(auth, provider);
       await completeBackendLogin(cred.user);
-    } catch (e) {
-      const msg = String(e);
-      if (/popup|blocked|closed/i.test(msg)) {
-        setError(
-          "로그인 창이 차단되었습니다. Chrome 설정에서 팝업 허용 후 다시 시도해 주세요.",
-        );
-      } else {
-        setError(msg);
-      }
-      sessionStorage.removeItem(LOGIN_PENDING_KEY);
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (

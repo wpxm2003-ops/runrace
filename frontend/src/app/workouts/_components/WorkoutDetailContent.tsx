@@ -3,15 +3,13 @@
 import dynamic from "next/dynamic";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
-import { apiFetch } from "@/lib/api";
-import { redirectToLogin } from "@/lib/auth";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import { deleteWorkout, fetchWorkout, type WorkoutDetail } from "@/lib/api";
+import { formatDateTime, formatKm } from "@/lib/format";
 import { parseWorkoutId } from "@/lib/workoutRoute";
-import {
-  formatDuration,
-  formatPaceMinPerKm,
-  type LatLng,
-} from "@/lib/workoutTrack";
-import { useAuthUser } from "@/lib/useAuthUser";
+import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -24,23 +22,7 @@ const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"),
   ),
 });
 
-type WorkoutDetail = {
-  id: number;
-  startedAt: string;
-  endedAt: string;
-  durationSec: number;
-  distanceM: number;
-  calories: number;
-  avgPaceSecPerKm: number | null;
-  path: LatLng[];
-};
-
-function formatWhen(iso: string) {
-  return new Date(iso).toLocaleString();
-}
-
 export default function WorkoutDetailContent() {
-  const { user, loading } = useAuthUser();
   const confirm = useConfirm();
   const [detail, setDetail] = useState<WorkoutDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,18 +33,14 @@ export default function WorkoutDetailContent() {
     () => parseWorkoutId(String(params?.id ?? "")),
     [params?.id],
   );
+  const { user } = useRequireAuth(id ? `/workouts/${id}` : undefined);
 
   useEffect(() => {
-    if (!loading && !user) {
-      redirectToLogin(id ? `/workouts/${id}` : undefined);
-      return;
-    }
     if (!id || !user) return;
-
-    apiFetch<WorkoutDetail>(`/api/workouts/${id}`, { user })
+    fetchWorkout(id, user)
       .then(setDetail)
       .catch((e) => setError(String(e)));
-  }, [id, loading, user]);
+  }, [id, user]);
 
   const lastPosition = detail?.path[detail.path.length - 1] ?? null;
 
@@ -78,7 +56,7 @@ export default function WorkoutDetailContent() {
     setDeleting(true);
     setError(null);
     try {
-      await apiFetch(`/api/workouts/${id}/delete`, { method: "POST", user });
+      await deleteWorkout(id, user);
       window.location.href = "/my";
     } catch (e) {
       setError(String(e));
@@ -100,16 +78,10 @@ export default function WorkoutDetailContent() {
         </button>
       }
     >
-      {error ? (
-        <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <Alert className="mb-4">{error}</Alert> : null}
 
       {!detail ? (
-        <div className="rounded-2xl bg-white p-5 text-sm text-zinc-600 shadow-sm">
-          로딩 중...
-        </div>
+        <Card className="text-sm text-zinc-600">로딩 중...</Card>
       ) : (
         <>
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -132,7 +104,7 @@ export default function WorkoutDetailContent() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-xs text-zinc-500">거리</div>
               <div className="mt-1 text-xl font-semibold tabular-nums">
-                {(detail.distanceM / 1000).toFixed(2)} km
+                {formatKm(detail.distanceM)}
               </div>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -150,8 +122,8 @@ export default function WorkoutDetailContent() {
           </div>
 
           <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-zinc-600 shadow-sm">
-            <div>시작: {formatWhen(detail.startedAt)}</div>
-            <div className="mt-1">종료: {formatWhen(detail.endedAt)}</div>
+            <div>시작: {formatDateTime(detail.startedAt)}</div>
+            <div className="mt-1">종료: {formatDateTime(detail.endedAt)}</div>
           </div>
         </>
       )}

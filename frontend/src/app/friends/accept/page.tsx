@@ -1,7 +1,10 @@
 "use client";
 
 import { PageLayout } from "@/app/_components/PageLayout";
-import { apiFetch } from "@/lib/api";
+import { Card } from "@/app/_components/ui/Card";
+import { acceptInvite } from "@/lib/api";
+import { redirectToLogin } from "@/lib/auth";
+import { readInviteCodeFromQuery } from "@/lib/friendRoute";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useEffect, useMemo, useState } from "react";
 
@@ -12,24 +15,18 @@ export default function FriendAcceptPage() {
   );
   const [error, setError] = useState<string | null>(null);
 
-  const code = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("code");
-  }, []);
+  const code = useMemo(() => readInviteCodeFromQuery(), []);
 
   useEffect(() => {
-    if (!code) return;
-    if (!loading && !user) {
-      window.location.href = `/login`;
+    if (!code || loading) return;
+    if (!user) {
+      // 로그인 후 이 수락 URL(?code=...)로 되돌아오도록 현재 경로를 returnTo로 사용
+      redirectToLogin();
       return;
     }
-    if (!user) return;
 
     setStatus("accepting");
-    apiFetch<void>(`/api/friends/invites/${code}/accept`, {
-      method: "POST",
-      user,
-    })
+    acceptInvite(code, user)
       .then(() => setStatus("done"))
       .catch((e) => {
         setError(String(e));
@@ -39,7 +36,7 @@ export default function FriendAcceptPage() {
 
   return (
     <PageLayout title="친구 초대 수락" maxWidth="max-w-md">
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <Card padding="p-6">
         <p className="text-sm text-zinc-600">
           코드: <span className="font-mono">{code ?? "(없음)"}</span>
         </p>
@@ -57,7 +54,7 @@ export default function FriendAcceptPage() {
         >
           친구로 이동
         </a>
-      </div>
+      </Card>
     </PageLayout>
   );
 }

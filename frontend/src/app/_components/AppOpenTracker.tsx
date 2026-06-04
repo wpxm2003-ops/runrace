@@ -1,6 +1,6 @@
 "use client";
 
-import { apiFetch } from "@/lib/api";
+import { trackEvent } from "@/lib/api";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useEffect } from "react";
 
@@ -9,11 +9,7 @@ export function AppOpenTracker() {
 
   useEffect(() => {
     if (!user) return;
-    apiFetch<void>("/api/analytics/events", {
-      method: "POST",
-      user,
-      body: { name: "app_open", propsJson: "{}" },
-    }).catch(() => {});
+    trackEvent("app_open", "{}", user).catch(() => {});
   }, [user]);
 
   return null;

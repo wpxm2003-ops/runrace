@@ -24,6 +24,20 @@ export type CreateChallengeForm = {
   endDate: string;
 };
 
+export const MAX_MEMBERS = 50;
+
+/** 숫자 외 문자를 제거한다(목표 km 등 정수 입력용). */
+export function sanitizeDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+/** 인원수 입력: 숫자만 남기고 최대 {@link MAX_MEMBERS}명으로 제한. 빈 값은 그대로 둔다. */
+export function clampMaxMembers(value: string): string {
+  const digits = sanitizeDigits(value);
+  if (!digits) return "";
+  return String(Math.min(MAX_MEMBERS, parseInt(digits, 10)));
+}
+
 export function validateCreateChallengeForm(form: CreateChallengeForm): string | null {
   const title = form.title.trim();
   if (!title) return "제목을 입력하세요.";

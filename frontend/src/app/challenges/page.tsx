@@ -1,42 +1,26 @@
 "use client";
 
 import { PageLayout } from "@/app/_components/PageLayout";
-import { publicFetch } from "@/lib/api";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import { fetchChallenges, type ChallengeListItem } from "@/lib/api";
 import { redirectToLogin } from "@/lib/auth";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { challengePhaseFromApi, challengePhaseLabel } from "@/lib/challengePhase";
+import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useEffect, useState } from "react";
 
-type ChallengeItem = {
-  id: number;
-  title: string;
-  goalKm: number;
-  phase: string;
-  startAt: string;
-  endAt: string | null;
-  memberCount: number;
-  createdAt: string;
-  isOwner: boolean;
-};
-
-function formatDateRange(startAt: string, endAt: string | null) {
-  const start = new Date(startAt).toLocaleDateString();
-  const end = endAt ? new Date(endAt).toLocaleDateString() : "-";
-  return `${start} ~ ${end}`;
-}
-
 export default function ChallengesPage() {
   const { user, loading } = useAuthUser();
-  const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
+  const [challenges, setChallenges] = useState<ChallengeListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
 
   async function refreshAll(u = user) {
     setListLoading(true);
     try {
-      const c = await publicFetch<ChallengeItem[]>("/api/challenges", u);
-      setChallenges(c);
+      setChallenges(await fetchChallenges(u));
     } finally {
       setListLoading(false);
     }
@@ -68,13 +52,9 @@ export default function ChallengesPage() {
         </a>
       }
     >
-      {error ? (
-        <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
+      <Card>
         <div className="text-lg font-semibold">대결 목록</div>
         <div className="mt-3 grid gap-2">
           {listLoading ? (
@@ -107,7 +87,7 @@ export default function ChallengesPage() {
             ))
           )}
         </div>
-      </div>
+      </Card>
     </PageLayout>
   );
 }

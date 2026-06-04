@@ -1,64 +1,46 @@
 "use client";
 
 import { PageLayout } from "@/app/_components/PageLayout";
-import { apiFetch } from "@/lib/api";
-import { useAuthUser } from "@/lib/useAuthUser";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import { createInvite, fetchFriends, type Friend } from "@/lib/api";
+import { friendAcceptUrl } from "@/lib/friendRoute";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useEffect, useMemo, useState } from "react";
 
-type Friend = {
-  id: string;
-  displayName: string | null;
-  photoUrl: string | null;
-  email: string | null;
-};
-
 export default function FriendsPage() {
-  const { user, loading } = useAuthUser();
+  const { user } = useRequireAuth("/friends");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const inviteLink = useMemo(() => {
-    if (!inviteCode) return null;
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/friends/accept?code=${inviteCode}`;
-  }, [inviteCode]);
+  const inviteLink = useMemo(
+    () => (inviteCode ? friendAcceptUrl(inviteCode) : null),
+    [inviteCode],
+  );
 
   async function refreshFriends(u = user) {
     if (!u) return;
-    const list = await apiFetch<Friend[]>("/api/friends", { user: u });
-    setFriends(list);
+    setFriends(await fetchFriends(u));
   }
 
   async function onCreateInvite() {
     if (!user) return;
     setError(null);
-    const res = await apiFetch<{ code: string; expiresAt: string }>(
-      "/api/friends/invites",
-      { method: "POST", user },
-    );
+    const res = await createInvite(user);
     setInviteCode(res.code);
   }
 
   useEffect(() => {
-    if (!loading && !user) {
-      window.location.href = "/login";
-      return;
-    }
     if (user) refreshFriends(user).catch((e) => setError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user]);
+  }, [user]);
 
   return (
     <PageLayout title="친구">
-        {error ? (
-          <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
+        {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <Card>
           <div className="text-lg font-semibold">친구 초대</div>
           <div className="mt-2 text-sm text-zinc-600">
             초대 링크를 만들어 친구에게 공유하세요.
@@ -79,9 +61,9 @@ export default function FriendsPage() {
               </div>
             ) : null}
           </div>
-        </div>
+        </Card>
 
-        <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
+        <Card className="mt-6">
           <div className="text-lg font-semibold">친구 목록</div>
           <div className="mt-3 grid gap-2">
             {friends.length === 0 ? (
@@ -102,8 +84,7 @@ export default function FriendsPage() {
               ))
             )}
           </div>
-        </div>
+        </Card>
     </PageLayout>
   );
 }
-

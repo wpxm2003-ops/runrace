@@ -3,54 +3,25 @@
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { FIXED_ACTION_BOTTOM } from "@/app/_components/AppShell";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import {
+  deleteChallenge,
+  fetchChallengeDetail,
+  joinChallenge,
+  type ChallengeDetail,
+} from "@/lib/api";
 import { challengePhaseLabel } from "@/lib/challengePhase";
-import { apiFetch, publicFetch } from "@/lib/api";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import {
   challengeEditHref,
   challengeShareUrl,
   parseChallengeId,
 } from "@/lib/challengeRoute";
+import { formatDate } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-
-type Member = {
-  userId: string;
-  displayName: string | null;
-  totalKm: string;
-  remainingKm: string;
-  progressPercent: number | string;
-  finished: boolean;
-};
-
-type Winner = {
-  userId: string;
-  displayName: string | null;
-};
-
-type ChallengeDetail = {
-  id: number;
-  title: string;
-  goalKm: number;
-  maxMembers: number;
-  startAt: string;
-  endAt: string | null;
-  creatorUserId: string;
-  isMember: boolean;
-  isOwner: boolean;
-  hasStarted: boolean;
-  hasEnded: boolean;
-  showManage: boolean;
-  canJoin: boolean;
-  memberCount: number;
-  winner: Winner | null;
-  members: Member[];
-};
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString();
-}
 
 export default function ChallengeDetailContent() {
   const { user, loading } = useAuthUser();
@@ -69,8 +40,7 @@ export default function ChallengeDetailContent() {
 
   async function loadDetail(u = user) {
     if (!id) return;
-    const d = await publicFetch<ChallengeDetail>(`/api/challenges/${id}`, u);
-    setDetail(d);
+    setDetail(await fetchChallengeDetail(id, u));
   }
 
   useEffect(() => {
@@ -120,11 +90,7 @@ export default function ChallengeDetailContent() {
     if (!ok) return;
     setError(null);
     try {
-      await apiFetch(`/api/challenges/${id}`, {
-        method: "DELETE",
-        user,
-        returnTo: `/challenges/${id}`,
-      });
+      await deleteChallenge(id, user, `/challenges/${id}`);
       window.location.href = "/challenges";
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) {
@@ -141,11 +107,7 @@ export default function ChallengeDetailContent() {
     setJoining(true);
     setError(null);
     try {
-      await apiFetch(`/api/challenges/${id}/join`, {
-        method: "POST",
-        user,
-        returnTo: `/challenges/${id}`,
-      });
+      await joinChallenge(id, user, `/challenges/${id}`);
       await loadDetail(user);
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) {
@@ -228,19 +190,13 @@ export default function ChallengeDetailContent() {
           </div>
         ) : null}
 
-        {error ? (
-          <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
+        {error ? <Alert className="mb-4">{error}</Alert> : null}
 
         {!detail ? (
-          <div className="rounded-2xl bg-white p-5 shadow-sm text-sm text-zinc-600">
-            로딩 중...
-          </div>
+          <Card className="text-sm text-zinc-600">로딩 중...</Card>
         ) : (
           <>
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <Card>
               <div className="flex items-center justify-between">
                 <div className="text-lg font-semibold">{detail.title}</div>
                 <div className="text-xs text-zinc-600">
@@ -254,9 +210,9 @@ export default function ChallengeDetailContent() {
                 {formatDate(detail.startAt)} ~{" "}
                 {detail.endAt ? formatDate(detail.endAt) : "-"}
               </div>
-            </div>
+            </Card>
 
-            <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
+            <Card className="mt-6">
               <div className="text-lg font-semibold">진행 현황</div>
               <div className="mt-4 grid gap-4">
                 {detail.members.map((m) => {
@@ -284,7 +240,7 @@ export default function ChallengeDetailContent() {
                   );
                 })}
               </div>
-            </div>
+            </Card>
 
             {showWinnerBanner && detail.winner ? (
               <div className="mt-6 rounded-2xl bg-amber-50 p-5 text-center shadow-sm">

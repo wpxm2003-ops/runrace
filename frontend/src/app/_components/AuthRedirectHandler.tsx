@@ -1,19 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getRedirectResult, type User } from "firebase/auth";
+import { getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { apiFetch } from "@/lib/api";
+import { syncBackendLogin } from "@/lib/api";
 import { LOGIN_RETURN_KEY, LOGIN_PENDING_KEY, safeReturnPath } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
-
-async function syncBackendLogin(user: User) {
-  await apiFetch("/api/auth/login", {
-    method: "POST",
-    user,
-    redirectOn401: false,
-  });
-}
 
 /**
  * Google redirect 로그인은 /login 이 아닌 URL로 돌아올 수 있어 앱 전역에서 1회 처리

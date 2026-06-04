@@ -1,34 +1,28 @@
 "use client";
 
 import { PageLayout } from "@/app/_components/PageLayout";
-import { apiFetch } from "@/lib/api";
-import { redirectToLogin } from "@/lib/auth";
-import { challengeDetailHref, parseChallengeId } from "@/lib/challengeRoute";
-import { useAuthUser } from "@/lib/useAuthUser";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import { fetchChallengeDetail, updateChallenge } from "@/lib/api";
+import {
+  challengeDetailHref,
+  challengeEditHref,
+  parseChallengeId,
+} from "@/lib/challengeRoute";
+import { clampMaxMembers, sanitizeDigits } from "@/lib/challengeForm";
+import { toDateInputValue } from "@/lib/format";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-type ChallengeDetail = {
-  id: number;
-  title: string;
-  goalKm: number;
-  maxMembers: number;
-  startAt: string;
-  endAt: string | null;
-  showManage: boolean;
-};
-
-function toDateInput(iso: string) {
-  return iso.slice(0, 10);
-}
-
 export default function ChallengeEditContent() {
-  const { user, loading } = useAuthUser();
   const params = useParams();
   const id = useMemo(
     () => parseChallengeId(String(params?.id ?? "")),
     [params?.id],
   );
+  const { user } = useRequireAuth(id ? challengeEditHref(id) : undefined);
+
   const [title, setTitle] = useState("");
   const [goalKm, setGoalKm] = useState("");
   const [maxMembers, setMaxMembers] = useState("");
@@ -39,20 +33,13 @@ export default function ChallengeEditContent() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      redirectToLogin(id ? `/challenges/${id}/edit` : undefined);
-      return;
-    }
     if (!id) {
       setError("대결 ID가 없습니다.");
       return;
     }
     if (!user) return;
 
-    apiFetch<ChallengeDetail & { memberCount: number; showManage: boolean }>(
-      `/api/challenges/${id}`,
-      { user },
-    )
+    fetchChallengeDetail(id, user)
       .then((d) => {
         if (!d.showManage) {
           window.location.href = challengeDetailHref(id);
@@ -61,26 +48,12 @@ export default function ChallengeEditContent() {
         setTitle(d.title);
         setGoalKm(String(d.goalKm));
         setMaxMembers(String(d.maxMembers));
-        setStartDate(toDateInput(d.startAt));
-        setEndDate(d.endAt ? toDateInput(d.endAt) : "");
+        setStartDate(toDateInputValue(d.startAt));
+        setEndDate(d.endAt ? toDateInputValue(d.endAt) : "");
         setMemberCount(d.memberCount);
       })
       .catch((e) => setError(String(e)));
-  }, [id, loading, user]);
-
-  function onGoalKmChange(v: string) {
-    setGoalKm(v.replace(/\D/g, ""));
-  }
-
-  function onMaxMembersChange(v: string) {
-    const digits = v.replace(/\D/g, "");
-    if (!digits) {
-      setMaxMembers("");
-      return;
-    }
-    const n = Math.min(50, parseInt(digits, 10));
-    setMaxMembers(String(n));
-  }
+  }, [id, user]);
 
   async function onSubmit() {
     if (!user || !id) return;
@@ -96,17 +69,17 @@ export default function ChallengeEditContent() {
       }
       if (endDate < startDate) throw new Error("종료일은 시작일 이후여야 합니다.");
 
-      await apiFetch(`/api/challenges/${id}`, {
-        method: "PUT",
-        user,
-        body: {
+      await updateChallenge(
+        id,
+        {
           title: title.trim(),
           goalKm: goal,
           maxMembers: max,
           startDate,
           endDate,
         },
-      });
+        user,
+      );
       window.location.href = challengeDetailHref(id);
     } catch (e) {
       setError(String(e));
@@ -127,13 +100,9 @@ export default function ChallengeEditContent() {
         </a>
       }
     >
-        {error ? (
-          <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
+        {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <Card>
           <label className="block text-sm font-medium">제목</label>
           <input
             className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
@@ -146,7 +115,7 @@ export default function ChallengeEditContent() {
             className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
             inputMode="numeric"
             value={goalKm}
-            onChange={(e) => onGoalKmChange(e.target.value)}
+            onChange={(e) => setGoalKm(sanitizeDigits(e.target.value))}
           />
 
           <label className="mt-4 block text-sm font-medium">인원수 (최대 50명)</label>
@@ -154,7 +123,7 @@ export default function ChallengeEditContent() {
             className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
             inputMode="numeric"
             value={maxMembers}
-            onChange={(e) => onMaxMembersChange(e.target.value)}
+            onChange={(e) => setMaxMembers(clampMaxMembers(e.target.value))}
           />
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -186,7 +155,7 @@ export default function ChallengeEditContent() {
           >
             {submitting ? "저장 중..." : "저장"}
           </button>
-        </div>
+        </Card>
     </PageLayout>
   );
 }

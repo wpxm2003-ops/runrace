@@ -1,20 +1,25 @@
 "use client";
 
 import { PageLayout } from "@/app/_components/PageLayout";
-import { apiFetch } from "@/lib/api";
-import { redirectToLogin } from "@/lib/auth";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import {
+  createChallenge,
+  fetchActiveCount,
+  type ActiveCount,
+} from "@/lib/api";
 import {
   addDays,
+  clampMaxMembers,
+  sanitizeDigits,
   todayStr,
   validateCreateChallengeForm,
 } from "@/lib/challengeForm";
-import { useAuthUser } from "@/lib/useAuthUser";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useEffect, useMemo, useState } from "react";
 
-type ActiveCount = { activeCount: number; maxActive: number };
-
 export default function CreateChallengePage() {
-  const { user, loading } = useAuthUser();
+  const { user } = useRequireAuth("/challenges/create");
   const today = useMemo(() => todayStr(), []);
   const [title, setTitle] = useState("");
   const [goalKm, setGoalKm] = useState("");
@@ -28,32 +33,14 @@ export default function CreateChallengePage() {
   const endMin = startDate ? addDays(startDate, 1) : addDays(today, 1);
 
   useEffect(() => {
-    if (!loading && !user) {
-      redirectToLogin("/challenges/create");
-      return;
-    }
     if (!user) return;
-    apiFetch<ActiveCount>("/api/challenges/active-count", { user })
+    fetchActiveCount(user)
       .then(setActiveCount)
       .catch((e) => setError(String(e)));
-  }, [loading, user]);
+  }, [user]);
 
   const canCreate =
     activeCount != null && activeCount.activeCount < activeCount.maxActive;
-
-  function onGoalKmChange(v: string) {
-    setGoalKm(v.replace(/\D/g, ""));
-  }
-
-  function onMaxMembersChange(v: string) {
-    const digits = v.replace(/\D/g, "");
-    if (!digits) {
-      setMaxMembers("");
-      return;
-    }
-    const n = Math.min(50, parseInt(digits, 10));
-    setMaxMembers(String(n));
-  }
 
   function onStartDateChange(v: string) {
     setStartDate(v);
@@ -80,20 +67,16 @@ export default function CreateChallengePage() {
 
     setSubmitting(true);
     try {
-      const goal = parseInt(goalKm, 10);
-      const max = parseInt(maxMembers, 10);
-
-      await apiFetch<{ id: number }>("/api/challenges", {
-        method: "POST",
-        user,
-        body: {
+      await createChallenge(
+        {
           title: title.trim(),
-          goalKm: goal,
-          maxMembers: max,
+          goalKm: parseInt(goalKm, 10),
+          maxMembers: parseInt(maxMembers, 10),
           startDate,
           endDate,
         },
-      });
+        user,
+      );
       window.location.href = "/challenges";
     } catch (e) {
       setError(String(e));
@@ -112,19 +95,15 @@ export default function CreateChallengePage() {
       }
     >
         {activeCount && !canCreate ? (
-          <div className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          <Alert tone="warning" className="mb-4">
             종료되지 않은 방은 최대 {activeCount.maxActive}개까지 만들 수 있습니다.
             (현재 {activeCount.activeCount}개)
-          </div>
+          </Alert>
         ) : null}
 
-        {error ? (
-          <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
+        {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <Card>
           <label className="block text-sm font-medium">
             제목 <span className="text-red-500">*</span>
           </label>
@@ -144,7 +123,7 @@ export default function CreateChallengePage() {
             inputMode="numeric"
             pattern="[0-9]*"
             value={goalKm}
-            onChange={(e) => onGoalKmChange(e.target.value)}
+            onChange={(e) => setGoalKm(sanitizeDigits(e.target.value))}
             placeholder="정수만 입력"
             required
           />
@@ -157,7 +136,7 @@ export default function CreateChallengePage() {
             inputMode="numeric"
             pattern="[0-9]*"
             value={maxMembers}
-            onChange={(e) => onMaxMembersChange(e.target.value)}
+            onChange={(e) => setMaxMembers(clampMaxMembers(e.target.value))}
             required
           />
 
@@ -198,7 +177,7 @@ export default function CreateChallengePage() {
           >
             {submitting ? "생성 중..." : "방 생성"}
           </button>
-        </div>
+        </Card>
     </PageLayout>
   );
 }

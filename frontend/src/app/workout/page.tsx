@@ -3,12 +3,12 @@
 import dynamic from "next/dynamic";
 import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration";
 import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
-import { apiFetch } from "@/lib/api";
-import { redirectToLogin } from "@/lib/auth";
-import { useAuthUser } from "@/lib/useAuthUser";
+import { Alert } from "@/app/_components/ui/Alert";
+import { createWorkout } from "@/lib/api";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useWorkoutSession } from "@/lib/useWorkoutSession";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
   ssr: false,
@@ -25,17 +25,11 @@ type CelebrationState = {
 };
 
 export default function WorkoutPage() {
-  const { user, loading } = useAuthUser();
+  const { user, loading } = useRequireAuth("/workout");
   const session = useWorkoutSession();
   const [celebration, setCelebration] = useState<CelebrationState | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      redirectToLogin("/workout");
-    }
-  }, [loading, user]);
 
   const handleStop = useCallback(async () => {
     const snapshot = session.stop();
@@ -49,10 +43,8 @@ export default function WorkoutPage() {
     setSaving(true);
 
     try {
-      const res = await apiFetch<{ id: number }>("/api/workouts", {
-        method: "POST",
-        user,
-        body: {
+      const res = await createWorkout(
+        {
           startedAt: snapshot.startedAt,
           endedAt: snapshot.endedAt,
           durationSec: snapshot.durationSec,
@@ -61,7 +53,8 @@ export default function WorkoutPage() {
           avgPaceSecPerKm: snapshot.avgPaceSecPerKm,
           path: snapshot.path,
         },
-      });
+        user,
+      );
       setCelebration({ recordId: res.id, snapshot });
     } catch (e) {
       setSaveError(String(e));
@@ -119,9 +112,7 @@ export default function WorkoutPage() {
       <div className="shrink-0 border-t border-zinc-200 bg-zinc-50 px-3 py-3 sm:px-4 sm:py-4">
         <div className="mx-auto max-w-2xl">
           {saveError ? (
-            <div className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-              {saveError}
-            </div>
+            <Alert className="mb-3">{saveError}</Alert>
           ) : null}
           <WorkoutStatsGrid
             status={session.status}
