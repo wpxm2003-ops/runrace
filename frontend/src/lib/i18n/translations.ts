@@ -77,8 +77,8 @@ export const translations = {
     create_field_goal: "목표 km",
     create_field_goal_placeholder: "정수만 입력",
     create_field_members: "인원수 (최대 50명)",
-    create_field_start: "시작일",
-    create_field_end: "종료일",
+    create_field_start: "시작 일시",
+    create_field_end: "종료 일시",
     create_btn: "저장",
     create_btn_busy: "등록 중...",
     create_required: "*",
@@ -98,10 +98,10 @@ export const translations = {
     create_err_members_required: "인원수를 입력하세요.",
     create_err_members_range: (min: number, max: number) =>
       `인원수는 ${min}~${max}명입니다.`,
-    create_err_start_required: "시작일을 선택하세요.",
-    create_err_end_required: "종료일을 선택하세요.",
-    create_err_start_past: "시작일은 오늘 이후만 선택할 수 있습니다.",
-    create_err_end_after_start: "종료일은 시작일보다 이후여야 합니다.",
+    create_err_start_required: "시작 일시를 선택하세요.",
+    create_err_end_required: "종료 일시를 선택하세요.",
+    create_err_start_too_soon: "시작 일시는 현재 시각 이후만 설정할 수 있습니다.",
+    create_err_end_after_start: "종료 일시는 시작 일시보다 이후여야 합니다.",
 
     // ── 레이스 상세 ─────────────────────────
     detail_title: "레이스 상세",
@@ -354,8 +354,8 @@ export const translations = {
     create_field_goal: "Goal (km)",
     create_field_goal_placeholder: "Whole number",
     create_field_members: "Max members (up to 50)",
-    create_field_start: "Start date",
-    create_field_end: "End date",
+    create_field_start: "Start date & time",
+    create_field_end: "End date & time",
     create_btn: "Create Race",
     create_btn_busy: "Creating...",
     create_required: "*",
@@ -375,10 +375,10 @@ export const translations = {
     create_err_members_required: "Please enter max members.",
     create_err_members_range: (min: number, max: number) =>
       `Members must be between ${min} and ${max}.`,
-    create_err_start_required: "Please select a start date.",
-    create_err_end_required: "Please select an end date.",
-    create_err_start_past: "Start date must be today or later.",
-    create_err_end_after_start: "End date must be after the start date.",
+    create_err_start_required: "Please select a start date and time.",
+    create_err_end_required: "Please select an end date and time.",
+    create_err_start_too_soon: "Start must be after the current time.",
+    create_err_end_after_start: "End must be after the start date and time.",
 
     // ── 대결 상세 ─────────────────────────
     detail_title: "Race Details",

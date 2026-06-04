@@ -11,9 +11,8 @@ import com.runrace.backend.workout.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -45,9 +44,9 @@ public class ChallengeService {
       String title,
       int goalKm,
       int maxMembers,
-      LocalDate startDate,
-      LocalDate endDate) {
-    validateRoomInput(title, goalKm, maxMembers, startDate, endDate);
+      OffsetDateTime startAt,
+      OffsetDateTime endAt) {
+    validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
 
     AppUser creator = appUserRepository.getRequired(principal.userId());
     if (challengeRepository.countActiveByCreator(creator.getId(), OffsetDateTime.now())
@@ -58,7 +57,7 @@ public class ChallengeService {
     Challenge challenge = new Challenge();
     challenge.setCreator(creator);
     challenge.setCreatedAt(OffsetDateTime.now());
-    applyRoomInput(challenge, title, goalKm, maxMembers, startDate, endDate);
+    applyRoomInput(challenge, title, goalKm, maxMembers, startAt, endAt);
     Challenge saved = challengeRepository.save(challenge);
 
     challengeMemberRepository.save(newMember(saved, creator));
@@ -74,18 +73,18 @@ public class ChallengeService {
       String title,
       int goalKm,
       int maxMembers,
-      LocalDate startDate,
-      LocalDate endDate) {
+      OffsetDateTime startAt,
+      OffsetDateTime endAt) {
     Challenge challenge = requireChallenge(id);
     ensureOwner(principal, challenge);
     ensureNotStarted(challenge);
-    validateRoomInput(title, goalKm, maxMembers, startDate, endDate);
+    validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
 
     if (maxMembers < challengeMemberRepository.countByChallengeId(id)) {
       throw ApiException.badRequest("max_members_too_small");
     }
 
-    applyRoomInput(challenge, title, goalKm, maxMembers, startDate, endDate);
+    applyRoomInput(challenge, title, goalKm, maxMembers, startAt, endAt);
     return challengeRepository.save(challenge);
   }
 
@@ -376,20 +375,24 @@ public class ChallengeService {
       String title,
       int goalKm,
       int maxMembers,
-      LocalDate startDate,
-      LocalDate endDate) {
+      OffsetDateTime startAt,
+      OffsetDateTime endAt) {
     challenge.setTitle(title.trim());
     challenge.setGoalKm(goalKm);
     challenge.setMaxMembers(maxMembers);
-    challenge.setStartAt(startDate.atStartOfDay().atOffset(ZoneOffset.UTC));
-    challenge.setEndAt(endDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC));
+    challenge.setStartAt(startAt);
+    challenge.setEndAt(endAt);
   }
 
   private static final int TITLE_MAX_BYTES = 50;
   private static final int MAX_GOAL_KM = 1000;
   private static final int MAX_MEMBERS_LIMIT = 50;
   private void validateRoomInput(
-      String title, int goalKm, int maxMembers, LocalDate startDate, LocalDate endDate) {
+      String title,
+      int goalKm,
+      int maxMembers,
+      OffsetDateTime startAt,
+      OffsetDateTime endAt) {
     String trimmed = title == null ? "" : title.trim();
     if (trimmed.isBlank() || utf8ByteLength(trimmed) > TITLE_MAX_BYTES) {
       throw ApiException.badRequest("invalid_title");
@@ -403,13 +406,14 @@ public class ChallengeService {
     if (maxMembers < 1 || maxMembers > MAX_MEMBERS_LIMIT) {
       throw ApiException.badRequest("invalid_max_members");
     }
-    if (startDate == null || endDate == null) {
+    if (startAt == null || endAt == null) {
       throw ApiException.badRequest("invalid_dates");
     }
-    if (startDate.isBefore(LocalDate.now())) {
-      throw ApiException.badRequest("invalid_start_date");
+    OffsetDateTime nowMinute = OffsetDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+    if (startAt.truncatedTo(ChronoUnit.MINUTES).isBefore(nowMinute)) {
+      throw ApiException.badRequest("invalid_start_at");
     }
-    if (!endDate.isAfter(startDate)) {
+    if (!endAt.isAfter(startAt)) {
       throw ApiException.badRequest("invalid_date_range");
     }
   }

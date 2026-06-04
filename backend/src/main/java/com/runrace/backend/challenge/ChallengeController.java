@@ -58,8 +58,8 @@ public class ChallengeController {
             body.title(),
             body.goalKm(),
             body.maxMembers(),
-            LocalDate.parse(body.startDate()),
-            LocalDate.parse(body.endDate()));
+            OffsetDateTime.parse(body.startAt()),
+            OffsetDateTime.parse(body.endAt()));
     return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 
@@ -73,8 +73,8 @@ public class ChallengeController {
             body.title(),
             body.goalKm(),
             body.maxMembers(),
-            LocalDate.parse(body.startDate()),
-            LocalDate.parse(body.endDate()));
+            OffsetDateTime.parse(body.startAt()),
+            OffsetDateTime.parse(body.endAt()));
     return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 

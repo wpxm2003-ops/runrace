@@ -69,8 +69,8 @@ export type ChallengeFormBody = {
   title: string;
   goalKm: number;
   maxMembers: number;
-  startDate: string;
-  endDate: string;
+  startAt: string;
+  endAt: string;
 };
 
 // ── 내 정보 ──────────────────────────────────────────────────────

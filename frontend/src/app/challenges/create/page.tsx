@@ -70,14 +70,14 @@ export default function CreateChallengePage() {
       <ChallengeFormFields
         labels={labels}
         values={form.values}
-        today={form.today}
+        startAtMin={form.startAtMin}
         endMin={form.endMin}
         handlers={{
           onTitleChange: form.onTitleChange,
           onGoalKmChange: form.onGoalKmChange,
           onMaxMembersChange: form.onMaxMembersChange,
-          onStartDateChange: form.onStartDateChange,
-          onEndDateChange: form.onEndDateChange,
+          onStartAtChange: form.onStartAtChange,
+          onEndAtChange: form.onEndAtChange,
         }}
         formError={error}
         formHint={form.formHint}

@@ -6,7 +6,7 @@ import { useChallengeForm } from "@/app/challenges/_components/useChallengeForm"
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
 import { fetchChallengeDetail, updateChallenge } from "@/lib/api";
 import { challengeDetailHref, challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
-import { toDateInputValue } from "@/lib/format";
+import { toDateTimeInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -23,7 +23,8 @@ export default function ChallengeEditContent() {
   const [submitting, setSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(memberCount);
+  const { labels, hints, validationMsgs, validateOptions } =
+    useChallengeFormMessages(memberCount);
   const form = useChallengeForm({
     validationMsgs,
     validateOptions,
@@ -47,8 +48,8 @@ export default function ChallengeEditContent() {
           title: d.title,
           goalKm: String(d.goalKm),
           maxMembers: String(d.maxMembers),
-          startDate: toDateInputValue(d.startAt),
-          endDate: d.endAt ? toDateInputValue(d.endAt) : "",
+          startAt: toDateTimeInputValue(d.startAt),
+          endAt: d.endAt ? toDateTimeInputValue(d.endAt) : "",
         });
         setLoaded(true);
       })
@@ -82,14 +83,14 @@ export default function ChallengeEditContent() {
       <ChallengeFormFields
         labels={labels}
         values={form.values}
-        today={form.today}
+        startAtMin={form.startAtMin}
         endMin={form.endMin}
         handlers={{
           onTitleChange: form.onTitleChange,
           onGoalKmChange: form.onGoalKmChange,
           onMaxMembersChange: form.onMaxMembersChange,
-          onStartDateChange: form.onStartDateChange,
-          onEndDateChange: form.onEndDateChange,
+          onStartAtChange: form.onStartAtChange,
+          onEndAtChange: form.onEndAtChange,
         }}
         formError={error}
         formHint={form.formHint}

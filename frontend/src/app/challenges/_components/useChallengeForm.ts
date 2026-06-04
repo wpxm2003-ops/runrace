@@ -3,11 +3,11 @@
 import {
   MAX_GOAL_KM,
   MAX_MEMBERS,
-  addDays,
   clampGoalKm,
   clampMaxMembers,
+  defaultEndAtAfterStart,
+  minStartAtLocal,
   sanitizeTitle,
-  todayStr,
   toChallengeFormPayload,
   validateChallengeForm,
   type ChallengeFormPayload,
@@ -46,8 +46,8 @@ const EMPTY: ChallengeFormValues = {
   title: "",
   goalKm: "",
   maxMembers: "",
-  startDate: "",
-  endDate: "",
+  startAt: "",
+  endAt: "",
 };
 
 export function useChallengeForm({
@@ -56,19 +56,19 @@ export function useChallengeForm({
   validateOptions,
   hints,
 }: Options) {
-  const today = useMemo(() => todayStr(), []);
+  const startAtMin = useMemo(() => minStartAtLocal(), []);
 
   const [title, setTitle] = useState(initial?.title ?? "");
   const [goalKm, setGoalKm] = useState(initial?.goalKm ?? "");
   const [maxMembers, setMaxMembers] = useState(initial?.maxMembers ?? "");
-  const [startDate, setStartDate] = useState(initial?.startDate ?? "");
-  const [endDate, setEndDate] = useState(initial?.endDate ?? "");
+  const [startAt, setStartAt] = useState(initial?.startAt ?? "");
+  const [endAt, setEndAt] = useState(initial?.endAt ?? "");
   const [formError, setFormError] = useState<string | null>(null);
   const [formHint, setFormHint] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
-  const values: ChallengeFormValues = { title, goalKm, maxMembers, startDate, endDate };
-  const endMin = startDate ? addDays(startDate, 1) : addDays(today, 1);
+  const values: ChallengeFormValues = { title, goalKm, maxMembers, startAt, endAt };
+  const endMin = startAt || startAtMin;
 
   const clearFeedback = useCallback(() => {
     setFormError(null);
@@ -80,8 +80,8 @@ export function useChallengeForm({
     setTitle(next.title ?? "");
     setGoalKm(next.goalKm ?? "");
     setMaxMembers(next.maxMembers ?? "");
-    setStartDate(next.startDate ?? "");
-    setEndDate(next.endDate ?? "");
+    setStartAt(next.startAt ?? "");
+    setEndAt(next.endAt ?? "");
     clearFeedback();
   }, [clearFeedback]);
 
@@ -122,18 +122,21 @@ export function useChallengeForm({
     [hints.membersMax],
   );
 
-  const onStartDateChange = useCallback(
-    (v: string) => {
-      setStartDate(v);
-      setEndDate((prev) => (prev && v && prev <= v ? addDays(v, 1) : prev));
-      setFormError(null);
-      setFormSuccess(null);
-    },
-    [],
-  );
+  const onStartAtChange = useCallback((v: string) => {
+    setStartAt(v);
+    setEndAt((prev) => {
+      if (!v) return prev;
+      if (!prev || new Date(prev).getTime() <= new Date(v).getTime()) {
+        return defaultEndAtAfterStart(v);
+      }
+      return prev;
+    });
+    setFormError(null);
+    setFormSuccess(null);
+  }, []);
 
-  const onEndDateChange = useCallback((v: string) => {
-    setEndDate(v);
+  const onEndAtChange = useCallback((v: string) => {
+    setEndAt(v);
     setFormError(null);
     setFormSuccess(null);
   }, []);
@@ -147,7 +150,7 @@ export function useChallengeForm({
   }, [values]);
 
   return {
-    today,
+    startAtMin,
     endMin,
     values,
     formError,
@@ -160,20 +163,20 @@ export function useChallengeForm({
     onTitleChange,
     onGoalKmChange,
     onMaxMembersChange,
-    onStartDateChange,
-    onEndDateChange,
+    onStartAtChange,
+    onEndAtChange,
     validate,
     getPayload,
   };
 }
 
 export function defaultCreateFormInitial(): ChallengeFormValues {
-  const today = todayStr();
+  const startAt = minStartAtLocal();
   return {
     title: "",
     goalKm: "",
     maxMembers: "10",
-    startDate: today,
-    endDate: addDays(today, 1),
+    startAt,
+    endAt: defaultEndAtAfterStart(startAt),
   };
 }

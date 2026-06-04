@@ -8,8 +8,8 @@ type FormHandlers = {
   onTitleChange: (raw: string) => void;
   onGoalKmChange: (raw: string) => void;
   onMaxMembersChange: (raw: string) => void;
-  onStartDateChange: (v: string) => void;
-  onEndDateChange: (v: string) => void;
+  onStartAtChange: (v: string) => void;
+  onEndAtChange: (v: string) => void;
 };
 
 type Props = {
@@ -18,10 +18,10 @@ type Props = {
     title: string;
     goalKm: string;
     maxMembers: string;
-    startDate: string;
-    endDate: string;
+    startAt: string;
+    endAt: string;
   };
-  today: string;
+  startAtMin: string;
   endMin: string;
   handlers: FormHandlers;
   formError?: string | null;
@@ -39,7 +39,7 @@ type Props = {
 export function ChallengeFormFields({
   labels,
   values,
-  today,
+  startAtMin,
   endMin,
   handlers,
   formError,
@@ -111,11 +111,12 @@ export function ChallengeFormFields({
               {labels.start} {req}
             </label>
             <input
-              type="date"
+              type="datetime-local"
               className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-              value={values.startDate}
-              min={today}
-              onChange={(e) => handlers.onStartDateChange(e.target.value)}
+              value={values.startAt}
+              min={startAtMin}
+              step={60}
+              onChange={(e) => handlers.onStartAtChange(e.target.value)}
               required
             />
           </div>
@@ -124,11 +125,12 @@ export function ChallengeFormFields({
               {labels.end} {req}
             </label>
             <input
-              type="date"
+              type="datetime-local"
               className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-              value={values.endDate}
+              value={values.endAt}
               min={endMin}
-              onChange={(e) => handlers.onEndDateChange(e.target.value)}
+              step={60}
+              onChange={(e) => handlers.onEndAtChange(e.target.value)}
               required
             />
           </div>

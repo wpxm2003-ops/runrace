@@ -21,12 +21,39 @@ export function addDays(dateStr: string, days: number): string {
   return formatLocalDate(dt);
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** datetime-local 입력값 (yyyy-MM-ddTHH:mm) */
+export function formatLocalDateTime(d: Date): string {
+  return `${formatLocalDate(d)}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** datetime-local min: 현재 시각(초 단위 절삭) */
+export function minStartAtLocal(): string {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  return formatLocalDateTime(d);
+}
+
+/** datetime-local → ISO (API 전송용) */
+export function localDatetimeToIso(local: string): string {
+  return new Date(local).toISOString();
+}
+
+export function defaultEndAtAfterStart(startAtLocal: string): string {
+  const d = new Date(startAtLocal);
+  d.setHours(d.getHours() + 1);
+  return formatLocalDateTime(d);
+}
+
 export type ChallengeFormValues = {
   title: string;
   goalKm: string;
   maxMembers: string;
-  startDate: string;
-  endDate: string;
+  startAt: string;
+  endAt: string;
 };
 
 /** @deprecated ChallengeFormValues 사용 */
@@ -122,7 +149,7 @@ export type ChallengeFormValidationMessages = {
   membersRange: string;
   startRequired: string;
   endRequired: string;
-  startPast: string;
+  startTooSoon: string;
   endAfterStart: string;
 };
 
@@ -157,14 +184,22 @@ export function validateChallengeForm(
     return msgs.membersRange;
   }
 
-  if (!form.startDate) return msgs.startRequired;
-  if (!form.endDate) return msgs.endRequired;
+  if (!form.startAt) return msgs.startRequired;
+  if (!form.endAt) return msgs.endRequired;
 
-  const today = todayStr();
-  if (form.startDate < today) {
-    return msgs.startPast;
+  const startMs = new Date(form.startAt).getTime();
+  const endMs = new Date(form.endAt).getTime();
+  const nowFloor = new Date();
+  nowFloor.setSeconds(0, 0);
+  nowFloor.setMilliseconds(0);
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return msgs.startRequired;
   }
-  if (form.endDate <= form.startDate) {
+  if (startMs < nowFloor.getTime()) {
+    return msgs.startTooSoon;
+  }
+  if (endMs <= startMs) {
     return msgs.endAfterStart;
   }
 
@@ -183,8 +218,8 @@ export type ChallengeFormPayload = {
   title: string;
   goalKm: number;
   maxMembers: number;
-  startDate: string;
-  endDate: string;
+  startAt: string;
+  endAt: string;
 };
 
 export function toChallengeFormPayload(form: ChallengeFormValues): ChallengeFormPayload {
@@ -192,7 +227,7 @@ export function toChallengeFormPayload(form: ChallengeFormValues): ChallengeForm
     title: form.title.trim(),
     goalKm: parseInt(form.goalKm, 10),
     maxMembers: parseInt(form.maxMembers, 10),
-    startDate: form.startDate,
-    endDate: form.endDate,
+    startAt: localDatetimeToIso(form.startAt),
+    endAt: localDatetimeToIso(form.endAt),
   };
 }

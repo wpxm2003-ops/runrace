@@ -16,7 +16,7 @@ import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
-import { formatDate } from "@/lib/format";
+import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
@@ -150,7 +150,7 @@ export default function ChallengeDetailContent() {
               목표 {detail.goalKm}km · {detail.memberCount}/{detail.maxMembers}명
             </div>
             <div className="mt-1 text-xs text-zinc-500">
-              {formatDate(detail.startAt)} ~ {detail.endAt ? formatDate(detail.endAt) : "-"}
+              {formatDateRange(detail.startAt, detail.endAt)}
             </div>
           </Card>
 

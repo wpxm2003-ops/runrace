@@ -45,7 +45,7 @@ export function useChallengeFormMessages(minMembers = 1) {
       membersRange: t.create_err_members_range(minMembers, MAX_MEMBERS),
       startRequired: t.create_err_start_required,
       endRequired: t.create_err_end_required,
-      startPast: t.create_err_start_past,
+      startTooSoon: t.create_err_start_too_soon,
       endAfterStart: t.create_err_end_after_start,
     }),
     [t, minMembers],
