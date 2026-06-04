@@ -1,6 +1,7 @@
 package com.runrace.backend.challenge;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import java.math.BigDecimal;
@@ -11,20 +12,22 @@ import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class ChallengeService {
-  private static final int MAX_ACTIVE_ROOMS_PER_CREATOR = 3;
+  static final int MAX_ACTIVE_ROOMS_PER_CREATOR = 3;
+  private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public Challenge createRoom(
@@ -33,34 +36,24 @@ public class ChallengeService {
       int goalKm,
       int maxMembers,
       LocalDate startDate,
-      LocalDate endDate
-  ) {
+      LocalDate endDate) {
     validateRoomInput(title, goalKm, maxMembers, startDate, endDate);
 
-    OffsetDateTime now = OffsetDateTime.now();
-    AppUser creator = appUserRepository.findById(principal.userId()).orElseThrow();
-
-    long activeCount = challengeRepository.countActiveByCreator(creator.getId(), now);
-    if (activeCount >= MAX_ACTIVE_ROOMS_PER_CREATOR) {
-      throw new IllegalStateException("active_room_limit");
+    AppUser creator = appUserRepository.getRequired(principal.userId());
+    if (challengeRepository.countActiveByCreator(creator.getId(), OffsetDateTime.now())
+        >= MAX_ACTIVE_ROOMS_PER_CREATOR) {
+      throw ApiException.conflict("active_room_limit");
     }
 
-    Challenge c = new Challenge();
-    c.setCreator(creator);
-    c.setTitle(title.trim());
-    c.setGoalKm(goalKm);
-    c.setMaxMembers(maxMembers);
-    c.setStartAt(startDate.atStartOfDay().atOffset(ZoneOffset.UTC));
-    c.setEndAt(endDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC));
-    c.setCreatedAt(now);
-    Challenge saved = challengeRepository.save(c);
+    Challenge challenge = new Challenge();
+    challenge.setCreator(creator);
+    challenge.setCreatedAt(OffsetDateTime.now());
+    applyRoomInput(challenge, title, goalKm, maxMembers, startDate, endDate);
+    Challenge saved = challengeRepository.save(challenge);
 
-    ChallengeMember cm = new ChallengeMember();
-    cm.setChallenge(saved);
-    cm.setUser(creator);
-    cm.setTotalKm(BigDecimal.ZERO);
-    challengeMemberRepository.save(cm);
+    challengeMemberRepository.save(newMember(saved, creator));
 
+    eventPublisher.publishEvent(new ChallengeCreatedEvent(saved.getId(), creator.getId()));
     return saved;
   }
 
@@ -72,67 +65,45 @@ public class ChallengeService {
       int goalKm,
       int maxMembers,
       LocalDate startDate,
-      LocalDate endDate
-  ) {
-    Challenge c = challengeRepository.findByIdWithDetails(id).orElseThrow();
-    ensureOwner(principal, c);
-    OffsetDateTime now = OffsetDateTime.now();
-    if (!now.isBefore(c.getStartAt())) {
-      throw new IllegalStateException("already_started");
-    }
-
+      LocalDate endDate) {
+    Challenge challenge = requireChallenge(id);
+    ensureOwner(principal, challenge);
+    ensureNotStarted(challenge);
     validateRoomInput(title, goalKm, maxMembers, startDate, endDate);
-    long memberCount = challengeMemberRepository.countByChallengeId(id);
-    if (maxMembers < memberCount) {
-      throw new IllegalArgumentException("max_members_too_small");
+
+    if (maxMembers < challengeMemberRepository.countByChallengeId(id)) {
+      throw ApiException.badRequest("max_members_too_small");
     }
 
-    c.setTitle(title.trim());
-    c.setGoalKm(goalKm);
-    c.setMaxMembers(maxMembers);
-    c.setStartAt(startDate.atStartOfDay().atOffset(ZoneOffset.UTC));
-    c.setEndAt(endDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC));
-    return challengeRepository.save(c);
+    applyRoomInput(challenge, title, goalKm, maxMembers, startDate, endDate);
+    return challengeRepository.save(challenge);
   }
 
   @Transactional
   public void deleteRoom(AuthPrincipal principal, Long id) {
-    Challenge c = challengeRepository.findByIdWithDetails(id).orElseThrow();
-    ensureOwner(principal, c);
-    OffsetDateTime now = OffsetDateTime.now();
-    if (!now.isBefore(c.getStartAt())) {
-      throw new IllegalStateException("already_started");
-    }
-    challengeRepository.delete(c);
+    Challenge challenge = requireChallenge(id);
+    ensureOwner(principal, challenge);
+    ensureNotStarted(challenge);
+    challengeRepository.delete(challenge);
   }
 
   @Transactional
   public void joinRoom(AuthPrincipal principal, Long id) {
-    Challenge c = challengeRepository.findById(id).orElseThrow();
-    OffsetDateTime now = OffsetDateTime.now();
-    if (!now.isBefore(c.getStartAt())) {
-      throw new IllegalStateException("already_started");
-    }
-    if (now.isAfter(c.getEndAt())) {
-      throw new IllegalStateException("ended");
-    }
-    if (c.getWinner() != null) {
-      throw new IllegalStateException("ended");
+    Challenge challenge =
+        challengeRepository.findById(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    ensureNotStarted(challenge);
+    if (isEnded(challenge, OffsetDateTime.now())) {
+      throw ApiException.conflict("ended");
     }
     if (challengeMemberRepository.findByChallengeIdAndUserId(id, principal.userId()).isPresent()) {
-      throw new IllegalStateException("already_member");
+      throw ApiException.conflict("already_member");
     }
-    long memberCount = challengeMemberRepository.countByChallengeId(id);
-    if (memberCount >= c.getMaxMembers()) {
-      throw new IllegalStateException("room_full");
+    if (challengeMemberRepository.countByChallengeId(id) >= challenge.getMaxMembers()) {
+      throw ApiException.conflict("room_full");
     }
 
-    AppUser me = appUserRepository.findById(principal.userId()).orElseThrow();
-    ChallengeMember cm = new ChallengeMember();
-    cm.setChallenge(c);
-    cm.setUser(me);
-    cm.setTotalKm(BigDecimal.ZERO);
-    challengeMemberRepository.save(cm);
+    AppUser me = appUserRepository.getRequired(principal.userId());
+    challengeMemberRepository.save(newMember(challenge, me));
   }
 
   @Transactional(readOnly = true)
@@ -153,63 +124,85 @@ public class ChallengeService {
 
   @Transactional(readOnly = true)
   public long countActiveRoomsForCreator(AuthPrincipal principal) {
-    return challengeRepository.countActiveByCreator(
-        principal.userId(), OffsetDateTime.now());
+    return challengeRepository.countActiveByCreator(principal.userId(), OffsetDateTime.now());
   }
 
   @Transactional
   public ChallengeDetailView getDetail(Optional<UUID> currentUserId, Long id) {
-    Challenge c = challengeRepository.findByIdWithDetails(id).orElseThrow();
+    Challenge challenge = requireChallenge(id);
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(id);
-    resolveWinnerIfNeeded(c, members);
+    resolveWinnerIfNeeded(challenge, members);
 
     UUID userId = currentUserId.orElse(null);
     boolean isMember =
         userId != null
             && challengeMemberRepository.findByChallengeIdAndUserId(id, userId).isPresent();
-    boolean isOwner = userId != null && c.getCreator().getId().equals(userId);
+    boolean isOwner = userId != null && challenge.getCreator().getId().equals(userId);
     OffsetDateTime now = OffsetDateTime.now();
-    boolean hasStarted = !now.isBefore(c.getStartAt());
-    boolean hasEnded = isEnded(c, now);
 
     return new ChallengeDetailView(
-        c,
+        challenge,
         members,
         userId,
         isMember,
         isOwner,
-        hasStarted,
-        hasEnded,
-        c.getWinner(),
+        hasStarted(challenge, now),
+        isEnded(challenge, now),
+        challenge.getWinner(),
         members.size());
   }
 
   @Transactional(readOnly = true)
   public List<UUID> listMemberUserIds(Long challengeId) {
     return challengeMemberRepository.findAllForChallenge(challengeId).stream()
-        .map(cm -> cm.getUser().getId())
+        .map(member -> member.getUser().getId())
         .toList();
   }
 
-  public BigDecimal goalKmAsDecimal(Challenge c) {
-    return BigDecimal.valueOf(c.getGoalKm());
+  public BigDecimal goalKmAsDecimal(Challenge challenge) {
+    return BigDecimal.valueOf(challenge.getGoalKm());
   }
 
-  public void onMemberProgress(ChallengeMember cm, BigDecimal nextTotalKm) {
-    Challenge c = cm.getChallenge();
-    BigDecimal goal = goalKmAsDecimal(c);
-    if (nextTotalKm.compareTo(goal) >= 0 && cm.getFinishedAt() == null) {
-      cm.setFinishedAt(OffsetDateTime.now());
-      if (c.getWinner() == null) {
-        c.setWinner(cm.getUser());
-        challengeRepository.save(c);
+  /**
+   * 멤버 누적 거리가 목표를 처음 달성하면 완주 시각을 기록하고, 아직 승자가 없으면 승자로 확정한다.
+   * 진행 중 트랜잭션 안에서 호출되는 것을 전제로 한다.
+   */
+  public void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm) {
+    Challenge challenge = member.getChallenge();
+    if (nextTotalKm.compareTo(goalKmAsDecimal(challenge)) >= 0 && member.getFinishedAt() == null) {
+      member.setFinishedAt(OffsetDateTime.now());
+      if (challenge.getWinner() == null) {
+        challenge.setWinner(member.getUser());
+        challengeRepository.save(challenge);
       }
     }
   }
 
-  @Transactional
-  protected void resolveWinnerIfNeeded(Challenge c, List<ChallengeMember> members) {
-    if (c.getWinner() != null) {
+  public BigDecimal progressPercent(ChallengeMember member, Challenge challenge) {
+    if (challenge.getGoalKm() == null || challenge.getGoalKm() <= 0) {
+      return BigDecimal.ZERO;
+    }
+    return member
+        .getTotalKm()
+        .multiply(HUNDRED)
+        .divide(goalKmAsDecimal(challenge), 1, RoundingMode.HALF_UP)
+        .min(HUNDRED);
+  }
+
+  public static boolean hasStarted(Challenge challenge, OffsetDateTime now) {
+    return !now.isBefore(challenge.getStartAt());
+  }
+
+  public static boolean isEnded(Challenge challenge, OffsetDateTime now) {
+    if (challenge.getWinner() != null) {
+      return true;
+    }
+    return challenge.getEndAt() != null && now.isAfter(challenge.getEndAt());
+  }
+
+  /** 승자가 비어 있으면 첫 완주자를, 종료 후라면 최상위 멤버를 승자로 확정한다. */
+  private void resolveWinnerIfNeeded(Challenge challenge, List<ChallengeMember> members) {
+    if (challenge.getWinner() != null) {
       return;
     }
 
@@ -218,13 +211,12 @@ public class ChallengeService {
             .filter(m -> m.getFinishedAt() != null)
             .min(Comparator.comparing(ChallengeMember::getFinishedAt));
     if (firstFinisher.isPresent()) {
-      c.setWinner(firstFinisher.get().getUser());
-      challengeRepository.save(c);
+      assignWinner(challenge, firstFinisher.get());
       return;
     }
 
     OffsetDateTime now = OffsetDateTime.now();
-    if (c.getEndAt() != null && now.isAfter(c.getEndAt()) && !members.isEmpty()) {
+    if (challenge.getEndAt() != null && now.isAfter(challenge.getEndAt()) && !members.isEmpty()) {
       ChallengeMember top =
           members.stream()
               .max(
@@ -233,41 +225,74 @@ public class ChallengeService {
                           m -> m.getFinishedAt() == null ? OffsetDateTime.MAX : m.getFinishedAt(),
                           Comparator.reverseOrder()))
               .orElseThrow();
-      c.setWinner(top.getUser());
-      challengeRepository.save(c);
+      assignWinner(challenge, top);
     }
   }
 
-  public BigDecimal progressPercent(ChallengeMember cm, Challenge c) {
-    if (c.getGoalKm() == null || c.getGoalKm() <= 0) return BigDecimal.ZERO;
-    return cm.getTotalKm()
-        .multiply(BigDecimal.valueOf(100))
-        .divide(goalKmAsDecimal(c), 1, RoundingMode.HALF_UP)
-        .min(BigDecimal.valueOf(100));
+  private void assignWinner(Challenge challenge, ChallengeMember member) {
+    challenge.setWinner(member.getUser());
+    challengeRepository.save(challenge);
   }
 
-  public static boolean isEnded(Challenge c, OffsetDateTime now) {
-    if (c.getWinner() != null) return true;
-    return c.getEndAt() != null && now.isAfter(c.getEndAt());
+  private Challenge requireChallenge(Long id) {
+    return challengeRepository
+        .findByIdWithDetails(id)
+        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+  }
+
+  private ChallengeMember newMember(Challenge challenge, AppUser user) {
+    ChallengeMember member = new ChallengeMember();
+    member.setChallenge(challenge);
+    member.setUser(user);
+    member.setTotalKm(BigDecimal.ZERO);
+    return member;
+  }
+
+  private void applyRoomInput(
+      Challenge challenge,
+      String title,
+      int goalKm,
+      int maxMembers,
+      LocalDate startDate,
+      LocalDate endDate) {
+    challenge.setTitle(title.trim());
+    challenge.setGoalKm(goalKm);
+    challenge.setMaxMembers(maxMembers);
+    challenge.setStartAt(startDate.atStartOfDay().atOffset(ZoneOffset.UTC));
+    challenge.setEndAt(endDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC));
   }
 
   private void validateRoomInput(
       String title, int goalKm, int maxMembers, LocalDate startDate, LocalDate endDate) {
     if (title == null || title.isBlank() || title.length() > 200) {
-      throw new IllegalArgumentException("invalid_title");
+      throw ApiException.badRequest("invalid_title");
     }
-    if (goalKm < 1) throw new IllegalArgumentException("invalid_goal_km");
-    if (maxMembers < 1 || maxMembers > 50) throw new IllegalArgumentException("invalid_max_members");
-    if (startDate == null || endDate == null) throw new IllegalArgumentException("invalid_dates");
+    if (goalKm < 1) {
+      throw ApiException.badRequest("invalid_goal_km");
+    }
+    if (maxMembers < 1 || maxMembers > 50) {
+      throw ApiException.badRequest("invalid_max_members");
+    }
+    if (startDate == null || endDate == null) {
+      throw ApiException.badRequest("invalid_dates");
+    }
     if (startDate.isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException("invalid_start_date");
+      throw ApiException.badRequest("invalid_start_date");
     }
-    if (!endDate.isAfter(startDate)) throw new IllegalArgumentException("invalid_date_range");
+    if (!endDate.isAfter(startDate)) {
+      throw ApiException.badRequest("invalid_date_range");
+    }
   }
 
-  private void ensureOwner(AuthPrincipal principal, Challenge c) {
-    if (!c.getCreator().getId().equals(principal.userId())) {
-      throw new IllegalStateException("forbidden");
+  private void ensureOwner(AuthPrincipal principal, Challenge challenge) {
+    if (!challenge.getCreator().getId().equals(principal.userId())) {
+      throw ApiException.forbidden("forbidden");
+    }
+  }
+
+  private void ensureNotStarted(Challenge challenge) {
+    if (hasStarted(challenge, OffsetDateTime.now())) {
+      throw ApiException.conflict("already_started");
     }
   }
 

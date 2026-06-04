@@ -1,8 +1,7 @@
 package com.runrace.backend.push;
 
-import com.runrace.backend.auth.AuthContext;
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.user.AppUser;
+import com.runrace.backend.push.dto.UpsertDeviceTokenRequest;
 import com.runrace.backend.user.AppUserRepository;
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
@@ -20,20 +19,15 @@ public class DeviceTokenController {
   private final DeviceTokenRepository deviceTokenRepository;
 
   @PostMapping("/device-tokens")
-  public ResponseEntity<Void> upsert(@RequestBody UpsertDeviceTokenRequest body) {
-    AuthPrincipal principal = AuthContext.getRequired();
-    AppUser me = appUserRepository.findById(principal.userId()).orElseThrow();
-
-    DeviceToken dt = new DeviceToken();
-    dt.setUser(me);
-    dt.setPlatform(body.platform());
-    dt.setFcmToken(body.fcmToken());
-    dt.setUpdatedAt(OffsetDateTime.now());
-    deviceTokenRepository.save(dt);
+  public ResponseEntity<Void> upsert(
+      AuthPrincipal principal, @RequestBody UpsertDeviceTokenRequest body) {
+    DeviceToken token = new DeviceToken();
+    token.setUser(appUserRepository.getReferenceById(principal.userId()));
+    token.setPlatform(body.platform());
+    token.setFcmToken(body.fcmToken());
+    token.setUpdatedAt(OffsetDateTime.now());
+    deviceTokenRepository.save(token);
 
     return ResponseEntity.ok().build();
   }
-
-  public record UpsertDeviceTokenRequest(String platform, String fcmToken) {}
 }
-

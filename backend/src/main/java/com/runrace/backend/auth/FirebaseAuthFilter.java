@@ -19,12 +19,19 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * 모든 {@code /api/**} 요청(공개 경로 제외)에 Firebase ID 토큰 인증을 적용한다.
+ *
+ * <p>인증에 성공하면 {@link AuthContext}에 주체를 심고, 요청 종료 시 항상 비운다.
+ * 공개 챌린지 조회({@code GET /api/challenges}, {@code GET /api/challenges/{id}})는
+ * 토큰이 있으면 선택적으로 인증해 "내 소유 여부" 같은 부가 정보를 노출한다.
+ */
 @Component
 @RequiredArgsConstructor
 public class FirebaseAuthFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(FirebaseAuthFilter.class);
-  private static final Pattern CHALLENGE_DETAIL =
-      Pattern.compile("^/api/challenges/[0-9]+$");
+  private static final String BEARER_PREFIX = "Bearer ";
+  private static final Pattern CHALLENGE_DETAIL = Pattern.compile("^/api/challenges/[0-9]+$");
 
   private final FirebaseUserService firebaseUserService;
 
@@ -39,34 +46,20 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      FilterChain filterChain
-  ) throws ServletException, IOException {
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
     try {
       if (isPublicChallengeRead(request)) {
-        tryAuthenticateOptional(request);
+        authenticateOptionally(request);
         filterChain.doFilter(request, response);
         return;
       }
 
-      if (FirebaseApp.getApps().isEmpty()) {
-        unauthorized(response, "firebase_admin_not_initialized");
+      Optional<String> authError = authenticateRequired(request);
+      if (authError.isPresent()) {
+        unauthorized(response, authError.get());
         return;
       }
-
-      String authHeader = Optional.ofNullable(request.getHeader(HttpHeaders.AUTHORIZATION)).orElse("");
-      if (!authHeader.startsWith("Bearer ")) {
-        unauthorized(response, "missing_bearer_token");
-        return;
-      }
-      String idToken = authHeader.substring("Bearer ".length()).trim();
-      if (idToken.isEmpty()) {
-        unauthorized(response, "empty_bearer_token");
-        return;
-      }
-
-      authenticateToken(idToken);
       filterChain.doFilter(request, response);
     } catch (FirebaseAuthException e) {
       log.warn("Firebase token verification failed: {}", e.getMessage());
@@ -81,37 +74,56 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     }
   }
 
+  /** 인증을 강제한다. 실패하면 401 에러 코드를 담아 반환, 성공하면 empty. */
+  private Optional<String> authenticateRequired(HttpServletRequest request)
+      throws FirebaseAuthException {
+    if (FirebaseApp.getApps().isEmpty()) {
+      return Optional.of("firebase_admin_not_initialized");
+    }
+    Optional<String> token = bearerToken(request);
+    if (token.isEmpty()) {
+      return Optional.of("missing_bearer_token");
+    }
+    authenticate(token.get());
+    return Optional.empty();
+  }
+
+  /** 토큰이 유효하면 인증하고, 아니면 조용히 익명으로 통과시킨다. */
+  private void authenticateOptionally(HttpServletRequest request) {
+    if (FirebaseApp.getApps().isEmpty()) {
+      return;
+    }
+    bearerToken(request)
+        .ifPresent(
+            token -> {
+              try {
+                authenticate(token);
+              } catch (Exception e) {
+                log.debug("Optional auth skipped for {}: {}", request.getRequestURI(), e.getMessage());
+              }
+            });
+  }
+
+  private void authenticate(String idToken) throws FirebaseAuthException {
+    FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(idToken);
+    AuthContext.set(firebaseUserService.upsertAndCreatePrincipal(decoded));
+  }
+
+  private Optional<String> bearerToken(HttpServletRequest request) {
+    String header = Optional.ofNullable(request.getHeader(HttpHeaders.AUTHORIZATION)).orElse("");
+    if (!header.startsWith(BEARER_PREFIX)) {
+      return Optional.empty();
+    }
+    String token = header.substring(BEARER_PREFIX.length()).trim();
+    return token.isEmpty() ? Optional.empty() : Optional.of(token);
+  }
+
   private boolean isPublicChallengeRead(HttpServletRequest request) {
     if (!"GET".equalsIgnoreCase(request.getMethod())) {
       return false;
     }
     String path = request.getRequestURI();
     return "/api/challenges".equals(path) || CHALLENGE_DETAIL.matcher(path).matches();
-  }
-
-  private void tryAuthenticateOptional(HttpServletRequest request) {
-    if (FirebaseApp.getApps().isEmpty()) {
-      return;
-    }
-    String authHeader = Optional.ofNullable(request.getHeader(HttpHeaders.AUTHORIZATION)).orElse("");
-    if (!authHeader.startsWith("Bearer ")) {
-      return;
-    }
-    String idToken = authHeader.substring("Bearer ".length()).trim();
-    if (idToken.isEmpty()) {
-      return;
-    }
-    try {
-      authenticateToken(idToken);
-    } catch (Exception e) {
-      log.debug("Optional auth skipped for {}: {}", request.getRequestURI(), e.getMessage());
-    }
-  }
-
-  private void authenticateToken(String idToken) throws FirebaseAuthException {
-    FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(idToken);
-    AuthPrincipal principal = firebaseUserService.upsertAndCreatePrincipal(decoded);
-    AuthContext.set(principal);
   }
 
   private void unauthorized(HttpServletResponse response, String code) throws IOException {

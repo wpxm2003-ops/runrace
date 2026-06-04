@@ -3,6 +3,8 @@ package com.runrace.backend.workout;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.ApiException;
+import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -29,11 +31,15 @@ public class WorkoutService {
       Integer avgPaceSecPerKm,
       List<PathPoint> path
   ) {
-    if (durationSec < 1) throw new IllegalArgumentException("duration_too_short");
-    if (path == null || path.isEmpty()) throw new IllegalArgumentException("path_empty");
+    if (durationSec < 1) {
+      throw ApiException.badRequest("duration_too_short");
+    }
+    if (path == null || path.isEmpty()) {
+      throw ApiException.badRequest("path_empty");
+    }
 
-    var user = appUserRepository.findById(principal.userId()).orElseThrow();
-    var session = new WorkoutSession();
+    AppUser user = appUserRepository.getRequired(principal.userId());
+    WorkoutSession session = new WorkoutSession();
     session.setUser(user);
     session.setStartedAt(startedAt);
     session.setEndedAt(endedAt);
@@ -48,7 +54,9 @@ public class WorkoutService {
 
   @Transactional(readOnly = true)
   public WorkoutSession getForUser(UUID userId, Long id) {
-    return workoutSessionRepository.findByIdAndUserId(id, userId).orElseThrow();
+    return workoutSessionRepository
+        .findByIdAndUserId(id, userId)
+        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
   }
 
   @Transactional(readOnly = true)
@@ -59,7 +67,9 @@ public class WorkoutService {
   @Transactional
   public void deleteForUser(AuthPrincipal principal, Long id) {
     WorkoutSession session =
-        workoutSessionRepository.findByIdAndUserId(id, principal.userId()).orElseThrow();
+        workoutSessionRepository
+            .findByIdAndUserId(id, principal.userId())
+            .orElseThrow(() -> ApiException.notFound("workout_not_found"));
     workoutSessionRepository.delete(session);
   }
 

@@ -1,10 +1,12 @@
 package com.runrace.backend.config;
 
+import com.runrace.backend.auth.CurrentUserArgumentResolver;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,10 +15,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class WebConfig {
+@RequiredArgsConstructor
+public class WebConfig implements WebMvcConfigurer {
   private static final Logger log = LoggerFactory.getLogger(WebConfig.class);
+
+  private final CurrentUserArgumentResolver currentUserArgumentResolver;
+
+  @Override
+  public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+    resolvers.add(currentUserArgumentResolver);
+  }
 
   @Bean
   public CorsConfigurationSource corsConfigurationSource(

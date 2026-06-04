@@ -1,8 +1,8 @@
 package com.runrace.backend.auth;
 
+import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,37 +18,14 @@ public class AuthController {
   private final AppUserRepository appUserRepository;
 
   @PostMapping("/auth/login")
-  public ResponseEntity<MeResponse> login() {
-    return me();
+  public ResponseEntity<MeResponse> login(AuthPrincipal principal) {
+    return me(principal);
   }
 
   @GetMapping("/me")
-  public ResponseEntity<MeResponse> me() {
-    AuthPrincipal principal = AuthContext.getRequired();
-    UUID userId = principal.userId();
-
-    AppUser user = appUserRepository.findById(userId).orElseThrow();
+  public ResponseEntity<MeResponse> me(AuthPrincipal principal) {
+    AppUser user = appUserRepository.getRequired(principal.userId());
     return ResponseEntity.ok(MeResponse.from(user));
-  }
-
-  public record MeResponse(
-      UUID id,
-      String firebaseUid,
-      String email,
-      String displayName,
-      String photoUrl,
-      String provider
-  ) {
-    static MeResponse from(AppUser u) {
-      return new MeResponse(
-          u.getId(),
-          u.getFirebaseUid(),
-          u.getEmail(),
-          u.getDisplayName(),
-          u.getPhotoUrl(),
-          u.getProvider()
-      );
-    }
   }
 }
 

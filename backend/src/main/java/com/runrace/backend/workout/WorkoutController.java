@@ -1,7 +1,11 @@
 package com.runrace.backend.workout;
 
-import com.runrace.backend.auth.AuthContext;
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.workout.dto.CreateWorkoutRequest;
+import com.runrace.backend.workout.dto.CreateWorkoutResponse;
+import com.runrace.backend.workout.dto.PathPointDto;
+import com.runrace.backend.workout.dto.WorkoutDetailResponse;
+import com.runrace.backend.workout.dto.WorkoutListItem;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +27,10 @@ public class WorkoutController {
   private final WorkoutService workoutService;
 
   @PostMapping
-  public ResponseEntity<CreateWorkoutResponse> create(@RequestBody CreateWorkoutRequest body) {
-    AuthPrincipal principal = AuthContext.getRequired();
+  public ResponseEntity<CreateWorkoutResponse> create(
+      AuthPrincipal principal, @RequestBody CreateWorkoutRequest body) {
+    List<WorkoutService.PathPoint> path =
+        body.path().stream().map(p -> new WorkoutService.PathPoint(p.lat(), p.lng())).toList();
     WorkoutSession session =
         workoutService.create(
             principal,
@@ -34,32 +40,31 @@ public class WorkoutController {
             body.distanceM(),
             body.calories(),
             body.avgPaceSecPerKm(),
-            body.path().stream().map(p -> new WorkoutService.PathPoint(p.lat(), p.lng())).toList());
+            path);
     return ResponseEntity.ok(new CreateWorkoutResponse(session.getId()));
   }
 
   @GetMapping(value = {"", "/list"})
-  public ResponseEntity<List<WorkoutListItem>> list() {
-    AuthPrincipal principal = AuthContext.getRequired();
+  public ResponseEntity<List<WorkoutListItem>> list(AuthPrincipal principal) {
     List<WorkoutListItem> items =
         workoutService.listForUser(principal.userId()).stream()
             .map(
-                s ->
+                session ->
                     new WorkoutListItem(
-                        s.getId(),
-                        s.getStartedAt().toString(),
-                        s.getEndedAt().toString(),
-                        s.getDurationSec(),
-                        s.getDistanceM(),
-                        s.getCalories(),
-                        s.getAvgPaceSecPerKm()))
+                        session.getId(),
+                        session.getStartedAt().toString(),
+                        session.getEndedAt().toString(),
+                        session.getDurationSec(),
+                        session.getDistanceM(),
+                        session.getCalories(),
+                        session.getAvgPaceSecPerKm()))
             .toList();
     return ResponseEntity.ok(items);
   }
 
   @GetMapping("/{id:" + ID_PATH + "}")
-  public ResponseEntity<WorkoutDetailResponse> detail(@PathVariable("id") Long id) {
-    AuthPrincipal principal = AuthContext.getRequired();
+  public ResponseEntity<WorkoutDetailResponse> detail(
+      AuthPrincipal principal, @PathVariable("id") Long id) {
     WorkoutSession session = workoutService.getForUser(principal.userId(), id);
     List<PathPointDto> path =
         workoutService.parsePath(session.getPathJson()).stream()
@@ -78,50 +83,14 @@ public class WorkoutController {
   }
 
   @DeleteMapping("/{id:" + ID_PATH + "}")
-  public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-    return deleteInternal(id);
-  }
-
-  @PostMapping("/{id:" + ID_PATH + "}/delete")
-  public ResponseEntity<Void> deleteByPost(@PathVariable("id") Long id) {
-    return deleteInternal(id);
-  }
-
-  private ResponseEntity<Void> deleteInternal(Long id) {
-    AuthPrincipal principal = AuthContext.getRequired();
+  public ResponseEntity<Void> delete(AuthPrincipal principal, @PathVariable("id") Long id) {
     workoutService.deleteForUser(principal, id);
     return ResponseEntity.noContent().build();
   }
 
-  public record CreateWorkoutRequest(
-      String startedAt,
-      String endedAt,
-      int durationSec,
-      int distanceM,
-      int calories,
-      Integer avgPaceSecPerKm,
-      List<PathPointDto> path) {}
-
-  public record PathPointDto(double lat, double lng) {}
-
-  public record CreateWorkoutResponse(Long id) {}
-
-  public record WorkoutListItem(
-      Long id,
-      String startedAt,
-      String endedAt,
-      int durationSec,
-      int distanceM,
-      int calories,
-      Integer avgPaceSecPerKm) {}
-
-  public record WorkoutDetailResponse(
-      Long id,
-      String startedAt,
-      String endedAt,
-      int durationSec,
-      int distanceM,
-      int calories,
-      Integer avgPaceSecPerKm,
-      List<PathPointDto> path) {}
+  @PostMapping("/{id:" + ID_PATH + "}/delete")
+  public ResponseEntity<Void> deleteByPost(AuthPrincipal principal, @PathVariable("id") Long id) {
+    workoutService.deleteForUser(principal, id);
+    return ResponseEntity.noContent().build();
+  }
 }

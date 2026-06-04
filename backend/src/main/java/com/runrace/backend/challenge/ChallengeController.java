@@ -1,8 +1,14 @@
 package com.runrace.backend.challenge;
 
-import com.runrace.backend.auth.AuthContext;
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.challenge.dto.ActiveCountResponse;
+import com.runrace.backend.challenge.dto.ChallengeDetailResponse;
+import com.runrace.backend.challenge.dto.ChallengeListItem;
+import com.runrace.backend.challenge.dto.CreateChallengeRequest;
+import com.runrace.backend.challenge.dto.CreateChallengeResponse;
+import com.runrace.backend.challenge.dto.MemberRow;
+import com.runrace.backend.challenge.dto.UpdateChallengeRequest;
+import com.runrace.backend.challenge.dto.WinnerRow;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -28,21 +34,18 @@ public class ChallengeController {
   private static final String ID_PATH = "[0-9]+";
 
   private final ChallengeService challengeService;
-  private final com.runrace.backend.push.PushService pushService;
-  private final com.runrace.backend.analytics.AnalyticsService analyticsService;
-  private final AppUserRepository appUserRepository;
 
   @GetMapping("/active-count")
-  public ResponseEntity<ActiveCountResponse> activeCount() {
-    AuthPrincipal principal = AuthContext.getRequired();
+  public ResponseEntity<ActiveCountResponse> activeCount(AuthPrincipal principal) {
     long count = challengeService.countActiveRoomsForCreator(principal);
-    return ResponseEntity.ok(new ActiveCountResponse(count, 3));
+    return ResponseEntity.ok(
+        new ActiveCountResponse(count, ChallengeService.MAX_ACTIVE_ROOMS_PER_CREATOR));
   }
 
   @PostMapping
-  public ResponseEntity<CreateChallengeResponse> create(@RequestBody CreateChallengeRequest body) {
-    AuthPrincipal principal = AuthContext.getRequired();
-    Challenge c =
+  public ResponseEntity<CreateChallengeResponse> create(
+      AuthPrincipal principal, @RequestBody CreateChallengeRequest body) {
+    Challenge challenge =
         challengeService.createRoom(
             principal,
             body.title(),
@@ -50,22 +53,13 @@ public class ChallengeController {
             body.maxMembers(),
             LocalDate.parse(body.startDate()),
             LocalDate.parse(body.endDate()));
-    var me = appUserRepository.findById(principal.userId()).orElseThrow();
-    analyticsService.track(me, "challenge.created", "{\"challengeId\":" + c.getId() + "}");
-    var memberIds = challengeService.listMemberUserIds(c.getId());
-    for (var uid : memberIds) {
-      if (!uid.equals(principal.userId())) {
-        pushService.sendToUserTokens(uid, "RunRace", "새 대결이 생성됐어요.");
-      }
-    }
-    return ResponseEntity.ok(new CreateChallengeResponse(c.getId()));
+    return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 
   @PutMapping("/{id:" + ID_PATH + "}")
   public ResponseEntity<CreateChallengeResponse> update(
-      @PathVariable("id") Long id, @RequestBody UpdateChallengeRequest body) {
-    AuthPrincipal principal = AuthContext.getRequired();
-    Challenge c =
+      AuthPrincipal principal, @PathVariable("id") Long id, @RequestBody UpdateChallengeRequest body) {
+    Challenge challenge =
         challengeService.updateRoom(
             principal,
             id,
@@ -74,151 +68,111 @@ public class ChallengeController {
             body.maxMembers(),
             LocalDate.parse(body.startDate()),
             LocalDate.parse(body.endDate()));
-    return ResponseEntity.ok(new CreateChallengeResponse(c.getId()));
+    return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 
   @DeleteMapping("/{id:" + ID_PATH + "}")
-  public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-    AuthPrincipal principal = AuthContext.getRequired();
+  public ResponseEntity<Void> delete(AuthPrincipal principal, @PathVariable("id") Long id) {
     challengeService.deleteRoom(principal, id);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{id:" + ID_PATH + "}/join")
-  public ResponseEntity<Void> join(@PathVariable("id") Long id) {
-    AuthPrincipal principal = AuthContext.getRequired();
+  public ResponseEntity<Void> join(AuthPrincipal principal, @PathVariable("id") Long id) {
     challengeService.joinRoom(principal, id);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping
-  public ResponseEntity<List<ChallengeListItem>> list() {
-    Optional<UUID> userId = AuthContext.userId();
+  public ResponseEntity<List<ChallengeListItem>> list(Optional<AuthPrincipal> principal) {
+    Optional<UUID> userId = principal.map(AuthPrincipal::userId);
+    OffsetDateTime now = OffsetDateTime.now();
     List<ChallengeListItem> items =
         challengeService.listAll().stream()
-            .map(
-                c -> {
-                  OffsetDateTime now = OffsetDateTime.now();
-                  ChallengePhase phase = ChallengePhase.of(c, now);
-                  return new ChallengeListItem(
-                      c.getId(),
-                      c.getTitle(),
-                      c.getGoalKm(),
-                      phase.name(),
-                      c.getStartAt().toString(),
-                      c.getEndAt() != null ? c.getEndAt().toString() : null,
-                      challengeService.listMemberUserIds(c.getId()).size(),
-                      c.getCreatedAt().toString(),
-                      userId.isPresent() && c.getCreator().getId().equals(userId.get()));
-                })
+            .map(challenge -> toListItem(challenge, now, userId))
             .toList();
     return ResponseEntity.ok(items);
   }
 
   @GetMapping("/{id:" + ID_PATH + "}")
-  public ResponseEntity<ChallengeDetailResponse> detail(@PathVariable("id") Long id) {
+  public ResponseEntity<ChallengeDetailResponse> detail(
+      Optional<AuthPrincipal> principal, @PathVariable("id") Long id) {
     ChallengeService.ChallengeDetailView detail =
-        challengeService.getDetail(AuthContext.userId(), id);
-    Challenge c = detail.challenge();
-    BigDecimal goal = challengeService.goalKmAsDecimal(c);
+        challengeService.getDetail(principal.map(AuthPrincipal::userId), id);
+    return ResponseEntity.ok(toDetailResponse(detail));
+  }
+
+  private ChallengeListItem toListItem(
+      Challenge challenge, OffsetDateTime now, Optional<UUID> currentUserId) {
+    ChallengePhase phase = ChallengePhase.of(challenge, now);
+    boolean isOwner =
+        currentUserId.map(uid -> challenge.getCreator().getId().equals(uid)).orElse(false);
+    return new ChallengeListItem(
+        challenge.getId(),
+        challenge.getTitle(),
+        challenge.getGoalKm(),
+        phase.name(),
+        challenge.getStartAt().toString(),
+        toIsoOrNull(challenge.getEndAt()),
+        challengeService.listMemberUserIds(challenge.getId()).size(),
+        challenge.getCreatedAt().toString(),
+        isOwner);
+  }
+
+  private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {
+    Challenge challenge = detail.challenge();
+    BigDecimal goal = challengeService.goalKmAsDecimal(challenge);
 
     List<MemberRow> rows =
         detail.members().stream()
             .sorted(Comparator.comparing(ChallengeMember::getTotalKm).reversed())
-            .map(
-                cm ->
-                    new MemberRow(
-                        cm.getUser().getId(),
-                        cm.getUser().getDisplayName(),
-                        cm.getUser().getPhotoUrl(),
-                        cm.getTotalKm(),
-                        goal.subtract(cm.getTotalKm()).max(BigDecimal.ZERO),
-                        challengeService.progressPercent(cm, c),
-                        cm.getFinishedAt() != null))
+            .map(member -> toMemberRow(member, challenge, goal))
             .toList();
 
-    WinnerRow winnerRow = null;
-    if (detail.winner() != null) {
-      winnerRow =
-          new WinnerRow(detail.winner().getId(), detail.winner().getDisplayName());
-    }
+    WinnerRow winner =
+        detail.winner() == null
+            ? null
+            : new WinnerRow(detail.winner().getId(), detail.winner().getDisplayName());
 
     boolean showManage = detail.isOwner() && !detail.hasStarted();
     boolean canJoin =
         !detail.isMember()
             && !detail.hasStarted()
             && !detail.hasEnded()
-            && detail.memberCount() < c.getMaxMembers();
+            && detail.memberCount() < challenge.getMaxMembers();
 
-    return ResponseEntity.ok(
-        new ChallengeDetailResponse(
-            c.getId(),
-            c.getTitle(),
-            c.getGoalKm(),
-            c.getMaxMembers(),
-            c.getStartAt().toString(),
-            c.getEndAt() != null ? c.getEndAt().toString() : null,
-            c.getCreator().getId(),
-            detail.currentUserId(),
-            detail.isMember(),
-            detail.isOwner(),
-            detail.hasStarted(),
-            detail.hasEnded(),
-            showManage,
-            canJoin,
-            detail.memberCount(),
-            winnerRow,
-            rows));
+    return new ChallengeDetailResponse(
+        challenge.getId(),
+        challenge.getTitle(),
+        challenge.getGoalKm(),
+        challenge.getMaxMembers(),
+        challenge.getStartAt().toString(),
+        toIsoOrNull(challenge.getEndAt()),
+        challenge.getCreator().getId(),
+        detail.currentUserId(),
+        detail.isMember(),
+        detail.isOwner(),
+        detail.hasStarted(),
+        detail.hasEnded(),
+        showManage,
+        canJoin,
+        detail.memberCount(),
+        winner,
+        rows);
   }
 
-  public record ActiveCountResponse(long activeCount, int maxActive) {}
+  private MemberRow toMemberRow(ChallengeMember member, Challenge challenge, BigDecimal goal) {
+    return new MemberRow(
+        member.getUser().getId(),
+        member.getUser().getDisplayName(),
+        member.getUser().getPhotoUrl(),
+        member.getTotalKm(),
+        goal.subtract(member.getTotalKm()).max(BigDecimal.ZERO),
+        challengeService.progressPercent(member, challenge),
+        member.getFinishedAt() != null);
+  }
 
-  public record CreateChallengeRequest(
-      String title, int goalKm, int maxMembers, String startDate, String endDate) {}
-
-  public record UpdateChallengeRequest(
-      String title, int goalKm, int maxMembers, String startDate, String endDate) {}
-
-  public record CreateChallengeResponse(Long id) {}
-
-  public record ChallengeListItem(
-      Long id,
-      String title,
-      int goalKm,
-      String phase,
-      String startAt,
-      String endAt,
-      int memberCount,
-      String createdAt,
-      boolean isOwner) {}
-
-  public record ChallengeDetailResponse(
-      Long id,
-      String title,
-      int goalKm,
-      int maxMembers,
-      String startAt,
-      String endAt,
-      UUID creatorUserId,
-      UUID currentUserId,
-      boolean isMember,
-      boolean isOwner,
-      boolean hasStarted,
-      boolean hasEnded,
-      boolean showManage,
-      boolean canJoin,
-      int memberCount,
-      WinnerRow winner,
-      List<MemberRow> members) {}
-
-  public record WinnerRow(UUID userId, String displayName) {}
-
-  public record MemberRow(
-      UUID userId,
-      String displayName,
-      String photoUrl,
-      BigDecimal totalKm,
-      BigDecimal remainingKm,
-      BigDecimal progressPercent,
-      boolean finished) {}
+  private static String toIsoOrNull(OffsetDateTime value) {
+    return value != null ? value.toString() : null;
+  }
 }
