@@ -7,6 +7,7 @@ import { NativeNavBootstrap } from "./NativeNavBootstrap";
 import { BottomNav } from "./BottomNav";
 import { ConfirmProvider } from "./ConfirmProvider";
 import { SiteHeader } from "./SiteHeader";
+import { AuthProvider } from "@/lib/AuthProvider";
 import { LocaleProvider } from "@/lib/i18n";
 
 /** 하단 탭 네비 높이 */
@@ -22,6 +23,7 @@ export const FIXED_ACTION_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT} + ${BOTTOM_NAV_GAP
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
+    <AuthProvider>
     <LocaleProvider>
     <ConfirmProvider>
       <ClientErrorReporter />
@@ -36,5 +38,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     </ConfirmProvider>
     </LocaleProvider>
+    </AuthProvider>
   );
 }

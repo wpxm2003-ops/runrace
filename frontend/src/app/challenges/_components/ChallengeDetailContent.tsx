@@ -22,7 +22,7 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
-  const { user } = useAuthUser();
+  const { user, loading: authLoading } = useAuthUser();
   const confirm = useConfirm();
   const { t } = useLocale();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export default function ChallengeDetailContent() {
     isLoading,
     error: fetchError,
     mutate,
-  } = useChallengeDetail(id, user);
+  } = useChallengeDetail(id, user, authLoading);
 
   const error = actionError ?? (fetchError ? String(fetchError) : null);
 

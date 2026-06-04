@@ -13,9 +13,9 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 
 export default function ChallengesPage() {
-  const { user } = useAuthUser();
+  const { user, loading: authLoading } = useAuthUser();
   const { t } = useLocale();
-  const { data: challenges = [], isLoading, error } = useChallengeList(user);
+  const { data: challenges = [], isLoading, error } = useChallengeList(user, authLoading);
 
   function onCreateClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (!user) {

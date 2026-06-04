@@ -28,18 +28,18 @@ const BASE_CONFIG = {
  * 공개 API이지만 로그인 여부에 따라 isOwner 필드가 달라지므로 userId를 키에 포함한다.
  * 비로그인 상태에서도 목록 자체는 즉시 보여준다.
  */
-export function useChallengeList(user?: User | null) {
+export function useChallengeList(user?: User | null, authLoading = false) {
   return useSWR(
-    ["challenges", user?.uid ?? null] as const,
+    authLoading ? null : (["challenges", user?.uid ?? null] as const),
     () => fetchChallenges(user),
     BASE_CONFIG,
   );
 }
 
 // ── 대결 상세 ────────────────────────────────────────────────────────────────
-export function useChallengeDetail(id: number | null, user?: User | null) {
+export function useChallengeDetail(id: number | null, user?: User | null, authLoading = false) {
   return useSWR(
-    id != null ? (["challenge", id, user?.uid ?? null] as const) : null,
+    authLoading || id == null ? null : (["challenge", id, user?.uid ?? null] as const),
     () => fetchChallengeDetail(id!, user),
     BASE_CONFIG,
   );
