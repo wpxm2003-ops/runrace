@@ -1,11 +1,6 @@
 /**
  * SWR 기반 데이터 훅 모음.
- *
- * keepPreviousData: 키가 바뀌거나 revalidation 중에도 이전 데이터를 유지한다.
- * 덕분에 페이지 이동 후 돌아와도 즉시 이전 데이터를 보여주고, 백그라운드에서 갱신한다.
- *
- * revalidateOnFocus: 탭 복귀 시 자동 갱신 — 다른 기기에서 변경된 내용도 반영.
- * dedupingInterval: 같은 키 요청을 5초 내에 중복 실행하지 않는다.
+ * 캐싱 없음 — 페이지 진입 시 항상 최신 데이터를 서버에서 받아온다.
  */
 import useSWR, { mutate as globalMutate } from "swr";
 import type { User } from "firebase/auth";
@@ -18,9 +13,10 @@ import { fetchFriends } from "./friends";
 import { fetchWorkouts } from "./workouts";
 
 const BASE_CONFIG = {
-  revalidateOnFocus: true,
-  keepPreviousData: true,
-  dedupingInterval: 5_000,
+  revalidateOnMount: true,
+  revalidateOnFocus: false,
+  keepPreviousData: false,
+  dedupingInterval: 0,
 } as const;
 
 // ── 대결 목록 ────────────────────────────────────────────────────────────────
