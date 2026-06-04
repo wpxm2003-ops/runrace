@@ -2,62 +2,55 @@
 
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
-import { Card } from "@/app/_components/ui/Card";
-import { createChallenge, useActiveCount } from "@/lib/api";
+import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormFields";
 import {
-  addDays,
-  clampMaxMembers,
-  sanitizeDigits,
-  todayStr,
-  validateCreateChallengeForm,
-} from "@/lib/challengeForm";
+  defaultCreateFormInitial,
+  useChallengeForm,
+} from "@/app/challenges/_components/useChallengeForm";
+import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
+import { createChallenge, useActiveCount } from "@/lib/api";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 export default function CreateChallengePage() {
   const { user } = useRequireAuth("/challenges/create");
   const { t } = useLocale();
-  const today = useMemo(() => todayStr(), []);
-
-  const [title, setTitle] = useState("");
-  const [goalKm, setGoalKm] = useState("");
-  const [maxMembers, setMaxMembers] = useState("10");
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(() => addDays(todayStr(), 1));
-  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: activeCount, error: countError } = useActiveCount(user);
-  const endMin = startDate ? addDays(startDate, 1) : addDays(today, 1);
-  const canCreate = activeCount != null && activeCount.activeCount < activeCount.maxActive;
+  const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(1);
+  const form = useChallengeForm({
+    initial: defaultCreateFormInitial(),
+    validationMsgs,
+    validateOptions,
+    hints,
+  });
 
-  function onStartDateChange(v: string) {
-    setStartDate(v);
-    if (endDate && v && endDate <= v) setEndDate(addDays(v, 1));
-  }
+  const { data: activeCount, error: countError } = useActiveCount(user);
+  const canCreate = activeCount != null && activeCount.activeCount < activeCount.maxActive;
 
   async function onSubmit() {
     if (!user || !canCreate) return;
-    setFormError(null);
-    const validationError = validateCreateChallengeForm({ title, goalKm, maxMembers, startDate, endDate });
-    if (validationError) { setFormError(validationError); return; }
+    form.clearFeedback();
+    const validationError = form.validate();
+    if (validationError) {
+      form.setFormError(validationError);
+      return;
+    }
     setSubmitting(true);
     try {
-      await createChallenge(
-        { title: title.trim(), goalKm: parseInt(goalKm, 10), maxMembers: parseInt(maxMembers, 10), startDate, endDate },
-        user,
-      );
-      nativeNavigate("/challenges");
+      await createChallenge(form.getPayload(), user);
+      form.setFormSuccess(t.create_success);
+      window.setTimeout(() => nativeNavigate("/challenges"), 1200);
     } catch (e) {
-      setFormError(String(e));
+      form.setFormError(String(e));
     } finally {
       setSubmitting(false);
     }
   }
 
-  const error = formError ?? (countError ? String(countError) : null);
+  const error = form.formError ?? (countError ? String(countError) : null);
 
   return (
     <PageLayout
@@ -73,69 +66,28 @@ export default function CreateChallengePage() {
           {t.create_limit_warning(activeCount.maxActive, activeCount.activeCount)}
         </Alert>
       ) : null}
-      {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-      <Card>
-        <label className="block text-sm font-medium">
-          {t.create_field_title} <span className="text-red-500">{t.create_required}</span>
-        </label>
-        <input
-          className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={t.create_field_title_placeholder}
-          required
-        />
-
-        <label className="mt-4 block text-sm font-medium">
-          {t.create_field_goal} <span className="text-red-500">{t.create_required}</span>
-        </label>
-        <input
-          className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={goalKm}
-          onChange={(e) => setGoalKm(sanitizeDigits(e.target.value))}
-          placeholder={t.create_field_goal_placeholder}
-          required
-        />
-
-        <label className="mt-4 block text-sm font-medium">
-          {t.create_field_members} <span className="text-red-500">{t.create_required}</span>
-        </label>
-        <input
-          className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={maxMembers}
-          onChange={(e) => setMaxMembers(clampMaxMembers(e.target.value))}
-          required
-        />
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">
-              {t.create_field_start} <span className="text-red-500">{t.create_required}</span>
-            </label>
-            <input type="date" className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" value={startDate} min={today} onChange={(e) => onStartDateChange(e.target.value)} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">
-              {t.create_field_end} <span className="text-red-500">{t.create_required}</span>
-            </label>
-            <input type="date" className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" value={endDate} min={endMin} onChange={(e) => setEndDate(e.target.value)} required />
-          </div>
-        </div>
-
-        <button
-          type="button"
-          disabled={!canCreate || submitting}
-          onClick={onSubmit}
-          className="mt-6 h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
-        >
-          {submitting ? t.create_btn_busy : t.create_btn}
-        </button>
-      </Card>
+      <ChallengeFormFields
+        labels={labels}
+        values={form.values}
+        today={form.today}
+        endMin={form.endMin}
+        handlers={{
+          onTitleChange: form.onTitleChange,
+          onGoalKmChange: form.onGoalKmChange,
+          onMaxMembersChange: form.onMaxMembersChange,
+          onStartDateChange: form.onStartDateChange,
+          onEndDateChange: form.onEndDateChange,
+        }}
+        formError={error}
+        formHint={form.formHint}
+        formSuccess={form.formSuccess}
+        submitLabel={t.create_btn}
+        submitBusyLabel={t.create_btn_busy}
+        submitting={submitting}
+        disabled={!canCreate}
+        onSubmit={onSubmit}
+      />
     </PageLayout>
   );
 }

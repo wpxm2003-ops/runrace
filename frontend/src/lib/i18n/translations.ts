@@ -81,6 +81,24 @@ export const translations = {
     create_btn: "저장",
     create_btn_busy: "등록 중...",
     create_required: "*",
+    create_success: "레이스가 등록되었습니다.",
+    create_hint_no_special: "특수문자는 사용할 수 없습니다. (한글·영문·숫자·띄어쓰기만 가능)",
+    create_hint_title_max: "입력 가능한 길이를 초과하셨습니다.",
+    create_hint_goal_max: (max: number) => `목표 km는 최대 ${max.toLocaleString()}km까지 입력할 수 있습니다.`,
+    create_hint_members_max: (max: number) => `인원수는 최대 ${max}명까지 입력할 수 있습니다.`,
+    create_err_title_required: "제목을 입력하세요.",
+    create_err_title_special: "제목에는 특수문자를 사용할 수 없습니다.",
+    create_err_title_max: "입력 가능한 길이를 초과하셨습니다.",
+    create_err_goal_required: "목표 km를 입력하세요.",
+    create_err_goal_range: (min: number, max: number) =>
+      `목표 km는 ${min}~${max.toLocaleString()} 사이 정수로 입력하세요.`,
+    create_err_members_required: "인원수를 입력하세요.",
+    create_err_members_range: (min: number, max: number) =>
+      `인원수는 ${min}~${max}명입니다.`,
+    create_err_start_required: "시작일을 선택하세요.",
+    create_err_end_required: "종료일을 선택하세요.",
+    create_err_start_past: "시작일은 오늘 이후만 선택할 수 있습니다.",
+    create_err_end_after_start: "종료일은 시작일보다 이후여야 합니다.",
 
     // ── 레이스 상세 ─────────────────────────
     detail_title: "레이스 상세",
@@ -328,6 +346,24 @@ export const translations = {
     create_btn: "Create Race",
     create_btn_busy: "Creating...",
     create_required: "*",
+    create_success: "Race created successfully.",
+    create_hint_no_special: "Special characters are not allowed. (letters, numbers, and spaces only)",
+    create_hint_title_max: "You have exceeded the allowed length.",
+    create_hint_goal_max: (max: number) => `Goal distance can be up to ${max.toLocaleString()} km.`,
+    create_hint_members_max: (max: number) => `Up to ${max} members.`,
+    create_err_title_required: "Please enter a title.",
+    create_err_title_special: "Special characters are not allowed in the title.",
+    create_err_title_max: "You have exceeded the allowed length.",
+    create_err_goal_required: "Please enter a goal distance.",
+    create_err_goal_range: (min: number, max: number) =>
+      `Goal must be a whole number between ${min} and ${max.toLocaleString()}.`,
+    create_err_members_required: "Please enter max members.",
+    create_err_members_range: (min: number, max: number) =>
+      `Members must be between ${min} and ${max}.`,
+    create_err_start_required: "Please select a start date.",
+    create_err_end_required: "Please select an end date.",
+    create_err_start_past: "Start date must be today or later.",
+    create_err_end_after_start: "End date must be after the start date.",
 
     // ── 대결 상세 ─────────────────────────
     detail_title: "Race Details",

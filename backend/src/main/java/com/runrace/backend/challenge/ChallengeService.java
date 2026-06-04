@@ -14,7 +14,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -302,15 +304,25 @@ public class ChallengeService {
     challenge.setEndAt(endDate.atTime(23, 59, 59).atOffset(ZoneOffset.UTC));
   }
 
+  private static final int TITLE_MAX_BYTES = 50;
+  private static final int MAX_GOAL_KM = 1000;
+  private static final int MAX_MEMBERS_LIMIT = 50;
+  private static final Pattern TITLE_CHARS =
+      Pattern.compile("^[\\p{L}\\p{N}\\s]+$", Pattern.UNICODE_CHARACTER_CLASS);
+
   private void validateRoomInput(
       String title, int goalKm, int maxMembers, LocalDate startDate, LocalDate endDate) {
-    if (title == null || title.isBlank() || title.length() > 200) {
+    String trimmed = title == null ? "" : title.trim();
+    if (trimmed.isBlank() || utf8ByteLength(trimmed) > TITLE_MAX_BYTES) {
       throw ApiException.badRequest("invalid_title");
     }
-    if (goalKm < 1) {
+    if (!TITLE_CHARS.matcher(trimmed).matches()) {
+      throw ApiException.badRequest("invalid_title_chars");
+    }
+    if (goalKm < 1 || goalKm > MAX_GOAL_KM) {
       throw ApiException.badRequest("invalid_goal_km");
     }
-    if (maxMembers < 1 || maxMembers > 50) {
+    if (maxMembers < 1 || maxMembers > MAX_MEMBERS_LIMIT) {
       throw ApiException.badRequest("invalid_max_members");
     }
     if (startDate == null || endDate == null) {
@@ -322,6 +334,10 @@ public class ChallengeService {
     if (!endDate.isAfter(startDate)) {
       throw ApiException.badRequest("invalid_date_range");
     }
+  }
+
+  private static int utf8ByteLength(String value) {
+    return value.getBytes(StandardCharsets.UTF_8).length;
   }
 
   private void ensureOwner(AuthPrincipal principal, Challenge challenge) {

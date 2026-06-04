@@ -1,11 +1,11 @@
 "use client";
 
 import { PageLayout } from "@/app/_components/PageLayout";
-import { Alert } from "@/app/_components/ui/Alert";
-import { Card } from "@/app/_components/ui/Card";
+import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormFields";
+import { useChallengeForm } from "@/app/challenges/_components/useChallengeForm";
+import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
 import { fetchChallengeDetail, updateChallenge } from "@/lib/api";
 import { challengeDetailHref, challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
-import { clampMaxMembers, sanitizeDigits } from "@/lib/challengeForm";
 import { toDateInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
@@ -18,81 +18,87 @@ export default function ChallengeEditContent() {
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
   const { user } = useRequireAuth(id ? challengeEditHref(id) : undefined);
   const { t } = useLocale();
-
-  const [title, setTitle] = useState("");
-  const [goalKm, setGoalKm] = useState("");
-  const [maxMembers, setMaxMembers] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [memberCount, setMemberCount] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [memberCount, setMemberCount] = useState(1);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(memberCount);
+  const form = useChallengeForm({
+    validationMsgs,
+    validateOptions,
+    hints,
+  });
 
   useEffect(() => {
-    if (!id) { setError(t.detail_no_id); return; }
+    if (!id) {
+      setLoadError(t.detail_no_id);
+      return;
+    }
     if (!user) return;
     fetchChallengeDetail(id, user)
       .then((d) => {
-        if (!d.showManage) { nativeNavigate(challengeDetailHref(id)); return; }
-        setTitle(d.title);
-        setGoalKm(String(d.goalKm));
-        setMaxMembers(String(d.maxMembers));
-        setStartDate(toDateInputValue(d.startAt));
-        setEndDate(d.endAt ? toDateInputValue(d.endAt) : "");
+        if (!d.showManage) {
+          nativeNavigate(challengeDetailHref(id));
+          return;
+        }
         setMemberCount(d.memberCount);
+        form.reset({
+          title: d.title,
+          goalKm: String(d.goalKm),
+          maxMembers: String(d.maxMembers),
+          startDate: toDateInputValue(d.startAt),
+          endDate: d.endAt ? toDateInputValue(d.endAt) : "",
+        });
+        setLoaded(true);
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => setLoadError(String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- id·user 변경 시에만 재조회
   }, [id, user, t.detail_no_id]);
 
   async function onSubmit() {
-    if (!user || !id) return;
-    setError(null);
+    if (!user || !id || !loaded) return;
+    form.clearFeedback();
+    const validationError = form.validate();
+    if (validationError) {
+      form.setFormError(validationError);
+      return;
+    }
     setSubmitting(true);
     try {
-      const goal = parseInt(goalKm, 10);
-      const max = parseInt(maxMembers, 10);
-      if (!title.trim()) throw new Error(t.edit_err_title);
-      if (!goal || goal < 1) throw new Error(t.edit_err_goal);
-      if (!max || max < memberCount || max > 50) throw new Error(t.edit_err_members(memberCount));
-      if (endDate < startDate) throw new Error(t.edit_err_date);
-      await updateChallenge(id, { title: title.trim(), goalKm: goal, maxMembers: max, startDate, endDate }, user);
+      await updateChallenge(id, form.getPayload(), user);
       nativeNavigate(challengeDetailHref(id));
     } catch (e) {
-      setError(String(e));
+      form.setFormError(String(e));
     } finally {
       setSubmitting(false);
     }
   }
 
+  const error = form.formError ?? loadError;
+
   return (
     <PageLayout title={t.edit_title}>
-      {error ? <Alert className="mb-4">{error}</Alert> : null}
-      <Card>
-        <label className="block text-sm font-medium">{t.edit_field_title}</label>
-        <input className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" value={title} onChange={(e) => setTitle(e.target.value)} />
-
-        <label className="mt-4 block text-sm font-medium">{t.edit_field_goal}</label>
-        <input className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" inputMode="numeric" value={goalKm} onChange={(e) => setGoalKm(sanitizeDigits(e.target.value))} />
-
-        <label className="mt-4 block text-sm font-medium">{t.edit_field_members}</label>
-        <input className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" inputMode="numeric" value={maxMembers} onChange={(e) => setMaxMembers(clampMaxMembers(e.target.value))} />
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">{t.edit_field_start}</label>
-            <input type="date" className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">{t.edit_field_end}</label>
-            <input type="date" className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-        </div>
-
-        <button type="button" disabled={submitting} onClick={onSubmit}
-          className="mt-6 h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300">
-          {submitting ? t.edit_btn_busy : t.edit_btn}
-        </button>
-      </Card>
+      <ChallengeFormFields
+        labels={labels}
+        values={form.values}
+        today={form.today}
+        endMin={form.endMin}
+        handlers={{
+          onTitleChange: form.onTitleChange,
+          onGoalKmChange: form.onGoalKmChange,
+          onMaxMembersChange: form.onMaxMembersChange,
+          onStartDateChange: form.onStartDateChange,
+          onEndDateChange: form.onEndDateChange,
+        }}
+        formError={error}
+        formHint={form.formHint}
+        submitLabel={t.edit_btn}
+        submitBusyLabel={t.edit_btn_busy}
+        submitting={submitting}
+        disabled={!loaded || !!loadError}
+        onSubmit={onSubmit}
+      />
     </PageLayout>
   );
 }
