@@ -25,9 +25,6 @@ export function markLoggedIn() {
 function getInitialState(): AuthState {
   if (typeof window === "undefined") return { user: null, loading: true };
 
-  // Firebase가 이미 메모리에 사용자를 가지고 있으면 즉시 사용
-  if (auth.currentUser) return { user: auth.currentUser, loading: false };
-
   // 이전에 로그인한 기록이 있으면 loading=true 로 시작 → redirect 차단
   const hint = localStorage.getItem(AUTH_HINT_KEY) === "1";
   return { user: null, loading: hint };
