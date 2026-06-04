@@ -3,6 +3,7 @@ package com.runrace.backend.workout;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.challenge.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WorkoutService {
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
+  private final ChallengeService challengeService;
   private final ObjectMapper objectMapper;
 
   @Transactional
@@ -49,7 +51,12 @@ public class WorkoutService {
     session.setAvgPaceSecPerKm(avgPaceSecPerKm);
     session.setPathJson(toJson(path));
     session.setCreatedAt(OffsetDateTime.now());
-    return workoutSessionRepository.save(session);
+    WorkoutSession saved = workoutSessionRepository.save(session);
+
+    // 현재 참여 중인 진행 대결에 운동 거리 반영
+    challengeService.applyWorkoutDistance(principal.userId(), distanceM);
+
+    return saved;
   }
 
   @Transactional(readOnly = true)

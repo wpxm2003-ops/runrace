@@ -22,6 +22,7 @@ public interface ChallengeMemberRepository extends JpaRepository<ChallengeMember
   @Query("""
       select cm from ChallengeMember cm
       join fetch cm.challenge
+      join fetch cm.user
       where cm.user.id = :userId
         and cm.challenge.startAt <= :now
         and (cm.challenge.endAt is null or cm.challenge.endAt >= :now)

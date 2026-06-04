@@ -5,6 +5,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -178,6 +179,28 @@ public class ChallengeService {
 
   public BigDecimal goalKmAsDecimal(Challenge challenge) {
     return BigDecimal.valueOf(challenge.getGoalKm());
+  }
+
+  /**
+   * 운동 기록 저장 시 호출. 사용자가 현재 참여 중인 진행 대결의 total_km을 distanceM만큼 증가시킨다.
+   * - 대결 기간(startAt ~ endAt) 안에 있고 아직 승자가 없는 대결만 대상으로 한다.
+   * - 목표 달성 시 완주 처리 및 승자 확정까지 함께 수행한다.
+   */
+  @Transactional
+  public void applyWorkoutDistance(UUID userId, int distanceM) {
+    if (distanceM <= 0) return;
+    BigDecimal distanceKm = BigDecimal.valueOf(distanceM)
+        .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+    OffsetDateTime now = OffsetDateTime.now();
+
+    List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
+    for (ChallengeMember member : activeMembers) {
+      BigDecimal next = member.getTotalKm().add(distanceKm);
+      member.setTotalKm(next);
+      member.setLastSyncAt(now);
+      onMemberProgress(member, next);
+      challengeMemberRepository.save(member);
+    }
   }
 
   /**
