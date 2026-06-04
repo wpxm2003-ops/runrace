@@ -21,3 +21,7 @@ export function updateNickname(user: User, nickname: string): Promise<MeResponse
     body: { nickname },
   });
 }
+
+export function deleteAccount(user: User): Promise<void> {
+  return apiFetch<void>("/api/me", { method: "DELETE", user });
+}

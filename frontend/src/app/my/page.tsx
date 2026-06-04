@@ -6,8 +6,9 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutList, useMe } from "@/lib/api";
-import { updateNickname } from "@/lib/api/auth";
+import { updateNickname, deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
+import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { formatKm, formatShortDateTime } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
@@ -25,6 +26,7 @@ export default function MyPage() {
     error,
   } = useWorkoutList(user);
 
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -134,9 +136,35 @@ export default function MyPage() {
         >
           {t.my_logout}
         </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            if (!user) return;
+            const ok = await confirm({
+              title: t.my_delete_account_title,
+              message: t.my_delete_account_message,
+              confirmLabel: t.my_delete_account_confirm,
+              cancelLabel: t.cancel,
+              destructive: true,
+            });
+            if (!ok) return;
+            await deleteAccount(user);
+            await logout();
+          }}
+          className="mt-2 h-11 w-full rounded-xl text-sm text-red-600 hover:bg-red-50"
+        >
+          {t.my_delete_account}
+        </button>
       </Card>
 
-      <Card className="mt-6">
+      <div className="mt-4 text-center">
+        <a href="/privacy" className="text-xs text-zinc-400 underline">
+          개인정보처리방침
+        </a>
+      </div>
+
+      <Card className="mt-4">
         <div className="text-lg font-semibold">{t.my_records_heading}</div>
         {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
         <div className="mt-3">
