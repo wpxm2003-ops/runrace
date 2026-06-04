@@ -21,7 +21,7 @@ export function SiteHeader() {
             aria-label="언어 변경 / Change language"
             className="rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-500 hover:border-zinc-400 hover:text-zinc-900"
           >
-            {locale === "ko" ? "EN" : "한"}
+            {locale === "ko" ? "EN" : "KO"}
           </button>
           {!loading && user ? (
             <button

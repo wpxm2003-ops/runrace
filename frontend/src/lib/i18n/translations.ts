@@ -26,7 +26,7 @@ export const translations = {
     header_login: "로그인",
 
     // ── 홈 ────────────────────────────────
-    home_tagline: "로그인 후 친구를 초대하고 달리기 대결을 시작해보세요.",
+    home_tagline: "지금 친구와 달리기 대결을 시작해보세요.",
     home_login: "로그인",
     home_login_desc: "Google / Apple 로그인",
     home_friends: "친구",
@@ -216,7 +216,7 @@ export const translations = {
     header_login: "Sign in",
 
     // ── 홈 ────────────────────────────────
-    home_tagline: "Sign in, invite friends, and race to 50km.",
+    home_tagline: "Invite friends, and race to 50km.",
     home_login: "Sign in",
     home_login_desc: "Google · Apple",
     home_friends: "Friends",
