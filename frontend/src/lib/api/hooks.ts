@@ -74,6 +74,15 @@ export function useWorkoutList(user: User | null) {
   );
 }
 
+/** 기록 달력용 — 해당 연도 목록만 조회 (연도 변경 시 자동 재요청) */
+export function useWorkoutListByYear(user: User | null, year: number) {
+  return useSWR(
+    user ? (["workouts", user.uid, year] as const) : null,
+    () => fetchWorkouts(user!, year),
+    BASE_CONFIG,
+  );
+}
+
 // ── 내 정보 (닉네임 포함) ────────────────────────────────────────────────────
 export function useMe(user: User | null) {
   return useSWR(

@@ -7,7 +7,9 @@ import com.runrace.backend.challenge.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -66,9 +68,22 @@ public class WorkoutService {
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
   }
 
+  private static final ZoneId LIST_ZONE = ZoneId.of("Asia/Seoul");
+
   @Transactional(readOnly = true)
   public List<WorkoutSession> listForUser(UUID userId) {
     return workoutSessionRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+  }
+
+  @Transactional(readOnly = true)
+  public List<WorkoutSession> listForUserInYear(UUID userId, int year) {
+    OffsetDateTime from =
+        LocalDate.of(year, 1, 1).atStartOfDay(LIST_ZONE).toOffsetDateTime();
+    OffsetDateTime to =
+        LocalDate.of(year + 1, 1, 1).atStartOfDay(LIST_ZONE).toOffsetDateTime();
+    return workoutSessionRepository
+        .findAllByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
+            userId, from, to);
   }
 
   @Transactional

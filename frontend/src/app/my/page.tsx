@@ -9,12 +9,11 @@ import { useWorkoutList, useMe } from "@/lib/api";
 import { updateNickname, deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
-import { formatKm, formatShortDateTime } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
-import { workoutDetailHref } from "@/lib/workoutRoute";
-import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { aggregateWorkouts } from "@/lib/workoutStats";
 import { mutate } from "swr";
+import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
 export default function MyPage() {
   const { user, loading } = useRequireAuth("/my");
@@ -25,6 +24,8 @@ export default function MyPage() {
     isLoading: recordsLoading,
     error,
   } = useWorkoutList(user);
+
+  const allTimeStats = aggregateWorkouts(records);
 
   const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
@@ -165,7 +166,7 @@ export default function MyPage() {
       </div>
 
       <Card className="mt-4">
-        <div className="text-lg font-semibold">{t.my_records_heading}</div>
+        <div className="text-lg font-semibold">{t.my_records_all_time}</div>
         {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
         <div className="mt-3">
           {recordsLoading && records.length === 0 ? (
@@ -173,25 +174,16 @@ export default function MyPage() {
           ) : records.length === 0 ? (
             <div className="text-sm text-zinc-600">{t.my_records_empty}</div>
           ) : (
-            <div className="grid gap-2">
-              {records.map((r) => (
-                <a
-                  key={r.id}
-                  href={workoutDetailHref(r.id)}
-                  className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-sm font-medium text-zinc-900">{formatShortDateTime(r.startedAt)}</div>
-                    <div className="text-xs text-zinc-500">{formatKm(r.distanceM)}</div>
-                  </div>
-                  <div className="mt-1 text-sm text-zinc-600">
-                    {formatDuration(r.durationSec)} · {r.calories} kcal · {formatPaceMinPerKm(r.distanceM, r.durationSec)}
-                  </div>
-                </a>
-              ))}
-            </div>
+            <WorkoutAggregateStats stats={allTimeStats} showWorkoutDays />
           )}
         </div>
+        {records.length > 0 ? (
+          <p className="mt-3 text-center text-xs text-zinc-500">
+            <a href="/records" className="underline hover:text-zinc-800">
+              {t.my_records_calendar_hint}
+            </a>
+          </p>
+        ) : null}
       </Card>
     </PageLayout>
   );

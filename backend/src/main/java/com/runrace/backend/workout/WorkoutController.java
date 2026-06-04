@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -45,9 +46,14 @@ public class WorkoutController {
   }
 
   @GetMapping(value = {"", "/list"})
-  public ResponseEntity<List<WorkoutListItem>> list(AuthPrincipal principal) {
+  public ResponseEntity<List<WorkoutListItem>> list(
+      AuthPrincipal principal, @RequestParam(required = false) Integer year) {
+    var sessions =
+        year != null
+            ? workoutService.listForUserInYear(principal.userId(), year)
+            : workoutService.listForUser(principal.userId());
     List<WorkoutListItem> items =
-        workoutService.listForUser(principal.userId()).stream()
+        sessions.stream()
             .map(
                 session ->
                     new WorkoutListItem(

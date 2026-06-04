@@ -2,8 +2,9 @@ import type { User } from "firebase/auth";
 import { apiFetch } from "./client";
 import type { CreatedId, WorkoutCreateBody, WorkoutDetail, WorkoutListItem } from "./types";
 
-export function fetchWorkouts(user: User) {
-  return apiFetch<WorkoutListItem[]>("/api/workouts/list", { user });
+export function fetchWorkouts(user: User, year?: number) {
+  const q = year != null ? `?year=${year}` : "";
+  return apiFetch<WorkoutListItem[]>(`/api/workouts/list${q}`, { user });
 }
 
 export function fetchWorkout(id: number, user: User) {

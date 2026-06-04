@@ -32,11 +32,10 @@ const ICONS = {
       <path d="M6 4h12v4H6V4Zm0 6h12v10H6V10Zm3 3h6v4H9v-4Z" />
     </svg>
   ),
-  friends: (
+  records: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <circle cx="9" cy="8" r="3" />
-      <circle cx="17" cy="9" r="2.5" />
-      <path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M14 19c0-2.2 1.8-4 4-4" />
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M8 3v4M16 3v4M4 10h16" />
     </svg>
   ),
   fitness: (
@@ -75,18 +74,18 @@ export function BottomNav() {
       isActive: (p) => p === "/challenges" || p.startsWith("/challenges/"),
     },
     {
-      id: "friends",
-      label: t.nav_friends,
-      href: "/friends",
-      icon: ICONS.friends,
-      isActive: (p) => p === "/friends" || p.startsWith("/friends/"),
-    },
-    {
       id: "workout",
       label: t.nav_workout,
       href: "/workout",
       icon: ICONS.fitness,
       isActive: (p) => p === "/workout",
+    },
+    {
+      id: "records",
+      label: t.nav_records,
+      href: "/records",
+      icon: ICONS.records,
+      isActive: (p) => p === "/records",
     },
     {
       id: "my",

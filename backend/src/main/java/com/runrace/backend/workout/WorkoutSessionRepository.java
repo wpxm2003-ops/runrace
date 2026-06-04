@@ -1,5 +1,6 @@
 package com.runrace.backend.workout;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,4 +10,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
   List<WorkoutSession> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
+
+  List<WorkoutSession> findAllByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
+      UUID userId, OffsetDateTime from, OffsetDateTime to);
 }

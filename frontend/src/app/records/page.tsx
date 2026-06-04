@@ -1,0 +1,205 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { PageLayout } from "@/app/_components/PageLayout";
+import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
+import { WorkoutRecordPanel } from "@/app/_components/WorkoutRecordPanel";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { useWorkoutListByYear } from "@/lib/api";
+import { formatShortDateTime } from "@/lib/format";
+import { useLocale } from "@/lib/i18n";
+import { useRequireAuth } from "@/lib/useRequireAuth";
+import {
+  aggregateWorkouts,
+  buildCalendarCells,
+  filterWorkoutsByMonth,
+  formatMonthLabel,
+  formatMonthSummaryTitle,
+  localDateKey,
+  workoutDateKeys,
+  workoutsOnDate,
+} from "@/lib/workoutStats";
+
+const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export default function RecordsPage() {
+  const { user, loading } = useRequireAuth("/records");
+  const { t, locale } = useLocale();
+  const today = useMemo(() => new Date(), []);
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
+
+  const { data: yearRecords = [], isLoading, error } = useWorkoutListByYear(
+    user,
+    viewYear,
+  );
+
+  const monthItems = useMemo(
+    () => filterWorkoutsByMonth(yearRecords, viewYear, viewMonth),
+    [yearRecords, viewYear, viewMonth],
+  );
+
+  const monthStats = useMemo(() => aggregateWorkouts(monthItems), [monthItems]);
+  const monthSummaryTitle = formatMonthSummaryTitle(viewMonth, locale);
+  const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
+  const calendarCells = useMemo(
+    () => buildCalendarCells(viewYear, viewMonth),
+    [viewYear, viewMonth],
+  );
+
+  const dayWorkouts = useMemo(() => {
+    if (!selectedDateKey) return [];
+    return workoutsOnDate(monthItems, selectedDateKey);
+  }, [monthItems, selectedDateKey]);
+
+  const weekdays = locale === "ko" ? WEEKDAYS_KO : WEEKDAYS_EN;
+
+  function shiftMonth(delta: number) {
+    const d = new Date(viewYear, viewMonth + delta, 1);
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth());
+    setSelectedDateKey(null);
+    setSelectedWorkoutId(null);
+  }
+
+  function selectDay(dateKey: string) {
+    const list = workoutsOnDate(monthItems, dateKey);
+    setSelectedDateKey(dateKey);
+    setSelectedWorkoutId(list[0]?.id ?? null);
+  }
+
+  useEffect(() => {
+    if (!selectedDateKey) return;
+    const list = workoutsOnDate(monthItems, selectedDateKey);
+    if (list.length === 0) {
+      setSelectedDateKey(null);
+      setSelectedWorkoutId(null);
+      return;
+    }
+    if (!list.some((w) => w.id === selectedWorkoutId)) {
+      setSelectedWorkoutId(list[0].id);
+    }
+  }, [monthItems, selectedDateKey, selectedWorkoutId]);
+
+  if (loading || !user) {
+    return (
+      <PageLayout title={t.records_title}>
+        <Card className="text-sm text-zinc-600">{t.loading}</Card>
+      </PageLayout>
+    );
+  }
+
+  return (
+    <PageLayout title={t.records_title}>
+      {error ? <Alert className="mb-4">{String(error)}</Alert> : null}
+
+      <div className="mb-5 flex min-h-14 items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => shiftMonth(-1)}
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-2xl leading-none text-zinc-700 hover:bg-zinc-50"
+          aria-label={t.records_prev_month}
+        >
+          ‹
+        </button>
+        <div className="min-w-0 flex-1 px-1 text-center text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+          {formatMonthLabel(viewYear, viewMonth, locale)}
+        </div>
+        <button
+          type="button"
+          onClick={() => shiftMonth(1)}
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-2xl leading-none text-zinc-700 hover:bg-zinc-50"
+          aria-label={t.records_next_month}
+        >
+          ›
+        </button>
+      </div>
+
+      <section className="mb-4">
+        <h2 className="mb-3 text-sm font-semibold text-zinc-900">
+          {monthSummaryTitle}
+        </h2>
+        {isLoading && yearRecords.length === 0 ? (
+          <SkeletonLines count={4} />
+        ) : (
+          <WorkoutAggregateStats stats={monthStats} showWorkoutDays={false} />
+        )}
+      </section>
+
+      <Card>
+        <div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-500">
+          {weekdays.map((w) => (
+            <div key={w} className="py-1 font-medium">
+              {w}
+            </div>
+          ))}
+        </div>
+        <div className="mt-1 grid grid-cols-7 gap-1">
+          {calendarCells.map((cell, i) => {
+            if (cell.day == null || !cell.dateKey) {
+              return <div key={`empty-${i}`} className="aspect-square" />;
+            }
+            const hasWorkout = activeDateKeys.has(cell.dateKey);
+            const isSelected = selectedDateKey === cell.dateKey;
+            const isToday = cell.dateKey === localDateKey(today.toISOString());
+
+            return (
+              <button
+                key={cell.dateKey}
+                type="button"
+                disabled={!hasWorkout}
+                onClick={() => cell.dateKey && selectDay(cell.dateKey)}
+                className={`aspect-square rounded-lg text-sm tabular-nums transition-colors ${
+                  hasWorkout
+                    ? "font-bold text-zinc-900 hover:bg-zinc-100"
+                    : "font-normal text-zinc-400"
+                } ${isSelected ? "bg-zinc-900 text-white hover:bg-zinc-800" : ""} ${
+                  isToday && !isSelected ? "ring-1 ring-zinc-300" : ""
+                } disabled:cursor-default disabled:opacity-40`}
+              >
+                {cell.day}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      <section className="mt-4">
+        {!selectedDateKey ? (
+          <p className="text-center text-sm text-zinc-500">{t.records_select_day}</p>
+        ) : dayWorkouts.length === 0 ? (
+          <p className="text-center text-sm text-zinc-500">{t.records_no_workout_day}</p>
+        ) : (
+          <>
+            {dayWorkouts.length > 1 ? (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {dayWorkouts.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => setSelectedWorkoutId(w.id)}
+                    className={`rounded-full border px-3 py-1 text-xs ${
+                      selectedWorkoutId === w.id
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                    }`}
+                  >
+                    {formatShortDateTime(w.startedAt)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {selectedWorkoutId != null ? (
+              <WorkoutRecordPanel workoutId={selectedWorkoutId} user={user} />
+            ) : null}
+          </>
+        )}
+      </section>
+    </PageLayout>
+  );
+}
