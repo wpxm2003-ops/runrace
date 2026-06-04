@@ -14,6 +14,7 @@ import {
 import { fetchFriends } from "./friends";
 import { fetchWorkout, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
+import { SWR_ERROR_RETRY } from "./swrConfig";
 
 const BASE_CONFIG = {
   revalidateOnMount: true,
@@ -21,7 +22,8 @@ const BASE_CONFIG = {
   keepPreviousData: false,
   /** 개발 모드 이중 마운트·동시 훅 호출 시 같은 API 중복 요청 방지 */
   dedupingInterval: 5000,
-} as const;
+  ...SWR_ERROR_RETRY,
+};
 
 // ── 대결 목록 ────────────────────────────────────────────────────────────────
 /**
@@ -123,12 +125,7 @@ export function useWorkoutDetail(workoutId: number | null, user: User | null) {
       ? (["workout", workoutId, user.uid] as const)
       : null,
     () => fetchWorkout(workoutId!, user!),
-    {
-      revalidateOnMount: true,
-      revalidateOnFocus: false,
-      keepPreviousData: false,
-      dedupingInterval: 5000,
-    },
+    BASE_CONFIG,
   );
 }
 

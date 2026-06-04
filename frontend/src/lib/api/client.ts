@@ -1,5 +1,6 @@
 import { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
+import { ApiError } from "./apiError";
 
 /** 웹(EC2+Nginx): 비우면 /api. APK: 반드시 http://<서버IP> 전체 URL */
 function resolveApiBaseUrl(): string {
@@ -33,7 +34,7 @@ export async function publicPost<T>(path: string, body: unknown): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new ApiError(res.status, `API ${res.status}: ${text}`);
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
@@ -77,7 +78,7 @@ export async function publicFetch<T>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new ApiError(res.status, `API ${res.status}: ${text}`);
   }
 
   return parseResponse<T>(res);
@@ -100,7 +101,7 @@ export async function apiFetch<T>(
     if (redirectOn401) {
       redirectToLogin(opts.returnTo);
     }
-    throw new Error("로그인이 필요합니다.");
+    throw new ApiError(401, "로그인이 필요합니다.");
   }
 
   const method = opts.method ?? "GET";
@@ -120,9 +121,9 @@ export async function apiFetch<T>(
       if (redirectOn401) {
         redirectToLogin(opts.returnTo);
       }
-      throw new Error(`API 401: ${text} (로그인이 필요합니다.)`);
+      throw new ApiError(401, `API 401: ${text} (로그인이 필요합니다.)`);
     }
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new ApiError(res.status, `API ${res.status}: ${text}`);
   }
 
   return parseResponse<T>(res);
