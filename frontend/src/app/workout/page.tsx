@@ -76,7 +76,11 @@ export default function WorkoutPage() {
 
       <div className="relative min-h-0 flex-1">
         <WorkoutMap path={session.path} position={session.position} follow={session.status === "running"} />
-        {session.geoError ? (
+        {session.isCheating ? (
+          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 shadow-sm">
+            {t.workout_cheat_warning}
+          </div>
+        ) : session.geoError ? (
           <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm">
             {session.geoError}
           </div>
@@ -90,6 +94,11 @@ export default function WorkoutPage() {
 
       <div className="shrink-0 border-t border-zinc-200 bg-zinc-50 px-3 py-3 sm:px-4 sm:py-4">
         <div className="mx-auto max-w-2xl">
+          {session.isRestored ? (
+            <div className="mb-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              {t.workout_restored}
+            </div>
+          ) : null}
           {saveError ? <Alert className="mb-3">{saveError}</Alert> : null}
           <WorkoutStatsGrid
             status={session.status}

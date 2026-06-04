@@ -145,6 +145,8 @@ export const translations = {
     workout_map_loading: "지도 불러오는 중...",
     workout_locating: "위치 확인 중...",
     workout_no_route: "저장할 운동 경로가 없습니다.",
+    workout_cheat_warning: "속도가 너무 빠릅니다 (자전거·탈것 감지). 뛰는 속도가 되면 자동으로 재개됩니다.",
+    workout_restored: "이전 운동이 복원됐어요. 재개를 눌러 계속하세요.",
 
     // ── 운동 스탯 그리드 ──────────────────
     stat_time: "시간",
@@ -325,6 +327,8 @@ export const translations = {
     workout_map_loading: "Loading map...",
     workout_locating: "Finding location...",
     workout_no_route: "No route to save.",
+    workout_cheat_warning: "Moving too fast — vehicle detected. Route recording paused until you slow down.",
+    workout_restored: "Previous run restored. Tap Resume to continue.",
 
     // ── 운동 스탯 그리드 ──────────────────
     stat_time: "Time",
