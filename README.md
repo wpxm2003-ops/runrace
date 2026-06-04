@@ -136,10 +136,6 @@ git push origin main
 ### EC2에서 풀 & 빌드 & 재시작
 
 ```bash
-ssh -i "C:\Users\wpxm2\Downloads\runrace_ec2_key_pair.pem" ec2-user@<IP>
-```
-
-```bash
 cd ~/runrace
 git pull origin main
 
