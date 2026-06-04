@@ -44,10 +44,12 @@ export const translations = {
     login_headline: "RunRace",
     login_desc: "로그인 후 친구를 초대하고 50km 대결을 만들어 경쟁해보세요.",
     login_google: "Google 로그인",
-    login_apple: "Apple 로그인",
+    login_kakao: "카카오 로그인",
     login_busy: "로그인 중...",
-    login_apple_note: "Apple 로그인은 Firebase 콘솔에서 Apple provider 설정이 필요합니다.",
     login_popup_blocked: "로그인 창이 차단되었습니다. Chrome 설정에서 팝업 허용 후 다시 시도해 주세요.",
+    kakao_callback_processing: "카카오 로그인 처리 중...",
+    kakao_callback_error: "카카오 로그인에 실패했습니다.",
+    kakao_callback_retry: "다시 시도",
 
     // ── 대결 목록 ─────────────────────────
     races_title: "대결",
@@ -226,10 +228,12 @@ export const translations = {
     login_headline: "RunRace",
     login_desc: "Sign in, invite friends, and compete in a 50km running race.",
     login_google: "Continue with Google",
-    login_apple: "Continue with Apple",
+    login_kakao: "Continue with Kakao",
     login_busy: "Signing in...",
-    login_apple_note: "Apple sign-in requires Apple provider setup in Firebase Console.",
     login_popup_blocked: "Popup was blocked. Allow popups in Chrome settings and try again.",
+    kakao_callback_processing: "Signing in with Kakao...",
+    kakao_callback_error: "Kakao sign-in failed.",
+    kakao_callback_retry: "Try again",
 
     // ── 대결 목록 ─────────────────────────
     races_title: "Races",

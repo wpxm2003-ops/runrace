@@ -41,6 +41,10 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       return true;
     }
     String path = request.getRequestURI();
+    // 카카오 로그인은 Firebase 토큰 없이 호출되는 공개 엔드포인트
+    if ("POST".equalsIgnoreCase(request.getMethod()) && "/api/auth/kakao".equals(path)) {
+      return true;
+    }
     return !path.startsWith("/api/") || path.startsWith("/api/public/");
   }
 

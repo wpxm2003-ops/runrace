@@ -30,4 +30,6 @@ runrace:
       enabled: true
       # Firebase Admin SDK service account json file path
       serviceAccountPath: ${FIREBASE_SERVICE_ACCOUNT_PATH:../secrets/firebase-service-account.json}
+    kakao:
+      rest-api-key: ${KAKAO_REST_API_KEY:}
 

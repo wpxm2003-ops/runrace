@@ -23,6 +23,23 @@ export function apiUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
 }
 
+/** 인증 없이 POST 요청을 보낸다 (카카오 로그인 등 공개 엔드포인트용). */
+export async function publicPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${text}`);
+  }
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return text.trim() ? (JSON.parse(text) as T) : (undefined as T);
+}
+
 async function authHeaders(user: User) {
   const idToken = await user.getIdToken(true);
   return {

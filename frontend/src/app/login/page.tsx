@@ -1,13 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import {
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  type User,
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { syncBackendLogin } from "@/lib/api";
@@ -37,7 +31,7 @@ function LoginContent() {
   const [busy, setBusy] = useState(false);
   const inApp = isInAppBrowser();
 
-  async function completeBackendLogin(user: User) {
+  async function completeBackendLogin(user: Parameters<typeof syncBackendLogin>[0]) {
     await syncBackendLogin(user);
     nativeNavigate(returnTo);
   }
@@ -49,35 +43,23 @@ function LoginContent() {
     return true;
   }
 
-  async function signInWith(action: () => Promise<void>) {
+  async function signInGoogle() {
     setError(null);
     if (inApp) { setError(IN_APP_LOGIN_MESSAGE); return; }
     setBusy(true);
     try {
-      await action();
+      if (beginRedirectFlow()) {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
+      }
+      const cred = await signInWithGoogleApp();
+      await completeBackendLogin(cred.user);
     } catch (e) {
       setError(toSignInErrorMessage(e, t.login_popup_blocked));
       sessionStorage.removeItem(LOGIN_PENDING_KEY);
     } finally {
       setBusy(false);
     }
-  }
-
-  function signInGoogle() {
-    return signInWith(async () => {
-      if (beginRedirectFlow()) { await signInWithRedirect(auth, new GoogleAuthProvider()); return; }
-      const cred = await signInWithGoogleApp();
-      await completeBackendLogin(cred.user);
-    });
-  }
-
-  function signInApple() {
-    return signInWith(async () => {
-      const provider = new OAuthProvider("apple.com");
-      if (beginRedirectFlow()) { await signInWithRedirect(auth, provider); return; }
-      const cred = await signInWithPopup(auth, provider);
-      await completeBackendLogin(cred.user);
-    });
   }
 
   return (
@@ -95,25 +77,16 @@ function LoginContent() {
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
         )}
 
-        <div className="mt-6 grid gap-3">
+        <div className="mt-6">
           <button
             type="button"
             disabled={busy}
             onClick={signInGoogle}
-            className="h-11 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
+            className="h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
           >
             {busy ? t.login_busy : t.login_google}
           </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={signInApple}
-            className="h-11 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-50"
-          >
-            {t.login_apple}
-          </button>
         </div>
-        <p className="mt-6 text-xs text-zinc-500">{t.login_apple_note}</p>
       </div>
     </div>
   );
