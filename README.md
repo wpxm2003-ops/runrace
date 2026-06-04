@@ -37,26 +37,13 @@ npm run build
 npx cap copy
 ```
 
-## EC2 프론트 배포 (Nginx + 정적 export)
-
-### 1) 로컬에서 빌드
-
-`frontend/.env.production` (`.env.production.example` 참고):
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://<EC2_퍼블릭_IP>:8081
-# Firebase 키는 .env.local 과 동일
-```
+## EC2 프론트 배포
 
 ```bash
 cd frontend
 npm run build
 tar -czf out.tar.gz -C out .
 ```
-
-`out/` 폴더가 생성됩니다.
-
-### 2) EC2로 업로드
 
 ```bash
 scp -i "C:\Users\wpxm2\Downloads\runrace_ec2_key_pair.pem" out.tar.gz ec2-user@<IP>:/tmp/
@@ -70,20 +57,7 @@ sudo tar -xzf /tmp/out.tar.gz -C /var/www/runrace
 sudo systemctl reload nginx
 ```
 
-### 3) Nginx
-
-```bash
-sudo dnf install -y nginx
-sudo cp ~/runrace/infra/nginx/runrace.conf /etc/nginx/conf.d/runrace.conf
-sudo nginx -t && sudo systemctl enable --now nginx
-```
-
-보안 그룹: **80** 인바운드 허용. 브라우저 `http://<IP>/`
-
-페이지 이동 403 시: `try_files`에서 `$uri.html`을 `$uri/`보다 먼저 (`infra/nginx/runrace.conf` 참고).
-
-
-## Android APK 빌드 (Capacitor)
+## Android APK 추출
 
 ### 1) 준비
 
@@ -109,16 +83,6 @@ cd frontend\android
 ```
 
 APK 위치: `frontend/android/app/build/outputs/apk/debug/app-debug.apk`
-
-### 3) 설치
-
-USB 연결 또는 파일 전송 후:
-
-```powershell
-# adb로 직접 설치
-adb install app\build\outputs\apk\debug\app-debug.apk
-```
-
 ---
 
 ## 백엔드 EC2 배포 (Git)
