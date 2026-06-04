@@ -3,6 +3,7 @@ package com.runrace.backend.auth;
 import com.google.firebase.auth.FirebaseToken;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.user.NicknameGenerator;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
@@ -29,10 +30,21 @@ public class FirebaseUserService {
     user.setProvider(extractSignInProvider(token).orElse(null));
     if (isNew) {
       user.setCreatedAt(OffsetDateTime.now());
+      user.setNickname(generateUniqueNickname());
     }
 
     AppUser saved = appUserRepository.save(user);
     return new AuthPrincipal(saved.getId(), saved.getFirebaseUid());
+  }
+
+  private String generateUniqueNickname() {
+    for (int i = 0; i < 10; i++) {
+      String candidate = NicknameGenerator.generate();
+      if (!appUserRepository.existsByNickname(candidate)) {
+        return candidate;
+      }
+    }
+    throw new IllegalStateException("닉네임 생성 실패: 중복 충돌");
   }
 
   private Optional<String> extractSignInProvider(FirebaseToken token) {

@@ -8,6 +8,7 @@ public record MeResponse(
     String firebaseUid,
     String email,
     String displayName,
+    String nickname,
     String photoUrl,
     String provider) {
 
@@ -17,6 +18,7 @@ public record MeResponse(
         user.getFirebaseUid(),
         user.getEmail(),
         user.getDisplayName(),
+        user.getNickname(),
         user.getPhotoUrl(),
         user.getProvider());
   }

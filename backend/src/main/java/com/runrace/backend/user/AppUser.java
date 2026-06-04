@@ -30,6 +30,9 @@ public class AppUser {
   @Column(name = "display_name", length = 200)
   private String displayName;
 
+  @Column(name = "nickname", length = 50)
+  private String nickname;
+
   @Column(name = "photo_url", columnDefinition = "text")
   private String photoUrl;
 

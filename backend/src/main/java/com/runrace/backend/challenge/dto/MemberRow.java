@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record MemberRow(
     UUID userId,
-    String displayName,
+    String nickname,
     String photoUrl,
     BigDecimal totalKm,
     BigDecimal remainingKm,

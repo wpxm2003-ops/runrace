@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.user.NicknameGenerator;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -134,8 +135,19 @@ public class KakaoAuthService {
     user.setProvider("kakao");
     if (isNew) {
       user.setCreatedAt(OffsetDateTime.now());
+      user.setNickname(generateUniqueNickname());
     }
     appUserRepository.save(user);
+  }
+
+  private String generateUniqueNickname() {
+    for (int i = 0; i < 10; i++) {
+      String candidate = NicknameGenerator.generate();
+      if (!appUserRepository.existsByNickname(candidate)) {
+        return candidate;
+      }
+    }
+    throw new IllegalStateException("닉네임 생성 실패: 중복 충돌");
   }
 
   public record KakaoUser(String id, String email, String nickname, String photoUrl) {}

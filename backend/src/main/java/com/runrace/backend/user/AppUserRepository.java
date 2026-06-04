@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
   Optional<AppUser> findByFirebaseUid(String firebaseUid);
 
+  boolean existsByNickname(String nickname);
+
   /** id로 사용자를 조회하되 없으면 404로 변환한다. {@code findById(...).orElseThrow()} 중복 제거용. */
   default AppUser getRequired(UUID id) {
     return findById(id).orElseThrow(() -> ApiException.notFound("user_not_found"));

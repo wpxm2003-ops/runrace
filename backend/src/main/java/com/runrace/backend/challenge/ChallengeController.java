@@ -142,7 +142,7 @@ public class ChallengeController {
     WinnerRow winner =
         detail.winner() == null
             ? null
-            : new WinnerRow(detail.winner().getId(), detail.winner().getDisplayName());
+            : new WinnerRow(detail.winner().getId(), detail.winner().getNickname());
 
     boolean showManage = detail.isOwner() && !detail.hasStarted();
     boolean canJoin =
@@ -174,7 +174,7 @@ public class ChallengeController {
   private MemberRow toMemberRow(ChallengeMember member, Challenge challenge, BigDecimal goal) {
     return new MemberRow(
         member.getUser().getId(),
-        member.getUser().getDisplayName(),
+        member.getUser().getNickname(),
         member.getUser().getPhotoUrl(),
         member.getTotalKm(),
         goal.subtract(member.getTotalKm()).max(BigDecimal.ZERO),

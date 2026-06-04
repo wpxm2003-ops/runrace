@@ -79,7 +79,7 @@ export default function FriendsPage() {
             friends.map((f) => (
               <div key={f.id} className="flex items-center justify-between rounded-xl border border-zinc-200 px-4 py-3">
                 <div>
-                  <div className="font-medium">{f.displayName ?? t.no_name}</div>
+                  <div className="font-medium">{f.nickname ?? t.no_name}</div>
                   <div className="text-xs text-zinc-500">{f.email ?? ""}</div>
                 </div>
               </div>

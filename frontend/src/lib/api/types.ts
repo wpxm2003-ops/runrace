@@ -20,7 +20,7 @@ export type ChallengeListItem = {
 
 export type ChallengeMember = {
   userId: string;
-  displayName: string | null;
+  nickname: string | null;
   totalKm: string;
   remainingKm: string;
   progressPercent: number | string;
@@ -29,7 +29,7 @@ export type ChallengeMember = {
 
 export type ChallengeWinner = {
   userId: string;
-  displayName: string | null;
+  nickname: string | null;
 };
 
 export type ChallengeDetail = {
@@ -61,10 +61,21 @@ export type ChallengeFormBody = {
   endDate: string;
 };
 
+// ── 내 정보 ──────────────────────────────────────────────────────
+export type MeResponse = {
+  id: string;
+  firebaseUid: string;
+  email: string | null;
+  displayName: string | null;
+  nickname: string | null;
+  photoUrl: string | null;
+  provider: string | null;
+};
+
 // ── 친구(friend) ─────────────────────────────────────────────────
 export type Friend = {
   id: string;
-  displayName: string | null;
+  nickname: string | null;
   photoUrl: string | null;
   email: string | null;
 };

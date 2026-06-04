@@ -46,7 +46,7 @@ public class FriendController {
                 friendship ->
                     new FriendResponse(
                         friendship.getFriend().getId(),
-                        friendship.getFriend().getDisplayName(),
+                        friendship.getFriend().getNickname(),
                         friendship.getFriend().getPhotoUrl(),
                         friendship.getFriend().getEmail()))
             .toList();

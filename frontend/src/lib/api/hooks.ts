@@ -11,6 +11,7 @@ import {
 } from "./challenges";
 import { fetchFriends } from "./friends";
 import { fetchWorkouts } from "./workouts";
+import { fetchMe } from "./auth";
 
 const BASE_CONFIG = {
   revalidateOnMount: true,
@@ -69,6 +70,15 @@ export function useWorkoutList(user: User | null) {
   return useSWR(
     user ? (["workouts", user.uid] as const) : null,
     () => fetchWorkouts(user!),
+    BASE_CONFIG,
+  );
+}
+
+// ── 내 정보 (닉네임 포함) ────────────────────────────────────────────────────
+export function useMe(user: User | null) {
+  return useSWR(
+    user ? (["me", user.uid] as const) : null,
+    () => fetchMe(user!),
     BASE_CONFIG,
   );
 }

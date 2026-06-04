@@ -153,7 +153,7 @@ export default function ChallengeDetailContent() {
                 return (
                   <div key={m.userId}>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{m.displayName ?? t.no_name}</span>
+                      <span className="font-medium">{m.nickname ?? t.no_name}</span>
                       <span className="text-zinc-600">{m.totalKm} / {detail.goalKm} km</span>
                     </div>
                     <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-100">
@@ -169,7 +169,7 @@ export default function ChallengeDetailContent() {
             <div className="mt-6 rounded-2xl bg-amber-50 p-5 text-center shadow-sm">
               <div className="text-lg font-semibold text-amber-900">{t.detail_winner_label}</div>
               <div className="mt-2 text-amber-800">
-                {t.detail_winner_message(detail.winner.displayName ?? t.no_name)}
+                {t.detail_winner_message(detail.winner.nickname ?? t.no_name)}
               </div>
             </div>
           ) : null}
