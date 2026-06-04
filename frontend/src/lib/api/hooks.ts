@@ -10,7 +10,7 @@ import {
   fetchActiveCount,
 } from "./challenges";
 import { fetchFriends } from "./friends";
-import { fetchWorkouts } from "./workouts";
+import { fetchWorkout, fetchWorkouts } from "./workouts";
 import { fetchMe } from "./auth";
 
 const BASE_CONFIG = {
@@ -81,6 +81,33 @@ export function useWorkoutListByYear(user: User | null, year: number) {
     () => fetchWorkouts(user!, year),
     BASE_CONFIG,
   );
+}
+
+export function invalidateWorkoutLists(userId: string, year?: number) {
+  void globalMutate(["workouts", userId]);
+  if (year != null) {
+    void globalMutate(["workouts", userId, year]);
+  }
+}
+
+/** 기록 탭·상세 — 동일 id 중복 요청 방지 (dedupingInterval) */
+export function useWorkoutDetail(workoutId: number | null, user: User | null) {
+  return useSWR(
+    user && workoutId != null
+      ? (["workout", workoutId, user.uid] as const)
+      : null,
+    () => fetchWorkout(workoutId!, user!),
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: false,
+      keepPreviousData: false,
+      dedupingInterval: 5000,
+    },
+  );
+}
+
+export function invalidateWorkoutDetail(workoutId: number, userId: string) {
+  void globalMutate(["workout", workoutId, userId]);
 }
 
 // ── 내 정보 (닉네임 포함) ────────────────────────────────────────────────────

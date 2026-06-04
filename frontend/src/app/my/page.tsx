@@ -137,33 +137,7 @@ export default function MyPage() {
         >
           {t.my_logout}
         </button>
-
-        <button
-          type="button"
-          onClick={async () => {
-            if (!user) return;
-            const ok = await confirm({
-              title: t.my_delete_account_title,
-              message: t.my_delete_account_message,
-              confirmLabel: t.my_delete_account_confirm,
-              cancelLabel: t.cancel,
-              destructive: true,
-            });
-            if (!ok) return;
-            await deleteAccount(user);
-            await logout();
-          }}
-          className="mt-2 h-11 w-full rounded-xl text-sm text-red-600 hover:bg-red-50"
-        >
-          {t.my_delete_account}
-        </button>
       </Card>
-
-      <div className="mt-4 text-center">
-        <a href="/privacy" className="text-xs text-zinc-400 underline">
-          개인정보처리방침
-        </a>
-      </div>
 
       <Card className="mt-4">
         <div className="text-lg font-semibold">{t.my_records_all_time}</div>
@@ -174,17 +148,40 @@ export default function MyPage() {
           ) : records.length === 0 ? (
             <div className="text-sm text-zinc-600">{t.my_records_empty}</div>
           ) : (
-            <WorkoutAggregateStats stats={allTimeStats} showWorkoutDays />
+            <WorkoutAggregateStats
+              stats={allTimeStats}
+              showWorkoutDays
+              totalLabels
+            />
           )}
         </div>
-        {records.length > 0 ? (
-          <p className="mt-3 text-center text-xs text-zinc-500">
-            <a href="/records" className="underline hover:text-zinc-800">
-              {t.my_records_calendar_hint}
-            </a>
-          </p>
-        ) : null}
       </Card>
+
+      <button
+        type="button"
+        onClick={async () => {
+          if (!user) return;
+          const ok = await confirm({
+            title: t.my_delete_account_title,
+            message: t.my_delete_account_message,
+            confirmLabel: t.my_delete_account_confirm,
+            cancelLabel: t.cancel,
+            destructive: true,
+          });
+          if (!ok) return;
+          await deleteAccount(user);
+          await logout();
+        }}
+        className="mt-4 h-11 w-full rounded-xl text-sm text-red-600 hover:bg-red-50"
+      >
+        {t.my_delete_account}
+      </button>
+
+      <div className="mt-6 pb-2 text-center">
+        <a href="/privacy" className="text-xs text-zinc-400 underline">
+          {t.privacy_title}
+        </a>
+      </div>
     </PageLayout>
   );
 }

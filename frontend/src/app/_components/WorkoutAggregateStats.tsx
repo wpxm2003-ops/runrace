@@ -9,6 +9,8 @@ type Props = {
   stats: WorkoutAggregate;
   /** true면 총 운동일 카드 포함 (내정보 전체) */
   showWorkoutDays?: boolean;
+  /** true면 총 거리·총 시간 등 전체 요약 라벨 (내정보) */
+  totalLabels?: boolean;
 };
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -20,7 +22,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function WorkoutAggregateStats({ stats, showWorkoutDays = false }: Props) {
+export function WorkoutAggregateStats({
+  stats,
+  showWorkoutDays = false,
+  totalLabels = false,
+}: Props) {
   const { t } = useLocale();
   const paceLabel = formatPaceMinPerKm(
     stats.totalDistanceM,
@@ -28,13 +34,25 @@ export function WorkoutAggregateStats({ stats, showWorkoutDays = false }: Props)
   );
 
   const cards = [
-    { label: t.stat_distance, value: formatKm(stats.totalDistanceM) },
-    { label: t.stat_time, value: formatDuration(stats.totalDurationSec) },
-    { label: t.stat_pace, value: paceLabel },
+    {
+      label: totalLabels ? t.stat_total_distance : t.stat_distance,
+      value: formatKm(stats.totalDistanceM),
+    },
+    {
+      label: totalLabels ? t.stat_total_time : t.stat_time,
+      value: formatDuration(stats.totalDurationSec),
+    },
+    {
+      label: totalLabels ? t.stat_avg_pace : t.stat_pace,
+      value: paceLabel,
+    },
     ...(showWorkoutDays
       ? [{ label: t.stat_total_days, value: `${stats.workoutDayCount}${t.stat_days_unit}` }]
       : []),
-    { label: t.stat_calories, value: `${stats.totalCalories} kcal` },
+    {
+      label: totalLabels ? t.stat_total_calories : t.stat_calories,
+      value: `${stats.totalCalories} kcal`,
+    },
   ];
 
   return (

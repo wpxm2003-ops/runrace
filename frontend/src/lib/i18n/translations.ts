@@ -17,7 +17,7 @@ export const translations = {
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "홈",
-    nav_races: "대결",
+    nav_races: "레이스",
     nav_friends: "친구",
     nav_records: "기록",
     nav_workout: "운동",
@@ -27,23 +27,23 @@ export const translations = {
     header_login: "로그인",
 
     // ── 홈 ────────────────────────────────
-    home_tagline: "지금 친구와 달리기 대결을 시작해보세요.",
+    home_tagline: "지금 친구와 달리기 레이스를 시작해보세요.",
     home_login: "로그인",
     home_login_desc: "Google / Apple 로그인",
     home_friends: "친구",
     home_friends_desc: "초대 링크 생성 · 친구 목록",
-    home_races: "대결",
-    home_races_desc: "50km 대결 생성 / 순위 보기",
+    home_races: "레이스",
+    home_races_desc: "50km 레이스 생성 / 순위 보기",
     home_workout: "운동하기",
     home_workout_desc: "GPS로 실시간 경로 기록",
     home_fitness: "오늘 거리 동기화",
-    home_fitness_desc: "헬스 합산 거리 업로드 (대결 반영)",
+    home_fitness_desc: "헬스 합산 거리 업로드 (레이스 반영)",
     home_next: "다음 단계",
-    home_next_desc: "친구 초대 → 대결 생성 → 거리 동기화",
+    home_next_desc: "친구 초대 → 레이스 생성 → 거리 동기화",
 
     // ── 로그인 ────────────────────────────
     login_headline: "RunRace",
-    login_desc: "로그인 후 친구를 초대하고 50km 대결을 만들어 경쟁해보세요.",
+    login_desc: "로그인 후 친구를 초대하고 50km 레이스를 만들어 달려보세요.",
     login_google: "Google 로그인",
     login_kakao: "카카오 로그인",
     login_busy: "로그인 중...",
@@ -52,33 +52,33 @@ export const translations = {
     kakao_callback_error: "카카오 로그인에 실패했습니다.",
     kakao_callback_retry: "다시 시도",
 
-    // ── 대결 목록 ─────────────────────────
-    races_title: "대결",
-    races_create_btn: "방만들기",
-    races_list_heading: "대결 목록",
-    races_empty: "대결이 없습니다. 방만들기로 새 대결을 시작해 보세요.",
+    // ── 레이스 목록 ─────────────────────────
+    races_title: "레이스",
+    races_create_btn: "등록",
+    races_list_heading: "레이스 목록",
+    races_empty: "레이스가 없습니다. 등록으로 새 레이스를 시작해 보세요.",
     races_goal_members: (goalKm: number, memberCount: number) =>
       `목표 ${goalKm}km · ${memberCount}명 참여`,
 
-    // ── 대결 만들기 ───────────────────────
-    create_title: "방 만들기",
+    // ── 레이스 만들기 ───────────────────────
+    create_title: "등록",
     create_list_link: "목록",
     create_limit_warning: (maxActive: number, activeCount: number) =>
-      `종료되지 않은 방은 최대 ${maxActive}개까지 만들 수 있습니다. (현재 ${activeCount}개)`,
+      `종료되지 않은 레이스는 최대 ${maxActive}개까지 만들 수 있습니다. (현재 ${activeCount}개)`,
     create_field_title: "제목",
-    create_field_title_placeholder: "예: 6월 러닝 대결",
+    create_field_title_placeholder: "예: 6월 러닝 레이스",
     create_field_goal: "목표 km",
     create_field_goal_placeholder: "정수만 입력",
     create_field_members: "인원수 (최대 50명)",
     create_field_start: "시작일",
     create_field_end: "종료일",
-    create_btn: "방 생성",
-    create_btn_busy: "생성 중...",
+    create_btn: "저장",
+    create_btn_busy: "등록 중...",
     create_required: "*",
 
-    // ── 대결 상세 ─────────────────────────
-    detail_title: "대결 상세",
-    detail_no_id: "대결 ID가 없습니다.",
+    // ── 레이스 상세 ─────────────────────────
+    detail_title: "레이스 상세",
+    detail_no_id: "레이스 ID가 없습니다.",
     detail_link_copied: "링크가 복사되었습니다.",
     detail_menu_label: "메뉴",
     detail_edit: "수정",
@@ -86,16 +86,18 @@ export const translations = {
     detail_invite: "초대",
     detail_share: "공유하기",
     detail_list_link: "목록",
-    detail_delete_title: "방 삭제",
-    detail_delete_message: "이 대결 방을 삭제할까요? 삭제 후에는 복구할 수 없습니다.",
+    detail_delete_title: "삭제",
+    detail_delete_message: "삭제할까요? 삭제 후에는 복구할 수 없습니다.",
     detail_progress: "진행 현황",
     detail_winner_label: "Winner",
     detail_winner_message: (name: string) => `${name}님, 축하합니다!`,
     detail_join: "참여하기",
     detail_joining: "참여 중...",
 
-    // ── 대결 수정 ─────────────────────────
-    edit_title: "방 수정",
+    // ── 레이스 수정 ─────────────────────────
+    edit_title: "레이스 수정",
+    edit_btn: "저장",
+    edit_btn_busy: "수정 중...",
     edit_detail_link: "상세",
     edit_field_title: "제목",
     edit_field_goal: "목표 km",
@@ -146,7 +148,7 @@ export const translations = {
     my_logout: "로그아웃",
     my_delete_account: "계정 삭제",
     my_delete_account_title: "계정을 삭제할까요?",
-    my_delete_account_message: "계정을 삭제하면 모든 운동 기록, 대결 데이터, 친구 목록이 영구적으로 삭제되며 복구할 수 없습니다.",
+    my_delete_account_message: "계정을 삭제하면 모든 운동 기록, 레이스 데이터, 친구 목록이 영구적으로 삭제되며 복구할 수 없습니다.",
     my_delete_account_confirm: "삭제",
     my_records_heading: "운동 기록",
     my_records_all_time: "전체 운동 기록 요약",
@@ -156,6 +158,7 @@ export const translations = {
     records_next_month: "다음 달",
     records_select_day: "운동한 날을 달력에서 선택하세요.",
     records_no_workout_day: "이 날짜에는 운동 기록이 없습니다.",
+    records_delete_current: "현재 기록 삭제하기",
 
     // ── 개인정보처리방침 ──────────────────
     privacy_title: "개인정보처리방침",
@@ -169,7 +172,7 @@ export const translations = {
     privacy_s2_title: "2. 수집 목적",
     privacy_s2_item1: "회원 식별 및 로그인",
     privacy_s2_item2: "운동 기록 저장 및 통계 제공",
-    privacy_s2_item3: "친구와의 달리기 대결 기능 제공",
+    privacy_s2_item3: "친구와의 달리기 레이스 기능 제공",
     privacy_s3_title: "3. 보유 및 이용 기간",
     privacy_s3_body: "수집한 개인정보는 회원 탈퇴 시 즉시 삭제됩니다. 앱 내 마이페이지에서 언제든지 계정을 삭제할 수 있습니다.",
     privacy_s4_title: "4. 제3자 제공",
@@ -199,6 +202,10 @@ export const translations = {
     // ── 운동 스탯 그리드 ──────────────────
     stat_time: "시간",
     stat_distance: "거리",
+    stat_total_distance: "총 거리",
+    stat_total_time: "총 시간",
+    stat_avg_pace: "평균 페이스",
+    stat_total_calories: "총 칼로리",
     stat_calories: "칼로리",
     stat_pace: "페이스",
     stat_total_days: "총 운동일",
@@ -328,6 +335,8 @@ export const translations = {
 
     // ── 대결 수정 ─────────────────────────
     edit_title: "Edit Race",
+    edit_btn: "Save changes",
+    edit_btn_busy: "Saving...",
     edit_detail_link: "Details",
     edit_field_title: "Title",
     edit_field_goal: "Goal (km)",
@@ -388,6 +397,7 @@ export const translations = {
     records_next_month: "Next month",
     records_select_day: "Select a day on the calendar.",
     records_no_workout_day: "No workout on this day.",
+    records_delete_current: "Delete this record",
 
     // ── Privacy Policy ────────────────────
     privacy_title: "Privacy Policy",
@@ -431,6 +441,10 @@ export const translations = {
     // ── 운동 스탯 그리드 ──────────────────
     stat_time: "Time",
     stat_distance: "Distance",
+    stat_total_distance: "Total distance",
+    stat_total_time: "Total time",
+    stat_avg_pace: "Avg pace",
+    stat_total_calories: "Total calories",
     stat_calories: "Calories",
     stat_pace: "Pace",
     stat_total_days: "Active days",

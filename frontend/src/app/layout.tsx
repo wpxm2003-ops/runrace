@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "RunRace",
-  description: "RunRace — 친구와 함께하는 러닝 대결",
+  description: "RunRace — 친구와 함께하는 러닝 레이스",
 };
 
 export default function RootLayout({

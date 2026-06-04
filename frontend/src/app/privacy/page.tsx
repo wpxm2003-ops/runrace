@@ -54,10 +54,10 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">{t.privacy_s7_title}</h2>
         <p className="mt-2 text-sm leading-relaxed">{t.privacy_s7_body}</p>
         <a
-          href="mailto:heimish4982@gmail.com"
+          href="mailto:wpxm2003@gmail.com"
           className="mt-1 block text-sm text-zinc-900 underline"
         >
-          heimish4982@gmail.com
+          wpxm2003@gmail.com
         </a>
       </section>
     </div>

@@ -12,9 +12,9 @@ import {
   useChallengeDetail,
   invalidateChallengeDetail,
 } from "@/lib/api";
-import { challengePhaseLabel } from "@/lib/challengePhase";
+import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
-import { challengeEditHref, challengeShareUrl, parseChallengeId } from "@/lib/challengeRoute";
+import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { formatDate } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -28,7 +28,6 @@ export default function ChallengeDetailContent() {
   const { t } = useLocale();
   const [actionError, setActionError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
 
   const params = useParams();
@@ -42,18 +41,6 @@ export default function ChallengeDetailContent() {
   } = useChallengeDetail(id, user, authLoading);
 
   const error = actionError ?? (fetchError ? String(fetchError) : null);
-
-  async function onShare() {
-    if (!id) return;
-    const url = challengeShareUrl(id);
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareMsg(t.detail_link_copied);
-    } catch {
-      setShareMsg(url);
-    }
-    setTimeout(() => setShareMsg(null), 2500);
-  }
 
   function onEditClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (!user) { e.preventDefault(); redirectToLogin(id ? challengeEditHref(id) : undefined); }
@@ -103,24 +90,17 @@ export default function ChallengeDetailContent() {
           {menuOpen ? (
             <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
               <a href={id ? challengeEditHref(id) : "#"} onClick={onEditClick} className="block px-4 py-2 text-sm hover:bg-zinc-50">{t.detail_edit}</a>
-              <button type="button" onClick={onDelete} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-zinc-50">{t.detail_delete}</button>
-              <button type="button" onClick={() => { setMenuOpen(false); onShare(); }} className="block w-full px-4 py-2 text-left text-sm hover:bg-zinc-50">{t.detail_invite}</button>
+              <button type="button" onClick={() => { setMenuOpen(false); onDelete(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-zinc-50">{t.detail_delete}</button>
             </div>
           ) : null}
         </div>
       ) : null}
-      <button type="button" onClick={onShare} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50">
-        {t.detail_share}
-      </button>
       <a className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</a>
     </>
   );
 
   return (
     <PageLayout title={t.detail_title} actions={pageActions} className={detail?.canJoin ? "pb-36" : undefined}>
-      {shareMsg ? (
-        <div className="mb-3 rounded-xl bg-emerald-50 p-2 text-sm text-emerald-800">{shareMsg}</div>
-      ) : null}
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
       {isLoading && !detail ? (
@@ -135,7 +115,10 @@ export default function ChallengeDetailContent() {
           <Card>
             <div className="flex items-center justify-between">
               <div className="text-lg font-semibold">{detail.title}</div>
-              <div className="text-xs text-zinc-600">{challengePhaseLabel(detail.startAt, detail.endAt)}</div>
+              <ChallengePhaseBadge
+                startAt={detail.startAt}
+                endAt={detail.endAt}
+              />
             </div>
             <div className="mt-2 text-sm text-zinc-600">
               목표 {detail.goalKm}km · {detail.memberCount}/{detail.maxMembers}명

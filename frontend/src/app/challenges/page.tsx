@@ -7,7 +7,7 @@ import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useChallengeList } from "@/lib/api";
 import { redirectToLogin } from "@/lib/auth";
 import { challengeDetailHref } from "@/lib/challengeRoute";
-import { challengePhaseFromApi, challengePhaseLabel } from "@/lib/challengePhase";
+import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
@@ -55,10 +55,11 @@ export default function ChallengesPage() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-medium">{c.title}</div>
-                  <div className="text-xs text-zinc-600">
-                    {challengePhaseFromApi(c.phase) ??
-                      challengePhaseLabel(c.startAt, c.endAt)}
-                  </div>
+                  <ChallengePhaseBadge
+                    startAt={c.startAt}
+                    endAt={c.endAt}
+                    apiPhase={c.phase}
+                  />
                 </div>
                 <div className="mt-1 text-sm text-zinc-600">
                   {t.races_goal_members(c.goalKm, c.memberCount)}

@@ -81,10 +81,11 @@ export default function RecordsPage() {
       setSelectedWorkoutId(null);
       return;
     }
-    if (!list.some((w) => w.id === selectedWorkoutId)) {
-      setSelectedWorkoutId(list[0].id);
-    }
-  }, [monthItems, selectedDateKey, selectedWorkoutId]);
+    setSelectedWorkoutId((current) => {
+      if (current != null && list.some((w) => w.id === current)) return current;
+      return list[0].id;
+    });
+  }, [monthItems, selectedDateKey]);
 
   if (loading || !user) {
     return (
@@ -158,9 +159,11 @@ export default function RecordsPage() {
                   hasWorkout
                     ? "font-bold text-zinc-900 hover:bg-zinc-100"
                     : "font-normal text-zinc-400"
-                } ${isSelected ? "bg-zinc-900 text-white hover:bg-zinc-800" : ""} ${
-                  isToday && !isSelected ? "ring-1 ring-zinc-300" : ""
-                } disabled:cursor-default disabled:opacity-40`}
+                } ${
+                  isSelected
+                    ? "bg-zinc-100 font-bold text-zinc-900 ring-2 ring-zinc-900 ring-offset-1"
+                    : ""
+                } ${isToday && !isSelected ? "ring-1 ring-zinc-300" : ""} disabled:cursor-default disabled:opacity-40`}
               >
                 {cell.day}
               </button>
@@ -185,7 +188,7 @@ export default function RecordsPage() {
                     onClick={() => setSelectedWorkoutId(w.id)}
                     className={`rounded-full border px-3 py-1 text-xs ${
                       selectedWorkoutId === w.id
-                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        ? "border-zinc-900 bg-zinc-100 font-semibold text-zinc-900 ring-1 ring-zinc-900"
                         : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                     }`}
                   >
@@ -195,7 +198,15 @@ export default function RecordsPage() {
               </div>
             ) : null}
             {selectedWorkoutId != null ? (
-              <WorkoutRecordPanel workoutId={selectedWorkoutId} user={user} />
+              <WorkoutRecordPanel
+                workoutId={selectedWorkoutId}
+                user={user}
+                viewYear={viewYear}
+                onDeleted={() => {
+                  setSelectedDateKey(null);
+                  setSelectedWorkoutId(null);
+                }}
+              />
             ) : null}
           </>
         )}

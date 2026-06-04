@@ -1,10 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
-import { Card } from "@/app/_components/ui/Card";
-import { fetchWorkout, type WorkoutDetail } from "@/lib/api";
+import { Skeleton } from "@/app/_components/ui/Skeleton";
+import {
+  deleteWorkout,
+  invalidateWorkoutDetail,
+  invalidateWorkoutLists,
+  useWorkoutDetail,
+} from "@/lib/api";
 import { formatDateTime, formatKm } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
@@ -13,36 +19,84 @@ import type { User } from "firebase/auth";
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-48 items-center justify-center rounded-2xl bg-zinc-100 text-sm text-zinc-500">
-      Loading map...
-    </div>
+    <div className="h-48 animate-pulse rounded-2xl bg-zinc-200 sm:h-64" aria-hidden />
   ),
 });
 
 type Props = {
   workoutId: number;
   user: User;
+  viewYear: number;
+  onDeleted?: () => void;
 };
 
-export function WorkoutRecordPanel({ workoutId, user }: Props) {
+function StatCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
+      <Skeleton className="h-3 w-12" />
+      <Skeleton className="mt-2 h-6 w-16" />
+    </div>
+  );
+}
+
+function WorkoutRecordPanelSkeleton() {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-label="Loading">
+      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="h-48 animate-pulse bg-zinc-200 sm:h-64" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+      </div>
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <Skeleton className="h-4 w-full max-w-xs" />
+        <Skeleton className="mt-2 h-4 w-full max-w-xs" />
+      </div>
+      <Skeleton className="h-11 w-full rounded-xl" />
+    </div>
+  );
+}
+
+export function WorkoutRecordPanel({
+  workoutId,
+  user,
+  viewYear,
+  onDeleted,
+}: Props) {
   const { t } = useLocale();
-  const [detail, setDetail] = useState<WorkoutDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const confirm = useConfirm();
+  const { data: detail, error, isLoading } = useWorkoutDetail(workoutId, user);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    setDetail(null);
-    setError(null);
-    fetchWorkout(workoutId, user)
-      .then(setDetail)
-      .catch((e) => setError(String(e)));
-  }, [workoutId, user]);
-
-  if (error) {
-    return <Alert>{error}</Alert>;
+  async function onDelete() {
+    const ok = await confirm({
+      title: t.workout_delete_title,
+      message: t.workout_delete_message,
+      confirmLabel: t.delete,
+      cancelLabel: t.cancel,
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteWorkout(workoutId, user);
+      invalidateWorkoutDetail(workoutId, user.uid);
+      invalidateWorkoutLists(user.uid, viewYear);
+      onDeleted?.();
+    } catch {
+      setDeleting(false);
+    }
   }
 
-  if (!detail) {
-    return <Card className="text-sm text-zinc-600">{t.loading}</Card>;
+  if (error) {
+    return <Alert>{String(error)}</Alert>;
+  }
+
+  if (isLoading || !detail) {
+    return <WorkoutRecordPanelSkeleton />;
   }
 
   const lastPosition = detail.path[detail.path.length - 1] ?? null;
@@ -82,7 +136,7 @@ export function WorkoutRecordPanel({ workoutId, user }: Props) {
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white p-4 text-sm text-zinc-600 shadow-sm">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
         <div>
           {t.workout_start_label} {formatDateTime(detail.startedAt)}
         </div>
@@ -90,6 +144,15 @@ export function WorkoutRecordPanel({ workoutId, user }: Props) {
           {t.workout_end_label} {formatDateTime(detail.endedAt)}
         </div>
       </div>
+
+      <button
+        type="button"
+        disabled={deleting}
+        onClick={onDelete}
+        className="h-11 w-full rounded-xl border border-red-200 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+      >
+        {deleting ? t.workout_deleting_btn : t.records_delete_current}
+      </button>
     </div>
   );
 }

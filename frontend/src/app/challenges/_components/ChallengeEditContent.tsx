@@ -65,14 +65,7 @@ export default function ChallengeEditContent() {
   }
 
   return (
-    <PageLayout
-      title={t.edit_title}
-      actions={
-        <a className="text-sm text-zinc-600 hover:underline" href={id ? challengeDetailHref(id) : "/challenges"}>
-          {t.edit_detail_link}
-        </a>
-      }
-    >
+    <PageLayout title={t.edit_title}>
       {error ? <Alert className="mb-4">{error}</Alert> : null}
       <Card>
         <label className="block text-sm font-medium">{t.edit_field_title}</label>
@@ -97,7 +90,7 @@ export default function ChallengeEditContent() {
 
         <button type="button" disabled={submitting} onClick={onSubmit}
           className="mt-6 h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300">
-          {submitting ? t.saving : t.save}
+          {submitting ? t.edit_btn_busy : t.edit_btn}
         </button>
       </Card>
     </PageLayout>
