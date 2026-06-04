@@ -82,6 +82,7 @@ export default function CreateChallengePage() {
         formError={error}
         formHint={form.formHint}
         formSuccess={form.formSuccess}
+        submitNotice={t.create_solo_notice}
         submitLabel={t.create_btn}
         submitBusyLabel={t.create_btn_busy}
         submitting={submitting}

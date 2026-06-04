@@ -27,6 +27,8 @@ type Props = {
   formError?: string | null;
   formHint?: string | null;
   formSuccess?: string | null;
+  /** 저장 버튼 바로 위 안내 (등록 화면 등) */
+  submitNotice?: string;
   submitLabel: string;
   submitBusyLabel: string;
   submitting: boolean;
@@ -43,6 +45,7 @@ export function ChallengeFormFields({
   formError,
   formHint,
   formSuccess,
+  submitNotice,
   submitLabel,
   submitBusyLabel,
   submitting,
@@ -131,11 +134,15 @@ export function ChallengeFormFields({
           </div>
         </div>
 
+        {submitNotice ? (
+          <p className="mt-6 text-xs leading-relaxed text-black">{submitNotice}</p>
+        ) : null}
+
         <button
           type="button"
           disabled={disabled || submitting || !!formSuccess}
           onClick={onSubmit}
-          className="mt-6 h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
+          className={`${submitNotice ? "mt-2" : "mt-6"} h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300`}
         >
           {submitting ? submitBusyLabel : submitLabel}
         </button>

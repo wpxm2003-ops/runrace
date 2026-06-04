@@ -70,7 +70,8 @@ export const translations = {
     create_title: "레이스 등록",
     create_list_link: "목록으로",
     create_limit_warning: (maxActive: number, activeCount: number) =>
-      `종료되지 않은 레이스는 최대 ${maxActive}개까지 만들 수 있습니다. (현재 ${activeCount}개)`,
+      `진행중인 레이스는 최대 ${maxActive}개까지 만들 수 있습니다. (현재 ${activeCount}개)`,
+    create_solo_notice: "혼자 진행하는 레이스는 고지없이 종료될 수 있습니다.",
     create_field_title: "제목",
     create_field_title_placeholder: "예: 6월 러닝 레이스",
     create_field_goal: "목표 km",
@@ -347,6 +348,7 @@ export const translations = {
     create_list_link: "All Races",
     create_limit_warning: (maxActive: number, activeCount: number) =>
       `You can have up to ${maxActive} active races. (${activeCount} active)`,
+    create_solo_notice: "Solo races may be ended without notice.",
     create_field_title: "Title",
     create_field_title_placeholder: "e.g. June Running Race",
     create_field_goal: "Goal (km)",
