@@ -13,6 +13,7 @@ import {
 } from "@/lib/challengeForm";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { nativeNavigate } from "@/lib/nativeNav";
 import { useMemo, useState } from "react";
 
 export default function CreateChallengePage() {
@@ -48,7 +49,7 @@ export default function CreateChallengePage() {
         { title: title.trim(), goalKm: parseInt(goalKm, 10), maxMembers: parseInt(maxMembers, 10), startDate, endDate },
         user,
       );
-      window.location.href = "/challenges";
+      nativeNavigate("/challenges");
     } catch (e) {
       setFormError(String(e));
     } finally {

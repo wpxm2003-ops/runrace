@@ -9,6 +9,7 @@ import { clampMaxMembers, sanitizeDigits } from "@/lib/challengeForm";
 import { toDateInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { nativeNavigate } from "@/lib/nativeNav";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -32,7 +33,7 @@ export default function ChallengeEditContent() {
     if (!user) return;
     fetchChallengeDetail(id, user)
       .then((d) => {
-        if (!d.showManage) { window.location.href = challengeDetailHref(id); return; }
+        if (!d.showManage) { nativeNavigate(challengeDetailHref(id)); return; }
         setTitle(d.title);
         setGoalKm(String(d.goalKm));
         setMaxMembers(String(d.maxMembers));
@@ -55,7 +56,7 @@ export default function ChallengeEditContent() {
       if (!max || max < memberCount || max > 50) throw new Error(t.edit_err_members(memberCount));
       if (endDate < startDate) throw new Error(t.edit_err_date);
       await updateChallenge(id, { title: title.trim(), goalKm: goal, maxMembers: max, startDate, endDate }, user);
-      window.location.href = challengeDetailHref(id);
+      nativeNavigate(challengeDetailHref(id));
     } catch (e) {
       setError(String(e));
     } finally {

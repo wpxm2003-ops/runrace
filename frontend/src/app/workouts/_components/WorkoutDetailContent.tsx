@@ -11,6 +11,7 @@ import { parseWorkoutId } from "@/lib/workoutRoute";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { nativeNavigate } from "@/lib/nativeNav";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -54,7 +55,7 @@ export default function WorkoutDetailContent() {
     setError(null);
     try {
       await deleteWorkout(id, user);
-      window.location.href = "/my";
+      nativeNavigate("/my");
     } catch (e) {
       setError(String(e));
       setDeleting(false);

@@ -17,6 +17,7 @@ import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, challengeShareUrl, parseChallengeId } from "@/lib/challengeRoute";
 import { formatDate } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -65,7 +66,7 @@ export default function ChallengeDetailContent() {
     setActionError(null);
     try {
       await deleteChallenge(id, user, `/challenges/${id}`);
-      window.location.href = "/challenges";
+      nativeNavigate("/challenges");
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     }
