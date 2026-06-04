@@ -121,6 +121,11 @@ export const translations = {
     detail_leaving: "취소 중...",
     detail_leave_title: "참여 취소",
     detail_leave_message: "이 레이스 참여를 취소할까요?",
+    detail_member_workouts_heading: "참여자 운동 기록",
+    detail_member_workouts_members_only: "레이스 참여 인원만 운동 기록을 볼 수 있습니다.",
+    detail_member_workouts_empty: "아직 레이스에 반영된 운동 기록이 없습니다.",
+    detail_member_workouts_applied: (km: string) => `레이스 반영 ${km}km`,
+    challenge_workout_back: "레이스 상세",
 
     // ── 레이스 수정 ─────────────────────────
     edit_title: "레이스 수정",
@@ -390,6 +395,11 @@ export const translations = {
     detail_leaving: "Leaving...",
     detail_leave_title: "Leave race",
     detail_leave_message: "Cancel your participation in this race?",
+    detail_member_workouts_heading: "Member workouts",
+    detail_member_workouts_members_only: "Only race participants can view workout records.",
+    detail_member_workouts_empty: "No workouts linked to this race yet.",
+    detail_member_workouts_applied: (km: string) => `Applied ${km} km`,
+    challenge_workout_back: "Race details",
 
     // ── 대결 수정 ─────────────────────────
     edit_title: "Edit Race",

@@ -9,6 +9,7 @@ import {
   fetchChallengeDetail,
   fetchActiveCount,
   fetchMyChallenges,
+  fetchChallengeWorkouts,
 } from "./challenges";
 import { fetchFriends } from "./friends";
 import { fetchWorkout, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
@@ -55,6 +56,20 @@ export function useChallengeDetail(id: number | null, user?: User | null, authLo
 /** 대결 상세를 SWR 캐시에서 무효화한다 (참여/수정/삭제 후 갱신용). */
 export function invalidateChallengeDetail(id: number, userId?: string | null) {
   void globalMutate(["challenge", id, userId ?? null]);
+}
+
+export function useChallengeWorkouts(
+  challengeId: number | null,
+  user: User | null,
+  enabled: boolean,
+) {
+  return useSWR(
+    enabled && challengeId != null && user
+      ? (["challenge", challengeId, "workouts", user.uid] as const)
+      : null,
+    () => fetchChallengeWorkouts(challengeId!, user!),
+    BASE_CONFIG,
+  );
 }
 
 // ── 활성 방 개수 ─────────────────────────────────────────────────────────────

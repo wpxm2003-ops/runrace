@@ -2,8 +2,11 @@ package com.runrace.backend.challenge;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.workout.WorkoutSession;
+import com.runrace.backend.workout.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -32,6 +35,8 @@ public class ChallengeService {
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
+  private final ChallengeWorkoutRepository challengeWorkoutRepository;
+  private final WorkoutSessionRepository workoutSessionRepository;
   private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
@@ -207,7 +212,7 @@ public class ChallengeService {
    * - 목표 달성 시 완주 처리 및 승자 확정까지 함께 수행한다.
    */
   @Transactional
-  public void applyWorkoutDistance(UUID userId, int distanceM) {
+  public void applyWorkoutDistance(UUID userId, long workoutSessionId, int distanceM) {
     if (distanceM <= 0) return;
     BigDecimal distanceKm = BigDecimal.valueOf(distanceM)
         .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
@@ -220,7 +225,65 @@ public class ChallengeService {
       member.setLastSyncAt(now);
       onMemberProgress(member, next);
       challengeMemberRepository.save(member);
+      recordWorkoutLink(member.getChallenge(), workoutSessionId, userId, distanceM, now);
     }
+  }
+
+  private void recordWorkoutLink(
+      Challenge challenge, long workoutSessionId, UUID userId, int appliedDistanceM, OffsetDateTime now) {
+    Long challengeId = challenge.getId();
+    if (challengeWorkoutRepository.existsByChallengeIdAndWorkoutSessionId(challengeId, workoutSessionId)) {
+      return;
+    }
+    ChallengeWorkout link = new ChallengeWorkout();
+    link.setChallenge(challenge);
+    link.setWorkoutSession(workoutSessionRepository.getReferenceById(workoutSessionId));
+    link.setUser(appUserRepository.getReferenceById(userId));
+    link.setAppliedDistanceM(appliedDistanceM);
+    link.setCreatedAt(now);
+    challengeWorkoutRepository.save(link);
+  }
+
+  @Transactional(readOnly = true)
+  public List<ChallengeWorkoutListItem> listWorkoutsForMembers(AuthPrincipal principal, Long challengeId) {
+    Challenge challenge = requireChallenge(challengeId);
+    ensureMemberOnly(principal.userId(), challenge);
+    return challengeWorkoutRepository.findAllForChallengeOrderByStartedDesc(challengeId).stream()
+        .map(this::toChallengeWorkoutListItem)
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public WorkoutSession getLinkedWorkoutForMember(
+      AuthPrincipal principal, Long challengeId, Long workoutSessionId) {
+    Challenge challenge = requireChallenge(challengeId);
+    ensureMemberOnly(principal.userId(), challenge);
+    challengeWorkoutRepository
+        .findByChallengeIdAndWorkoutSessionId(challengeId, workoutSessionId)
+        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    return workoutSessionRepository
+        .findById(workoutSessionId)
+        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+  }
+
+  private void ensureMemberOnly(UUID userId, Challenge challenge) {
+    if (challengeMemberRepository.findByChallengeIdAndUserId(challenge.getId(), userId).isEmpty()) {
+      throw ApiException.forbidden("forbidden");
+    }
+  }
+
+  private ChallengeWorkoutListItem toChallengeWorkoutListItem(ChallengeWorkout link) {
+    WorkoutSession session = link.getWorkoutSession();
+    AppUser user = session.getUser();
+    return new ChallengeWorkoutListItem(
+        session.getId(),
+        user.getId(),
+        user.getNickname(),
+        session.getStartedAt().toString(),
+        session.getEndedAt().toString(),
+        session.getDurationSec(),
+        session.getDistanceM(),
+        link.getAppliedDistanceM());
   }
 
   /**

@@ -59,7 +59,7 @@ public class WorkoutService {
     WorkoutSession saved = workoutSessionRepository.save(session);
 
     // 현재 참여 중인 진행 대결에 운동 거리 반영
-    challengeService.applyWorkoutDistance(principal.userId(), distanceM);
+    challengeService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
 
     return saved;
   }

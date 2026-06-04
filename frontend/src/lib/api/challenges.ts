@@ -5,7 +5,9 @@ import type {
   ChallengeDetail,
   ChallengeFormBody,
   ChallengeListItem,
+  ChallengeWorkoutListItem,
   CreatedId,
+  WorkoutDetail,
 } from "./types";
 
 /** 대결 목록(공개 — 비로그인도 조회 가능, 로그인 시 isOwner 채워짐). */
@@ -46,4 +48,14 @@ export function joinChallenge(id: number, user: User, returnTo?: string) {
 
 export function leaveChallenge(id: number, user: User, returnTo?: string) {
   return apiFetch<void>(`/api/challenges/${id}/leave`, { method: "POST", user, returnTo });
+}
+
+/** 레이스 참여자만 — 레이스에 반영된 운동 목록 */
+export function fetchChallengeWorkouts(challengeId: number, user: User) {
+  return apiFetch<ChallengeWorkoutListItem[]>(`/api/challenges/${challengeId}/workouts`, { user });
+}
+
+/** 레이스 맥락 운동 상세 (참여자만) */
+export function fetchChallengeWorkout(challengeId: number, workoutId: number, user: User) {
+  return apiFetch<WorkoutDetail>(`/api/challenges/${challengeId}/workouts/${workoutId}`, { user });
 }

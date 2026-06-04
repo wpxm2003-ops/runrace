@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import WorkoutDetailContent from "../_components/WorkoutDetailContent";
 import { workoutStaticParamIds } from "@/lib/workoutRoute";
 
@@ -6,5 +7,9 @@ export function generateStaticParams() {
 }
 
 export default function WorkoutDetailPage() {
-  return <WorkoutDetailContent />;
+  return (
+    <Suspense fallback={null}>
+      <WorkoutDetailContent />
+    </Suspense>
+  );
 }

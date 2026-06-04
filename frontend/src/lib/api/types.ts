@@ -52,6 +52,17 @@ export type ChallengeDetail = {
   members: ChallengeMember[];
 };
 
+export type ChallengeWorkoutListItem = {
+  workoutId: number;
+  userId: string;
+  nickname: string | null;
+  startedAt: string;
+  endedAt: string;
+  durationSec: number;
+  distanceM: number;
+  appliedDistanceM: number;
+};
+
 export type ActiveCount = { activeCount: number; maxActive: number };
 
 export type ChallengeFormBody = {

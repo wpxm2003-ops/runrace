@@ -15,6 +15,7 @@ import {
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
+import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
 import { formatDate } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -180,6 +181,14 @@ export default function ChallengeDetailContent() {
                 {t.detail_winner_message(detail.winner.nickname ?? t.no_name)}
               </div>
             </div>
+          ) : null}
+
+          {id != null ? (
+            <ChallengeMemberWorkouts
+              challengeId={id}
+              isMember={detail.isMember}
+              user={user}
+            />
           ) : null}
 
           {detail.canJoin || detail.canLeave ? (

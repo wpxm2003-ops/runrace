@@ -5,14 +5,15 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { deleteWorkout, fetchWorkout, type WorkoutDetail } from "@/lib/api";
+import { deleteWorkout, fetchChallengeWorkout, fetchWorkout, type WorkoutDetail } from "@/lib/api";
+import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
 import { formatDateTime, formatKm } from "@/lib/format";
 import { parseWorkoutId } from "@/lib/workoutRoute";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
@@ -32,18 +33,35 @@ export default function WorkoutDetailContent() {
   const [deleting, setDeleting] = useState(false);
 
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = useMemo(() => parseWorkoutId(String(params?.id ?? "")), [params?.id]);
-  const { user } = useRequireAuth(id ? `/workouts/${id}` : undefined);
+  const challengeId = useMemo(
+    () => parseChallengeIdFromQuery(searchParams.get("challenge")),
+    [searchParams],
+  );
+  const fromChallenge = challengeId != null;
+  const returnPath =
+    id != null
+      ? fromChallenge
+        ? `/workouts/${id}?challenge=${challengeId}`
+        : `/workouts/${id}`
+      : undefined;
+  const { user } = useRequireAuth(returnPath);
 
   useEffect(() => {
     if (!id || !user) return;
-    fetchWorkout(id, user).then(setDetail).catch((e) => setError(String(e)));
-  }, [id, user]);
+    setDetail(null);
+    setError(null);
+    const load = fromChallenge
+      ? fetchChallengeWorkout(challengeId!, id, user)
+      : fetchWorkout(id, user);
+    load.then(setDetail).catch((e) => setError(String(e)));
+  }, [id, user, challengeId, fromChallenge]);
 
   const lastPosition = detail?.path[detail.path.length - 1] ?? null;
 
   async function onDelete() {
-    if (!user || !id) return;
+    if (!user || !id || fromChallenge) return;
     const ok = await confirm({
       title: t.workout_delete_title,
       message: t.workout_delete_message,
@@ -55,23 +73,33 @@ export default function WorkoutDetailContent() {
     setError(null);
     try {
       await deleteWorkout(id, user);
-      nativeNavigate("/my");
+      nativeNavigate("/records");
     } catch (e) {
       setError(String(e));
       setDeleting(false);
     }
   }
 
-  return (
-    <PageLayout
-      title={t.workout_detail_title}
-      actions={
-        <button type="button" disabled={deleting || !detail} onClick={onDelete}
-          className="text-sm text-red-600 hover:text-red-800 hover:underline disabled:opacity-50">
-          {deleting ? t.workout_deleting_btn : t.workout_delete_btn}
-        </button>
-      }
+  const pageActions = fromChallenge ? (
+    <a
+      className="text-sm text-zinc-600 hover:underline"
+      href={challengeDetailHref(challengeId!)}
     >
+      {t.challenge_workout_back}
+    </a>
+  ) : (
+    <button
+      type="button"
+      disabled={deleting || !detail}
+      onClick={onDelete}
+      className="text-sm text-red-600 hover:text-red-800 hover:underline disabled:opacity-50"
+    >
+      {deleting ? t.workout_deleting_btn : t.workout_delete_btn}
+    </button>
+  );
+
+  return (
+    <PageLayout title={t.workout_detail_title} actions={pageActions}>
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
       {!detail ? (
@@ -87,15 +115,21 @@ export default function WorkoutDetailContent() {
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-xs text-zinc-500">{t.stat_time}</div>
-              <div className="mt-1 text-xl font-semibold tabular-nums">{formatDuration(detail.durationSec)}</div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">
+                {formatDuration(detail.durationSec)}
+              </div>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-xs text-zinc-500">{t.stat_distance}</div>
-              <div className="mt-1 text-xl font-semibold tabular-nums">{formatKm(detail.distanceM)}</div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">
+                {formatKm(detail.distanceM)}
+              </div>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-xs text-zinc-500">{t.stat_pace}</div>
-              <div className="mt-1 text-xl font-semibold tabular-nums">{formatPaceMinPerKm(detail.distanceM, detail.durationSec)}</div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">
+                {formatPaceMinPerKm(detail.distanceM, detail.durationSec)}
+              </div>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-xs text-zinc-500">{t.stat_calories}</div>
@@ -104,8 +138,12 @@ export default function WorkoutDetailContent() {
           </div>
 
           <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-zinc-600 shadow-sm">
-            <div>{t.workout_start_label} {formatDateTime(detail.startedAt)}</div>
-            <div className="mt-1">{t.workout_end_label} {formatDateTime(detail.endedAt)}</div>
+            <div>
+              {t.workout_start_label} {formatDateTime(detail.startedAt)}
+            </div>
+            <div className="mt-1">
+              {t.workout_end_label} {formatDateTime(detail.endedAt)}
+            </div>
           </div>
         </>
       )}
