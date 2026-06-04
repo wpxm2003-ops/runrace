@@ -82,21 +82,82 @@ sudo nginx -t && sudo systemctl enable --now nginx
 
 페이지 이동 403 시: `try_files`에서 `$uri.html`을 `$uri/`보다 먼저 (`infra/nginx/runrace.conf` 참고).
 
-### 4) 백엔드 CORS
 
-`runrace` systemd에 프론트 origin 추가 후 재시작:
+## Android APK 빌드 (Capacitor)
 
-```ini
-Environment=RUNRACE_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://<EC2_퍼블릭_IP>
+### 1) 준비
+
+- [Android Studio](https://developer.android.com/studio) 설치 (SDK 자동 설치됨)
+- `frontend/android/local.properties` 파일 생성:
+
+```
+sdk.dir=C\:\\Users\\<사용자명>\\AppData\\Local\\Android\\Sdk
+```
+
+### 2) 빌드
+
+```bash
+cd frontend
+npm run build
+npx cap copy android
+npx cap sync android
+```
+
+```powershell
+cd frontend\android
+.\gradlew assembleDebug
+```
+
+APK 위치: `frontend/android/app/build/outputs/apk/debug/app-debug.apk`
+
+### 3) 설치
+
+USB 연결 또는 파일 전송 후:
+
+```powershell
+# adb로 직접 설치
+adb install app\build\outputs\apk\debug\app-debug.apk
+```
+
+---
+
+## 백엔드 EC2 배포 (Git)
+
+EC2에 이미 `~/runrace` 레포가 클론되어 있다는 전제입니다.
+
+### 로컬에서 푸시
+
+```bash
+git add .
+git commit -m "..."
+git push origin main
+```
+
+### EC2에서 풀 & 빌드 & 재시작
+
+```bash
+ssh -i "C:\Users\wpxm2\Downloads\runrace_ec2_key_pair.pem" ec2-user@<IP>
 ```
 
 ```bash
-cd ~/runrace/backend && ./mvnw -q -DskipTests package
+cd ~/runrace
+git pull origin main
+
+cd backend
+./mvnw -q -DskipTests package
+
 sudo systemctl restart runrace
+sudo journalctl -u runrace -f   # 로그 실시간 확인 (Ctrl+C로 종료)
 ```
 
-`infra/systemd/runrace.service.example` 참고.
+### 확인
 
-## 운동하기 GPS (HTTPS)
+```bash
+# 백엔드 정상 기동 확인 (Started BackendApplication 나오면 OK)
+sudo journalctl -u runrace -n 30 --no-pager
 
-브라우저 Geolocation은 **HTTPS** 또는 **localhost** 에서만 동작합니다. `http://<EC2_IP>` 로 접속하면 지도에 GPS 오류가 납니다. 운영 시 도메인 + Let's Encrypt(SSL) 적용이 필요합니다.
+# API 응답 확인
+curl http://localhost:8081/actuator/health
+```
+
+---
