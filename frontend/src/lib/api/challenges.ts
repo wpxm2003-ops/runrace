@@ -43,3 +43,7 @@ export function deleteChallenge(id: number, user: User, returnTo?: string) {
 export function joinChallenge(id: number, user: User, returnTo?: string) {
   return apiFetch<void>(`/api/challenges/${id}/join`, { method: "POST", user, returnTo });
 }
+
+export function leaveChallenge(id: number, user: User, returnTo?: string) {
+  return apiFetch<void>(`/api/challenges/${id}/leave`, { method: "POST", user, returnTo });
+}

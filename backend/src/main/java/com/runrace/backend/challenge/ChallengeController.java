@@ -84,6 +84,12 @@ public class ChallengeController {
     return ResponseEntity.noContent().build();
   }
 
+  @PostMapping("/{id:" + ID_PATH + "}/leave")
+  public ResponseEntity<Void> leave(AuthPrincipal principal, @PathVariable("id") Long id) {
+    challengeService.leaveRoom(principal, id);
+    return ResponseEntity.noContent().build();
+  }
+
   @GetMapping
   public ResponseEntity<List<ChallengeListItem>> list(Optional<AuthPrincipal> principal) {
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
@@ -162,6 +168,11 @@ public class ChallengeController {
             && !detail.hasStarted()
             && !detail.hasEnded()
             && detail.memberCount() < challenge.getMaxMembers();
+    boolean canLeave =
+        detail.isMember()
+            && !detail.isOwner()
+            && !detail.hasStarted()
+            && !detail.hasEnded();
 
     return new ChallengeDetailResponse(
         challenge.getId(),
@@ -178,6 +189,7 @@ public class ChallengeController {
         detail.hasEnded(),
         showManage,
         canJoin,
+        canLeave,
         detail.memberCount(),
         winner,
         rows);

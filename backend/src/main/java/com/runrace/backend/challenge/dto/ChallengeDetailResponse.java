@@ -18,6 +18,7 @@ public record ChallengeDetailResponse(
     boolean hasEnded,
     boolean showManage,
     boolean canJoin,
+    boolean canLeave,
     int memberCount,
     WinnerRow winner,
     List<MemberRow> members) {}

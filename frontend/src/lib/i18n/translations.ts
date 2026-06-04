@@ -117,6 +117,10 @@ export const translations = {
     detail_winner_message: (name: string) => `${name}님, 축하합니다!`,
     detail_join: "참여하기",
     detail_joining: "참여 중...",
+    detail_leave: "참여 취소",
+    detail_leaving: "취소 중...",
+    detail_leave_title: "참여 취소",
+    detail_leave_message: "이 레이스 참여를 취소할까요?",
 
     // ── 레이스 수정 ─────────────────────────
     edit_title: "레이스 수정",
@@ -253,7 +257,7 @@ export const translations = {
     ],
     celebration_saving: "기록 저장 중...",
     celebration_confirm: "확인",
-    celebration_auto: (sec: number) => `${sec}초 후 마이페이지로 이동합니다`,
+    celebration_auto: (sec: number) => `${sec}초 후 기록 탭으로 이동합니다`,
     celebration_calories: (kcal: number) => `${kcal} kcal 소모 (추정)`,
 
     // ── 운동 상세 ─────────────────────────
@@ -382,6 +386,10 @@ export const translations = {
     detail_winner_message: (name: string) => `🏆 ${name} wins!`,
     detail_join: "Join Race",
     detail_joining: "Joining...",
+    detail_leave: "Leave race",
+    detail_leaving: "Leaving...",
+    detail_leave_title: "Leave race",
+    detail_leave_message: "Cancel your participation in this race?",
 
     // ── 대결 수정 ─────────────────────────
     edit_title: "Edit Race",
@@ -518,7 +526,7 @@ export const translations = {
     ],
     celebration_saving: "Saving your record...",
     celebration_confirm: "View Record",
-    celebration_auto: (sec: number) => `Going to your profile in ${sec}s`,
+    celebration_auto: (sec: number) => `Going to Records in ${sec}s`,
     celebration_calories: (kcal: number) => `~${kcal} kcal burned`,
 
     // ── 운동 상세 ─────────────────────────

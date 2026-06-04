@@ -46,6 +46,7 @@ export type ChallengeDetail = {
   hasEnded: boolean;
   showManage: boolean;
   canJoin: boolean;
+  canLeave: boolean;
   memberCount: number;
   winner: ChallengeWinner | null;
   members: ChallengeMember[];

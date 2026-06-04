@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 import { WorkoutRecordPanel } from "@/app/_components/WorkoutRecordPanel";
@@ -33,6 +33,7 @@ export default function RecordsPage() {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
+  const detailSectionRef = useRef<HTMLElement>(null);
 
   const { data: yearRecords = [], isLoading, error } = useWorkoutListByYear(
     user,
@@ -86,6 +87,16 @@ export default function RecordsPage() {
       return list[0].id;
     });
   }, [monthItems, selectedDateKey]);
+
+  useEffect(() => {
+    if (!selectedDateKey || selectedWorkoutId == null) return;
+    const el = detailSectionRef.current;
+    if (!el) return;
+    const id = window.requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [selectedDateKey, selectedWorkoutId]);
 
   if (loading || !user) {
     return (
@@ -172,7 +183,7 @@ export default function RecordsPage() {
         </div>
       </Card>
 
-      <section className="mt-4">
+      <section ref={detailSectionRef} className="mt-4 scroll-mt-4">
         {!selectedDateKey ? (
           <p className="text-center text-sm text-zinc-500">{t.records_select_day}</p>
         ) : dayWorkouts.length === 0 ? (
@@ -180,19 +191,23 @@ export default function RecordsPage() {
         ) : (
           <>
             {dayWorkouts.length > 1 ? (
-              <div className="mb-3 flex flex-wrap gap-2">
+              <div
+                className={`mb-3 grid w-full gap-2 ${
+                  dayWorkouts.length === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
+                }`}
+              >
                 {dayWorkouts.map((w) => (
                   <button
                     key={w.id}
                     type="button"
                     onClick={() => setSelectedWorkoutId(w.id)}
-                    className={`rounded-full border px-3 py-1 text-xs ${
+                    className={`min-w-0 rounded-xl border px-2 py-2 text-center text-xs tabular-nums ${
                       selectedWorkoutId === w.id
                         ? "border-zinc-900 bg-zinc-100 font-semibold text-zinc-900 ring-1 ring-zinc-900"
                         : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                     }`}
                   >
-                    {formatShortDateTime(w.startedAt)}
+                    <span className="block truncate">{formatShortDateTime(w.startedAt)}</span>
                   </button>
                 ))}
               </div>

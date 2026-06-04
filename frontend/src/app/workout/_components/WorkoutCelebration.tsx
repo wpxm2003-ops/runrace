@@ -35,11 +35,11 @@ export function WorkoutCelebration({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const goMyPage = () => {
+  const goRecords = () => {
     if (navigatedRef.current) return;
     navigatedRef.current = true;
     onConfirm();
-    nativeNavigate("/my");
+    nativeNavigate("/records");
   };
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export function WorkoutCelebration({
       setRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          goMyPage();
+          goRecords();
           return 0;
         }
         return prev - 1;
@@ -110,7 +110,7 @@ export function WorkoutCelebration({
           <p className="mt-4 text-sm text-zinc-600">{t.celebration_saving}</p>
         ) : (
           <>
-            <button type="button" onClick={goMyPage}
+            <button type="button" onClick={goRecords}
               className="mt-5 h-12 w-full rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800">
               {t.celebration_confirm}
             </button>

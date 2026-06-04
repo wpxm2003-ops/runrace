@@ -111,6 +111,24 @@ public class ChallengeService {
     challengeMemberRepository.save(newMember(challenge, me));
   }
 
+  @Transactional
+  public void leaveRoom(AuthPrincipal principal, Long id) {
+    Challenge challenge =
+        challengeRepository.findById(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    ensureNotStarted(challenge);
+    if (isEnded(challenge, OffsetDateTime.now())) {
+      throw ApiException.conflict("ended");
+    }
+    if (challenge.getCreator().getId().equals(principal.userId())) {
+      throw ApiException.badRequest("owner_cannot_leave");
+    }
+    ChallengeMember member =
+        challengeMemberRepository
+            .findByChallengeIdAndUserId(id, principal.userId())
+            .orElseThrow(() -> ApiException.notFound("not_member"));
+    challengeMemberRepository.delete(member);
+  }
+
   @Transactional(readOnly = true)
   public List<Challenge> listAll() {
     OffsetDateTime now = OffsetDateTime.now();

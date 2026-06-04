@@ -9,8 +9,8 @@ import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
   deleteChallenge,
   joinChallenge,
+  leaveChallenge,
   useChallengeDetail,
-  invalidateChallengeDetail,
 } from "@/lib/api";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
@@ -29,6 +29,7 @@ export default function ChallengeDetailContent() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const params = useParams();
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
@@ -65,13 +66,33 @@ export default function ChallengeDetailContent() {
     setActionError(null);
     try {
       await joinChallenge(id, user, `/challenges/${id}`);
-      // SWR 캐시 무효화 → 최신 멤버 목록 자동 갱신
       await mutate();
-      invalidateChallengeDetail(id, user.uid);
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     } finally {
       setJoining(false);
+    }
+  }
+
+  async function onLeave() {
+    if (!user || !id || !detail) { redirectToLogin(`/challenges/${id}`); return; }
+    const ok = await confirm({
+      title: t.detail_leave_title,
+      message: t.detail_leave_message,
+      confirmLabel: t.detail_leave,
+      cancelLabel: t.cancel,
+      destructive: true,
+    });
+    if (!ok) return;
+    setLeaving(true);
+    setActionError(null);
+    try {
+      await leaveChallenge(id, user, `/challenges/${id}`);
+      await mutate();
+    } catch (e) {
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
+    } finally {
+      setLeaving(false);
     }
   }
 
@@ -100,7 +121,11 @@ export default function ChallengeDetailContent() {
   );
 
   return (
-    <PageLayout title={t.detail_title} actions={pageActions} className={detail?.canJoin ? "pb-36" : undefined}>
+    <PageLayout
+      title={t.detail_title}
+      actions={pageActions}
+      className={detail?.canJoin || detail?.canLeave ? "pb-36" : undefined}
+    >
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
       {isLoading && !detail ? (
@@ -157,14 +182,31 @@ export default function ChallengeDetailContent() {
             </div>
           ) : null}
 
-          {detail.canJoin ? (
-            <div className="fixed left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 px-6 pb-3 pt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur"
-              style={{ bottom: FIXED_ACTION_BOTTOM }}>
+          {detail.canJoin || detail.canLeave ? (
+            <div
+              className="fixed left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 px-6 pb-3 pt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur"
+              style={{ bottom: FIXED_ACTION_BOTTOM }}
+            >
               <div className="mx-auto max-w-2xl">
-                <button type="button" disabled={joining} onClick={onJoin}
-                  className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300">
-                  {joining ? t.detail_joining : t.detail_join}
-                </button>
+                {detail.canJoin ? (
+                  <button
+                    type="button"
+                    disabled={joining}
+                    onClick={onJoin}
+                    className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
+                  >
+                    {joining ? t.detail_joining : t.detail_join}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={leaving}
+                    onClick={onLeave}
+                    className="h-12 w-full rounded-xl border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    {leaving ? t.detail_leaving : t.detail_leave}
+                  </button>
+                )}
               </div>
             </div>
           ) : null}
