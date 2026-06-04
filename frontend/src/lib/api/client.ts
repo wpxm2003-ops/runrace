@@ -16,7 +16,7 @@ function resolveApiBaseUrl(): string {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
-function apiUrl(path: string): string {
+export function apiUrl(path: string): string {
   if (!path.startsWith("/")) {
     return `${API_BASE_URL}/${path}`;
   }

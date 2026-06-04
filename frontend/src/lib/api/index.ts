@@ -4,6 +4,7 @@ export * from "./client";
 export * from "./types";
 export * from "./analytics";
 export * from "./auth";
+export * from "./errors";
 export * from "./challenges";
 export * from "./friends";
 export * from "./fitness";

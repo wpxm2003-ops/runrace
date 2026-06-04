@@ -49,7 +49,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
     try {
-      if (isPublicChallengeRead(request)) {
+      if (isOptionalAuthEndpoint(request)) {
         authenticateOptionally(request);
         filterChain.doFilter(request, response);
         return;
@@ -118,12 +118,23 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     return token.isEmpty() ? Optional.empty() : Optional.of(token);
   }
 
+  /** 토큰이 있으면 인증하되 없어도 통과시키는 엔드포인트. */
+  private boolean isOptionalAuthEndpoint(HttpServletRequest request) {
+    return isPublicChallengeRead(request) || isClientErrorReport(request);
+  }
+
   private boolean isPublicChallengeRead(HttpServletRequest request) {
     if (!"GET".equalsIgnoreCase(request.getMethod())) {
       return false;
     }
     String path = request.getRequestURI();
     return "/api/challenges".equals(path) || CHALLENGE_DETAIL.matcher(path).matches();
+  }
+
+  /** 프론트 에러 보고는 비로그인 상태에서도 보낼 수 있어야 한다. */
+  private boolean isClientErrorReport(HttpServletRequest request) {
+    return "POST".equalsIgnoreCase(request.getMethod())
+        && "/api/client-errors".equals(request.getRequestURI());
   }
 
   private void unauthorized(HttpServletResponse response, String code) throws IOException {
