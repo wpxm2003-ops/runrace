@@ -40,8 +40,9 @@ export async function publicPost<T>(path: string, body: unknown): Promise<T> {
   return text.trim() ? (JSON.parse(text) as T) : (undefined as T);
 }
 
-async function authHeaders(user: User) {
-  const idToken = await user.getIdToken(true);
+/** forceRefresh=true일 때만 securetoken.googleapis.com 갱신 요청 */
+async function authHeaders(user: User, forceRefresh = false) {
+  const idToken = await user.getIdToken(forceRefresh);
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${idToken}`,
@@ -109,7 +110,7 @@ export async function apiFetch<T>(
   let res = await fetch(url, { method, headers, body, cache: "no-store" });
 
   if (res.status === 401) {
-    headers = await authHeaders(opts.user);
+    headers = await authHeaders(opts.user, true);
     res = await fetch(url, { method, headers, body, cache: "no-store" });
   }
 
