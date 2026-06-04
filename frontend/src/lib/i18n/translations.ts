@@ -82,12 +82,14 @@ export const translations = {
     create_btn_busy: "등록 중...",
     create_required: "*",
     create_success: "레이스가 등록되었습니다.",
-    create_hint_no_special: "특수문자는 사용할 수 없습니다. (한글·영문·숫자·띄어쓰기만 가능)",
+    create_hint_no_special:
+      "다음 문자는 사용할 수 없습니다: ' \" ; \\ ` < > (그 외 특수문자는 입력 가능)",
     create_hint_title_max: "입력 가능한 길이를 초과하셨습니다.",
     create_hint_goal_max: (max: number) => `목표 km는 최대 ${max.toLocaleString()}km까지 입력할 수 있습니다.`,
     create_hint_members_max: (max: number) => `인원수는 최대 ${max}명까지 입력할 수 있습니다.`,
     create_err_title_required: "제목을 입력하세요.",
-    create_err_title_special: "제목에는 특수문자를 사용할 수 없습니다.",
+    create_err_title_special:
+      "제목에 사용할 수 없는 문자가 있습니다. (' \" ; \\ ` < > 는 사용할 수 없습니다)",
     create_err_title_max: "입력 가능한 길이를 초과하셨습니다.",
     create_err_goal_required: "목표 km를 입력하세요.",
     create_err_goal_range: (min: number, max: number) =>
@@ -356,12 +358,14 @@ export const translations = {
     create_btn_busy: "Creating...",
     create_required: "*",
     create_success: "Race created successfully.",
-    create_hint_no_special: "Special characters are not allowed. (letters, numbers, and spaces only)",
+    create_hint_no_special:
+      "These characters cannot be used: ' \" ; \\ ` < > (other symbols are allowed)",
     create_hint_title_max: "You have exceeded the allowed length.",
     create_hint_goal_max: (max: number) => `Goal distance can be up to ${max.toLocaleString()} km.`,
     create_hint_members_max: (max: number) => `Up to ${max} members.`,
     create_err_title_required: "Please enter a title.",
-    create_err_title_special: "Special characters are not allowed in the title.",
+    create_err_title_special:
+      "The title contains disallowed characters (' \" ; \\ ` < > cannot be used).",
     create_err_title_max: "You have exceeded the allowed length.",
     create_err_goal_required: "Please enter a goal distance.",
     create_err_goal_range: (min: number, max: number) =>

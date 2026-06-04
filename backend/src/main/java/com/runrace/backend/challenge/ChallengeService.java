@@ -2,6 +2,7 @@ package com.runrace.backend.challenge;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
@@ -19,7 +20,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -388,16 +388,13 @@ public class ChallengeService {
   private static final int TITLE_MAX_BYTES = 50;
   private static final int MAX_GOAL_KM = 1000;
   private static final int MAX_MEMBERS_LIMIT = 50;
-  private static final Pattern TITLE_CHARS =
-      Pattern.compile("^[\\p{L}\\p{N}\\s]+$", Pattern.UNICODE_CHARACTER_CLASS);
-
   private void validateRoomInput(
       String title, int goalKm, int maxMembers, LocalDate startDate, LocalDate endDate) {
     String trimmed = title == null ? "" : title.trim();
     if (trimmed.isBlank() || utf8ByteLength(trimmed) > TITLE_MAX_BYTES) {
       throw ApiException.badRequest("invalid_title");
     }
-    if (!TITLE_CHARS.matcher(trimmed).matches()) {
+    if (ForbiddenTextChars.containsForbidden(trimmed)) {
       throw ApiException.badRequest("invalid_title_chars");
     }
     if (goalKm < 1 || goalKm > MAX_GOAL_KM) {

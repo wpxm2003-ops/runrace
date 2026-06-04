@@ -1,3 +1,8 @@
+import {
+  containsForbiddenText,
+  stripForbiddenText,
+} from "@/lib/forbiddenTextChars";
+
 export function formatLocalDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -52,11 +57,9 @@ export const MAX_MEMBERS = 50;
 /** 목표 km 상한 */
 export const MAX_GOAL_KM = 1000;
 
-const TITLE_DISALLOWED_RE = /[^\p{L}\p{N}\s]/u;
-
 export function isTitleAllowed(title: string): boolean {
   const t = title.trim();
-  return t.length > 0 && !TITLE_DISALLOWED_RE.test(t);
+  return t.length > 0 && !containsForbiddenText(t);
 }
 
 export type SanitizeTitleResult = {
@@ -65,9 +68,9 @@ export type SanitizeTitleResult = {
   truncated: boolean;
 };
 
-/** 제목: 특수문자 제거 + UTF-8 최대 바이트 */
+/** 제목: 금지 문자 제거 + UTF-8 최대 바이트 */
 export function sanitizeTitle(value: string): SanitizeTitleResult {
-  const withoutSpecial = value.replace(TITLE_DISALLOWED_RE, "");
+  const withoutSpecial = stripForbiddenText(value);
   const removedSpecial = withoutSpecial.length !== value.length;
   const valueOut = truncateToUtf8Bytes(withoutSpecial, TITLE_MAX_BYTES);
   const truncated = utf8ByteLength(valueOut) < utf8ByteLength(withoutSpecial);
