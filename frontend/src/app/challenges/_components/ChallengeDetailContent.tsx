@@ -5,27 +5,20 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { FIXED_ACTION_BOTTOM } from "@/app/_components/AppShell";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import {
-  deleteChallenge,
-  fetchChallengeDetail,
-  joinChallenge,
-  type ChallengeDetail,
-} from "@/lib/api";
+import { deleteChallenge, fetchChallengeDetail, joinChallenge, type ChallengeDetail } from "@/lib/api";
 import { challengePhaseLabel } from "@/lib/challengePhase";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
-import {
-  challengeEditHref,
-  challengeShareUrl,
-  parseChallengeId,
-} from "@/lib/challengeRoute";
+import { challengeEditHref, challengeShareUrl, parseChallengeId } from "@/lib/challengeRoute";
 import { formatDate } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { useLocale } from "@/lib/i18n";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
   const { user, loading } = useAuthUser();
   const confirm = useConfirm();
+  const { t } = useLocale();
   const [detail, setDetail] = useState<ChallengeDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,10 +26,7 @@ export default function ChallengeDetailContent() {
   const [joining, setJoining] = useState(false);
 
   const params = useParams();
-  const id = useMemo(
-    () => parseChallengeId(String(params?.id ?? "")),
-    [params?.id],
-  );
+  const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
 
   async function loadDetail(u = user) {
     if (!id) return;
@@ -45,10 +35,7 @@ export default function ChallengeDetailContent() {
 
   useEffect(() => {
     if (loading) return;
-    if (!id) {
-      setError("대결 ID가 없습니다.");
-      return;
-    }
+    if (!id) { setError(t.detail_no_id); return; }
     loadDetail(user).catch((e) => setError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, loading, user]);
@@ -58,220 +45,138 @@ export default function ChallengeDetailContent() {
     const url = challengeShareUrl(id);
     try {
       await navigator.clipboard.writeText(url);
-      setShareMsg("링크가 복사되었습니다.");
+      setShareMsg(t.detail_link_copied);
     } catch {
       setShareMsg(url);
     }
     setTimeout(() => setShareMsg(null), 2500);
   }
 
-  async function onInvite() {
-    await onShare();
-  }
-
   function onEditClick(e: React.MouseEvent<HTMLAnchorElement>) {
-    if (!user) {
-      e.preventDefault();
-      redirectToLogin(id ? challengeEditHref(id) : undefined);
-    }
+    if (!user) { e.preventDefault(); redirectToLogin(id ? challengeEditHref(id) : undefined); }
   }
 
   async function onDelete() {
-    if (!user || !detail || !id) {
-      redirectToLogin(id ? `/challenges/${id}` : undefined);
-      return;
-    }
-    const ok = await confirm({
-      title: "방 삭제",
-      message: "이 대결 방을 삭제할까요? 삭제 후에는 복구할 수 없습니다.",
-      confirmLabel: "삭제",
-      destructive: true,
-    });
+    if (!user || !detail || !id) { redirectToLogin(id ? `/challenges/${id}` : undefined); return; }
+    const ok = await confirm({ title: t.detail_delete_title, message: t.detail_delete_message, confirmLabel: t.delete, destructive: true });
     if (!ok) return;
     setError(null);
     try {
       await deleteChallenge(id, user, `/challenges/${id}`);
       window.location.href = "/challenges";
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) {
-        setError(String(e));
-      }
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setError(String(e));
     }
   }
 
   async function onJoin() {
-    if (!user || !id) {
-      redirectToLogin(`/challenges/${id}`);
-      return;
-    }
+    if (!user || !id) { redirectToLogin(`/challenges/${id}`); return; }
     setJoining(true);
     setError(null);
     try {
       await joinChallenge(id, user, `/challenges/${id}`);
       await loadDetail(user);
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) {
-        setError(String(e));
-      }
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setError(String(e));
     } finally {
       setJoining(false);
     }
   }
 
   const showWinnerBanner =
-    detail != null &&
-    detail.winner != null &&
+    detail != null && detail.winner != null &&
     (detail.hasEnded || detail.members.some((m) => m.finished));
 
   const pageActions = (
     <>
       {detail?.showManage ? (
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg leading-none"
-            aria-label="메뉴"
-          >
+          <button type="button" onClick={() => setMenuOpen((v) => !v)}
+            className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg leading-none" aria-label={t.detail_menu_label}>
             ⋯
           </button>
           {menuOpen ? (
             <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
-              <a
-                href={id ? challengeEditHref(id) : "#"}
-                onClick={onEditClick}
-                className="block px-4 py-2 text-sm hover:bg-zinc-50"
-              >
-                수정
-              </a>
-              <button
-                type="button"
-                onClick={onDelete}
-                className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-zinc-50"
-              >
-                삭제
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onInvite();
-                }}
-                className="block w-full px-4 py-2 text-left text-sm hover:bg-zinc-50"
-              >
-                초대
-              </button>
+              <a href={id ? challengeEditHref(id) : "#"} onClick={onEditClick} className="block px-4 py-2 text-sm hover:bg-zinc-50">{t.detail_edit}</a>
+              <button type="button" onClick={onDelete} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-zinc-50">{t.detail_delete}</button>
+              <button type="button" onClick={() => { setMenuOpen(false); onShare(); }} className="block w-full px-4 py-2 text-left text-sm hover:bg-zinc-50">{t.detail_invite}</button>
             </div>
           ) : null}
         </div>
       ) : null}
-      <button
-        type="button"
-        onClick={onShare}
-        className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
-      >
-        공유하기
+      <button type="button" onClick={onShare} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50">
+        {t.detail_share}
       </button>
-      <a className="text-sm text-zinc-600 hover:underline" href="/challenges">
-        목록
-      </a>
+      <a className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</a>
     </>
   );
 
   return (
-    <PageLayout
-      title="대결 상세"
-      actions={pageActions}
-      className={detail?.canJoin ? "pb-36" : undefined}
-    >
-        {shareMsg ? (
-          <div className="mb-3 rounded-xl bg-emerald-50 p-2 text-sm text-emerald-800">
-            {shareMsg}
-          </div>
-        ) : null}
+    <PageLayout title={t.detail_title} actions={pageActions} className={detail?.canJoin ? "pb-36" : undefined}>
+      {shareMsg ? (
+        <div className="mb-3 rounded-xl bg-emerald-50 p-2 text-sm text-emerald-800">{shareMsg}</div>
+      ) : null}
+      {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-        {error ? <Alert className="mb-4">{error}</Alert> : null}
+      {!detail ? (
+        <Card className="text-sm text-zinc-600">{t.loading}</Card>
+      ) : (
+        <>
+          <Card>
+            <div className="flex items-center justify-between">
+              <div className="text-lg font-semibold">{detail.title}</div>
+              <div className="text-xs text-zinc-600">{challengePhaseLabel(detail.startAt, detail.endAt)}</div>
+            </div>
+            <div className="mt-2 text-sm text-zinc-600">
+              목표 {detail.goalKm}km · {detail.memberCount}/{detail.maxMembers}명
+            </div>
+            <div className="mt-1 text-xs text-zinc-500">
+              {formatDate(detail.startAt)} ~ {detail.endAt ? formatDate(detail.endAt) : "-"}
+            </div>
+          </Card>
 
-        {!detail ? (
-          <Card className="text-sm text-zinc-600">로딩 중...</Card>
-        ) : (
-          <>
-            <Card>
-              <div className="flex items-center justify-between">
-                <div className="text-lg font-semibold">{detail.title}</div>
-                <div className="text-xs text-zinc-600">
-                  {challengePhaseLabel(detail.startAt, detail.endAt)}
-                </div>
-              </div>
-              <div className="mt-2 text-sm text-zinc-600">
-                목표 {detail.goalKm}km · {detail.memberCount}/{detail.maxMembers}명
-              </div>
-              <div className="mt-1 text-xs text-zinc-500">
-                {formatDate(detail.startAt)} ~{" "}
-                {detail.endAt ? formatDate(detail.endAt) : "-"}
-              </div>
-            </Card>
-
-            <Card className="mt-6">
-              <div className="text-lg font-semibold">진행 현황</div>
-              <div className="mt-4 grid gap-4">
-                {detail.members.map((m) => {
-                  const pct = Math.min(
-                    100,
-                    Math.max(0, Number(m.progressPercent) || 0),
-                  );
-                  return (
-                    <div key={m.userId}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">
-                          {m.displayName ?? "(이름 없음)"}
-                        </span>
-                        <span className="text-zinc-600">
-                          {m.totalKm} / {detail.goalKm} km
-                        </span>
-                      </div>
-                      <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-100">
-                        <div
-                          className="h-full rounded-full bg-zinc-900 transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
+          <Card className="mt-6">
+            <div className="text-lg font-semibold">{t.detail_progress}</div>
+            <div className="mt-4 grid gap-4">
+              {detail.members.map((m) => {
+                const pct = Math.min(100, Math.max(0, Number(m.progressPercent) || 0));
+                return (
+                  <div key={m.userId}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{m.displayName ?? t.no_name}</span>
+                      <span className="text-zinc-600">{m.totalKm} / {detail.goalKm} km</span>
                     </div>
-                  );
-                })}
-              </div>
-            </Card>
+                    <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-100">
+                      <div className="h-full rounded-full bg-zinc-900 transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
 
-            {showWinnerBanner && detail.winner ? (
-              <div className="mt-6 rounded-2xl bg-amber-50 p-5 text-center shadow-sm">
-                <div className="text-lg font-semibold text-amber-900">
-                  Winner
-                </div>
-                <div className="mt-2 text-amber-800">
-                  {detail.winner.displayName ?? "우승자"}님, 축하합니다!
-                </div>
+          {showWinnerBanner && detail.winner ? (
+            <div className="mt-6 rounded-2xl bg-amber-50 p-5 text-center shadow-sm">
+              <div className="text-lg font-semibold text-amber-900">{t.detail_winner_label}</div>
+              <div className="mt-2 text-amber-800">
+                {t.detail_winner_message(detail.winner.displayName ?? t.no_name)}
               </div>
-            ) : null}
+            </div>
+          ) : null}
 
-            {detail.canJoin ? (
-              <div
-                className="fixed left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 px-6 pb-3 pt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur"
-                style={{ bottom: FIXED_ACTION_BOTTOM }}
-              >
-                <div className="mx-auto max-w-2xl">
-                  <button
-                    type="button"
-                    disabled={joining}
-                    onClick={onJoin}
-                    className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
-                  >
-                    {joining ? "참여 중..." : "참여하기"}
-                  </button>
-                </div>
+          {detail.canJoin ? (
+            <div className="fixed left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 px-6 pb-3 pt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur"
+              style={{ bottom: FIXED_ACTION_BOTTOM }}>
+              <div className="mx-auto max-w-2xl">
+                <button type="button" disabled={joining} onClick={onJoin}
+                  className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300">
+                  {joining ? t.detail_joining : t.detail_join}
+                </button>
               </div>
-            ) : null}
-          </>
-        )}
+            </div>
+          ) : null}
+        </>
+      )}
     </PageLayout>
   );
 }

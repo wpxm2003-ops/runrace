@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthUser } from "@/lib/useAuthUser";
+import { useLocale } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -52,56 +53,54 @@ const ICONS = {
   ),
 };
 
-function buildItems(myHref: string): NavItem[] {
-  return [
+export function BottomNav() {
+  const pathname = usePathname() ?? "/";
+  const { user } = useAuthUser();
+  const { t } = useLocale();
+  const myHref = user ? "/my" : "/login";
+
+  const items: NavItem[] = [
     {
       id: "home",
-      label: "홈",
+      label: t.nav_home,
       href: "/",
       icon: ICONS.home,
       isActive: (p) => p === "/",
     },
     {
       id: "challenges",
-      label: "대결",
+      label: t.nav_races,
       href: "/challenges",
       icon: ICONS.challenge,
       isActive: (p) => p === "/challenges" || p.startsWith("/challenges/"),
     },
     {
       id: "friends",
-      label: "친구",
+      label: t.nav_friends,
       href: "/friends",
       icon: ICONS.friends,
       isActive: (p) => p === "/friends" || p.startsWith("/friends/"),
     },
     {
       id: "workout",
-      label: "운동",
+      label: t.nav_workout,
       href: "/workout",
       icon: ICONS.fitness,
       isActive: (p) => p === "/workout",
     },
     {
       id: "my",
-      label: "내정보",
+      label: t.nav_profile,
       href: myHref,
       icon: ICONS.my,
       isActive: (p) => p === "/login" || p === "/my",
     },
   ];
-}
-
-export function BottomNav() {
-  const pathname = usePathname() ?? "/";
-  const { user } = useAuthUser();
-  const myHref = user ? "/my" : "/login";
-  const items = buildItems(myHref);
 
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)]"
-      aria-label="주요 메뉴"
+      aria-label={t.nav_main_menu}
     >
       <div className="mx-auto flex h-16 max-w-2xl items-stretch justify-around px-2">
         {items.map((item) => {

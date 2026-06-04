@@ -1,11 +1,10 @@
 "use client";
 
+import { useLocale } from "@/lib/i18n";
+import { formatKm } from "@/lib/format";
 import type { WorkoutStatus } from "@/lib/workoutTrack";
 
-type StatCardProps = {
-  label: string;
-  value: string;
-};
+type StatCardProps = { label: string; value: string };
 
 function StatCard({ label, value }: StatCardProps) {
   return (
@@ -21,7 +20,8 @@ function StatCard({ label, value }: StatCardProps) {
 type WorkoutStatsGridProps = {
   status: WorkoutStatus;
   elapsedLabel: string;
-  calories: number;
+  /** 칼로리 대신 이동 거리(m)를 표시한다. */
+  distanceM: number;
   paceLabel: string;
   onStart: () => void;
   onPause: () => void;
@@ -33,7 +33,7 @@ type WorkoutStatsGridProps = {
 export function WorkoutStatsGrid({
   status,
   elapsedLabel,
-  calories,
+  distanceM,
   paceLabel,
   onStart,
   onPause,
@@ -41,44 +41,33 @@ export function WorkoutStatsGrid({
   onStop,
   stopDisabled = false,
 }: WorkoutStatsGridProps) {
+  const { t } = useLocale();
+
   return (
     <div className="grid grid-cols-2 gap-2 sm:gap-3">
-      <StatCard label="시간" value={elapsedLabel} />
-      <StatCard label="칼로리" value={`${calories} kcal`} />
-      <StatCard label="페이스" value={paceLabel} />
+      <StatCard label={t.stat_time} value={elapsedLabel} />
+      <StatCard label={t.stat_distance} value={formatKm(distanceM)} />
+      <StatCard label={t.stat_pace} value={paceLabel} />
       <div className="flex min-h-[4.25rem] flex-col justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-2.5 py-2 shadow-sm sm:min-h-[5rem] sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3">
         {status === "idle" ? (
-          <button
-            type="button"
-            onClick={onStart}
-            className="h-10 w-full rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 sm:h-12"
-          >
-            운동 시작
+          <button type="button" onClick={onStart}
+            className="h-10 w-full rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 sm:h-12">
+            {t.workout_start}
           </button>
         ) : status === "running" ? (
-          <button
-            type="button"
-            onClick={onPause}
-            className="h-10 w-full rounded-xl border-2 border-zinc-900 bg-white text-sm font-medium text-zinc-900 hover:bg-zinc-50 sm:h-12"
-          >
-            일시정지
+          <button type="button" onClick={onPause}
+            className="h-10 w-full rounded-xl border-2 border-zinc-900 bg-white text-sm font-medium text-zinc-900 hover:bg-zinc-50 sm:h-12">
+            {t.workout_pause}
           </button>
         ) : (
           <>
-            <button
-              type="button"
-              onClick={onResume}
-              className="h-9 w-full rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 sm:h-10"
-            >
-              재개
+            <button type="button" onClick={onResume}
+              className="h-9 w-full rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 sm:h-10">
+              {t.workout_resume}
             </button>
-            <button
-              type="button"
-              disabled={stopDisabled}
-              onClick={onStop}
-              className="h-9 w-full rounded-xl border border-red-200 bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 sm:h-10"
-            >
-              {stopDisabled ? "저장 중..." : "종료"}
+            <button type="button" disabled={stopDisabled} onClick={onStop}
+              className="h-9 w-full rounded-xl border border-red-200 bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 sm:h-10">
+              {stopDisabled ? t.workout_stop_saving : t.workout_stop}
             </button>
           </>
         )}

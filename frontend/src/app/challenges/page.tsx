@@ -9,10 +9,12 @@ import { challengeDetailHref } from "@/lib/challengeRoute";
 import { challengePhaseFromApi, challengePhaseLabel } from "@/lib/challengePhase";
 import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { useLocale } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 
 export default function ChallengesPage() {
   const { user, loading } = useAuthUser();
+  const { t } = useLocale();
   const [challenges, setChallenges] = useState<ChallengeListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
@@ -41,28 +43,26 @@ export default function ChallengesPage() {
 
   return (
     <PageLayout
-      title="대결"
+      title={t.races_title}
       actions={
         <a
           href="/challenges/create"
           onClick={onCreateClick}
           className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
         >
-          방만들기
+          {t.races_create_btn}
         </a>
       }
     >
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
       <Card>
-        <div className="text-lg font-semibold">대결 목록</div>
+        <div className="text-lg font-semibold">{t.races_list_heading}</div>
         <div className="mt-3 grid gap-2">
           {listLoading ? (
-            <div className="text-sm text-zinc-600">로딩 중...</div>
+            <div className="text-sm text-zinc-600">{t.loading}</div>
           ) : challenges.length === 0 ? (
-            <div className="text-sm text-zinc-600">
-              대결이 없습니다. 방만들기로 새 대결을 시작해 보세요.
-            </div>
+            <div className="text-sm text-zinc-600">{t.races_empty}</div>
           ) : (
             challenges.map((c) => (
               <a
@@ -78,7 +78,7 @@ export default function ChallengesPage() {
                   </div>
                 </div>
                 <div className="mt-1 text-sm text-zinc-600">
-                  목표 {c.goalKm}km · {c.memberCount}명 참여
+                  {t.races_goal_members(c.goalKm, c.memberCount)}
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">
                   {formatDateRange(c.startAt, c.endAt)}

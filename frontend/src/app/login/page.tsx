@@ -21,19 +21,18 @@ import {
 } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
+import { useLocale } from "@/lib/i18n";
 
-/** 팝업 차단/취소는 안내 문구로, 그 외에는 원문 메시지로 변환. */
-function toSignInErrorMessage(e: unknown): string {
+function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string {
   const msg = String(e);
-  if (/popup|blocked|closed/i.test(msg)) {
-    return "로그인 창이 차단되었습니다. Chrome 설정에서 팝업 허용 후 다시 시도해 주세요.";
-  }
+  if (/popup|blocked|closed/i.test(msg)) return popupBlockedMsg;
   return msg;
 }
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const returnTo = safeReturnPath(searchParams.get("return"));
+  const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inApp = isInAppBrowser();
@@ -43,7 +42,6 @@ function LoginContent() {
     nativeNavigate(returnTo);
   }
 
-  /** redirect 방식이면 세션에 returnTo를 저장하고 true를 반환(이후 처리는 리다이렉트 핸들러). */
   function beginRedirectFlow(): boolean {
     if (!preferAuthRedirect()) return false;
     sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
@@ -53,15 +51,12 @@ function LoginContent() {
 
   async function signInWith(action: () => Promise<void>) {
     setError(null);
-    if (inApp) {
-      setError(IN_APP_LOGIN_MESSAGE);
-      return;
-    }
+    if (inApp) { setError(IN_APP_LOGIN_MESSAGE); return; }
     setBusy(true);
     try {
       await action();
     } catch (e) {
-      setError(toSignInErrorMessage(e));
+      setError(toSignInErrorMessage(e, t.login_popup_blocked));
       sessionStorage.removeItem(LOGIN_PENDING_KEY);
     } finally {
       setBusy(false);
@@ -70,10 +65,7 @@ function LoginContent() {
 
   function signInGoogle() {
     return signInWith(async () => {
-      if (beginRedirectFlow()) {
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-        return;
-      }
+      if (beginRedirectFlow()) { await signInWithRedirect(auth, new GoogleAuthProvider()); return; }
       const cred = await signInWithGoogleApp();
       await completeBackendLogin(cred.user);
     });
@@ -82,10 +74,7 @@ function LoginContent() {
   function signInApple() {
     return signInWith(async () => {
       const provider = new OAuthProvider("apple.com");
-      if (beginRedirectFlow()) {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
+      if (beginRedirectFlow()) { await signInWithRedirect(auth, provider); return; }
       const cred = await signInWithPopup(auth, provider);
       await completeBackendLogin(cred.user);
     });
@@ -94,17 +83,14 @@ function LoginContent() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
       <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">RunRace</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          로그인 후 친구를 초대하고 50km 대결을 만들어 경쟁해보세요.
-        </p>
+        <h1 className="text-2xl font-semibold">{t.login_headline}</h1>
+        <p className="mt-2 text-sm text-zinc-600">{t.login_desc}</p>
 
         {inApp && (
           <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {IN_APP_LOGIN_MESSAGE}
           </p>
         )}
-
         {error && (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
         )}
@@ -116,7 +102,7 @@ function LoginContent() {
             onClick={signInGoogle}
             className="h-11 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
           >
-            {busy ? "로그인 중..." : "Google 로그인"}
+            {busy ? t.login_busy : t.login_google}
           </button>
           <button
             type="button"
@@ -124,13 +110,10 @@ function LoginContent() {
             onClick={signInApple}
             className="h-11 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-50"
           >
-            Apple 로그인
+            {t.login_apple}
           </button>
         </div>
-
-        <p className="mt-6 text-xs text-zinc-500">
-          Apple 로그인은 Firebase 콘솔에서 Apple provider 설정이 필요합니다.
-        </p>
+        <p className="mt-6 text-xs text-zinc-500">{t.login_apple_note}</p>
       </div>
     </div>
   );
@@ -141,7 +124,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-          <p className="text-sm text-zinc-500">로딩 중...</p>
+          <p className="text-sm text-zinc-500">Loading...</p>
         </div>
       }
     >
