@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
@@ -8,6 +9,11 @@ import { useChallengeList } from "@/lib/api";
 import { redirectToLogin } from "@/lib/auth";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
+import {
+  RacePhaseFilter,
+  type RacePhaseFilterValue,
+} from "@/app/_components/RacePhaseFilter";
+import { resolveChallengePhase } from "@/lib/challengePhase";
 import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
@@ -16,6 +22,21 @@ export default function ChallengesPage() {
   const { user, loading: authLoading } = useAuthUser();
   const { t } = useLocale();
   const { data: challenges = [], isLoading, error } = useChallengeList(user, authLoading);
+  const [phaseFilter, setPhaseFilter] = useState<RacePhaseFilterValue>("all");
+
+  const filtered = useMemo(() => {
+    if (phaseFilter === "all") return challenges;
+    return challenges.filter(
+      (c) => resolveChallengePhase(c.startAt, c.endAt, c.phase) === phaseFilter,
+    );
+  }, [challenges, phaseFilter]);
+
+  const filterLabel: Record<RacePhaseFilterValue, string> = {
+    all: t.races_filter_all,
+    scheduled: t.races_filter_scheduled,
+    in_progress: t.races_filter_in_progress,
+    ended: t.races_filter_ended,
+  };
 
   function onCreateClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (!user) {
@@ -40,14 +61,24 @@ export default function ChallengesPage() {
       {error ? <Alert className="mb-4">{String(error)}</Alert> : null}
 
       <Card>
-        <div className="text-lg font-semibold">{t.races_list_heading}</div>
+        <div className="flex flex-col gap-3">
+          <div className="text-lg font-semibold">{t.races_list_heading}</div>
+          <RacePhaseFilter
+            value={phaseFilter}
+            onChange={setPhaseFilter}
+            labels={filterLabel}
+            ariaLabel={t.races_filter_label}
+          />
+        </div>
         <div className="mt-3 grid gap-2">
           {isLoading ? (
             <SkeletonLines count={3} />
           ) : challenges.length === 0 ? (
             <div className="text-sm text-zinc-600">{t.races_empty}</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-sm text-zinc-600">{t.races_filter_empty}</div>
           ) : (
-            challenges.map((c) => (
+            filtered.map((c) => (
               <a
                 key={c.id}
                 href={challengeDetailHref(c.id)}

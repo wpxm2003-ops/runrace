@@ -1,31 +1,37 @@
 "use client";
 
 import { useState } from "react";
+import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { useWorkoutList, useMe } from "@/lib/api";
+import { useMyChallengeList, useWorkoutSummary, useMe } from "@/lib/api";
+import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
+import { challengeDetailHref } from "@/lib/challengeRoute";
+import { formatDateRange } from "@/lib/format";
 import { updateNickname, deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
-import { aggregateWorkouts } from "@/lib/workoutStats";
 import { mutate } from "swr";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
-export default function MyPage() {
-  const { user, loading } = useRequireAuth("/my");
+/** 인증 확정 후에만 마운트 → SWR 훅이 로딩 단계에서 중복 기동되지 않음 */
+function MyPageContent({ user }: { user: User }) {
   const { t } = useLocale();
   const { data: me, isLoading: meLoading } = useMe(user);
   const {
-    data: records = [],
-    isLoading: recordsLoading,
-    error,
-  } = useWorkoutList(user);
-
-  const allTimeStats = aggregateWorkouts(records);
+    data: summary,
+    isLoading: summaryLoading,
+    error: summaryError,
+  } = useWorkoutSummary(user);
+  const {
+    data: myRaces = [],
+    isLoading: myRacesLoading,
+    error: myRacesError,
+  } = useMyChallengeList(user);
 
   const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
@@ -45,7 +51,6 @@ export default function MyPage() {
   }
 
   async function saveNickname() {
-    if (!user) return;
     const trimmed = draft.trim();
     if (!trimmed || trimmed.length > 20) return;
     setSaving(true);
@@ -64,14 +69,6 @@ export default function MyPage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  if (loading || !user) {
-    return (
-      <PageLayout title={t.my_title}>
-        <Card className="text-sm text-zinc-600">{t.loading}</Card>
-      </PageLayout>
-    );
   }
 
   return (
@@ -141,15 +138,15 @@ export default function MyPage() {
 
       <Card className="mt-4">
         <div className="text-lg font-semibold">{t.my_records_all_time}</div>
-        {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
+        {summaryError ? <Alert className="mt-3">{String(summaryError)}</Alert> : null}
         <div className="mt-3">
-          {recordsLoading && records.length === 0 ? (
+          {summaryLoading && !summary ? (
             <SkeletonLines count={3} />
-          ) : records.length === 0 ? (
+          ) : !summary || summary.workoutCount === 0 ? (
             <div className="text-sm text-zinc-600">{t.my_records_empty}</div>
           ) : (
             <WorkoutAggregateStats
-              stats={allTimeStats}
+              stats={summary}
               showWorkoutDays
               totalLabels
             />
@@ -157,10 +154,46 @@ export default function MyPage() {
         </div>
       </Card>
 
+      <Card className="mt-4">
+        <div className="text-lg font-semibold">{t.my_races_heading}</div>
+        {myRacesError ? (
+          <Alert className="mt-3">{String(myRacesError)}</Alert>
+        ) : null}
+        <div className="mt-3 grid gap-2">
+          {myRacesLoading && myRaces.length === 0 ? (
+            <SkeletonLines count={2} />
+          ) : myRaces.length === 0 ? (
+            <div className="text-sm text-zinc-600">{t.my_races_empty}</div>
+          ) : (
+            myRaces.map((c) => (
+              <a
+                key={c.id}
+                href={challengeDetailHref(c.id)}
+                className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-medium">{c.title}</div>
+                  <ChallengePhaseBadge
+                    startAt={c.startAt}
+                    endAt={c.endAt}
+                    apiPhase={c.phase}
+                  />
+                </div>
+                <div className="mt-1 text-sm text-zinc-600">
+                  {t.races_goal_members(c.goalKm, c.memberCount)}
+                </div>
+                <div className="mt-1 text-xs text-zinc-500">
+                  {formatDateRange(c.startAt, c.endAt)}
+                </div>
+              </a>
+            ))
+          )}
+        </div>
+      </Card>
+
       <button
         type="button"
         onClick={async () => {
-          if (!user) return;
           const ok = await confirm({
             title: t.my_delete_account_title,
             message: t.my_delete_account_message,
@@ -184,4 +217,19 @@ export default function MyPage() {
       </div>
     </PageLayout>
   );
+}
+
+export default function MyPage() {
+  const { user, loading } = useRequireAuth("/my");
+  const { t } = useLocale();
+
+  if (loading || !user) {
+    return (
+      <PageLayout title={t.my_title}>
+        <Card className="text-sm text-zinc-600">{t.loading}</Card>
+      </PageLayout>
+    );
+  }
+
+  return <MyPageContent user={user} />;
 }

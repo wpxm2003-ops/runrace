@@ -8,16 +8,18 @@ import {
   fetchChallenges,
   fetchChallengeDetail,
   fetchActiveCount,
+  fetchMyChallenges,
 } from "./challenges";
 import { fetchFriends } from "./friends";
-import { fetchWorkout, fetchWorkouts } from "./workouts";
+import { fetchWorkout, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
 
 const BASE_CONFIG = {
   revalidateOnMount: true,
   revalidateOnFocus: false,
   keepPreviousData: false,
-  dedupingInterval: 0,
+  /** 개발 모드 이중 마운트·동시 훅 호출 시 같은 API 중복 요청 방지 */
+  dedupingInterval: 5000,
 } as const;
 
 // ── 대결 목록 ────────────────────────────────────────────────────────────────
@@ -29,6 +31,14 @@ export function useChallengeList(user?: User | null, authLoading = false) {
   return useSWR(
     authLoading ? null : (["challenges", user?.uid ?? null] as const),
     () => fetchChallenges(user),
+    BASE_CONFIG,
+  );
+}
+
+export function useMyChallengeList(user: User | null) {
+  return useSWR(
+    user ? (["challenges", "mine", user.uid] as const) : null,
+    () => fetchMyChallenges(user!),
     BASE_CONFIG,
   );
 }
@@ -65,26 +75,27 @@ export function useFriendList(user: User | null) {
   );
 }
 
-// ── 운동 기록 목록 ───────────────────────────────────────────────────────────
-export function useWorkoutList(user: User | null) {
+// ── 운동 기록 ─────────────────────────────────────────────────────────────────
+/** 내정보 — 전체 요약 */
+export function useWorkoutSummary(user: User | null) {
   return useSWR(
-    user ? (["workouts", user.uid] as const) : null,
-    () => fetchWorkouts(user!),
+    user ? (["workouts", "summary", user.uid] as const) : null,
+    () => fetchWorkoutSummary(user!),
     BASE_CONFIG,
   );
 }
 
-/** 기록 달력용 — 해당 연도 목록만 조회 (연도 변경 시 자동 재요청) */
+/** 기록 달력 — 해당 연도 목록 (연도 변경 시 자동 재요청) */
 export function useWorkoutListByYear(user: User | null, year: number) {
   return useSWR(
     user ? (["workouts", user.uid, year] as const) : null,
-    () => fetchWorkouts(user!, year),
+    () => fetchWorkoutsByYear(user!, year),
     BASE_CONFIG,
   );
 }
 
 export function invalidateWorkoutLists(userId: string, year?: number) {
-  void globalMutate(["workouts", userId]);
+  void globalMutate(["workouts", "summary", userId]);
   if (year != null) {
     void globalMutate(["workouts", userId, year]);
   }

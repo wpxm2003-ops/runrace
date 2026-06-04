@@ -7,10 +7,13 @@ import com.runrace.backend.challenge.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -73,6 +76,38 @@ public class WorkoutService {
   @Transactional(readOnly = true)
   public List<WorkoutSession> listForUser(UUID userId) {
     return workoutSessionRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+  }
+
+  @Transactional(readOnly = true)
+  public WorkoutSummaryResponse summaryForUser(UUID userId) {
+    List<WorkoutSession> sessions = listForUser(userId);
+    long totalDistanceM = 0;
+    long totalDurationSec = 0;
+    int totalCalories = 0;
+    Set<String> days = new HashSet<>();
+
+    for (WorkoutSession session : sessions) {
+      totalDistanceM += session.getDistanceM();
+      totalDurationSec += session.getDurationSec();
+      totalCalories += session.getCalories();
+      OffsetDateTime started = session.getStartedAt();
+      LocalDate local = started.atZoneSameInstant(LIST_ZONE).toLocalDate();
+      days.add(
+          String.format("%d-%02d-%02d", local.getYear(), local.getMonthValue(), local.getDayOfMonth()));
+    }
+
+    Integer avgPaceSecPerKm =
+        totalDistanceM >= 10
+            ? (int) Math.round(totalDurationSec / (totalDistanceM / 1000.0))
+            : null;
+
+    return new WorkoutSummaryResponse(
+        totalDistanceM,
+        totalDurationSec,
+        totalCalories,
+        sessions.size(),
+        days.size(),
+        avgPaceSecPerKm);
   }
 
   @Transactional(readOnly = true)

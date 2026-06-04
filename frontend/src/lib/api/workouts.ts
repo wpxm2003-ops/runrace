@@ -1,10 +1,21 @@
 import type { User } from "firebase/auth";
 import { apiFetch } from "./client";
-import type { CreatedId, WorkoutCreateBody, WorkoutDetail, WorkoutListItem } from "./types";
+import type {
+  CreatedId,
+  WorkoutCreateBody,
+  WorkoutDetail,
+  WorkoutListItem,
+  WorkoutSummary,
+} from "./types";
 
-export function fetchWorkouts(user: User, year?: number) {
-  const q = year != null ? `?year=${year}` : "";
-  return apiFetch<WorkoutListItem[]>(`/api/workouts/list${q}`, { user });
+/** 내정보 — 전체 운동 기록 요약. */
+export function fetchWorkoutSummary(user: User) {
+  return apiFetch<WorkoutSummary>("/api/workouts/summary", { user });
+}
+
+/** 기록 탭 달력 — 연도별 운동 목록. */
+export function fetchWorkoutsByYear(user: User, year: number) {
+  return apiFetch<WorkoutListItem[]>(`/api/workouts?year=${year}`, { user });
 }
 
 export function fetchWorkout(id: number, user: User) {

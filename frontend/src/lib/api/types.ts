@@ -98,6 +98,16 @@ export type WorkoutListItem = {
   avgPaceSecPerKm: number | null;
 };
 
+/** 전체 운동 기록 요약 (GET /api/workouts/summary). */
+export type WorkoutSummary = {
+  totalDistanceM: number;
+  totalDurationSec: number;
+  totalCalories: number;
+  workoutCount: number;
+  workoutDayCount: number;
+  avgPaceSecPerKm: number | null;
+};
+
 export type WorkoutDetail = WorkoutListItem & { path: LatLng[] };
 
 export type WorkoutCreateBody = {

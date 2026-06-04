@@ -6,6 +6,7 @@ import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import com.runrace.backend.workout.dto.WorkoutListItem;
+import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +46,14 @@ public class WorkoutController {
     return ResponseEntity.ok(new CreateWorkoutResponse(session.getId()));
   }
 
-  @GetMapping(value = {"", "/list"})
+  /** 전체 운동 기록 요약 (내정보). */
+  @GetMapping("/summary")
+  public ResponseEntity<WorkoutSummaryResponse> summary(AuthPrincipal principal) {
+    return ResponseEntity.ok(workoutService.summaryForUser(principal.userId()));
+  }
+
+  /** 기록 달력용 — 연도별 운동 목록. year 없으면 전체(레거시). */
+  @GetMapping
   public ResponseEntity<List<WorkoutListItem>> list(
       AuthPrincipal principal, @RequestParam(required = false) Integer year) {
     var sessions =

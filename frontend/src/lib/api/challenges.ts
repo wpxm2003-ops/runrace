@@ -13,6 +13,11 @@ export function fetchChallenges(user?: User | null) {
   return publicFetch<ChallengeListItem[]>("/api/challenges", user);
 }
 
+/** 내가 참여한 레이스 목록. */
+export function fetchMyChallenges(user: User) {
+  return apiFetch<ChallengeListItem[]>("/api/challenges/mine", { user });
+}
+
 /** 대결 상세(공개). */
 export function fetchChallengeDetail(id: number, user?: User | null) {
   return publicFetch<ChallengeDetail>(`/api/challenges/${id}`, user);

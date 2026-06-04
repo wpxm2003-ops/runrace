@@ -27,7 +27,7 @@ export const translations = {
     header_login: "로그인",
 
     // ── 홈 ────────────────────────────────
-    home_tagline: "지금 친구와 달리기 레이스를 시작해보세요.",
+    home_tagline: "지금 친구와 달리기 레이스를 시작해보세요!!",
     home_login: "로그인",
     home_login_desc: "Google / Apple 로그인",
     home_friends: "친구",
@@ -56,13 +56,19 @@ export const translations = {
     races_title: "레이스",
     races_create_btn: "등록",
     races_list_heading: "레이스 목록",
+    races_filter_label: "상태",
+    races_filter_all: "전체",
+    races_filter_scheduled: "예정",
+    races_filter_in_progress: "진행중",
+    races_filter_ended: "종료",
+    races_filter_empty: "해당 상태의 레이스가 없습니다.",
     races_empty: "레이스가 없습니다. 등록으로 새 레이스를 시작해 보세요.",
     races_goal_members: (goalKm: number, memberCount: number) =>
       `목표 ${goalKm}km · ${memberCount}명 참여`,
 
     // ── 레이스 만들기 ───────────────────────
-    create_title: "등록",
-    create_list_link: "목록",
+    create_title: "레이스 등록",
+    create_list_link: "목록으로",
     create_limit_warning: (maxActive: number, activeCount: number) =>
       `종료되지 않은 레이스는 최대 ${maxActive}개까지 만들 수 있습니다. (현재 ${activeCount}개)`,
     create_field_title: "제목",
@@ -85,7 +91,7 @@ export const translations = {
     detail_delete: "삭제",
     detail_invite: "초대",
     detail_share: "공유하기",
-    detail_list_link: "목록",
+    detail_list_link: "목록으로",
     detail_delete_title: "삭제",
     detail_delete_message: "삭제할까요? 삭제 후에는 복구할 수 없습니다.",
     detail_progress: "진행 현황",
@@ -152,6 +158,8 @@ export const translations = {
     my_delete_account_confirm: "삭제",
     my_records_heading: "운동 기록",
     my_records_all_time: "전체 운동 기록 요약",
+    my_races_heading: "내가 참여한 레이스",
+    my_races_empty: "참여한 레이스가 없습니다.",
     my_records_calendar_hint: "달력에서 날짜별 기록 보기 →",
     records_title: "운동 기록",
     records_prev_month: "이전 달",
@@ -266,7 +274,7 @@ export const translations = {
     header_login: "Sign in",
 
     // ── 홈 ────────────────────────────────
-    home_tagline: "Invite friends, and race to 50km.",
+    home_tagline: "Start a running race with your friends right now!!",
     home_login: "Sign in",
     home_login_desc: "Google · Apple",
     home_friends: "Friends",
@@ -295,6 +303,12 @@ export const translations = {
     races_title: "Races",
     races_create_btn: "New Race",
     races_list_heading: "Race List",
+    races_filter_label: "Status",
+    races_filter_all: "All",
+    races_filter_scheduled: "Scheduled",
+    races_filter_in_progress: "In progress",
+    races_filter_ended: "Ended",
+    races_filter_empty: "No races in this status.",
     races_empty: "No races yet. Create one to get started!",
     races_goal_members: (goalKm: number, memberCount: number) =>
       `${goalKm}km goal · ${memberCount} joined`,
@@ -391,6 +405,8 @@ export const translations = {
     my_delete_account_confirm: "Delete",
     my_records_heading: "Workouts",
     my_records_all_time: "All workout summary",
+    my_races_heading: "My races",
+    my_races_empty: "You haven't joined any races yet.",
     my_records_calendar_hint: "View by date on calendar →",
     records_title: "Workout log",
     records_prev_month: "Previous month",

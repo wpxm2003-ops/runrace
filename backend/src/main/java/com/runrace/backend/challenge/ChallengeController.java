@@ -90,12 +90,24 @@ public class ChallengeController {
     OffsetDateTime now = OffsetDateTime.now();
     List<Challenge> challenges = challengeService.listAll();
 
-    // 멤버 수를 단일 쿼리로 일괄 조회 (N+1 방지)
     Map<Long, Long> memberCounts = challengeService.batchMemberCounts(
         challenges.stream().map(Challenge::getId).toList());
 
     List<ChallengeListItem> items = challenges.stream()
         .map(challenge -> toListItem(challenge, now, userId, memberCounts))
+        .toList();
+    return ResponseEntity.ok(items);
+  }
+
+  @GetMapping("/mine")
+  public ResponseEntity<List<ChallengeListItem>> listMine(AuthPrincipal principal) {
+    OffsetDateTime now = OffsetDateTime.now();
+    UUID userId = principal.userId();
+    List<Challenge> challenges = challengeService.listForMe(principal);
+    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(
+        challenges.stream().map(Challenge::getId).toList());
+    List<ChallengeListItem> items = challenges.stream()
+        .map(challenge -> toListItem(challenge, now, Optional.of(userId), memberCounts))
         .toList();
     return ResponseEntity.ok(items);
   }
