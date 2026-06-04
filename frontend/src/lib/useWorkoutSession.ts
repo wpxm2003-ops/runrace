@@ -3,30 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   estimateCalories,
+  evaluateVehicleTier,
   formatDuration,
   formatPaceMinPerKm,
   haversineMeters,
+  normalizeGpsAccuracyM,
   pathDistanceMeters,
+  pushAccuracySample,
   shouldAppendPoint,
   type LatLng,
+  type VehicleDetectState,
+  type VehicleTier,
   geolocationBlockedReason,
   geolocationErrorMessage,
   type WorkoutFinishSnapshot,
   type WorkoutStatus,
 } from "./workoutTrack";
 import { saveWorkout, loadWorkout, clearWorkout } from "./workoutPersistence";
-
-// ── 치팅 감지 임계값 ──────────────────────────────────────────────────────────
-/** m/s — 이 속도 이상이 지속되면 탈것으로 간주 (≈23 km/h, 세계적인 마라토너 수준) */
-const CHEAT_SPEED_MS = 6.5;
-/** m/s — 이 속도 아래로 내려가면 치팅 해제 */
-const CHEAT_CLEAR_SPEED_MS = 5.0;
-/** ms — 고속이 이 시간만큼 지속돼야 치팅으로 확정 (단발 GPS 오차 방지) */
-const CHEAT_CONFIRM_MS = 4_000;
-/** DeviceMotion 표준편차(m/s²) — 이 값 이하면 매끄러운 탈것 동작으로 간주 */
-const MOTION_VEHICLE_STDDEV = 1.5;
-/** 분산 계산에 사용할 슬라이딩 윈도 크기(~10Hz * 3s) */
-const MOTION_WINDOW = 30;
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const SAVE_INTERVAL_MS = 10_000;
@@ -52,11 +45,15 @@ function computeSpeedMps(
   return haversineMeters(prev, curr) / (dtMs / 1000);
 }
 
-function stdDev(arr: number[]): number {
-  if (arr.length < 2) return 999; // 데이터 부족 → 활동적으로 가정
-  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-  const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / arr.length;
-  return Math.sqrt(variance);
+function resetVehicleState(): VehicleDetectState {
+  return {
+    tier: "normal",
+    suspectHighSinceMs: null,
+    confirmedHighSinceMs: null,
+    lowSpeedSinceMs: null,
+    weakGpsSinceMs: null,
+    accuracyRecent: [],
+  };
 }
 
 // ── 메인 훅 ───────────────────────────────────────────────────────────────────
@@ -69,7 +66,7 @@ export function useWorkoutSession() {
   const [distanceM, setDistanceM] = useState(0);
   const [geoError, setGeoError] = useState<string | null>(null);
   // ── 치팅/복원 상태 ────────────────────────────────────────────────────────
-  const [isCheating, setIsCheating] = useState(false);
+  const [vehicleTier, setVehicleTier] = useState<VehicleTier>("normal");
   const [isRestored, setIsRestored] = useState(false);
 
   // ── 타이밍 레프 ───────────────────────────────────────────────────────────
@@ -80,56 +77,17 @@ export function useWorkoutSession() {
   const pauseStartedRef = useRef<number | null>(null);
   const runStartedRef = useRef<number | null>(null);
 
-  // ── 치팅 감지 레프 ────────────────────────────────────────────────────────
-  const highSpeedStartRef = useRef<number | null>(null);
+  // ── 탈것 Tiered 감지 레프 ─────────────────────────────────────────────────
+  const vehicleStateRef = useRef<VehicleDetectState>(resetVehicleState());
   const lastPosTimeRef = useRef<number | null>(null);
   const lastRawPosRef = useRef<LatLng | null>(null);
-  /** DeviceMotion 가속도 크기 슬라이딩 윈도 */
-  const motionMagsRef = useRef<number[]>([]);
-  /**
-   * 현재 계산된 DeviceMotion 표준편차.
-   * 초기값 999 = "데이터 없음 → 활동적으로 가정(치팅 미감지)".
-   */
-  const motionStdDevRef = useRef<number>(999);
-  const isCheatingRef = useRef(false);
+  const distanceAccumRef = useRef(0);
 
   // ── ref 동기화 ────────────────────────────────────────────────────────────
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { pathRef.current = path; }, [path]);
-  useEffect(() => { isCheatingRef.current = isCheating; }, [isCheating]);
 
-  // ── 마운트 시 세션 복원 ───────────────────────────────────────────────────
-  useEffect(() => {
-    const saved = loadWorkout();
-    if (!saved) return;
-
-    runStartedRef.current = saved.runStartedAt;
-    pausedAccumRef.current = saved.pausedAccumMs;
-
-    // 페이지가 죽었을 때 "running" 상태였다면, savedAt을 일시정지 시작점으로 취급.
-    // resume() 시 now - savedAt 이 추가 누적되어 중단 기간이 자동으로 제외된다.
-    if (saved.status === "running") {
-      pauseStartedRef.current = saved.savedAt;
-    } else {
-      pauseStartedRef.current = saved.pauseStartedAt;
-    }
-
-    pathRef.current = saved.path;
-    setPath(saved.path);
-    setDistanceM(pathDistanceMeters(saved.path));
-    setElapsedSec(
-      computeElapsedSec(
-        saved.runStartedAt,
-        saved.pausedAccumMs,
-        // 복원 시 이미 "paused"로 처리하므로 pauseStarted를 반영
-        saved.status === "running" ? saved.savedAt : saved.pauseStartedAt,
-      ),
-    );
-    // 항상 "paused"로 복원 — GPS watch가 죽어있으므로 안전한 기본값
-    setStatus("paused");
-    setIsRestored(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const pendingResumeWatchRef = useRef(false);
 
   // ── 퍼시스턴스: 상태 변경마다 저장 ──────────────────────────────────────
   useEffect(() => {
@@ -171,24 +129,6 @@ export function useWorkoutSession() {
     };
   }, []);
 
-  // ── DeviceMotion 리스너 (선택적, best-effort) ─────────────────────────────
-  useEffect(() => {
-    const handler = (e: DeviceMotionEvent) => {
-      const a = e.accelerationIncludingGravity;
-      if (!a || a.x == null || a.y == null || a.z == null) return;
-      const mag = Math.sqrt(a.x ** 2 + a.y ** 2 + a.z ** 2);
-      const buf = motionMagsRef.current;
-      buf.push(mag);
-      if (buf.length > MOTION_WINDOW) buf.shift();
-      if (buf.length >= 5) {
-        motionStdDevRef.current = stdDev(buf);
-      }
-    };
-
-    window.addEventListener("devicemotion", handler);
-    return () => window.removeEventListener("devicemotion", handler);
-  }, []);
-
   // ── GPS 유틸 ──────────────────────────────────────────────────────────────
   const clearWatch = useCallback(() => {
     if (watchIdRef.current != null) {
@@ -197,77 +137,77 @@ export function useWorkoutSession() {
     }
   }, []);
 
-  /**
-   * GPS 속도(coords.speed) 또는 연속 두 점 사이의 계산 속도로 치팅 여부를 판단한다.
-   *
-   * 치팅 확정 조건 (AND):
-   *  1. 속도 > CHEAT_SPEED_MS 가 CHEAT_CONFIRM_MS 동안 지속
-   *  2. DeviceMotion 표준편차 < MOTION_VEHICLE_STDDEV (매끄러운 탈것 동작)
-   *     OR DeviceMotion 데이터 없음(GPS 속도만으로 판단)
-   *
-   * 조건 2가 거짓(높은 운동 분산)이면 빠른 러너로 간주해 false 반환.
-   */
-  const checkCheat = useCallback(
-    (coords: GeolocationCoordinates, point: LatLng): boolean => {
-      const now = Date.now();
-
-      // GPS 기본 속도, 없으면 연속 두 점으로 계산
+  const peekSpeedMps = useCallback(
+    (coords: GeolocationCoordinates, point: LatLng, now: number): number | null => {
       let speed = coords.speed ?? null;
       if (speed == null && lastRawPosRef.current && lastPosTimeRef.current) {
         speed = computeSpeedMps(lastRawPosRef.current, point, now - lastPosTimeRef.current);
       }
-      lastRawPosRef.current = point;
-      lastPosTimeRef.current = now;
-
-      if (speed == null) return false; // 속도 정보 없으면 치팅 판단 불가
-
-      if (speed > CHEAT_SPEED_MS) {
-        if (highSpeedStartRef.current == null) {
-          highSpeedStartRef.current = now;
-        }
-        const sustained = now - highSpeedStartRef.current > CHEAT_CONFIRM_MS;
-        if (!sustained) return isCheatingRef.current; // 확정 전: 기존 상태 유지
-
-        // DeviceMotion 확인 — 데이터 없으면 GPS 속도만으로 판단
-        const motionAvailable = motionMagsRef.current.length >= 5;
-        const motionSuggestsRunning =
-          motionAvailable && motionStdDevRef.current >= MOTION_VEHICLE_STDDEV;
-
-        // 빠른 분산(달리기)이 감지되면 빠른 러너로 허용
-        return !motionSuggestsRunning;
-      }
-
-      // 속도가 기준 이하로 내려오면 해제 (이력 현상 방지를 위해 낮은 임계값 사용)
-      if (speed < CHEAT_CLEAR_SPEED_MS) {
-        highSpeedStartRef.current = null;
-        return false;
-      }
-
-      // 중간 속도 구간: 기존 상태 유지
-      return isCheatingRef.current;
+      return speed;
     },
     [],
   );
 
+  const commitRawPosition = useCallback((point: LatLng, now: number) => {
+    lastRawPosRef.current = point;
+    lastPosTimeRef.current = now;
+  }, []);
+
   const appendPosition = useCallback(
     (coords: GeolocationCoordinates) => {
       if (statusRef.current !== "running") return;
+      setGeoError(null);
       const point: LatLng = { lat: coords.latitude, lng: coords.longitude };
       setPosition(point);
 
-      const cheating = checkCheat(coords, point);
-      setIsCheating(cheating);
-      if (cheating) return; // 치팅 감지 시 경로에 점 추가하지 않음
+      const now = Date.now();
+      const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
+      const speedMps = peekSpeedMps(coords, point, now);
+
+      const accuracyRecent = pushAccuracySample(
+        vehicleStateRef.current.accuracyRecent,
+        now,
+        accuracyM,
+      );
+
+      const vehicle = evaluateVehicleTier({
+        speedMps,
+        accuracyM,
+        nowMs: now,
+        state: { ...vehicleStateRef.current, accuracyRecent },
+      });
+
+      vehicleStateRef.current = {
+        tier: vehicle.tier,
+        suspectHighSinceMs: vehicle.suspectHighSinceMs,
+        confirmedHighSinceMs: vehicle.confirmedHighSinceMs,
+        lowSpeedSinceMs: vehicle.lowSpeedSinceMs,
+        weakGpsSinceMs: vehicle.weakGpsSinceMs,
+        accuracyRecent: vehicle.accuracyRecent,
+      };
+      setVehicleTier(vehicle.tier);
+
+      if (vehicle.blockPathPoints) return;
+
+      const reanchor = vehicle.reanchorNextPoint;
 
       setPath((prev) => {
         const last = prev[prev.length - 1] ?? null;
-        if (!shouldAppendPoint(last, point)) return prev;
+        if (!reanchor && last && !shouldAppendPoint(last, point)) return prev;
+
+        const increment =
+          vehicle.blockDistance || reanchor || !last
+            ? 0
+            : haversineMeters(last, point);
+        distanceAccumRef.current += increment;
         const next = [...prev, point];
-        setDistanceM(pathDistanceMeters(next));
+        setDistanceM(distanceAccumRef.current);
         return next;
       });
+
+      commitRawPosition(point, now);
     },
-    [checkCheat],
+    [peekSpeedMps, commitRawPosition],
   );
 
   const startWatch = useCallback(() => {
@@ -279,25 +219,14 @@ export function useWorkoutSession() {
     setGeoError(null);
     clearWatch();
     watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => appendPosition(pos.coords),
+      (pos) => {
+        setGeoError(null);
+        appendPosition(pos.coords);
+      },
       (err) => setGeoError(geolocationErrorMessage(err)),
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 },
     );
   }, [appendPosition, clearWatch]);
-
-  // iOS 13+ DeviceMotion 권한 요청 (start() 호출 — 사용자 제스처 컨텍스트)
-  const requestMotionPermission = useCallback(async () => {
-    try {
-      const dme = DeviceMotionEvent as unknown as {
-        requestPermission?: () => Promise<"granted" | "denied">;
-      };
-      if (typeof dme.requestPermission === "function") {
-        await dme.requestPermission();
-      }
-    } catch {
-      // 권한 거부 or 지원 안 함 — GPS 단독 모드로 계속
-    }
-  }, []);
 
   // ── 타이머 ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -315,7 +244,47 @@ export function useWorkoutSession() {
     return () => clearInterval(id);
   }, [status]);
 
-  useEffect(() => () => clearWatch(), [clearWatch]);
+  // ── 마운트 시 세션 복원 (탭 이탈 ≠ 일시정지, running이면 GPS 재개) ───────
+  useEffect(() => {
+    const saved = loadWorkout();
+    if (!saved) return;
+
+    runStartedRef.current = saved.runStartedAt;
+    pausedAccumRef.current = saved.pausedAccumMs;
+    pathRef.current = saved.path;
+    setPath(saved.path);
+    const restoredDistance = pathDistanceMeters(saved.path);
+    distanceAccumRef.current = restoredDistance;
+    setDistanceM(restoredDistance);
+
+    if (saved.status === "running") {
+      pauseStartedRef.current = null;
+      setElapsedSec(
+        computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null),
+      );
+      setStatus("running");
+      setIsRestored(false);
+      pendingResumeWatchRef.current = true;
+    } else {
+      pauseStartedRef.current = saved.pauseStartedAt;
+      setElapsedSec(
+        computeElapsedSec(
+          saved.runStartedAt,
+          saved.pausedAccumMs,
+          saved.pauseStartedAt,
+        ),
+      );
+      setStatus("paused");
+      setIsRestored(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!pendingResumeWatchRef.current) return;
+    pendingResumeWatchRef.current = false;
+    startWatch();
+  }, [startWatch]);
 
   // ── 초기 위치 획득 ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -336,22 +305,18 @@ export function useWorkoutSession() {
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
   const start = useCallback(() => {
-    // iOS DeviceMotion 권한 요청 (fire-and-forget, 실패해도 시작은 진행)
-    void requestMotionPermission();
-
     setPath([]);
+    distanceAccumRef.current = 0;
     setDistanceM(0);
     setElapsedSec(0);
-    setIsCheating(false);
+    vehicleStateRef.current = resetVehicleState();
+    setVehicleTier("normal");
     setIsRestored(false);
     pausedAccumRef.current = 0;
     pauseStartedRef.current = null;
     runStartedRef.current = Date.now();
-    highSpeedStartRef.current = null;
     lastRawPosRef.current = null;
     lastPosTimeRef.current = null;
-    motionMagsRef.current = [];
-    motionStdDevRef.current = 999;
     setStatus("running");
     startWatch();
 
@@ -364,7 +329,7 @@ export function useWorkoutSession() {
       (err) => setGeoError(geolocationErrorMessage(err)),
       { enableHighAccuracy: true, timeout: 15000 },
     );
-  }, [startWatch, requestMotionPermission]);
+  }, [startWatch]);
 
   const pause = useCallback(() => {
     if (statusRef.current !== "running") return;
@@ -389,8 +354,8 @@ export function useWorkoutSession() {
       pauseStartedRef.current = null;
     }
     // 치팅 상태 리셋 — 재개 후 새로 측정
-    highSpeedStartRef.current = null;
-    setIsCheating(false);
+    vehicleStateRef.current = resetVehicleState();
+    setVehicleTier("normal");
     setIsRestored(false);
     setStatus("running");
     startWatch();
@@ -413,7 +378,7 @@ export function useWorkoutSession() {
     if (finalPath.length === 0 && position) {
       finalPath = [position];
     }
-    const finalDistance = pathDistanceMeters(finalPath);
+    const finalDistance = Math.round(distanceAccumRef.current);
 
     const snapshot: WorkoutFinishSnapshot = {
       startedAt,
@@ -433,12 +398,13 @@ export function useWorkoutSession() {
     pauseStartedRef.current = null;
     pausedAccumRef.current = 0;
     runStartedRef.current = null;
-    highSpeedStartRef.current = null;
+    vehicleStateRef.current = resetVehicleState();
+    distanceAccumRef.current = 0;
     setStatus("idle");
     setPath([]);
     setDistanceM(0);
     setElapsedSec(0);
-    setIsCheating(false);
+    setVehicleTier("normal");
     setIsRestored(false);
 
     return snapshot;
@@ -451,7 +417,7 @@ export function useWorkoutSession() {
     elapsedSec,
     distanceM,
     geoError,
-    isCheating,
+    vehicleTier,
     isRestored,
     elapsedLabel: formatDuration(elapsedSec),
     paceLabel: formatPaceMinPerKm(distanceM, elapsedSec),

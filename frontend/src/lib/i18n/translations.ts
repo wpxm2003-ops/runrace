@@ -182,6 +182,10 @@ export const translations = {
     workout_locating: "위치 확인 중...",
     workout_no_route: "저장할 운동 경로가 없습니다.",
     workout_cheat_warning: "속도가 너무 빠릅니다 (자전거·탈것 감지). 뛰는 속도가 되면 자동으로 재개됩니다.",
+    workout_weak_gps: "GPS 신호가 약합니다. 지하철·터널 구간인가요? 거리·경로 기록을 잠시 중단합니다.",
+    workout_vehicle_suspect: "빠른 이동 감지 — 거리만 일시 중단됩니다. 경로는 계속 기록됩니다.",
+    workout_vehicle_confirmed: "탈것으로 판단되어 기록이 중단되었습니다. 정차 후 걷기 시작하면 재개됩니다.",
+    workout_vehicle_recovering: "복귀 확인 중 — GPS 양호(20m 이내) + 걷기 속도로 9초 유지 시 기록이 재개됩니다.",
     workout_restored: "이전 운동이 복원됐어요. 재개를 눌러 계속하세요.",
 
     // ── 운동 스탯 그리드 ──────────────────
@@ -400,6 +404,10 @@ export const translations = {
     workout_locating: "Finding location...",
     workout_no_route: "No route to save.",
     workout_cheat_warning: "Moving too fast — vehicle detected. Route recording paused until you slow down.",
+    workout_weak_gps: "Weak GPS signal. Subway or tunnel? Distance and route recording paused.",
+    workout_vehicle_suspect: "Fast movement — distance paused. Route still recording.",
+    workout_vehicle_confirmed: "Vehicle detected — recording paused. Stop and walk to resume.",
+    workout_vehicle_recovering: "Resuming — good GPS (<20m) + walking speed for 9 seconds required.",
     workout_restored: "Previous run restored. Tap Resume to continue.",
 
     // ── 운동 스탯 그리드 ──────────────────

@@ -7,7 +7,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { createWorkout } from "@/lib/api";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
-import { useWorkoutSession } from "@/lib/useWorkoutSession";
+import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
 import { useCallback, useState } from "react";
 
@@ -25,7 +25,7 @@ type CelebrationState = { recordId: number; snapshot: WorkoutFinishSnapshot };
 export default function WorkoutPage() {
   const { user, loading } = useRequireAuth("/workout");
   const { t } = useLocale();
-  const session = useWorkoutSession();
+  const session = useWorkoutSessionContext();
   const [celebration, setCelebration] = useState<CelebrationState | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -76,9 +76,21 @@ export default function WorkoutPage() {
 
       <div className="relative min-h-0 flex-1">
         <WorkoutMap path={session.path} position={session.position} follow={session.status === "running"} />
-        {session.isCheating ? (
+        {session.vehicleTier === "weak_gps" ? (
+          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-violet-50 px-3 py-2 text-sm text-violet-900 shadow-sm">
+            {t.workout_weak_gps}
+          </div>
+        ) : session.vehicleTier === "confirmed" ? (
+          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800 shadow-sm">
+            {t.workout_vehicle_confirmed}
+          </div>
+        ) : session.vehicleTier === "suspect" ? (
           <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 shadow-sm">
-            {t.workout_cheat_warning}
+            {t.workout_vehicle_suspect}
+          </div>
+        ) : session.vehicleTier === "recovering" ? (
+          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800 shadow-sm">
+            {t.workout_vehicle_recovering}
           </div>
         ) : session.geoError ? (
           <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm">

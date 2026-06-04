@@ -9,6 +9,7 @@ import { ConfirmProvider } from "./ConfirmProvider";
 import { SiteHeader } from "./SiteHeader";
 import { AuthProvider } from "@/lib/AuthProvider";
 import { LocaleProvider } from "@/lib/i18n";
+import { WorkoutSessionProvider } from "@/lib/WorkoutSessionProvider";
 
 /** 하단 탭 네비 높이 */
 export const BOTTOM_NAV_HEIGHT = "4rem";
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
     <LocaleProvider>
+    <WorkoutSessionProvider>
     <ConfirmProvider>
       <ClientErrorReporter />
       <AuthRedirectHandler />
@@ -37,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <BottomNav />
       </div>
     </ConfirmProvider>
+    </WorkoutSessionProvider>
     </LocaleProvider>
     </AuthProvider>
   );

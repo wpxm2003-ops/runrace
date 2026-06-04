@@ -40,6 +40,349 @@ export function shouldAppendPoint(prev: LatLng | null, next: LatLng): boolean {
   return haversineMeters(prev, next) >= MIN_MOVE_METERS;
 }
 
+// ── 탈것 Tiered + GPS 품질 (지하철·터널) ─────────────────────────────────────
+export type VehicleTier =
+  | "normal"
+  | "suspect"
+  | "confirmed"
+  | "weak_gps"
+  | "recovering";
+
+/** 단순 Pause: accuracy(m) 초과 시 즉시 Weak (Grok/초기 권장 30m) */
+export const GPS_ACCURACY_PAUSE_M = 30;
+/** 지속 Poor: 현재·5초 평균 모두 초과 시 Weak */
+export const GPS_ACCURACY_SUSTAINED_M = 25;
+export const GPS_ACCURACY_AVG_WINDOW_MS = 5_000;
+/** 복귀 시 양호 GPS (들어갈 때보다 엄격 — 점프 방지) */
+export const GPS_ACCURACY_GOOD_M = 20;
+/** Weak/No-Fix 15초+ → confirmed(지하철 의심) */
+export const WEAK_GPS_FORCE_CONFIRM_MS = 15_000;
+/** accuracy 나쁨 + 속도 ≥ 8km/h → 즉시 Weak (GPS·속도 모순) */
+export const GPS_SPEED_COMBO_KMH = 8;
+export const GPS_SPEED_COMBO_MS = (GPS_SPEED_COMBO_KMH * 1000) / 3600;
+
+/** Suspect: 거리만 중단, GPS 경로는 계속 (~21 km/h) */
+export const SUSPECT_SPEED_MS = 5.8;
+export const SUSPECT_CONFIRM_MS = 2_500;
+/** Confirmed: 경로·거리 완전 중단 (~23 km/h) */
+export const CONFIRMED_SPEED_MS = 6.5;
+export const CONFIRMED_CONFIRM_MS = 4_000;
+/** 즉시 Confirmed (~32 km/h) */
+export const INSTANT_VEHICLE_SPEED_MS = 9;
+/** Suspect/Confirmed 해제(이력) */
+export const VEHICLE_BAND_EXIT_MS = 5.0;
+/** 복귀: 양호 GPS + 이 속도 이하가 8~10초 지속 (~14 km/h) */
+export const RECOVERY_MAX_SPEED_MS = 4.0;
+export const RECOVERY_CONFIRM_MS = 9_000;
+
+/** 추후 심박·케이던스·도시 민감도 등 (현재 미연동) */
+export type VehicleSignals = {
+  heartRateBpm?: number | null;
+  cadenceSpm?: number | null;
+  /** true면 Suspect/Confirmed 임계를 약간 낮춤 (도시 버스·지하철) */
+  urbanSensitive?: boolean;
+};
+
+export type AccuracySample = { atMs: number; accuracyM: number };
+
+export type VehicleDetectState = {
+  tier: VehicleTier;
+  suspectHighSinceMs: number | null;
+  confirmedHighSinceMs: number | null;
+  lowSpeedSinceMs: number | null;
+  weakGpsSinceMs: number | null;
+  accuracyRecent: AccuracySample[];
+};
+
+export type VehicleDetectInput = {
+  speedMps: number | null;
+  /** Geolocation accuracy (m), iOS horizontalAccuracy / Android getAccuracy */
+  accuracyM: number | null;
+  nowMs: number;
+  state: VehicleDetectState;
+  signals?: VehicleSignals;
+};
+
+export type VehicleDetectResult = {
+  tier: VehicleTier;
+  blockDistance: boolean;
+  blockPathPoints: boolean;
+  /** recovering → normal 직후 첫 점: 거리 0, 시간은 유지 */
+  reanchorNextPoint: boolean;
+  suspectHighSinceMs: number | null;
+  confirmedHighSinceMs: number | null;
+  lowSpeedSinceMs: number | null;
+  weakGpsSinceMs: number | null;
+  accuracyRecent: AccuracySample[];
+};
+
+/**
+ * Geolocation accuracy 정규화.
+ * iOS CLLocation.horizontalAccuracy -1, 무효/미제공은 null.
+ */
+export function normalizeGpsAccuracyM(
+  raw: number | null | undefined,
+): number | null {
+  if (raw == null || !Number.isFinite(raw) || raw < 0) return null;
+  return raw;
+}
+
+export function pushAccuracySample(
+  samples: AccuracySample[],
+  nowMs: number,
+  accuracyM: number | null,
+  maxAgeMs: number = GPS_ACCURACY_AVG_WINDOW_MS,
+): AccuracySample[] {
+  const next =
+    accuracyM != null ? [...samples, { atMs: nowMs, accuracyM }] : [...samples];
+  return next.filter((s) => nowMs - s.atMs <= maxAgeMs);
+}
+
+export function averageAccuracyM(samples: AccuracySample[]): number | null {
+  if (samples.length === 0) return null;
+  return samples.reduce((sum, s) => sum + s.accuracyM, 0) / samples.length;
+}
+
+/**
+ * Weak GPS 판정 (미터, iOS/Android 동일 비교).
+ * 1) No Fix  2) >30m 즉시  3) >25m + 5초 평균 >25m  4) >25m + 속도 ≥8km/h
+ */
+export function isGpsWeak(
+  accuracyM: number | null,
+  speedMps: number | null,
+  recentSamples: AccuracySample[],
+): boolean {
+  if (accuracyM == null && speedMps == null) return true;
+
+  if (accuracyM != null && accuracyM > GPS_ACCURACY_PAUSE_M) return true;
+
+  const avg = averageAccuracyM(recentSamples);
+  if (
+    accuracyM != null &&
+    accuracyM > GPS_ACCURACY_SUSTAINED_M &&
+    avg != null &&
+    avg > GPS_ACCURACY_SUSTAINED_M
+  ) {
+    return true;
+  }
+
+  if (
+    accuracyM != null &&
+    accuracyM > GPS_ACCURACY_SUSTAINED_M &&
+    speedMps != null &&
+    speedMps >= GPS_SPEED_COMBO_MS
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isGpsGood(accuracyM: number | null): boolean {
+  return accuracyM != null && accuracyM <= GPS_ACCURACY_GOOD_M;
+}
+
+function urbanFactor(signals?: VehicleSignals): number {
+  return signals?.urbanSensitive ? 0.92 : 1;
+}
+
+function effectiveThreshold(base: number, signals?: VehicleSignals): number {
+  return base * urbanFactor(signals);
+}
+
+/**
+ * GPS 품질 우선 → Tiered 속도 감지 → Recovering(양호 GPS+저속) → normal.
+ */
+export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectResult {
+  const { speedMps, accuracyM, nowMs, state, signals } = input;
+  let {
+    tier,
+    suspectHighSinceMs,
+    confirmedHighSinceMs,
+    lowSpeedSinceMs,
+    weakGpsSinceMs,
+    accuracyRecent,
+  } = state;
+
+  const suspectMs = effectiveThreshold(SUSPECT_SPEED_MS, signals);
+  const confirmedMs = effectiveThreshold(CONFIRMED_SPEED_MS, signals);
+  const instantMs = INSTANT_VEHICLE_SPEED_MS;
+  const exitMs = effectiveThreshold(VEHICLE_BAND_EXIT_MS, signals);
+  const recoveryMs = RECOVERY_MAX_SPEED_MS;
+
+  const result = (
+    partial: Partial<VehicleDetectResult> & Pick<VehicleDetectResult, "tier">,
+  ): VehicleDetectResult => ({
+    blockDistance: partial.blockDistance ?? partial.tier !== "normal",
+    blockPathPoints:
+      partial.blockPathPoints ??
+      (partial.tier === "confirmed" ||
+        partial.tier === "recovering" ||
+        partial.tier === "weak_gps"),
+    reanchorNextPoint: partial.reanchorNextPoint ?? false,
+    suspectHighSinceMs: partial.suspectHighSinceMs ?? suspectHighSinceMs,
+    confirmedHighSinceMs: partial.confirmedHighSinceMs ?? confirmedHighSinceMs,
+    lowSpeedSinceMs: partial.lowSpeedSinceMs ?? lowSpeedSinceMs,
+    weakGpsSinceMs: partial.weakGpsSinceMs ?? weakGpsSinceMs,
+    accuracyRecent: partial.accuracyRecent ?? accuracyRecent,
+    tier: partial.tier,
+  });
+
+  const hold = (): VehicleDetectResult =>
+    result({
+      tier,
+      blockDistance: tier !== "normal",
+      blockPathPoints:
+        tier === "confirmed" || tier === "recovering" || tier === "weak_gps",
+    });
+
+  // ── 1) GPS 약함 / No Fix (지하철·터널) ───────────────────────────────────
+  if (isGpsWeak(accuracyM, speedMps, accuracyRecent)) {
+    weakGpsSinceMs = weakGpsSinceMs ?? nowMs;
+    if (nowMs - weakGpsSinceMs >= WEAK_GPS_FORCE_CONFIRM_MS) {
+      return result({
+        tier: "confirmed",
+        blockDistance: true,
+        blockPathPoints: true,
+        weakGpsSinceMs,
+        suspectHighSinceMs: suspectHighSinceMs ?? nowMs,
+        confirmedHighSinceMs: confirmedHighSinceMs ?? nowMs,
+        lowSpeedSinceMs: null,
+      });
+    }
+    return result({
+      tier: "weak_gps",
+      blockDistance: true,
+      blockPathPoints: true,
+      weakGpsSinceMs,
+    });
+  }
+  weakGpsSinceMs = null;
+
+  if (tier === "weak_gps") {
+    return result({
+      tier: "recovering",
+      blockDistance: true,
+      blockPathPoints: true,
+      suspectHighSinceMs: null,
+      confirmedHighSinceMs: null,
+      lowSpeedSinceMs:
+        speedMps != null && speedMps <= recoveryMs ? nowMs : null,
+    });
+  }
+
+  // ── 2) Recovering: 양호 GPS + 저속 ───────────────────────────────────────
+  if (tier === "recovering") {
+    const speedOk = speedMps != null && speedMps <= recoveryMs;
+    const gpsOk = isGpsGood(accuracyM);
+    if (speedOk && gpsOk) {
+      if (lowSpeedSinceMs == null) lowSpeedSinceMs = nowMs;
+      if (nowMs - lowSpeedSinceMs >= RECOVERY_CONFIRM_MS) {
+        return result({
+          tier: "normal",
+          blockDistance: false,
+          blockPathPoints: false,
+          reanchorNextPoint: true,
+          suspectHighSinceMs: null,
+          confirmedHighSinceMs: null,
+          lowSpeedSinceMs: null,
+          weakGpsSinceMs: null,
+        });
+      }
+    } else {
+      lowSpeedSinceMs = null;
+    }
+    return result({
+      tier: "recovering",
+      blockDistance: true,
+      blockPathPoints: true,
+      lowSpeedSinceMs,
+    });
+  }
+
+  if (speedMps == null) {
+    return hold();
+  }
+
+  // ── 3) Instant / Confirmed (지상 탈것) ───────────────────────────────────
+  if (speedMps >= instantMs) {
+    return result({
+      tier: "confirmed",
+      blockDistance: true,
+      blockPathPoints: true,
+      suspectHighSinceMs: suspectHighSinceMs ?? nowMs,
+      confirmedHighSinceMs: confirmedHighSinceMs ?? nowMs,
+      lowSpeedSinceMs: null,
+    });
+  }
+
+  if (speedMps >= confirmedMs) {
+    if (confirmedHighSinceMs == null) confirmedHighSinceMs = nowMs;
+    if (nowMs - confirmedHighSinceMs >= CONFIRMED_CONFIRM_MS) {
+      return result({
+        tier: "confirmed",
+        blockDistance: true,
+        blockPathPoints: true,
+        suspectHighSinceMs: suspectHighSinceMs ?? confirmedHighSinceMs,
+        confirmedHighSinceMs,
+        lowSpeedSinceMs: null,
+      });
+    }
+  } else {
+    confirmedHighSinceMs = null;
+  }
+
+  // ── 4) Suspect ───────────────────────────────────────────────────────────
+  if (speedMps > suspectMs) {
+    if (suspectHighSinceMs == null) suspectHighSinceMs = nowMs;
+    const suspectReady = nowMs - suspectHighSinceMs >= SUSPECT_CONFIRM_MS;
+    if (suspectReady) {
+      return result({
+        tier: "suspect",
+        blockDistance: true,
+        blockPathPoints: false,
+        suspectHighSinceMs,
+        confirmedHighSinceMs,
+        lowSpeedSinceMs: null,
+      });
+    }
+    return result({
+      tier: "normal",
+      blockDistance: true,
+      blockPathPoints: false,
+      suspectHighSinceMs,
+      confirmedHighSinceMs,
+      lowSpeedSinceMs: null,
+    });
+  }
+
+  // ── 5) Confirmed / Suspect → Recovering ──────────────────────────────────
+  if (tier === "confirmed" || tier === "suspect") {
+    if (speedMps < exitMs) {
+      return result({
+        tier: "recovering",
+        blockDistance: true,
+        blockPathPoints: true,
+        suspectHighSinceMs: null,
+        confirmedHighSinceMs: null,
+        lowSpeedSinceMs: speedMps <= recoveryMs ? nowMs : null,
+      });
+    }
+    return hold();
+  }
+
+  suspectHighSinceMs = null;
+  return result({
+    tier: "normal",
+    blockDistance: false,
+    blockPathPoints: false,
+    suspectHighSinceMs: null,
+    confirmedHighSinceMs: null,
+    lowSpeedSinceMs: null,
+    weakGpsSinceMs: null,
+  });
+}
+
 export function formatDuration(totalSeconds: number): string {
   const sec = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(sec / 3600);
