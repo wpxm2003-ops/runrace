@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
+import { ShareButton } from "@/app/_components/ShareButton";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
@@ -14,6 +15,7 @@ import {
 import { formatDateTime, formatKm } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { buildWorkoutCard, shareImageBlob } from "@/lib/shareCard";
 import type { User } from "firebase/auth";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
@@ -70,6 +72,17 @@ export function WorkoutRecordPanel({
   const confirm = useConfirm();
   const { data: detail, error, isLoading } = useWorkoutDetail(workoutId, user);
   const [deleting, setDeleting] = useState(false);
+
+  async function onShare() {
+    if (!detail) return;
+    const blob = await buildWorkoutCard({
+      distanceM: detail.distanceM,
+      durationSec: detail.durationSec,
+      calories: detail.calories,
+      startedAt: detail.startedAt,
+    });
+    await shareImageBlob(blob, `runrace-workout-${workoutId}.png`, "RunRace 운동 기록");
+  }
 
   async function onDelete() {
     const ok = await confirm({
@@ -144,6 +157,8 @@ export function WorkoutRecordPanel({
           {t.workout_end_label} {formatDateTime(detail.endedAt)}
         </div>
       </div>
+
+      <ShareButton onShare={onShare} className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50" />
 
       <button
         type="button"

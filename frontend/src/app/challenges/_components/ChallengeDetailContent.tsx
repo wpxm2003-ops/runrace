@@ -135,7 +135,6 @@ export default function ChallengeDetailContent() {
           ) : null}
         </div>
       ) : null}
-      {detail ? <ShareButton onShare={onShare} /> : null}
       <a className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</a>
     </>
   );
@@ -209,6 +208,13 @@ export default function ChallengeDetailContent() {
               user={user}
             />
           ) : null}
+
+          <div className="mt-4">
+            <ShareButton
+              onShare={onShare}
+              className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            />
+          </div>
 
           {detail.canJoin || detail.canLeave ? (
             <div
