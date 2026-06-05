@@ -16,6 +16,8 @@ import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
+import { ShareButton } from "@/app/_components/ShareButton";
+import { buildRaceCard, shareImageBlob } from "@/lib/shareCard";
 import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -101,6 +103,22 @@ export default function ChallengeDetailContent() {
     detail != null && detail.winner != null &&
     (detail.hasEnded || detail.members.some((m) => m.finished));
 
+  async function onShare() {
+    if (!detail) return;
+    const blob = await buildRaceCard({
+      title: detail.title,
+      goalKm: detail.goalKm,
+      members: detail.members.map((m) => ({
+        nickname: m.nickname,
+        totalKm: m.totalKm,
+        progressPercent: Number(m.progressPercent) || 0,
+      })),
+      winnerNickname: detail.winner?.nickname,
+      dateLabel: formatDateRange(detail.startAt, detail.endAt),
+    });
+    await shareImageBlob(blob, `runrace-race-${id}.png`, `RunRace · ${detail.title}`);
+  }
+
   const pageActions = (
     <>
       {detail?.showManage ? (
@@ -117,6 +135,7 @@ export default function ChallengeDetailContent() {
           ) : null}
         </div>
       ) : null}
+      {detail ? <ShareButton onShare={onShare} /> : null}
       <a className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</a>
     </>
   );

@@ -14,6 +14,8 @@ export const translations = {
     error_retry: "잠시 후 다시 시도해 주세요. 문제가 계속되면 새로고침해 주세요.",
     refresh: "새로고침",
     no_name: "(이름 없음)",
+    share_btn: "공유",
+    share_busy: "준비 중...",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "홈",
@@ -293,6 +295,8 @@ export const translations = {
     error_retry: "Please try again. If the issue persists, refresh the page.",
     refresh: "Refresh",
     no_name: "(No name)",
+    share_btn: "Share",
+    share_busy: "Preparing...",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "Home",

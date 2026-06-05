@@ -5,11 +5,13 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { deleteWorkout, fetchChallengeWorkout, fetchWorkout, type WorkoutDetail } from "@/lib/api";
+import { deleteWorkout, fetchChallengeWorkout, fetchWorkout, useMe, type WorkoutDetail } from "@/lib/api";
 import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
-import { formatDateTime, formatKm } from "@/lib/format";
+import { formatDate, formatDateTime, formatKm } from "@/lib/format";
 import { parseWorkoutId } from "@/lib/workoutRoute";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { ShareButton } from "@/app/_components/ShareButton";
+import { buildWorkoutCard, shareImageBlob } from "@/lib/shareCard";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -47,6 +49,26 @@ export default function WorkoutDetailContent() {
         : `/workouts/${id}`
       : undefined;
   const { user } = useRequireAuth(returnPath);
+  // 내 운동일 때만 닉네임 카드에 표시 (레이스 맥락은 타인 기록일 수 있음)
+  const { data: me } = useMe(fromChallenge ? null : user);
+
+  async function onShare() {
+    if (!detail) return;
+    const blob = await buildWorkoutCard({
+      nickname: fromChallenge ? null : me?.nickname,
+      distanceKm: (detail.distanceM / 1000).toFixed(2),
+      durationLabel: formatDuration(detail.durationSec),
+      paceLabel: formatPaceMinPerKm(detail.distanceM, detail.durationSec),
+      calories: detail.calories,
+      dateLabel: formatDate(detail.startedAt),
+      path: detail.path,
+    });
+    await shareImageBlob(
+      blob,
+      `runrace-workout-${id}.png`,
+      `RunRace · ${(detail.distanceM / 1000).toFixed(2)}km`,
+    );
+  }
 
   useEffect(() => {
     if (!id || !user) return;
@@ -80,22 +102,27 @@ export default function WorkoutDetailContent() {
     }
   }
 
-  const pageActions = fromChallenge ? (
-    <a
-      className="text-sm text-zinc-600 hover:underline"
-      href={challengeDetailHref(challengeId!)}
-    >
-      {t.challenge_workout_back}
-    </a>
-  ) : (
-    <button
-      type="button"
-      disabled={deleting || !detail}
-      onClick={onDelete}
-      className="text-sm text-red-600 hover:text-red-800 hover:underline disabled:opacity-50"
-    >
-      {deleting ? t.workout_deleting_btn : t.workout_delete_btn}
-    </button>
+  const pageActions = (
+    <>
+      {detail ? <ShareButton onShare={onShare} /> : null}
+      {fromChallenge ? (
+        <a
+          className="text-sm text-zinc-600 hover:underline"
+          href={challengeDetailHref(challengeId!)}
+        >
+          {t.challenge_workout_back}
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled={deleting || !detail}
+          onClick={onDelete}
+          className="text-sm text-red-600 hover:text-red-800 hover:underline disabled:opacity-50"
+        >
+          {deleting ? t.workout_deleting_btn : t.workout_delete_btn}
+        </button>
+      )}
+    </>
   );
 
   return (
