@@ -21,6 +21,8 @@ import {
 } from "./workoutTrack";
 import { saveWorkout, loadWorkout, clearWorkout } from "./workoutPersistence";
 import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
+import { Capacitor } from "@capacitor/core";
+import { waitForNativePermissions } from "./nativePermissions";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const SAVE_INTERVAL_MS = 10_000;
@@ -290,21 +292,34 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     startWatch();
   }, [startWatch]);
 
-  // ── 초기 위치 획득 ────────────────────────────────────────────────────────
+  // ── 초기 위치 획득 (네이티브: GPS→알림 순차 권한 요청 후 실행) ─────────────
   useEffect(() => {
-    const blocked = geolocationBlockedReason();
-    if (blocked) {
-      setGeoError(blocked);
-      return;
+    let cancelled = false;
+
+    async function init() {
+      const blocked = geolocationBlockedReason();
+      if (blocked) {
+        setGeoError(blocked);
+        return;
+      }
+      if (Capacitor.isNativePlatform()) {
+        await waitForNativePermissions();
+      }
+      if (cancelled) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setGeoError(null);
+        },
+        (err) => setGeoError(geolocationErrorMessage(err)),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },
+      );
     }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGeoError(null);
-      },
-      (err) => setGeoError(geolocationErrorMessage(err)),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },
-    );
+
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────

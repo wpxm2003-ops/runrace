@@ -27,12 +27,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
     <LocaleProvider>
+    <FcmBootstrap />
     <WorkoutSessionProvider>
     <ConfirmProvider>
       <ClientErrorReporter />
       <AuthRedirectHandler />
       <NativeNavBootstrap />
-      <FcmBootstrap />
       <div className="flex min-h-0 min-h-dvh flex-1 flex-col bg-zinc-50 text-zinc-900">
         <SiteHeader />
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))]">
