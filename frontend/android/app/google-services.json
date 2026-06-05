@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "264137799530-7g655q14fns7k6eibku4aeng7ba3savt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.runrace.app",
+            "certificate_hash": "2bd9c2ade9ae8e5350fbdf845156085d850d1c3a"
+          }
+        },
+        {
           "client_id": "264137799530-cbtcavebcf2ah6e4ek729adjvv4lbnf8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
