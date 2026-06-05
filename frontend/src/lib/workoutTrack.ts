@@ -73,7 +73,7 @@ export const INSTANT_VEHICLE_SPEED_MS = 9;
 export const VEHICLE_BAND_EXIT_MS = 5.0;
 /** 복귀: 양호 GPS + 이 속도 이하가 8~10초 지속 (~14 km/h) */
 export const RECOVERY_MAX_SPEED_MS = 4.0;
-export const RECOVERY_CONFIRM_MS = 9_000;
+export const RECOVERY_CONFIRM_MS = 5_000;
 
 /** 추후 심박·케이던스·도시 민감도 등 (현재 미연동) */
 export type VehicleSignals = {
