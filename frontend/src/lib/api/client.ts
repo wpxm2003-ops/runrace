@@ -2,26 +2,35 @@ import { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
 import { ApiError } from "./apiError";
 
-/** 웹(EC2+Nginx): 비우면 /api. APK: 반드시 http://<서버IP> 전체 URL */
+/** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: localhost:8081 */
 function resolveApiBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
+  let base: string;
   if (raw === undefined) {
-    return "http://localhost:8081";
+    base = "http://localhost:8081";
+  } else {
+    const trimmed = raw.trim();
+    base = trimmed === "" ? "" : trimmed.replace(/\/$/, "");
   }
-  const trimmed = raw.trim();
-  if (trimmed === "") {
+
+  // HTTPS 페이지에서 http:// API는 Mixed Content로 차단 → Nginx /api 프록시 사용
+  if (
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    base.startsWith("http://")
+  ) {
     return "";
   }
-  return trimmed.replace(/\/$/, "");
+
+  return base;
 }
 
-const API_BASE_URL = resolveApiBaseUrl();
-
 export function apiUrl(path: string): string {
+  const apiBaseUrl = resolveApiBaseUrl();
   if (!path.startsWith("/")) {
-    return `${API_BASE_URL}/${path}`;
+    return `${apiBaseUrl}/${path}`;
   }
-  return `${API_BASE_URL}${path}`;
+  return `${apiBaseUrl}${path}`;
 }
 
 /** 인증 없이 POST 요청을 보낸다 (카카오 로그인 등 공개 엔드포인트용). */
