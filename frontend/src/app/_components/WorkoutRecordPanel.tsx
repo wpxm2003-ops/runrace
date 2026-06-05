@@ -12,7 +12,7 @@ import {
   invalidateWorkoutLists,
   useWorkoutDetail,
 } from "@/lib/api";
-import { formatDateTime, formatKm } from "@/lib/format";
+import { formatDate, formatDateTime, formatKm } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { buildWorkoutCard, shareImageBlob } from "@/lib/shareCard";
@@ -76,12 +76,18 @@ export function WorkoutRecordPanel({
   async function onShare() {
     if (!detail) return;
     const blob = await buildWorkoutCard({
-      distanceM: detail.distanceM,
-      durationSec: detail.durationSec,
+      distanceKm: (detail.distanceM / 1000).toFixed(2),
+      durationLabel: formatDuration(detail.durationSec),
+      paceLabel: formatPaceMinPerKm(detail.distanceM, detail.durationSec),
       calories: detail.calories,
-      startedAt: detail.startedAt,
+      dateLabel: formatDate(detail.startedAt),
+      path: detail.path,
     });
-    await shareImageBlob(blob, `runrace-workout-${workoutId}.png`, "RunRace 운동 기록");
+    await shareImageBlob(
+      blob,
+      `runrace-workout-${workoutId}.png`,
+      `RunRace · ${(detail.distanceM / 1000).toFixed(2)}km`,
+    );
   }
 
   async function onDelete() {
