@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/lib/AuthProvider";
 import { registerDeviceToken } from "@/lib/api/push";
@@ -8,26 +8,34 @@ import { registerDeviceToken } from "@/lib/api/push";
 export function FcmBootstrap() {
   const { user } = useAuth();
   const registeredRef = useRef<string | null>(null);
+  const [notifGranted, setNotifGranted] = useState(false);
 
+  // GPS와 같이 앱 시작 시 알림 권한 요청 (로그인 불필요)
   useEffect(() => {
-    if (!user || !Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) return;
 
-    async function init() {
+    async function requestPermission() {
+      const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
+      const { receive } = await FirebaseMessaging.requestPermissions();
+      setNotifGranted(receive === "granted");
+    }
+
+    requestPermission().catch(console.error);
+  }, []);
+
+  // 로그인 후 FCM 토큰 등록
+  useEffect(() => {
+    if (!user || !notifGranted || !Capacitor.isNativePlatform()) return;
+
+    async function register() {
       const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
 
-      // 알림 권한 요청
-      const { receive } = await FirebaseMessaging.requestPermissions();
-      if (receive !== "granted") return;
-
-      // FCM 토큰 발급
       const { token } = await FirebaseMessaging.getToken();
       if (!token || token === registeredRef.current) return;
 
-      // 백엔드에 토큰 등록
       await registerDeviceToken(user!, token, Capacitor.getPlatform());
       registeredRef.current = token;
 
-      // 토큰 갱신 시 재등록
       await FirebaseMessaging.addListener("tokenReceived", async ({ token: newToken }) => {
         if (!newToken || newToken === registeredRef.current) return;
         await registerDeviceToken(user!, newToken, Capacitor.getPlatform());
@@ -35,14 +43,14 @@ export function FcmBootstrap() {
       });
     }
 
-    init().catch(console.error);
+    register().catch(console.error);
 
     return () => {
       import("@capacitor-firebase/messaging").then(({ FirebaseMessaging }) => {
         FirebaseMessaging.removeAllListeners();
       });
     };
-  }, [user?.uid]);
+  }, [user?.uid, notifGranted]);
 
   return null;
 }
