@@ -4,6 +4,7 @@ import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.friend.dto.CreateInviteRequest;
 import com.runrace.backend.friend.dto.CreateInviteResponse;
 import com.runrace.backend.friend.dto.FriendResponse;
+import com.runrace.backend.friend.dto.NudgeRequest;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,15 @@ public class FriendController {
   @PostMapping("/invites/{code}/accept")
   public ResponseEntity<Void> accept(AuthPrincipal principal, @PathVariable("code") String code) {
     friendService.acceptInvite(principal, code);
+    return ResponseEntity.ok().build();
+  }
+
+  @PostMapping("/{nickname}/nudge")
+  public ResponseEntity<Void> nudge(
+      AuthPrincipal principal,
+      @PathVariable String nickname,
+      @RequestBody NudgeRequest body) {
+    friendService.sendNudge(principal, nickname, body.message());
     return ResponseEntity.ok().build();
   }
 
