@@ -2,7 +2,7 @@
 
 import type { LatLng } from "@/lib/workoutTrack";
 import { latLngBounds } from "leaflet";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -46,12 +46,13 @@ function MapResize() {
 function MapFollower({
   position,
   follow,
+  pathLength,
 }: {
   position: LatLng | null;
   follow: boolean;
+  pathLength: number;
 }) {
   const map = useMap();
-  const centeredRef = useRef(false);
 
   useEffect(() => {
     if (!position) return;
@@ -62,12 +63,12 @@ function MapFollower({
       });
       return;
     }
-    if (!centeredRef.current) {
-      centeredRef.current = true;
+    // follow=false: 경로가 2점 이상이면 FitPathBounds가 전체 경로에 맞춤
+    if (pathLength < 2) {
       map.setView([position.lat, position.lng], 17, { animate: false });
       map.invalidateSize();
     }
-  }, [position, follow, map]);
+  }, [position, follow, pathLength, map]);
 
   return null;
 }
@@ -78,16 +79,23 @@ type WorkoutMapProps = {
   follow: boolean;
 };
 
+function pathBoundsKey(path: LatLng[]): string {
+  if (path.length === 0) return "";
+  const first = path[0];
+  const last = path[path.length - 1];
+  return `${path.length}:${first.lat},${first.lng}:${last.lat},${last.lng}`;
+}
+
 function FitPathBounds({ path, enabled }: { path: LatLng[]; enabled: boolean }) {
   const map = useMap();
-  const fittedRef = useRef(false);
+  const boundsKey = pathBoundsKey(path);
 
   useEffect(() => {
-    if (!enabled || path.length < 2 || fittedRef.current) return;
+    if (!enabled || path.length < 2) return;
     const bounds = latLngBounds(path.map((p) => [p.lat, p.lng] as [number, number]));
     map.fitBounds(bounds, { padding: [36, 36] });
-    fittedRef.current = true;
-  }, [path, enabled, map]);
+    map.invalidateSize();
+  }, [boundsKey, enabled, map, path]);
 
   return null;
 }
@@ -111,7 +119,7 @@ export default function WorkoutMap({ path, position, follow }: WorkoutMapProps) 
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapResize />
-        <MapFollower position={position} follow={follow} />
+        <MapFollower position={position} follow={follow} pathLength={path.length} />
         <FitPathBounds path={path} enabled={!follow} />
         {latLngs.length >= 2 ? (
           <Polyline
