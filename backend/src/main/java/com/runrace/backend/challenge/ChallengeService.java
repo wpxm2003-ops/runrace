@@ -243,6 +243,42 @@ public class ChallengeService {
     challengeWorkoutRepository.save(link);
   }
 
+  /**
+   * 운동 기록 삭제 시 호출. challenge_workout 링크를 찾아 적용된 거리를 총 거리에서 차감한다.
+   * - 완주 처리된 멤버가 목표 이하로 내려가면 finishedAt을 초기화한다.
+   * - 해당 멤버가 대결 승자였으면 winner도 초기화한다.
+   */
+  @Transactional
+  public void reverseWorkoutDistance(long workoutSessionId) {
+    List<ChallengeWorkout> links = challengeWorkoutRepository.findAllByWorkoutSessionId(workoutSessionId);
+    for (ChallengeWorkout link : links) {
+      Challenge challenge = link.getChallenge();
+      AppUser user = link.getUser();
+      BigDecimal subtractKm = BigDecimal.valueOf(link.getAppliedDistanceM())
+          .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+
+      challengeMemberRepository
+          .findByChallengeIdAndUserId(challenge.getId(), user.getId())
+          .ifPresent(member -> {
+            BigDecimal next = member.getTotalKm().subtract(subtractKm).max(BigDecimal.ZERO);
+            member.setTotalKm(next);
+            member.setLastSyncAt(OffsetDateTime.now());
+
+            // 목표 미달로 내려가면 완주 상태 초기화
+            if (member.getFinishedAt() != null
+                && next.compareTo(goalKmAsDecimal(challenge)) < 0) {
+              member.setFinishedAt(null);
+              // 이 멤버가 승자였으면 winner 초기화
+              if (user.equals(challenge.getWinner())) {
+                challenge.setWinner(null);
+                challengeRepository.save(challenge);
+              }
+            }
+            challengeMemberRepository.save(member);
+          });
+    }
+  }
+
   @Transactional(readOnly = true)
   public List<ChallengeWorkoutListItem> listWorkoutsForMembers(AuthPrincipal principal, Long challengeId) {
     Challenge challenge = requireChallenge(challengeId);

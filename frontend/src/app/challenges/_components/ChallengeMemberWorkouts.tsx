@@ -3,7 +3,7 @@
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useChallengeWorkouts } from "@/lib/api";
 import { challengeWorkoutHref } from "@/lib/challengeRoute";
-import { formatKm, formatShortDateTime } from "@/lib/format";
+import { formatKm } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import type { User } from "firebase/auth";
 
@@ -46,15 +46,9 @@ export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) 
                   <div className="truncate text-sm font-medium text-zinc-900">
                     {w.nickname ?? t.no_name}
                   </div>
-                  <div className="mt-0.5 text-xs tabular-nums text-zinc-500">
-                    {formatShortDateTime(w.startedAt)}
-                  </div>
                 </div>
                 <div className="shrink-0 text-right text-xs text-zinc-600">
                   <div className="font-medium tabular-nums">{formatKm(w.distanceM)}</div>
-                  <div className="mt-0.5 text-zinc-500">
-                    {t.detail_member_workouts_applied(formatKm(w.appliedDistanceM))}
-                  </div>
                 </div>
               </a>
             </li>

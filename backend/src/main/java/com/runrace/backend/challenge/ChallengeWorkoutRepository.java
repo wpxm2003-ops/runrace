@@ -11,6 +11,14 @@ public interface ChallengeWorkoutRepository extends JpaRepository<ChallengeWorko
 
   Optional<ChallengeWorkout> findByChallengeIdAndWorkoutSessionId(Long challengeId, Long workoutSessionId);
 
+  @Query("""
+      select cw from ChallengeWorkout cw
+      join fetch cw.challenge c
+      join fetch cw.user u
+      where cw.workoutSession.id = :workoutSessionId
+      """)
+  List<ChallengeWorkout> findAllByWorkoutSessionId(@Param("workoutSessionId") Long workoutSessionId);
+
   @Query(
       """
       select cw from ChallengeWorkout cw

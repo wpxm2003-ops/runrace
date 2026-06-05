@@ -127,6 +127,8 @@ public class WorkoutService {
         workoutSessionRepository
             .findByIdAndUserId(id, principal.userId())
             .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    // 레이스에 반영된 거리 먼저 차감 (cascade 삭제 전에 호출해야 함)
+    challengeService.reverseWorkoutDistance(session.getId());
     workoutSessionRepository.delete(session);
   }
 
