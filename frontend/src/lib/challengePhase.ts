@@ -1,11 +1,5 @@
 export type ChallengePhase = "scheduled" | "in_progress" | "ended";
 
-const LABELS: Record<ChallengePhase, string> = {
-  scheduled: "예정",
-  in_progress: "진행중",
-  ended: "종료",
-};
-
 export function challengePhaseFromDates(
   startAt: string,
   endAt: string | null,
@@ -39,14 +33,6 @@ export function resolveChallengePhase(
   apiPhase?: string | null,
 ): ChallengePhase {
   return challengePhaseFromApi(apiPhase) ?? challengePhaseFromDates(startAt, endAt);
-}
-
-export function challengePhaseLabel(startAt: string, endAt: string | null): string {
-  return LABELS[challengePhaseFromDates(startAt, endAt)];
-}
-
-export function challengePhaseLabelFor(phase: ChallengePhase): string {
-  return LABELS[phase];
 }
 
 /** 예정·진행중·종료 상태 뱃지 색상 */
