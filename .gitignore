@@ -34,6 +34,9 @@ frontend/android/app/build/
 frontend/android/local.properties
 frontend/android/capacitor-cordova-android-plugins/
 
+# C:\workspace\runrace\frontend\android\.gitignore 또는 루트 .gitignore
+.kotlin/
+
 # OS
 .DS_Store
 Thumbs.db
