@@ -20,6 +20,7 @@ import {
   type WorkoutStatus,
 } from "./workoutTrack";
 import { saveWorkout, loadWorkout, clearWorkout } from "./workoutPersistence";
+import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const SAVE_INTERVAL_MS = 10_000;
@@ -57,7 +58,7 @@ function resetVehicleState(): VehicleDetectState {
 }
 
 // ── 메인 훅 ───────────────────────────────────────────────────────────────────
-export function useWorkoutSession() {
+export function useWorkoutSession(bgNotification?: { title: string; message: string }) {
   // ── 기본 상태 ─────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<WorkoutStatus>("idle");
   const [path, setPath] = useState<LatLng[]>([]);
@@ -70,7 +71,7 @@ export function useWorkoutSession() {
   const [isRestored, setIsRestored] = useState(false);
 
   // ── 타이밍 레프 ───────────────────────────────────────────────────────────
-  const watchIdRef = useRef<number | null>(null);
+  const stopWatchRef = useRef<(() => void) | null>(null);
   const statusRef = useRef(status);
   const pathRef = useRef(path);
   const pausedAccumRef = useRef(0);
@@ -131,14 +132,14 @@ export function useWorkoutSession() {
 
   // ── GPS 유틸 ──────────────────────────────────────────────────────────────
   const clearWatch = useCallback(() => {
-    if (watchIdRef.current != null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
+    if (stopWatchRef.current) {
+      stopWatchRef.current();
+      stopWatchRef.current = null;
     }
   }, []);
 
   const peekSpeedMps = useCallback(
-    (coords: GeolocationCoordinates, point: LatLng, now: number): number | null => {
+    (coords: GeoCoords, point: LatLng, now: number): number | null => {
       let speed = coords.speed ?? null;
       if (speed == null && lastRawPosRef.current && lastPosTimeRef.current) {
         speed = computeSpeedMps(lastRawPosRef.current, point, now - lastPosTimeRef.current);
@@ -154,7 +155,7 @@ export function useWorkoutSession() {
   }, []);
 
   const appendPosition = useCallback(
-    (coords: GeolocationCoordinates) => {
+    (coords: GeoCoords) => {
       if (statusRef.current !== "running") return;
       setGeoError(null);
       const point: LatLng = { lat: coords.latitude, lng: coords.longitude };
@@ -218,15 +219,18 @@ export function useWorkoutSession() {
     }
     setGeoError(null);
     clearWatch();
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
+    startBackgroundWatch(
+      (coords) => {
         setGeoError(null);
-        appendPosition(pos.coords);
+        appendPosition(coords);
       },
-      (err) => setGeoError(geolocationErrorMessage(err)),
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 },
-    );
-  }, [appendPosition, clearWatch]);
+      (msg) => setGeoError(msg),
+      bgNotification?.title ?? "운동 기록 중",
+      bgNotification?.message ?? "RunRace가 백그라운드에서 경로를 기록하고 있습니다.",
+    ).then((stop) => {
+      stopWatchRef.current = stop;
+    });
+  }, [appendPosition, clearWatch, bgNotification?.title, bgNotification?.message]);
 
   // ── 타이머 ────────────────────────────────────────────────────────────────
   useEffect(() => {

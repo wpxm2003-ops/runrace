@@ -227,6 +227,8 @@ export const translations = {
     // ── 운동하기 ──────────────────────────
     workout_title: "운동하기",
     workout_subtitle: "이동 경로가 지도에 실시간으로 표시됩니다.",
+    workout_bg_notification_title: "운동 기록 중",
+    workout_bg_notification_msg: "RunRace가 백그라운드에서 경로를 기록하고 있습니다.",
     workout_map_loading: "지도 불러오는 중...",
     workout_locating: "위치 확인 중...",
     workout_no_route: "저장할 운동 경로가 없습니다.",
@@ -504,6 +506,8 @@ export const translations = {
     // ── 운동하기 ──────────────────────────
     workout_title: "Run",
     workout_subtitle: "Your route is tracked on the map in real time.",
+    workout_bg_notification_title: "Workout in progress",
+    workout_bg_notification_msg: "RunRace is recording your route in the background.",
     workout_map_loading: "Loading map...",
     workout_locating: "Finding location...",
     workout_no_route: "No route to save.",
