@@ -1,0 +1,10 @@
+import type { User } from "firebase/auth";
+import { apiFetch } from "./client";
+
+export function registerDeviceToken(user: User, fcmToken: string, platform: string): Promise<void> {
+  return apiFetch("/api/me/device-tokens", {
+    method: "POST",
+    user,
+    body: { fcmToken, platform },
+  });
+}
