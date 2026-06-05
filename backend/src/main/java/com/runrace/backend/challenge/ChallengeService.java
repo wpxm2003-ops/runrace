@@ -219,12 +219,73 @@ public class ChallengeService {
 
     List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
     for (ChallengeMember member : activeMembers) {
-      BigDecimal next = member.getTotalKm().add(distanceKm);
+      Challenge challenge = member.getChallenge();
+      BigDecimal prevKm = member.getTotalKm();
+      BigDecimal next = prevKm.add(distanceKm);
+      BigDecimal goal = goalKmAsDecimal(challenge);
+
+      // 순위 변동 감지: 업데이트 전 전체 멤버 조회
+      List<ChallengeMember> allMembers = challengeMemberRepository.findAllForChallenge(challenge.getId());
+
       member.setTotalKm(next);
       member.setLastSyncAt(now);
       onMemberProgress(member, next);
       challengeMemberRepository.save(member);
-      recordWorkoutLink(member.getChallenge(), workoutSessionId, userId, distanceM, now);
+      recordWorkoutLink(challenge, workoutSessionId, userId, distanceM, now);
+
+      // 마일스톤 이벤트 발행
+      publishMilestoneEvents(member, prevKm, next, goal, allMembers);
+
+      // 순위 추월 이벤트 발행
+      publishOvertakeEvent(member, prevKm, next, allMembers);
+    }
+  }
+
+  private void publishMilestoneEvents(
+      ChallengeMember member, BigDecimal prevKm, BigDecimal next,
+      BigDecimal goal, List<ChallengeMember> allMembers) {
+
+    String nickname = member.getUser().getNickname();
+    UUID achieverId = member.getUser().getId();
+
+    List<UUID> otherIds = allMembers.stream()
+        .filter(m -> !m.getUser().getId().equals(achieverId))
+        .filter(m -> m.getFinishedAt() == null)
+        .map(m -> m.getUser().getId())
+        .toList();
+
+    if (otherIds.isEmpty()) return;
+
+    for (int pct : new int[]{50, 80}) {
+      BigDecimal threshold = goal.multiply(BigDecimal.valueOf(pct))
+          .divide(HUNDRED, 3, RoundingMode.HALF_UP);
+      if (prevKm.compareTo(threshold) < 0 && next.compareTo(threshold) >= 0) {
+        eventPublisher.publishEvent(new MilestoneReachedEvent(
+            member.getChallenge().getId(), achieverId, nickname, pct, otherIds));
+      }
+    }
+  }
+
+  private void publishOvertakeEvent(
+      ChallengeMember member, BigDecimal prevKm, BigDecimal next,
+      List<ChallengeMember> allMembers) {
+
+    UUID overtakerId = member.getUser().getId();
+
+    // prevKm < 상대방 km <= next 이면 추월 대상
+    List<UUID> overtakenIds = allMembers.stream()
+        .filter(m -> !m.getUser().getId().equals(overtakerId))
+        .filter(m -> m.getTotalKm().compareTo(prevKm) > 0
+                  && m.getTotalKm().compareTo(next) <= 0)
+        .map(m -> m.getUser().getId())
+        .toList();
+
+    if (!overtakenIds.isEmpty()) {
+      eventPublisher.publishEvent(new RankOvertakeEvent(
+          member.getChallenge().getId(),
+          overtakerId,
+          member.getUser().getNickname(),
+          overtakenIds));
     }
   }
 
