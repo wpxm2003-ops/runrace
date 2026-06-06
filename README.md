@@ -13,11 +13,6 @@ cd infra
 docker compose up -d
 ```
 
-| 서비스 | 주소 |
-|--------|------|
-| PostgreSQL | `localhost:5432` (db/user/pass: `runrace`) |
-| Adminer | http://localhost:8088 |
-
 ### 2. 백엔드 실행
 
 ```bash
