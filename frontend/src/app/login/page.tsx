@@ -7,9 +7,13 @@ import { auth } from "@/lib/firebase";
 import { syncBackendLogin } from "@/lib/api";
 import {
   IN_APP_LOGIN_MESSAGE,
+  IN_APP_OPEN_BROWSER_LABEL,
+  IN_APP_URL_COPIED_MESSAGE,
   LOGIN_PENDING_KEY,
   LOGIN_RETURN_KEY,
+  buildLoginPageUrl,
   isInAppBrowser,
+  openInExternalBrowser,
   preferAuthRedirect,
   safeReturnPath,
 } from "@/lib/authLogin";
@@ -30,6 +34,7 @@ function LoginContent() {
   const returnTo = safeReturnPath(searchParams.get("return"));
   const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
+  const [inAppHint, setInAppHint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inApp = isInAppBrowser();
 
@@ -43,6 +48,13 @@ function LoginContent() {
     sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
     sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
     return true;
+  }
+
+  async function handleOpenExternalBrowser() {
+    setError(null);
+    setInAppHint(null);
+    const method = await openInExternalBrowser(buildLoginPageUrl(returnTo));
+    if (method === "copy") setInAppHint(IN_APP_URL_COPIED_MESSAGE);
   }
 
   async function signInGoogle() {
@@ -73,9 +85,21 @@ function LoginContent() {
         <p className="mt-2 text-sm text-zinc-600">{t.login_desc}</p>
 
         {inApp && (
-          <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {IN_APP_LOGIN_MESSAGE}
-          </p>
+          <div className="mt-4 space-y-2">
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {IN_APP_LOGIN_MESSAGE}
+            </p>
+            {inAppHint && (
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{inAppHint}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleOpenExternalBrowser}
+              className="h-11 w-full rounded-xl border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50"
+            >
+              {IN_APP_OPEN_BROWSER_LABEL}
+            </button>
+          </div>
         )}
         {error && (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
@@ -84,7 +108,7 @@ function LoginContent() {
         <div className="mt-6">
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || inApp}
             onClick={signInGoogle}
             className="h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
           >
