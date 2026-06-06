@@ -329,14 +329,17 @@ public class ChallengeService {
             if (member.getFinishedAt() != null
                 && next.compareTo(goalKmAsDecimal(challenge)) < 0) {
               member.setFinishedAt(null);
-              // 이 멤버가 승자였으면 winner 초기화
-              if (user.equals(challenge.getWinner())) {
+              AppUser winner = challenge.getWinner();
+              if (winner != null && winner.getId().equals(user.getId())) {
                 challenge.setWinner(null);
                 challengeRepository.save(challenge);
               }
             }
             challengeMemberRepository.save(member);
           });
+    }
+    if (!links.isEmpty()) {
+      challengeWorkoutRepository.deleteAll(links);
     }
   }
 
