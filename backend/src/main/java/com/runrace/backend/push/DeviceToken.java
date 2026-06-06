@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.Getter;
@@ -16,7 +17,9 @@ import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
-@Table(name = "device_token")
+@Table(
+    name = "device_token",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "platform"}))
 @Getter
 @Setter
 @NoArgsConstructor
