@@ -1,7 +1,20 @@
 import { Capacitor } from "@capacitor/core";
 
-const IN_APP_UA =
-  /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|MicroMessenger|Twitter|Snapchat|NAVER\(inapp|NaverWebView/i;
+/** 카카오·네이버·인스타 등 인앱 브라우저 UA (Google OAuth disallowed_useragent) */
+const KNOWN_IN_APP_UA =
+  /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|MicroMessenger|Twitter|Snapchat|DaumApps|NAVER\(inapp|NAVER\/[\d.]+ CFNetwork/i;
+
+function isNaverInApp(ua: string): boolean {
+  if (!/\bNAVER\b/i.test(ua)) return false;
+  if (!/Mobile|Android|iPhone|iPad|iPod/i.test(ua)) return false;
+  // Whale/Crosswalk 엔진 + NAVER 조합 (Android 네이버 인앱)
+  if (/Whale\/|Crosswalk\/|NAVER\(inapp/i.test(ua)) return true;
+  // iOS: Safari UA 뒤에 NAVER(...) 붙는 형태
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  // Android: wv WebView + NAVER
+  if (/Android/i.test(ua) && /;\s*wv\)/.test(ua)) return true;
+  return false;
+}
 
 /** 카카오톡·네이버·인스타 등 인앱 브라우저 — Google OAuth 차단(disallowed_useragent) */
 export function isInAppBrowser(): boolean {
@@ -9,7 +22,9 @@ export function isInAppBrowser(): boolean {
   // APK WebView UA에도 "wv"가 들어가서 여기서 false 처리
   if (Capacitor.isNativePlatform()) return false;
   const ua = navigator.userAgent || "";
-  return IN_APP_UA.test(ua);
+  if (KNOWN_IN_APP_UA.test(ua)) return true;
+  if (isNaverInApp(ua)) return true;
+  return false;
 }
 
 /**
@@ -41,12 +56,29 @@ export async function openInExternalBrowser(url: string): Promise<"intent" | "co
   const isAndroid = /Android/i.test(ua);
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
 
+  // 네이버 등: target=_blank 가 외부 브라우저로 열리는 경우가 많음
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  if (popup) return "window";
+
   if (isAndroid) {
     const path = url.replace(/^https?:\/\//, "");
     const chromeIntent =
       `intent://${path}#Intent;scheme=https;action=android.intent.action.VIEW;` +
       `category=android.intent.category.BROWSABLE;package=com.android.chrome;end`;
     window.location.assign(chromeIntent);
+    window.setTimeout(() => {
+      window.location.assign(
+        `intent://${path}#Intent;scheme=https;action=android.intent.action.VIEW;end`,
+      );
+    }, 600);
     return "intent";
   }
 
@@ -60,7 +92,6 @@ export async function openInExternalBrowser(url: string): Promise<"intent" | "co
     return "copy";
   }
 
-  window.open(url, "_blank", "noopener,noreferrer");
   return "window";
 }
 
