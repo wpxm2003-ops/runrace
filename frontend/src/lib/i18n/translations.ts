@@ -67,6 +67,8 @@ export const translations = {
     races_empty: "레이스가 없습니다. 등록으로 새 레이스를 시작해 보세요.",
     races_goal_members: (goalKm: number, memberCount: number) =>
       `목표 ${goalKm}km · ${memberCount}명 참여`,
+    detail_goal_members: (goalKm: number, memberCount: number, maxMembers: number) =>
+      `목표 ${goalKm}km · ${memberCount}/${maxMembers}명`,
 
     // ── 레이스 만들기 ───────────────────────
     create_title: "레이스 등록",
@@ -118,8 +120,9 @@ export const translations = {
     detail_delete_title: "삭제",
     detail_delete_message: "삭제할까요? 삭제 후에는 복구할 수 없습니다.",
     detail_progress: "진행 현황",
-    detail_winner_label: "Winner",
-    detail_winner_message: (name: string) => `${name}님, 축하합니다!`,
+    detail_progress_scheduled: "참여자 목록",
+    detail_progress_ended: "최종 순위",
+    detail_finished_badge: "완주",
     detail_join: "참여하기",
     detail_joining: "참여 중...",
     detail_leave: "참여 취소",
@@ -348,6 +351,8 @@ export const translations = {
     races_empty: "No races yet. Create one to get started!",
     races_goal_members: (goalKm: number, memberCount: number) =>
       `${goalKm}km goal · ${memberCount} joined`,
+    detail_goal_members: (goalKm: number, memberCount: number, maxMembers: number) =>
+      `${goalKm}km goal · ${memberCount}/${maxMembers} members`,
 
     // ── 대결 만들기 ───────────────────────
     create_title: "New Race",
@@ -399,8 +404,9 @@ export const translations = {
     detail_delete_title: "Delete Race",
     detail_delete_message: "Delete this race? This cannot be undone.",
     detail_progress: "Progress",
-    detail_winner_label: "Winner",
-    detail_winner_message: (name: string) => `🏆 ${name} wins!`,
+    detail_progress_scheduled: "Participants",
+    detail_progress_ended: "Final Standings",
+    detail_finished_badge: "Finished",
     detail_join: "Join Race",
     detail_joining: "Joining...",
     detail_leave: "Leave race",

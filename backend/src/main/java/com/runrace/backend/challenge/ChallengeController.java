@@ -188,7 +188,19 @@ public class ChallengeController {
 
     List<MemberRow> rows =
         detail.members().stream()
-            .sorted(Comparator.comparing(ChallengeMember::getTotalKm).reversed())
+            .sorted((m1, m2) -> {
+              boolean f1 = m1.getFinishedAt() != null;
+              boolean f2 = m2.getFinishedAt() != null;
+              if (f1 && f2) {
+                return m1.getFinishedAt().compareTo(m2.getFinishedAt());
+              } else if (f1) {
+                return -1;
+              } else if (f2) {
+                return 1;
+              } else {
+                return m2.getTotalKm().compareTo(m1.getTotalKm());
+              }
+            })
             .map(member -> toMemberRow(member, challenge, goal))
             .toList();
 

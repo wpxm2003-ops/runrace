@@ -329,11 +329,12 @@ public class ChallengeService {
             if (member.getFinishedAt() != null
                 && next.compareTo(goalKmAsDecimal(challenge)) < 0) {
               member.setFinishedAt(null);
+              challenge.setEnded(false);
               AppUser winner = challenge.getWinner();
               if (winner != null && winner.getId().equals(user.getId())) {
                 challenge.setWinner(null);
-                challengeRepository.save(challenge);
               }
+              challengeRepository.save(challenge);
             }
             challengeMemberRepository.save(member);
           });
@@ -395,8 +396,14 @@ public class ChallengeService {
       member.setFinishedAt(OffsetDateTime.now());
       if (challenge.getWinner() == null) {
         challenge.setWinner(member.getUser());
-        challengeRepository.save(challenge);
       }
+      boolean allOtherFinished = challengeMemberRepository.findAllForChallenge(challenge.getId()).stream()
+          .filter(m -> !m.getId().equals(member.getId()))
+          .allMatch(m -> m.getFinishedAt() != null);
+      if (allOtherFinished) {
+        challenge.setEnded(true);
+      }
+      challengeRepository.save(challenge);
     }
   }
 
@@ -416,7 +423,7 @@ public class ChallengeService {
   }
 
   public static boolean isEnded(Challenge challenge, OffsetDateTime now) {
-    if (challenge.getWinner() != null) {
+    if (challenge.isEnded()) {
       return true;
     }
     return challenge.getEndAt() != null && now.isAfter(challenge.getEndAt());

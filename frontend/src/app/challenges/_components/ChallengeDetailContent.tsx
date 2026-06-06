@@ -11,6 +11,7 @@ import {
   joinChallenge,
   leaveChallenge,
   useChallengeDetail,
+  useMe,
 } from "@/lib/api";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
@@ -27,6 +28,7 @@ import { useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
   const { user, loading: authLoading } = useAuthUser();
+  const { data: me } = useMe(user);
   const confirm = useConfirm();
   const { t } = useLocale();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -99,9 +101,7 @@ export default function ChallengeDetailContent() {
     }
   }
 
-  const showWinnerBanner =
-    detail != null && detail.winner != null &&
-    (detail.hasEnded || detail.members.some((m) => m.finished));
+
 
   async function onShare() {
     if (!detail) return;
@@ -165,7 +165,7 @@ export default function ChallengeDetailContent() {
               />
             </div>
             <div className="mt-2 text-sm text-zinc-600">
-              목표 {detail.goalKm}km · {detail.memberCount}/{detail.maxMembers}명
+              {t.detail_goal_members(detail.goalKm, detail.memberCount, detail.maxMembers)}
             </div>
             <div className="mt-1 text-xs text-zinc-500">
               {formatDateRange(detail.startAt, detail.endAt)}
@@ -173,18 +173,68 @@ export default function ChallengeDetailContent() {
           </Card>
 
           <Card className="mt-6">
-            <div className="text-lg font-semibold">{t.detail_progress}</div>
+            <div className="text-lg font-semibold">
+              {!detail.hasStarted
+                ? t.detail_progress_scheduled
+                : detail.hasEnded
+                ? t.detail_progress_ended
+                : t.detail_progress}
+            </div>
             <div className="mt-4 grid gap-4">
-              {detail.members.map((m) => {
+              {detail.members.map((m, idx) => {
                 const pct = Math.min(100, Math.max(0, Number(m.progressPercent) || 0));
+                const isMe = me != null && m.userId === me.id;
                 return (
-                  <div key={m.userId}>
+                  <div 
+                    key={m.userId}
+                    className={`rounded-xl p-3 border transition-colors ${
+                      isMe 
+                        ? "bg-emerald-50 border-emerald-200" 
+                        : "bg-transparent border-transparent"
+                    }`}
+                  >
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{m.nickname ?? t.no_name}</span>
-                      <span className="text-zinc-600">{m.totalKm} / {detail.goalKm} km</span>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          if (m.finished) {
+                            if (idx === 0) return <span className="text-xl" title="Gold Medal">🥇</span>;
+                            if (idx === 1) return <span className="text-xl" title="Silver Medal">🥈</span>;
+                            if (idx === 2) return <span className="text-xl" title="Bronze Medal">🥉</span>;
+                            return (
+                              <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                                {t.detail_finished_badge}
+                              </span>
+                            );
+                          }
+                          
+                          if (detail.hasEnded) {
+                            if (idx === 0) return <span className="text-xl" title="Gold Medal">🥇</span>;
+                            if (idx === 1) return <span className="text-xl" title="Silver Medal">🥈</span>;
+                            if (idx === 2) return <span className="text-xl" title="Bronze Medal">🥉</span>;
+                            return null;
+                          }
+                          
+                          return (
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-500">
+                              {idx + 1}
+                            </span>
+                          );
+                        })()}
+                        <span className={`font-medium ${isMe ? "text-emerald-900 font-semibold" : ""}`}>
+                          {m.nickname ?? t.no_name}
+                        </span>
+                      </div>
+                      <span className={isMe ? "text-emerald-700 font-semibold" : "text-zinc-600"}>
+                        {m.totalKm} / {detail.goalKm} km
+                      </span>
                     </div>
                     <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-100">
-                      <div className="h-full rounded-full bg-zinc-900 transition-all" style={{ width: `${pct}%` }} />
+                      <div 
+                        className={`h-full rounded-full transition-all ${
+                          isMe ? "bg-emerald-600" : "bg-zinc-900"
+                        }`} 
+                        style={{ width: `${pct}%` }} 
+                      />
                     </div>
                   </div>
                 );
@@ -192,14 +242,7 @@ export default function ChallengeDetailContent() {
             </div>
           </Card>
 
-          {showWinnerBanner && detail.winner ? (
-            <div className="mt-6 rounded-2xl bg-amber-50 p-5 text-center shadow-sm">
-              <div className="text-lg font-semibold text-amber-900">{t.detail_winner_label}</div>
-              <div className="mt-2 text-amber-800">
-                {t.detail_winner_message(detail.winner.nickname ?? t.no_name)}
-              </div>
-            </div>
-          ) : null}
+
 
           {id != null ? (
             <ChallengeMemberWorkouts

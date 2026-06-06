@@ -26,7 +26,8 @@ public interface ChallengeMemberRepository extends JpaRepository<ChallengeMember
       where cm.user.id = :userId
         and cm.challenge.startAt <= :now
         and (cm.challenge.endAt is null or cm.challenge.endAt >= :now)
-        and cm.challenge.winner is null
+        and cm.challenge.isEnded = false
+        and cm.finishedAt is null
       """)
   List<ChallengeMember> findAllActiveForUser(@Param("userId") UUID userId, @Param("now") OffsetDateTime now);
 

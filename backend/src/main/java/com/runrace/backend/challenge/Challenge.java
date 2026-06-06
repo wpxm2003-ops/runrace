@@ -50,4 +50,7 @@ public class Challenge {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "winner_user_id")
   private AppUser winner;
+
+  @Column(name = "is_ended", nullable = false)
+  private boolean isEnded = false;
 }
