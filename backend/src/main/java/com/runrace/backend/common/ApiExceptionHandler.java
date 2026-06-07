@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 모든 컨트롤러 예외를 {@code {"error": code, "requestId": ...}} JSON 한 가지 형태로 직렬화한다.
@@ -44,6 +45,14 @@ public class ApiExceptionHandler {
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException e) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error("malformed_request"));
+  }
+
+  /**
+   * API가 아닌 경로(루트 /, favicon 등) — 브라우저·도구의 부수 요청. 404만 반환하고 ERROR 로그는 남기지 않는다.
+   */
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ApiError> handleNoResource(NoResourceFoundException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("not_found"));
   }
 
   @ExceptionHandler(Exception.class)
