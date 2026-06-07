@@ -32,15 +32,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(getInitialState);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (u) {
+    let unsub: (() => void) | undefined;
+
+    void auth.authStateReady().then(() => {
+      const current = auth.currentUser;
+      if (current) {
         localStorage.setItem(AUTH_HINT_KEY, "1");
       } else {
         localStorage.removeItem(AUTH_HINT_KEY);
       }
-      setState({ user: u, loading: false });
+      setState({ user: current, loading: false });
+
+      unsub = onAuthStateChanged(auth, (u) => {
+        if (u) {
+          localStorage.setItem(AUTH_HINT_KEY, "1");
+        } else {
+          localStorage.removeItem(AUTH_HINT_KEY);
+        }
+        setState({ user: u, loading: false });
+      });
     });
-    return unsub;
+
+    return () => unsub?.();
   }, []);
 
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;

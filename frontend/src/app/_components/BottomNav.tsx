@@ -56,9 +56,10 @@ const ICONS = {
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   const { pendingHref } = useNavProgress();
-  const { user } = useAuthUser();
+  const { user, loading } = useAuthUser();
   const { t } = useLocale();
-  const myHref = user ? "/my" : "/login";
+  // 인증 복원 중에는 /my 로 보내 useRequireAuth 가 로딩을 기다리게 한다 (조기 /login 방지)
+  const myHref = user || loading ? "/my" : "/login";
   const activePath = pendingHref?.split("?")[0].split("#")[0] ?? pathname;
 
   const items: NavItem[] = [

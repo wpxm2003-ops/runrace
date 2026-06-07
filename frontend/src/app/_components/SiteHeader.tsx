@@ -1,5 +1,6 @@
 "use client";
 
+import { Skeleton } from "@/app/_components/ui/Skeleton";
 import { logout } from "@/lib/auth";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
@@ -23,7 +24,9 @@ export function SiteHeader() {
           >
             {locale === "ko" ? "EN" : "KO"}
           </button>
-          {!loading && user ? (
+          {loading ? (
+            <Skeleton className="h-4 w-12" />
+          ) : user ? (
             <button
               type="button"
               onClick={() => logout()}
@@ -31,14 +34,14 @@ export function SiteHeader() {
             >
               {t.header_logout}
             </button>
-          ) : !loading ? (
+          ) : (
             <a
               href="/login"
               className="text-zinc-600 hover:text-zinc-900 hover:underline"
             >
               {t.header_login}
             </a>
-          ) : null}
+          )}
         </div>
       </div>
     </header>
