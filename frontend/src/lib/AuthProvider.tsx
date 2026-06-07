@@ -23,11 +23,7 @@ export function markLoggedIn() {
 }
 
 function getInitialState(): AuthState {
-  if (typeof window === "undefined") return { user: null, loading: true };
-
-  // 이전에 로그인한 기록이 있으면 loading=true 로 시작 → redirect 차단
-  const hint = localStorage.getItem(AUTH_HINT_KEY) === "1";
-  return { user: null, loading: hint };
+  return { user: null, loading: true };
 }
 
 const AuthContext = createContext<AuthState>({ user: null, loading: true });

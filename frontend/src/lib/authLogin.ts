@@ -35,6 +35,41 @@ export function preferAuthRedirect(): boolean {
   return false;
 }
 
+/** signInWithRedirect 직전 sessionStorage 세팅 */
+export function prepareOAuthRedirect(returnTo: string): void {
+  sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
+  sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
+}
+
+export function isPopupBlockedError(e: unknown): boolean {
+  if (e && typeof e === "object" && "code" in e) {
+    const code = String((e as { code: string }).code);
+    if (code === "auth/popup-closed-by-user") return false;
+    if (code === "auth/popup-blocked" || code === "auth/cancelled-popup-request") {
+      return true;
+    }
+  }
+  const msg = String(e);
+  if (/popup-closed-by-user|closed by user/i.test(msg)) return false;
+  return /popup.*blocked|blocked.*popup/i.test(msg);
+}
+
+/**
+ * localhost + 커스텀 authDomain(runrace.co.kr) 조합은 signInWithRedirect 복귀가 자주 실패한다.
+ */
+export function canOAuthRedirectFallback(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "";
+  if ((host === "localhost" || host === "127.0.0.1") && authDomain === "runrace.co.kr") {
+    return false;
+  }
+  return true;
+}
+
+/** AuthRedirectHandler redirect 복귀 실패 시 로그인 페이지에 표시 */
+export const OAUTH_REDIRECT_FAILED_KEY = "runrace_oauth_redirect_failed";
+
 export const IN_APP_LOGIN_MESSAGE =
   "네이버·카카오톡·인스타 등 앱 안 브라우저에서는 Google 로그인이 차단됩니다. 아래 버튼으로 Chrome·Safari에서 열어 주세요.";
 

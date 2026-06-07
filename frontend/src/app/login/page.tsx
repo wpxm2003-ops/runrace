@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
 import { auth } from "@/lib/firebase";
@@ -10,11 +10,14 @@ import {
   IN_APP_OPEN_BROWSER_LABEL,
   IN_APP_URL_COPIED_MESSAGE,
   LOGIN_PENDING_KEY,
-  LOGIN_RETURN_KEY,
+  OAUTH_REDIRECT_FAILED_KEY,
   buildLoginPageUrl,
+  canOAuthRedirectFallback,
   isInAppBrowser,
+  isPopupBlockedError,
   openInExternalBrowser,
   preferAuthRedirect,
+  prepareOAuthRedirect,
   safeReturnPath,
 } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -38,6 +41,13 @@ function LoginContent() {
   const [busy, setBusy] = useState(false);
   const inApp = isInAppBrowser();
 
+  useEffect(() => {
+    if (sessionStorage.getItem(OAUTH_REDIRECT_FAILED_KEY)) {
+      sessionStorage.removeItem(OAUTH_REDIRECT_FAILED_KEY);
+      setError(t.login_popup_blocked);
+    }
+  }, [t.login_popup_blocked]);
+
   async function completeBackendLogin(user: Parameters<typeof syncBackendLogin>[0]) {
     await syncBackendLogin(user);
     nativeNavigate(returnTo);
@@ -45,8 +55,7 @@ function LoginContent() {
 
   function beginRedirectFlow(): boolean {
     if (!preferAuthRedirect()) return false;
-    sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
-    sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
+    prepareOAuthRedirect(returnTo);
     return true;
   }
 
@@ -61,8 +70,10 @@ function LoginContent() {
     setError(null);
     if (inApp) { setError(IN_APP_LOGIN_MESSAGE); return; }
     setBusy(true);
+    let redirecting = false;
     try {
       if (beginRedirectFlow()) {
+        redirecting = true;
         await signInWithRedirect(auth, new GoogleAuthProvider());
         return;
       }
@@ -71,10 +82,21 @@ function LoginContent() {
       await verifyLaunchpadTester(cred.user.email);
       await completeBackendLogin(cred.user);
     } catch (e) {
+      if (isPopupBlockedError(e)) {
+        if (!canOAuthRedirectFallback()) {
+          setError(t.login_popup_blocked);
+          sessionStorage.removeItem(LOGIN_PENDING_KEY);
+          return;
+        }
+        redirecting = true;
+        prepareOAuthRedirect(returnTo);
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
+      }
       setError(toSignInErrorMessage(e, t.login_popup_blocked));
       sessionStorage.removeItem(LOGIN_PENDING_KEY);
     } finally {
-      setBusy(false);
+      if (!redirecting) setBusy(false);
     }
   }
 

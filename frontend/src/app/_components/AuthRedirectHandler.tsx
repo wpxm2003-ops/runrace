@@ -5,7 +5,13 @@ import { getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { syncBackendLogin } from "@/lib/api";
 import { verifyLaunchpadTester } from "@/lib/launchpad";
-import { LOGIN_RETURN_KEY, LOGIN_PENDING_KEY, safeReturnPath } from "@/lib/authLogin";
+import {
+  LOGIN_RETURN_KEY,
+  LOGIN_PENDING_KEY,
+  OAUTH_REDIRECT_FAILED_KEY,
+  safeReturnPath,
+} from "@/lib/authLogin";
+import { markLoggedIn } from "@/lib/AuthProvider";
 import { nativeNavigate } from "@/lib/nativeNav";
 
 /**
@@ -19,12 +25,20 @@ export function AuthRedirectHandler() {
     handled.current = true;
 
     (async () => {
+      const pending = sessionStorage.getItem(LOGIN_PENDING_KEY) === "1";
       try {
         const cred = await getRedirectResult(auth);
-        const user = cred?.user ?? (sessionStorage.getItem(LOGIN_PENDING_KEY) ? auth.currentUser : null);
-        if (!user) return;
+        const user = cred?.user ?? (pending ? auth.currentUser : null);
+        if (!user) {
+          if (pending) {
+            sessionStorage.setItem(OAUTH_REDIRECT_FAILED_KEY, "1");
+            sessionStorage.removeItem(LOGIN_PENDING_KEY);
+          }
+          return;
+        }
 
         sessionStorage.removeItem(LOGIN_PENDING_KEY);
+        markLoggedIn();
         await verifyLaunchpadTester(user.email);
         await syncBackendLogin(user);
 
@@ -34,6 +48,7 @@ export function AuthRedirectHandler() {
       } catch (e) {
         console.error("OAuth redirect login failed", e);
         sessionStorage.removeItem(LOGIN_PENDING_KEY);
+        if (pending) sessionStorage.setItem(OAUTH_REDIRECT_FAILED_KEY, "1");
       }
     })();
   }, []);
