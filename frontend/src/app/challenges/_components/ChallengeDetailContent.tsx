@@ -2,7 +2,6 @@
 
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
-import { FIXED_ACTION_BOTTOM } from "@/app/_components/AppShell";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
@@ -143,7 +142,6 @@ export default function ChallengeDetailContent() {
     <PageLayout
       title={t.detail_title}
       actions={pageActions}
-      className={detail?.canJoin || detail?.canLeave ? "pb-36" : undefined}
     >
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
@@ -244,7 +242,7 @@ export default function ChallengeDetailContent() {
 
 
 
-          {id != null ? (
+          {id != null && detail.hasStarted ? (
             <ChallengeMemberWorkouts
               challengeId={id}
               isMember={detail.isMember}
@@ -260,31 +258,26 @@ export default function ChallengeDetailContent() {
           </div>
 
           {detail.canJoin || detail.canLeave ? (
-            <div
-              className="fixed left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 px-6 pb-3 pt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur"
-              style={{ bottom: FIXED_ACTION_BOTTOM }}
-            >
-              <div className="mx-auto max-w-2xl">
-                {detail.canJoin ? (
-                  <button
-                    type="button"
-                    disabled={joining}
-                    onClick={onJoin}
-                    className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
-                  >
-                    {joining ? t.detail_joining : t.detail_join}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={leaving}
-                    onClick={onLeave}
-                    className="h-12 w-full rounded-xl border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-50"
-                  >
-                    {leaving ? t.detail_leaving : t.detail_leave}
-                  </button>
-                )}
-              </div>
+            <div className="mt-4">
+              {detail.canJoin ? (
+                <button
+                  type="button"
+                  disabled={joining}
+                  onClick={onJoin}
+                  className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
+                >
+                  {joining ? t.detail_joining : t.detail_join}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={leaving}
+                  onClick={onLeave}
+                  className="h-12 w-full rounded-xl border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  {leaving ? t.detail_leaving : t.detail_leave}
+                </button>
+              )}
             </div>
           ) : null}
         </>
