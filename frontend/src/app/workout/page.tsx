@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration";
 import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
+import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createWorkout } from "@/lib/api";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -26,17 +27,33 @@ export default function WorkoutPage() {
   const { user, loading } = useRequireAuth("/workout");
   const { t } = useLocale();
   const session = useWorkoutSessionContext();
+  const confirm = useConfirm();
   const [celebration, setCelebration] = useState<CelebrationState | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleStop = useCallback(async () => {
+    if (!user) return;
+
+    if (session.distanceM === 0) {
+      const ok = await confirm({
+        title: t.workout_save_empty_title,
+        message: t.workout_save_empty_message,
+        confirmLabel: t.save,
+        cancelLabel: t.cancel,
+      });
+      if (!ok) {
+        session.stop();
+        setSaveError(null);
+        return;
+      }
+    }
+
     const snapshot = session.stop();
     if (!snapshot || snapshot.path.length === 0) {
       setSaveError(t.workout_no_route);
       return;
     }
-    if (!user) return;
     setSaveError(null);
     setSaving(true);
     try {
@@ -50,7 +67,16 @@ export default function WorkoutPage() {
     } finally {
       setSaving(false);
     }
-  }, [session, user, t.workout_no_route]);
+  }, [
+    session,
+    user,
+    confirm,
+    t.workout_no_route,
+    t.workout_save_empty_title,
+    t.workout_save_empty_message,
+    t.save,
+    t.cancel,
+  ]);
 
   if (loading || !user) {
     return <div className="flex flex-1 items-center justify-center text-sm text-zinc-600">{t.loading}</div>;
