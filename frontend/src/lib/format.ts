@@ -59,3 +59,10 @@ export function toDateTimeInputValue(iso: string): string {
 export function formatKm(distanceM: number): string {
   return `${(distanceM / 1000).toFixed(2)} km`;
 }
+
+/** km 숫자(문자열·숫자) → 소수 둘째 자리까지 표시. */
+export function formatKmAmount(value: string | number): string {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(n)) return String(value);
+  return n.toFixed(2);
+}

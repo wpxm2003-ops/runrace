@@ -18,7 +18,7 @@ import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { buildRaceCard, shareImageBlob } from "@/lib/shareCard";
-import { formatDateRange } from "@/lib/format";
+import { formatDateRange, formatKmAmount } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
@@ -178,60 +178,63 @@ export default function ChallengeDetailContent() {
                 ? t.detail_progress_ended
                 : t.detail_progress}
             </div>
-            <div className="mt-4 grid gap-4">
+            <div className="mt-4 flex flex-col gap-3">
               {detail.members.map((m, idx) => {
                 const pct = Math.min(100, Math.max(0, Number(m.progressPercent) || 0));
+                const pctLabel = Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
                 const isMe = me != null && m.userId === me.id;
+                const showMedal = m.finished || detail.hasEnded;
+
                 return (
-                  <div 
+                  <div
                     key={m.userId}
-                    className={`rounded-xl p-3 border transition-colors ${
-                      isMe 
-                        ? "bg-emerald-50 border-emerald-200" 
-                        : "bg-transparent border-transparent"
+                    className={`rounded-xl p-3 ${
+                      isMe ? "border border-emerald-200 bg-emerald-50" : ""
                     }`}
                   >
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          if (m.finished) {
-                            if (idx === 0) return <span className="text-xl" title="Gold Medal">🥇</span>;
-                            if (idx === 1) return <span className="text-xl" title="Silver Medal">🥈</span>;
-                            if (idx === 2) return <span className="text-xl" title="Bronze Medal">🥉</span>;
-                            return (
-                              <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                                {t.detail_finished_badge}
-                              </span>
-                            );
-                          }
-                          
-                          if (detail.hasEnded) {
-                            if (idx === 0) return <span className="text-xl" title="Gold Medal">🥇</span>;
-                            if (idx === 1) return <span className="text-xl" title="Silver Medal">🥈</span>;
-                            if (idx === 2) return <span className="text-xl" title="Bronze Medal">🥉</span>;
-                            return null;
-                          }
-                          
-                          return (
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-500">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {showMedal ? (
+                          idx === 0 ? (
+                            <span className="shrink-0 text-lg leading-none" aria-hidden>🥇</span>
+                          ) : idx === 1 ? (
+                            <span className="shrink-0 text-lg leading-none" aria-hidden>🥈</span>
+                          ) : idx === 2 ? (
+                            <span className="shrink-0 text-lg leading-none" aria-hidden>🥉</span>
+                          ) : (
+                            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-500">
                               {idx + 1}
                             </span>
-                          );
-                        })()}
-                        <span className={`font-medium ${isMe ? "text-emerald-900 font-semibold" : ""}`}>
-                          {m.nickname ?? t.no_name}
-                        </span>
+                          )
+                        ) : (
+                          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-500">
+                            {idx + 1}
+                          </span>
+                        )}
+                        <div className="min-w-0">
+                          <div className={`truncate text-sm font-medium ${isMe ? "font-semibold text-emerald-900" : "text-zinc-900"}`}>
+                            {m.nickname ?? t.no_name}
+                          </div>
+                          {m.finished ? (
+                            <div className="mt-0.5 text-[11px] font-medium text-emerald-600">
+                              {t.detail_finished_badge}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                      <span className={isMe ? "text-emerald-700 font-semibold" : "text-zinc-600"}>
-                        {m.totalKm} / {detail.goalKm} km
-                      </span>
+                      <div className="shrink-0 text-right tabular-nums">
+                        <div className={`text-sm font-semibold ${isMe ? "text-emerald-700" : "text-zinc-900"}`}>
+                          {pctLabel}%
+                        </div>
+                        <div className={`mt-0.5 text-[11px] ${isMe ? "text-emerald-700" : "text-zinc-500"}`}>
+                          {formatKmAmount(m.totalKm)} / {detail.goalKm} km
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-100">
-                      <div 
-                        className={`h-full rounded-full transition-all ${
-                          isMe ? "bg-emerald-600" : "bg-zinc-900"
-                        }`} 
-                        style={{ width: `${pct}%` }} 
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+                      <div
+                        className={`h-full rounded-full transition-all ${isMe ? "bg-emerald-600" : "bg-zinc-900"}`}
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
                   </div>
