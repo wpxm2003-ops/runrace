@@ -1,5 +1,6 @@
 "use client";
 
+import { useNavProgress } from "@/app/_components/NavProgressProvider";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
@@ -54,9 +55,11 @@ const ICONS = {
 
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
+  const { pendingHref } = useNavProgress();
   const { user } = useAuthUser();
   const { t } = useLocale();
   const myHref = user ? "/my" : "/login";
+  const activePath = pendingHref?.split("?")[0].split("#")[0] ?? pathname;
 
   const items: NavItem[] = [
     {
@@ -103,7 +106,7 @@ export function BottomNav() {
     >
       <div className="mx-auto flex h-16 max-w-2xl items-stretch justify-around px-2">
         {items.map((item) => {
-          const active = item.isActive(pathname);
+          const active = item.isActive(activePath);
           return (
             <a
               key={item.id}

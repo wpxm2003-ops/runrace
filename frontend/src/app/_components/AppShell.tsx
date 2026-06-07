@@ -11,6 +11,7 @@ import { AuthProvider } from "@/lib/AuthProvider";
 import { LocaleProvider } from "@/lib/i18n";
 import { WorkoutSessionProvider } from "@/lib/WorkoutSessionProvider";
 import { FcmBootstrap } from "./FcmBootstrap";
+import { NavProgressProvider } from "./NavProgressProvider";
 
 /** 하단 탭 네비 높이 */
 export const BOTTOM_NAV_HEIGHT = "4rem";
@@ -30,6 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <FcmBootstrap />
     <WorkoutSessionProvider>
     <ConfirmProvider>
+    <NavProgressProvider>
       <ClientErrorReporter />
       <AuthRedirectHandler />
       <NativeNavBootstrap />
@@ -40,6 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
         <BottomNav />
       </div>
+    </NavProgressProvider>
     </ConfirmProvider>
     </WorkoutSessionProvider>
     </LocaleProvider>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
+import { useNavProgress } from "@/app/_components/NavProgressProvider";
 import { handleNativeBack, nativeNavigate, registerBack, registerPush } from "@/lib/nativeNav";
 
 /**
@@ -13,9 +14,13 @@ import { handleNativeBack, nativeNavigate, registerBack, registerPush } from "@/
  */
 export function NativeNavBootstrap() {
   const router = useRouter();
+  const { beginNavigation } = useNavProgress();
 
   useEffect(() => {
-    registerPush((path) => router.push(path));
+    registerPush((path) => {
+      beginNavigation(path);
+      router.push(path);
+    });
     registerBack(() => router.back());
 
     const onClick = (e: MouseEvent) => {
@@ -52,7 +57,7 @@ export function NativeNavBootstrap() {
       document.removeEventListener("click", onClick, true);
       backListener?.remove();
     };
-  }, [router]);
+  }, [router, beginNavigation]);
 
   return null;
 }
