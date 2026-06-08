@@ -306,6 +306,8 @@ export const translations = {
     indoor_err_image: "러닝머신 사진을 첨부해 주세요.",
     indoor_err_image_preparing: "사진을 준비 중입니다. 잠시만 기다려 주세요.",
     indoor_image_preparing: "사진 준비 중...",
+    indoor_photo_time_hint: (time: string) =>
+      `사진 촬영 시각 ${time} — 등록 시 운동 종료 시각으로 기록됩니다.`,
     upload_too_large: "사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.",
     indoor_badge: "실내러닝",
 
@@ -624,6 +626,8 @@ export const translations = {
     indoor_err_image: "Please attach a photo of the treadmill.",
     indoor_err_image_preparing: "Preparing photo. Please wait.",
     indoor_image_preparing: "Preparing photo...",
+    indoor_photo_time_hint: (time: string) =>
+      `Photo taken at ${time} — will be recorded as workout end time.`,
     upload_too_large: "The photo is too large. Please choose a different image.",
     indoor_badge: "Indoor",
 

@@ -5,6 +5,8 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createIndoorRun, uploadImage } from "@/lib/api";
 import { compressImageForUpload } from "@/lib/compressImage";
+import { readPhotoTakenAt, workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
+import { formatDateTimeMinute } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -26,6 +28,7 @@ export default function IndoorRunPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imagePreparing, setImagePreparing] = useState(false);
+  const [photoTakenAt, setPhotoTakenAt] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -38,9 +41,15 @@ export default function IndoorRunPage() {
     setFieldErrors((prev) => ({ ...prev, image: undefined }));
     setImagePreview(URL.createObjectURL(file));
     setImageFile(null);
+    setPhotoTakenAt(null);
     setImagePreparing(true);
     try {
-      setImageFile(await compressImageForUpload(file));
+      const [compressed, takenAt] = await Promise.all([
+        compressImageForUpload(file),
+        readPhotoTakenAt(file),
+      ]);
+      setImageFile(compressed);
+      setPhotoTakenAt(takenAt);
     } catch {
       setImageFile(file);
     } finally {
@@ -81,11 +90,15 @@ export default function IndoorRunPage() {
     setSubmitting(true);
     try {
       const imageUrl = await uploadImage(imageFile!, user, { precompressed: true });
+      const startedAt = photoTakenAt
+        ? workoutStartedAtFromPhotoEnd(photoTakenAt, durationSec)
+        : new Date().toISOString();
+
       const res = await createIndoorRun(
         {
           distanceM: distM,
           durationSec,
-          startedAt: new Date().toISOString(),
+          startedAt,
           imageUrl,
         },
         user,
@@ -165,6 +178,10 @@ export default function IndoorRunPage() {
           )}
           {imagePreparing ? (
             <p className="mt-1 text-xs text-zinc-500">{t.indoor_image_preparing}</p>
+          ) : photoTakenAt ? (
+            <p className="mt-1 text-xs text-emerald-700">
+              {t.indoor_photo_time_hint(formatDateTimeMinute(photoTakenAt.toISOString()))}
+            </p>
           ) : null}
           {fieldErrors.image ? (
             <p className="mt-1 text-xs text-red-500">{fieldErrors.image}</p>
