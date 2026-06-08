@@ -2,12 +2,12 @@ import { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
 import { ApiError } from "./apiError";
 
-/** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: localhost:8081 */
+/** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: 빈 문자열 → Next.js rewrite 프록시(/api/*) 경유 */
 function resolveApiBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
   let base: string;
   if (raw === undefined) {
-    base = "http://localhost:8081";
+    base = "";
   } else {
     const trimmed = raw.trim();
     base = trimmed === "" ? "" : trimmed.replace(/\/$/, "");
