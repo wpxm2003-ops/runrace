@@ -5,6 +5,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.PendingApprovalResponse;
+import com.runrace.backend.challenge.dto.RejectedApprovalResponse;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.workout.WorkoutEvents;
@@ -362,7 +363,9 @@ public class ChallengeService {
   public List<ChallengeWorkoutListItem> listWorkoutsForMembers(AuthPrincipal principal, Long challengeId) {
     Challenge challenge = requireChallenge(challengeId);
     ensureMemberOnly(principal.userId(), challenge);
-    return challengeWorkoutRepository.findAllForChallengeOrderByStartedDesc(challengeId).stream()
+    return challengeWorkoutRepository
+        .findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(challengeId, ApprovalStatus.APPROVED)
+        .stream()
         .map(this::toChallengeWorkoutListItem)
         .toList();
   }
@@ -372,9 +375,12 @@ public class ChallengeService {
       AuthPrincipal principal, Long challengeId, Long workoutSessionId) {
     Challenge challenge = requireChallenge(challengeId);
     ensureMemberOnly(principal.userId(), challenge);
-    challengeWorkoutRepository
+    ChallengeWorkout link = challengeWorkoutRepository
         .findByChallengeIdAndWorkoutSessionId(challengeId, workoutSessionId)
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    if (link.getApprovalStatus() != ApprovalStatus.APPROVED) {
+      throw ApiException.notFound("workout_not_found");
+    }
     return workoutSessionRepository
         .findById(workoutSessionId)
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
@@ -645,13 +651,11 @@ public class ChallengeService {
       long approvedCount = votes.stream().filter(v -> Boolean.TRUE.equals(v.getApproved())).count();
       Boolean myVote = votes.stream()
           .filter(v -> v.getVoter().getId().equals(viewerUserId))
-          .map(IndoorRunApproval::getApproved)
           .findFirst()
+          .map(IndoorRunApproval::getApproved)
           .orElse(null);
-      // myVote==null means: either viewer is submitter, or hasn't voted yet
-      // distinguish: if voter row exists -> pending; if no row -> not a voter (submitter)
-      boolean isVoter = votes.stream().anyMatch(v -> v.getVoter().getId().equals(viewerUserId));
-      Boolean myVoteFinal = isVoter ? myVote : null;
+      boolean canVote = votes.stream().anyMatch(v -> v.getVoter().getId().equals(viewerUserId));
+      Boolean myVoteFinal = canVote ? myVote : null;
 
       return new PendingApprovalResponse(
           cw.getId(),
@@ -663,8 +667,38 @@ public class ChallengeService {
           ws.getImageUrl(),
           ws.getStartedAt().toString(),
           myVoteFinal,
+          canVote,
           votes.size(),
           (int) approvedCount
+      );
+    }).toList();
+  }
+
+  /** 레이스의 거부된 실내러닝 목록. */
+  @Transactional(readOnly = true)
+  public List<RejectedApprovalResponse> getRejectedApprovals(Long challengeId) {
+    List<ChallengeWorkout> rejected = challengeWorkoutRepository
+        .findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(challengeId, ApprovalStatus.REJECTED);
+
+    return rejected.stream().map(cw -> {
+      WorkoutSession ws = cw.getWorkoutSession();
+      List<String> rejectorNicknames = indoorRunApprovalRepository.findAllByChallengeWorkoutId(cw.getId())
+          .stream()
+          .filter(v -> Boolean.FALSE.equals(v.getApproved()))
+          .map(v -> v.getVoter().getNickname())
+          .filter(n -> n != null && !n.isBlank())
+          .distinct()
+          .toList();
+
+      return new RejectedApprovalResponse(
+          cw.getId(),
+          ws.getId(),
+          cw.getUser().getNickname(),
+          ws.getDistanceM(),
+          ws.getDurationSec(),
+          ws.getImageUrl(),
+          ws.getStartedAt().toString(),
+          rejectorNicknames
       );
     }).toList();
   }

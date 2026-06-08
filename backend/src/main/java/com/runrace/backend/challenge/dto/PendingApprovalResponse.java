@@ -11,6 +11,7 @@ public record PendingApprovalResponse(
     String imageUrl,
     String startedAt,
     Boolean myVote,        // null=아직 미투표, true=승인, false=거부
+    boolean canVote,       // 제출자는 false — 본인 기록에 승인/거부 불가
     int totalVoters,
     int approvedCount
 ) {}

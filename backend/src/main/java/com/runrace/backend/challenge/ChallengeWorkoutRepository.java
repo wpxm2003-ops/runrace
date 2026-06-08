@@ -29,6 +29,20 @@ public interface ChallengeWorkoutRepository extends JpaRepository<ChallengeWorko
       """)
   List<ChallengeWorkout> findAllForChallengeOrderByStartedDesc(@Param("challengeId") Long challengeId);
 
+  /** 레이스에 반영된 운동만 — 실내러닝 PENDING/REJECTED 제외 */
+  @Query(
+      """
+      select cw from ChallengeWorkout cw
+      join fetch cw.workoutSession ws
+      join fetch ws.user u
+      where cw.challenge.id = :challengeId
+        and cw.approvalStatus = :status
+      order by ws.startedAt desc
+      """)
+  List<ChallengeWorkout> findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(
+      @Param("challengeId") Long challengeId,
+      @Param("status") ApprovalStatus status);
+
   @Query("""
       select cw from ChallengeWorkout cw
       join fetch cw.workoutSession ws

@@ -8,6 +8,7 @@ import com.runrace.backend.challenge.dto.CreateChallengeRequest;
 import com.runrace.backend.challenge.dto.CreateChallengeResponse;
 import com.runrace.backend.challenge.dto.MemberRow;
 import com.runrace.backend.challenge.dto.PendingApprovalResponse;
+import com.runrace.backend.challenge.dto.RejectedApprovalResponse;
 import com.runrace.backend.challenge.dto.UpdateChallengeRequest;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.WinnerRow;
@@ -169,6 +170,13 @@ public class ChallengeController {
   public ResponseEntity<List<PendingApprovalResponse>> pendingApprovals(
       AuthPrincipal principal, @PathVariable("id") Long id) {
     return ResponseEntity.ok(challengeService.getPendingApprovals(id, principal.userId()));
+  }
+
+  /** 레이스 거부된 실내러닝 목록. */
+  @GetMapping("/{id:[0-9]+}/rejected-approvals")
+  public ResponseEntity<List<RejectedApprovalResponse>> rejectedApprovals(
+      AuthPrincipal principal, @PathVariable("id") Long id) {
+    return ResponseEntity.ok(challengeService.getRejectedApprovals(id));
   }
 
   private ChallengeListItem toListItem(
