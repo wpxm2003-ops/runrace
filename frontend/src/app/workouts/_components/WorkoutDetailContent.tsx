@@ -7,7 +7,8 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { deleteWorkout, fetchChallengeWorkout, fetchWorkout, useMe, type WorkoutDetail } from "@/lib/api";
 import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
-import { formatDate, formatDateTime, formatKm } from "@/lib/format";
+import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
+import { formatDate, formatKm } from "@/lib/format";
 import { parseWorkoutId } from "@/lib/workoutRoute";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { ShareButton } from "@/app/_components/ShareButton";
@@ -167,13 +168,8 @@ export default function WorkoutDetailContent() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-zinc-600 shadow-sm">
-            <div>
-              {t.workout_start_label} {formatDateTime(detail.startedAt)}
-            </div>
-            <div className="mt-1">
-              {t.workout_end_label} {formatDateTime(detail.endedAt)}
-            </div>
+          <div className="mt-4">
+            <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} />
           </div>
         </>
       )}

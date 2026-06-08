@@ -12,7 +12,8 @@ import {
   invalidateWorkoutLists,
   useWorkoutDetail,
 } from "@/lib/api";
-import { formatDateTime, formatKm } from "@/lib/format";
+import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
+import { formatKm } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { shareLink } from "@/lib/shareCard";
@@ -158,14 +159,7 @@ export function WorkoutRecordPanel({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
-        <div>
-          {t.workout_start_label} {formatDateTime(detail.startedAt)}
-        </div>
-        <div className="mt-1">
-          {t.workout_end_label} {formatDateTime(detail.endedAt)}
-        </div>
-      </div>
+      <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} />
 
       <ShareButton onShare={onShare} className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50" />
 

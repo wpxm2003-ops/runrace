@@ -8,6 +8,7 @@ import type {
   ChallengeWorkoutListItem,
   CreatedId,
   PendingApproval,
+  RejectedApproval,
   WorkoutDetail,
 } from "./types";
 
@@ -64,4 +65,9 @@ export function fetchChallengeWorkout(challengeId: number, workoutId: number, us
 /** 레이스 — 승인 대기 중인 실내러닝 목록 */
 export function fetchPendingApprovals(challengeId: number, user: User) {
   return apiFetch<PendingApproval[]>(`/api/challenges/${challengeId}/pending-approvals`, { user });
+}
+
+/** 레이스 — 거부된 실내러닝 목록 */
+export function fetchRejectedApprovals(challengeId: number, user: User) {
+  return apiFetch<RejectedApproval[]>(`/api/challenges/${challengeId}/rejected-approvals`, { user });
 }

@@ -230,7 +230,7 @@ export default function IndoorRunPage() {
         {/* 운동 시간 */}
         <div>
           <label className="block text-sm font-medium text-zinc-700">
-            운동 시간
+            {t.indoor_field_duration}
             <span className="ml-0.5 text-red-500">*</span>
           </label>
           <div className="mt-1 flex gap-2">

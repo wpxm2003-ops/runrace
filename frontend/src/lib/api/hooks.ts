@@ -60,6 +60,11 @@ export function invalidateChallengeDetail(id: number, userId?: string | null) {
   void globalMutate(["challenge", id, userId ?? null]);
 }
 
+/** 레이스 참여자 운동기록 목록을 갱신한다 (실내러닝 승인 반영 후). */
+export function invalidateChallengeWorkouts(challengeId: number, userId: string) {
+  void globalMutate(["challenge", challengeId, "workouts", userId]);
+}
+
 export function useChallengeWorkouts(
   challengeId: number | null,
   user: User | null,

@@ -156,8 +156,21 @@ export type PendingApproval = {
   imageUrl: string | null;
   startedAt: string;
   myVote: boolean | null;
+  canVote: boolean;
   totalVoters: number;
   approvedCount: number;
+};
+
+/** 실내러닝 거부된 항목 */
+export type RejectedApproval = {
+  challengeWorkoutId: number;
+  workoutId: number;
+  submitterNickname: string | null;
+  distanceM: number;
+  durationSec: number;
+  imageUrl: string | null;
+  startedAt: string;
+  rejectorNicknames: string[];
 };
 
 /** 단일 식별자만 돌려주는 생성 응답(대결/운동 공용). */

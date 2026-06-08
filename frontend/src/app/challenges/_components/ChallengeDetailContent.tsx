@@ -8,14 +8,17 @@ import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
   deleteChallenge,
   fetchPendingApprovals,
+  fetchRejectedApprovals,
   joinChallenge,
   leaveChallenge,
+  invalidateChallengeWorkouts,
   useChallengeDetail,
   useMe,
   voteIndoorRun,
 } from "@/lib/api";
-import type { PendingApproval } from "@/lib/api";
+import type { PendingApproval, RejectedApproval } from "@/lib/api";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
+import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
@@ -38,7 +41,9 @@ export default function ChallengeDetailContent() {
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [rejectedApprovals, setRejectedApprovals] = useState<RejectedApproval[]>([]);
   const [votingId, setVotingId] = useState<number | null>(null);
+  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
 
   const params = useParams();
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
@@ -113,25 +118,86 @@ export default function ChallengeDetailContent() {
     return shareLink(`${appUrl}/challenges/${id}`, detail.title);
   }
 
-  // 승인 대기 목록 로드 (레이스 참여 중인 경우만)
+  // 승인 대기·거부 목록 로드 (레이스 참여 중인 경우만)
   useEffect(() => {
     if (!user || !id || !detail?.isMember || !detail?.hasStarted) return;
-    fetchPendingApprovals(id, user)
-      .then(setPendingApprovals)
+    Promise.all([
+      fetchPendingApprovals(id, user),
+      fetchRejectedApprovals(id, user),
+    ])
+      .then(([pending, rejected]) => {
+        setPendingApprovals(pending);
+        setRejectedApprovals(rejected);
+      })
       .catch(() => {/* 조용히 무시 */});
   }, [id, user, detail?.isMember, detail?.hasStarted]);
+
+  async function refreshApprovalViews() {
+    if (!id || !user) return;
+    const [pending, rejected] = await Promise.all([
+      fetchPendingApprovals(id, user),
+      fetchRejectedApprovals(id, user),
+    ]);
+    setPendingApprovals(pending);
+    setRejectedApprovals(rejected);
+    await mutate();
+    invalidateChallengeWorkouts(id, user.uid);
+  }
 
   async function onVote(workoutId: number, approved: boolean) {
     if (!user) return;
     setVotingId(workoutId);
+    const prevPending = pendingApprovals;
+    const prevRejected = rejectedApprovals;
+
+    // 버튼 클릭 직후 카드 상태를 먼저 반영
+    const votedItem = prevPending.find((item) => item.workoutId === workoutId);
+    if (!approved) {
+      setPendingApprovals((items) => items.filter((item) => item.workoutId !== workoutId));
+      const rejectorNickname = me?.nickname;
+      if (votedItem && rejectorNickname) {
+        setRejectedApprovals((items) => {
+          if (items.some((r) => r.challengeWorkoutId === votedItem.challengeWorkoutId)) return items;
+          return [
+            {
+              challengeWorkoutId: votedItem.challengeWorkoutId,
+              workoutId: votedItem.workoutId,
+              submitterNickname: votedItem.submitterNickname,
+              distanceM: votedItem.distanceM,
+              durationSec: votedItem.durationSec,
+              imageUrl: votedItem.imageUrl,
+              startedAt: votedItem.startedAt,
+              rejectorNicknames: [rejectorNickname],
+            },
+            ...items,
+          ];
+        });
+      }
+    } else {
+      setPendingApprovals((items) =>
+        items
+          .map((item) =>
+            item.workoutId === workoutId
+              ? {
+                  ...item,
+                  myVote: true,
+                  approvedCount: Math.min(item.totalVoters, item.approvedCount + 1),
+                }
+              : item,
+          )
+          .filter(
+            (item) =>
+              !(item.workoutId === workoutId && item.approvedCount >= item.totalVoters),
+          ),
+      );
+    }
+
     try {
       await voteIndoorRun(workoutId, approved, user);
-      // 투표 후 목록 갱신
-      if (id) {
-        const updated = await fetchPendingApprovals(id, user);
-        setPendingApprovals(updated);
-      }
+      await refreshApprovalViews();
     } catch (e) {
+      setPendingApprovals(prevPending);
+      setRejectedApprovals(prevRejected);
       setActionError(String(e));
     } finally {
       setVotingId(null);
@@ -277,6 +343,9 @@ export default function ChallengeDetailContent() {
           {detail.isMember && detail.hasStarted && pendingApprovals.length > 0 ? (
             <Card className="mt-6">
               <div className="text-base font-semibold">{t.pending_approvals_heading}</div>
+              <p className="mt-1 text-xs text-zinc-500">
+                {t.pending_approvals_notice} {t.pending_approvals_reject_notice}
+              </p>
               <div className="mt-3 flex flex-col gap-3">
                 {pendingApprovals.map((item) => (
                   <div key={item.challengeWorkoutId} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
@@ -290,15 +359,26 @@ export default function ChallengeDetailContent() {
                         </div>
                       </div>
                       {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt="러닝머신"
-                          className="h-14 w-14 shrink-0 rounded-lg object-cover"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedImageUrl(item.imageUrl)}
+                          className="h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-offset-1 hover:ring-2 hover:ring-zinc-300"
+                          aria-label={t.pending_approval_view_image}
+                        >
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
                       ) : null}
                     </div>
                     <div className="mt-2 flex gap-2">
-                      {item.myVote === null ? (
+                      {!item.canVote ? (
+                        <div className="text-xs font-medium text-zinc-500">
+                          {t.pending_approval_waiting}
+                        </div>
+                      ) : item.myVote === null ? (
                         <>
                           <button
                             type="button"
@@ -322,6 +402,52 @@ export default function ChallengeDetailContent() {
                           {item.myVote ? t.pending_approval_approved : t.pending_approval_rejected}
                         </div>
                       )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {/* 거부된 실내러닝 */}
+          {detail.isMember && detail.hasStarted && rejectedApprovals.length > 0 ? (
+            <Card className="mt-6">
+              <div className="text-base font-semibold">{t.rejected_approvals_heading}</div>
+              <p className="mt-1 text-xs text-zinc-500">{t.rejected_approval_notice}</p>
+              <div className="mt-3 flex flex-col gap-3">
+                {rejectedApprovals.map((item) => (
+                  <div
+                    key={item.challengeWorkoutId}
+                    className="rounded-xl border border-red-100 bg-red-50/50 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-zinc-900">
+                          {item.submitterNickname ?? t.no_name}
+                        </div>
+                        <div className="mt-0.5 text-xs text-zinc-500">
+                          {(item.distanceM / 1000).toFixed(2)} km
+                        </div>
+                        {item.rejectorNicknames.length > 0 ? (
+                          <div className="mt-1 text-xs font-medium text-red-600">
+                            {t.rejected_approval_by(item.rejectorNicknames.join(", "))}
+                          </div>
+                        ) : null}
+                      </div>
+                      {item.imageUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedImageUrl(item.imageUrl)}
+                          className="h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-offset-1 hover:ring-2 hover:ring-zinc-300"
+                          aria-label={t.pending_approval_view_image}
+                        >
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -361,6 +487,13 @@ export default function ChallengeDetailContent() {
           </div>
         </>
       )}
+      {expandedImageUrl ? (
+        <ImageLightbox
+          src={expandedImageUrl}
+          alt={t.indoor_field_image}
+          onClose={() => setExpandedImageUrl(null)}
+        />
+      ) : null}
     </PageLayout>
   );
 }

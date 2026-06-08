@@ -284,12 +284,13 @@ export const translations = {
     workout_deleting_btn: "삭제 중...",
     workout_delete_title: "기록 삭제",
     workout_delete_message: "이 운동 기록을 삭제할까요? 삭제 후에는 복구할 수 없습니다.",
-    workout_start_label: "시작:",
-    workout_end_label: "종료:",
+    workout_start_label: "운동시작",
+    workout_end_label: "운동종료",
 
     // ── 실내러닝 ──────────────────────────
     indoor_title: "실내러닝 등록",
     indoor_subtitle: "러닝머신 기록을 입력하세요.",
+    indoor_field_duration: "운동 시간",
     indoor_field_distance: "거리 (km)",
     indoor_field_distance_placeholder: "예: 5.0",
     indoor_field_duration_h: "시간 (h)",
@@ -312,13 +313,20 @@ export const translations = {
     indoor_badge: "실내러닝",
 
     // ── 실내러닝 승인 ──────────────────────
-    pending_approvals_heading: "러닝승인 대기건",
+    pending_approvals_heading: "승인대기 실내 러닝",
+    pending_approvals_notice: "모든 참여자가 승인해야 반영됩니다.",
+    pending_approvals_reject_notice: "한 명이라도 거부하면 미반영됩니다.",
     pending_approvals_empty: "승인 대기 중인 실내러닝이 없습니다.",
+    pending_approval_view_image: "사진 크게 보기",
     pending_approval_approve: "승인",
     pending_approval_reject: "거부",
     pending_approval_approved: "승인함",
     pending_approval_rejected: "거부함",
     pending_approval_votes: (approved: number, total: number) => `${approved}/${total}명 승인`,
+    pending_approval_waiting: "다른 참여자의 승인을 기다리는 중입니다.",
+    rejected_approvals_heading: "거부 실내 러닝",
+    rejected_approval_notice: "거부된 운동기록입니다. 레이스에 반영되지 않습니다.",
+    rejected_approval_by: (names: string) => `거부자: ${names}`,
   },
 
   en: {
@@ -604,12 +612,13 @@ export const translations = {
     workout_deleting_btn: "Deleting...",
     workout_delete_title: "Delete Workout",
     workout_delete_message: "Delete this workout? This cannot be undone.",
-    workout_start_label: "Start:",
-    workout_end_label: "End:",
+    workout_start_label: "Workout start",
+    workout_end_label: "Workout end",
 
     // ── Indoor run ────────────────────────
     indoor_title: "Indoor Run",
     indoor_subtitle: "Enter your treadmill workout.",
+    indoor_field_duration: "Duration",
     indoor_field_distance: "Distance (km)",
     indoor_field_distance_placeholder: "e.g. 5.0",
     indoor_field_duration_h: "h",
@@ -632,13 +641,20 @@ export const translations = {
     indoor_badge: "Indoor",
 
     // ── Indoor run approval ───────────────
-    pending_approvals_heading: "Pending approvals",
+    pending_approvals_heading: "Indoor run approvals pending",
+    pending_approvals_notice: "Recorded only after all participants approve.",
+    pending_approvals_reject_notice: "One rejection means it won't count.",
     pending_approvals_empty: "No indoor runs pending approval.",
+    pending_approval_view_image: "View photo",
     pending_approval_approve: "Approve",
     pending_approval_reject: "Reject",
     pending_approval_approved: "Approved",
     pending_approval_rejected: "Rejected",
     pending_approval_votes: (approved: number, total: number) => `${approved}/${total} approved`,
+    pending_approval_waiting: "Waiting for other participants to approve.",
+    rejected_approvals_heading: "Rejected indoor runs",
+    rejected_approval_notice: "This workout was rejected and was not applied to the race.",
+    rejected_approval_by: (names: string) => `Rejected by: ${names}`,
   },
 } satisfies Record<Locale, Record<string, unknown>>;
 

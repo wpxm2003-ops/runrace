@@ -1,0 +1,77 @@
+import { formatDate } from "@/lib/format";
+import type { Translations } from "@/lib/i18n/translations";
+
+function formatTimeHms(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function labelText(label: string): string {
+  return label.replace(/:$/, "");
+}
+
+function isSameLocalDay(a: string, b: string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
+type Props = {
+  startedAt: string;
+  endedAt: string;
+  t: Translations;
+};
+
+function TimeCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-h-[3rem] flex-col">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="mt-1 text-sm font-semibold tabular-nums text-zinc-900">{value}</div>
+    </div>
+  );
+}
+
+function DateTimeCell({ label, iso }: { label: string; iso: string }) {
+  return (
+    <div className="flex min-h-[4.25rem] flex-col rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="mt-1 text-sm font-semibold tabular-nums text-zinc-900">
+        {formatDate(iso)}
+      </div>
+      <div className="text-sm font-semibold tabular-nums text-zinc-900">
+        {formatTimeHms(iso)}
+      </div>
+    </div>
+  );
+}
+
+export function WorkoutTimeRange({ startedAt, endedAt, t }: Props) {
+  const startLabel = labelText(t.workout_start_label);
+  const endLabel = labelText(t.workout_end_label);
+
+  if (isSameLocalDay(startedAt, endedAt)) {
+    return (
+      <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
+        <div className="text-sm font-semibold tabular-nums text-zinc-900">
+          {formatDate(startedAt)}
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-zinc-100 pt-3">
+          <TimeCell label={startLabel} value={formatTimeHms(startedAt)} />
+          <TimeCell label={endLabel} value={formatTimeHms(endedAt)} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <DateTimeCell label={startLabel} iso={startedAt} />
+      <DateTimeCell label={endLabel} iso={endedAt} />
+    </div>
+  );
+}
