@@ -83,7 +83,11 @@ export default function IndoorRunPage() {
       );
       nativeNavigate(`/workouts/${res.id}`);
     } catch (e) {
-      setSubmitError(String(e));
+      const msg =
+        e instanceof Error && e.message === "upload_too_large"
+          ? t.upload_too_large
+          : String(e);
+      setSubmitError(msg);
       setSubmitting(false);
     }
   }

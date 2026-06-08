@@ -1,4 +1,5 @@
 import type { User } from "firebase/auth";
+import { compressImageForUpload } from "@/lib/compressImage";
 import { apiFetch, apiUrl } from "./client";
 import type {
   CreatedId,
@@ -45,14 +46,18 @@ export function voteIndoorRun(workoutId: number, approved: boolean, user: User) 
 /** 이미지 업로드 — multipart/form-data. URL 반환. */
 export async function uploadImage(file: File, user: User): Promise<string> {
   const token = await user.getIdToken();
+  const uploadFile = await compressImageForUpload(file);
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", uploadFile);
   const res = await fetch(apiUrl("/api/uploads/image"), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
   if (!res.ok) {
+    if (res.status === 413) {
+      throw new Error("upload_too_large");
+    }
     const err = await res.text().catch(() => String(res.status));
     throw new Error(err);
   }
