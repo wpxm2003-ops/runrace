@@ -18,6 +18,7 @@ type WorkoutCelebrationProps = {
 };
 
 export function WorkoutCelebration({
+  recordId,
   durationSec,
   distanceM,
   calories,
@@ -39,7 +40,7 @@ export function WorkoutCelebration({
     if (navigatedRef.current) return;
     navigatedRef.current = true;
     onConfirm();
-    nativeNavigate("/records");
+    nativeNavigate(`/workouts/${recordId}`);
   };
 
   useEffect(() => {
