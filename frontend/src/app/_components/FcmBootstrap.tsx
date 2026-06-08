@@ -7,6 +7,7 @@ import type { User } from "firebase/auth";
 import { useAuth } from "@/lib/AuthProvider";
 import { registerDeviceToken } from "@/lib/api/push";
 import { markNativePermissionsReady } from "@/lib/nativePermissions";
+import { reportClientError } from "@/lib/api";
 
 /** 백그라운드 복귀 직후 Play Services 미준비 시 Google Play 팝업이 뜨는 것을 줄이기 위한 대기 */
 const COLD_START_TOKEN_DELAY_MS = 1500;
@@ -63,7 +64,13 @@ export function FcmBootstrap() {
       }
     }
 
-    requestSequentially().catch(console.error);
+    requestSequentially().catch((e: unknown) => {
+      void reportClientError({
+        message: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? e.stack : undefined,
+        kind: "fcm_permission_failed",
+      });
+    });
 
     return () => {
       cancelled = true;
@@ -81,6 +88,7 @@ export function FcmBootstrap() {
 
     async function fetchFcmTokenWithRetry(): Promise<string | null> {
       const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
+      let lastError: unknown;
       for (let attempt = 0; attempt < TOKEN_MAX_ATTEMPTS; attempt++) {
         if (cancelled) return null;
         if (attempt > 0) await sleep(TOKEN_RETRY_DELAY_MS);
@@ -88,8 +96,17 @@ export function FcmBootstrap() {
           const { token } = await FirebaseMessaging.getToken();
           if (token) return token;
         } catch (e) {
+          lastError = e;
           console.warn("FCM getToken retry", attempt + 1, e);
         }
+      }
+      // 최종 실패 시 app_error_log에 기록
+      if (lastError !== undefined) {
+        void reportClientError({
+          message: lastError instanceof Error ? lastError.message : String(lastError),
+          stack: lastError instanceof Error ? lastError.stack : undefined,
+          kind: "fcm_token_failed",
+        });
       }
       return null;
     }
