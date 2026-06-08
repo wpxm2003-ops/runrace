@@ -1,7 +1,8 @@
 import type { User } from "firebase/auth";
-import { apiFetch } from "./client";
+import { apiFetch, apiUrl } from "./client";
 import type {
   CreatedId,
+  IndoorRunCreateBody,
   WorkoutCreateBody,
   WorkoutDetail,
   WorkoutListItem,
@@ -29,4 +30,32 @@ export function createWorkout(body: WorkoutCreateBody, user: User) {
 /** 정적 export 환경에서 DELETE가 막히는 경우가 있어 POST .../delete 를 사용한다. */
 export function deleteWorkout(id: number, user: User) {
   return apiFetch<void>(`/api/workouts/${id}/delete`, { method: "POST", user });
+}
+
+/** 실내러닝 등록. */
+export function createIndoorRun(body: IndoorRunCreateBody, user: User) {
+  return apiFetch<CreatedId>("/api/workouts/indoor", { method: "POST", user, body });
+}
+
+/** 실내러닝 승인/거부 투표. */
+export function voteIndoorRun(workoutId: number, approved: boolean, user: User) {
+  return apiFetch<void>(`/api/workouts/${workoutId}/vote`, { method: "POST", user, body: { approved } });
+}
+
+/** 이미지 업로드 — multipart/form-data. URL 반환. */
+export async function uploadImage(file: File, user: User): Promise<string> {
+  const token = await user.getIdToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(apiUrl("/api/uploads/image"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => String(res.status));
+    throw new Error(err);
+  }
+  const data = (await res.json()) as { url: string };
+  return data.url;
 }

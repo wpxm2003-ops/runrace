@@ -7,4 +7,5 @@ public record WorkoutListItem(
     int durationSec,
     int distanceM,
     int calories,
-    Integer avgPaceSecPerKm) {}
+    Integer avgPaceSecPerKm,
+    String workoutType) {}

@@ -49,6 +49,10 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     if ("GET".equalsIgnoreCase(request.getMethod()) && WORKOUT_SHARE.matcher(path).matches()) {
       return true;
     }
+    // 업로드 이미지 서빙은 공개
+    if ("GET".equalsIgnoreCase(request.getMethod()) && path.startsWith("/api/uploads/")) {
+      return true;
+    }
     return !path.startsWith("/api/") || path.startsWith("/api/public/");
   }
 

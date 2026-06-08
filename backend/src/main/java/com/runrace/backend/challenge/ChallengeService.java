@@ -4,15 +4,17 @@ import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
+import com.runrace.backend.challenge.dto.PendingApprovalResponse;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.workout.WorkoutEvents;
 import com.runrace.backend.workout.WorkoutSession;
 import com.runrace.backend.workout.WorkoutSessionRepository;
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +38,7 @@ public class ChallengeService {
   private final ChallengeMemberRepository challengeMemberRepository;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
+  private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
@@ -313,6 +316,11 @@ public class ChallengeService {
   public void reverseWorkoutDistance(long workoutSessionId) {
     List<ChallengeWorkout> links = challengeWorkoutRepository.findAllByWorkoutSessionId(workoutSessionId);
     for (ChallengeWorkout link : links) {
+      // PENDING/REJECTED는 거리가 아직 반영되지 않았으므로 차감 불필요
+      if (link.getApprovalStatus() != ApprovalStatus.APPROVED) {
+        continue; // 아래 deleteAll에서 삭제됨
+      }
+
       Challenge challenge = link.getChallenge();
       AppUser user = link.getUser();
       BigDecimal subtractKm = BigDecimal.valueOf(link.getAppliedDistanceM())
@@ -539,6 +547,120 @@ public class ChallengeService {
     if (hasStarted(challenge, OffsetDateTime.now())) {
       throw ApiException.conflict("already_started");
     }
+  }
+
+  /** 실내러닝 — 레이스별 PENDING ChallengeWorkout + 개별 승인 행 생성. */
+  @Transactional
+  public void createPendingIndoorApprovals(UUID userId, WorkoutSession session, int distanceM) {
+    if (distanceM <= 0) return;
+    OffsetDateTime now = OffsetDateTime.now();
+    List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
+
+    for (ChallengeMember member : activeMembers) {
+      Challenge challenge = member.getChallenge();
+      if (challengeWorkoutRepository.existsByChallengeIdAndWorkoutSessionId(
+          challenge.getId(), session.getId())) continue;
+
+      ChallengeWorkout cw = new ChallengeWorkout();
+      cw.setChallenge(challenge);
+      cw.setWorkoutSession(session);
+      cw.setUser(member.getUser());
+      cw.setAppliedDistanceM(distanceM);
+      cw.setApprovalStatus(ApprovalStatus.PENDING);
+      cw.setCreatedAt(now);
+      ChallengeWorkout saved = challengeWorkoutRepository.save(cw);
+
+      List<ChallengeMember> allMembers = challengeMemberRepository.findAllForChallenge(challenge.getId());
+      List<UUID> voterIds = new ArrayList<>();
+      for (ChallengeMember voter : allMembers) {
+        if (voter.getUser().getId().equals(userId)) continue;
+        IndoorRunApproval approval = new IndoorRunApproval();
+        approval.setChallengeWorkout(saved);
+        approval.setVoter(voter.getUser());
+        approval.setCreatedAt(now);
+        indoorRunApprovalRepository.save(approval);
+        voterIds.add(voter.getUser().getId());
+      }
+
+      // 투표자가 없으면(혼자 참가 중) 즉시 승인
+      if (voterIds.isEmpty()) {
+        saved.setApprovalStatus(ApprovalStatus.APPROVED);
+        challengeWorkoutRepository.save(saved);
+        applyApprovedIndoorRun(saved.getId());
+      } else {
+        String nickname = member.getUser().getNickname();
+        eventPublisher.publishEvent(new WorkoutEvents.IndoorRunPendingApprovalEvent(
+            saved.getId(), challenge.getId(), userId, voterIds, nickname));
+      }
+    }
+  }
+
+  /** 전원 승인 시 호출 — 거리를 레이스 멤버 기록에 반영한다. */
+  @Transactional
+  public void applyApprovedIndoorRun(Long challengeWorkoutId) {
+    ChallengeWorkout cw = challengeWorkoutRepository.findById(challengeWorkoutId)
+        .orElseThrow(() -> ApiException.notFound("challenge_workout_not_found"));
+
+    cw.setApprovalStatus(ApprovalStatus.APPROVED);
+    challengeWorkoutRepository.save(cw);
+
+    Challenge challenge = cw.getChallenge();
+    UUID userId = cw.getUser().getId();
+    BigDecimal distanceKm = BigDecimal.valueOf(cw.getAppliedDistanceM())
+        .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+    OffsetDateTime now = OffsetDateTime.now();
+
+    challengeMemberRepository.findByChallengeIdAndUserId(challenge.getId(), userId)
+        .ifPresent(member -> {
+          BigDecimal prevKm = member.getTotalKm();
+          BigDecimal next = prevKm.add(distanceKm);
+          BigDecimal goal = goalKmAsDecimal(challenge);
+          List<ChallengeMember> allMembers = challengeMemberRepository.findAllForChallenge(challenge.getId());
+          member.setTotalKm(next);
+          member.setLastSyncAt(now);
+          onMemberProgress(member, next);
+          challengeMemberRepository.save(member);
+          publishMilestoneEvents(member, prevKm, next, goal, allMembers);
+          publishOvertakeEvent(member, prevKm, next, allMembers);
+        });
+
+    eventPublisher.publishEvent(new WorkoutEvents.IndoorRunApprovedEvent(challengeWorkoutId, userId));
+  }
+
+  /** 레이스의 승인 대기 중인 실내러닝 목록. */
+  @Transactional(readOnly = true)
+  public List<PendingApprovalResponse> getPendingApprovals(Long challengeId, UUID viewerUserId) {
+    List<ChallengeWorkout> pending = challengeWorkoutRepository
+        .findAllByChallengeIdAndApprovalStatus(challengeId, ApprovalStatus.PENDING);
+
+    return pending.stream().map(cw -> {
+      WorkoutSession ws = cw.getWorkoutSession();
+      List<IndoorRunApproval> votes = indoorRunApprovalRepository.findAllByChallengeWorkoutId(cw.getId());
+      long approvedCount = votes.stream().filter(v -> Boolean.TRUE.equals(v.getApproved())).count();
+      Boolean myVote = votes.stream()
+          .filter(v -> v.getVoter().getId().equals(viewerUserId))
+          .map(IndoorRunApproval::getApproved)
+          .findFirst()
+          .orElse(null);
+      // myVote==null means: either viewer is submitter, or hasn't voted yet
+      // distinguish: if voter row exists -> pending; if no row -> not a voter (submitter)
+      boolean isVoter = votes.stream().anyMatch(v -> v.getVoter().getId().equals(viewerUserId));
+      Boolean myVoteFinal = isVoter ? myVote : null;
+
+      return new PendingApprovalResponse(
+          cw.getId(),
+          ws.getId(),
+          cw.getUser().getNickname(),
+          ws.getDistanceM(),
+          ws.getDurationSec(),
+          ws.getAvgPaceSecPerKm(),
+          ws.getImageUrl(),
+          ws.getStartedAt().toString(),
+          myVoteFinal,
+          votes.size(),
+          (int) approvedCount
+      );
+    }).toList();
   }
 
   public record ChallengeDetailView(

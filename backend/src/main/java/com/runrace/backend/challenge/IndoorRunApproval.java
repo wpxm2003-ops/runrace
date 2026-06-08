@@ -1,11 +1,8 @@
 package com.runrace.backend.challenge;
 
 import com.runrace.backend.user.AppUser;
-import com.runrace.backend.workout.WorkoutSession;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,34 +16,30 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "challenge_workout")
+@Table(name = "indoor_run_approval")
 @Getter
 @Setter
 @NoArgsConstructor
-public class ChallengeWorkout {
+public class IndoorRunApproval {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "challenge_id", nullable = false)
-  private Challenge challenge;
+  @JoinColumn(name = "challenge_workout_id", nullable = false)
+  private ChallengeWorkout challengeWorkout;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "workout_session_id", nullable = false)
-  private WorkoutSession workoutSession;
+  @JoinColumn(name = "voter_user_id", nullable = false)
+  private AppUser voter;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", nullable = false)
-  private AppUser user;
+  /** null=대기, true=승인, false=거부 */
+  @Column(name = "approved")
+  private Boolean approved;
 
-  @Column(name = "applied_distance_m", nullable = false)
-  private int appliedDistanceM;
+  @Column(name = "responded_at")
+  private OffsetDateTime respondedAt;
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
-
-  @Enumerated(EnumType.STRING)
-  @Column(name = "approval_status", nullable = false)
-  private ApprovalStatus approvalStatus = ApprovalStatus.APPROVED;
 }

@@ -1,8 +1,10 @@
 package com.runrace.backend.workout;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
+import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
 import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import com.runrace.backend.workout.dto.WorkoutListItem;
@@ -47,6 +49,25 @@ public class WorkoutController {
     return ResponseEntity.ok(new CreateWorkoutResponse(session.getId()));
   }
 
+  /** 실내러닝 등록 — path 없이 거리·시간만 입력. */
+  @PostMapping("/indoor")
+  public ResponseEntity<CreateWorkoutResponse> createIndoor(
+      AuthPrincipal principal, @RequestBody CreateIndoorRunRequest body) {
+    WorkoutSession session = workoutService.createIndoor(
+        principal, body.distanceM(), body.durationSec(), body.startedAt(), body.imageUrl());
+    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId()));
+  }
+
+  /** 실내러닝 승인/거부 투표. */
+  @PostMapping("/{id:" + ID_PATH + "}/vote")
+  public ResponseEntity<Void> vote(
+      AuthPrincipal principal,
+      @PathVariable("id") Long id,
+      @RequestBody IndoorRunVoteRequest body) {
+    workoutService.voteIndoorRun(principal, id, body.approved());
+    return ResponseEntity.noContent().build();
+  }
+
   /** 전체 운동 기록 요약 (내정보). */
   @GetMapping("/summary")
   public ResponseEntity<WorkoutSummaryResponse> summary(AuthPrincipal principal) {
@@ -72,7 +93,8 @@ public class WorkoutController {
                         session.getDurationSec(),
                         session.getDistanceM(),
                         session.getCalories(),
-                        session.getAvgPaceSecPerKm()))
+                        session.getAvgPaceSecPerKm(),
+                        session.getWorkoutType().name()))
             .toList();
     return ResponseEntity.ok(items);
   }
@@ -94,7 +116,9 @@ public class WorkoutController {
             session.getDistanceM(),
             session.getCalories(),
             session.getAvgPaceSecPerKm(),
-            path));
+            path,
+            session.getWorkoutType().name(),
+            session.getImageUrl()));
   }
 
   /** 공개 공유 페이지 — 인증 불필요. */
@@ -112,7 +136,9 @@ public class WorkoutController {
             session.getCalories(),
             session.getAvgPaceSecPerKm(),
             session.getStartedAt().toString(),
-            path));
+            path,
+            session.getWorkoutType().name(),
+            session.getImageUrl()));
   }
 
   @DeleteMapping("/{id:" + ID_PATH + "}")

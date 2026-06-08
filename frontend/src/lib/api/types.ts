@@ -100,6 +100,8 @@ export type DailyDistanceResult = { prevKm: string; nowKm: string; deltaKm: stri
 export type DailyDistanceBody = { date: string; source: string; distanceKm: number };
 
 // ── 운동(workout) ────────────────────────────────────────────────
+export type WorkoutType = "GPS" | "INDOOR";
+
 export type WorkoutListItem = {
   id: number;
   startedAt: string;
@@ -108,6 +110,7 @@ export type WorkoutListItem = {
   distanceM: number;
   calories: number;
   avgPaceSecPerKm: number | null;
+  workoutType: WorkoutType;
 };
 
 /** 전체 운동 기록 요약 (GET /api/workouts/summary). */
@@ -120,7 +123,10 @@ export type WorkoutSummary = {
   avgPaceSecPerKm: number | null;
 };
 
-export type WorkoutDetail = WorkoutListItem & { path: LatLng[] };
+export type WorkoutDetail = WorkoutListItem & {
+  path: LatLng[];
+  imageUrl: string | null;
+};
 
 export type WorkoutCreateBody = {
   startedAt: string;
@@ -130,6 +136,28 @@ export type WorkoutCreateBody = {
   calories: number;
   avgPaceSecPerKm: number | null;
   path: LatLng[];
+};
+
+export type IndoorRunCreateBody = {
+  distanceM: number;
+  durationSec: number;
+  startedAt: string;
+  imageUrl: string | null;
+};
+
+/** 실내러닝 승인 대기 항목 */
+export type PendingApproval = {
+  challengeWorkoutId: number;
+  workoutId: number;
+  submitterNickname: string | null;
+  distanceM: number;
+  durationSec: number;
+  avgPaceSecPerKm: number | null;
+  imageUrl: string | null;
+  startedAt: string;
+  myVote: boolean | null;
+  totalVoters: number;
+  approvedCount: number;
 };
 
 /** 단일 식별자만 돌려주는 생성 응답(대결/운동 공용). */

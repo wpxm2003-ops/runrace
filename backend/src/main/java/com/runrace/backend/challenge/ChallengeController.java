@@ -7,6 +7,7 @@ import com.runrace.backend.challenge.dto.ChallengeListItem;
 import com.runrace.backend.challenge.dto.CreateChallengeRequest;
 import com.runrace.backend.challenge.dto.CreateChallengeResponse;
 import com.runrace.backend.challenge.dto.MemberRow;
+import com.runrace.backend.challenge.dto.PendingApprovalResponse;
 import com.runrace.backend.challenge.dto.UpdateChallengeRequest;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.WinnerRow;
@@ -158,7 +159,16 @@ public class ChallengeController {
             session.getDistanceM(),
             session.getCalories(),
             session.getAvgPaceSecPerKm(),
-            path));
+            path,
+            session.getWorkoutType().name(),
+            session.getImageUrl()));
+  }
+
+  /** 레이스 승인 대기 중인 실내러닝 목록. */
+  @GetMapping("/{id:[0-9]+}/pending-approvals")
+  public ResponseEntity<List<PendingApprovalResponse>> pendingApprovals(
+      AuthPrincipal principal, @PathVariable("id") Long id) {
+    return ResponseEntity.ok(challengeService.getPendingApprovals(id, principal.userId()));
   }
 
   private ChallengeListItem toListItem(

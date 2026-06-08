@@ -3,7 +3,12 @@ package com.runrace.backend.workout;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.challenge.ApprovalStatus;
 import com.runrace.backend.challenge.ChallengeService;
+import com.runrace.backend.challenge.ChallengeWorkout;
+import com.runrace.backend.challenge.ChallengeWorkoutRepository;
+import com.runrace.backend.challenge.IndoorRunApproval;
+import com.runrace.backend.challenge.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
@@ -25,6 +30,8 @@ public class WorkoutService {
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
   private final ChallengeService challengeService;
+  private final ChallengeWorkoutRepository challengeWorkoutRepository;
+  private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ObjectMapper objectMapper;
 
   @Transactional
@@ -62,6 +69,81 @@ public class WorkoutService {
     challengeService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
 
     return saved;
+  }
+
+  @Transactional
+  public WorkoutSession createIndoor(
+      AuthPrincipal principal,
+      int distanceM,
+      int durationSec,
+      String startedAt,
+      String imageUrl) {
+    if (durationSec < 1) throw ApiException.badRequest("duration_too_short");
+    if (distanceM <= 0) throw ApiException.badRequest("distance_invalid");
+
+    AppUser user = appUserRepository.getRequired(principal.userId());
+    OffsetDateTime start = OffsetDateTime.parse(startedAt);
+    OffsetDateTime end = start.plusSeconds(durationSec);
+
+    int calories = Math.max(1, Math.round(distanceM / 1000f * 65));
+    Integer avgPaceSecPerKm = distanceM >= 10
+        ? (int) Math.round(durationSec / (distanceM / 1000.0)) : null;
+
+    WorkoutSession session = new WorkoutSession();
+    session.setUser(user);
+    session.setWorkoutType(WorkoutType.INDOOR);
+    session.setStartedAt(start);
+    session.setEndedAt(end);
+    session.setDurationSec(durationSec);
+    session.setDistanceM(distanceM);
+    session.setCalories(calories);
+    session.setAvgPaceSecPerKm(avgPaceSecPerKm);
+    session.setImageUrl(imageUrl);
+    session.setPathJson("[]");
+    session.setCreatedAt(OffsetDateTime.now());
+    WorkoutSession saved = workoutSessionRepository.save(session);
+
+    challengeService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
+    return saved;
+  }
+
+  @Transactional
+  public void voteIndoorRun(AuthPrincipal principal, Long workoutId, boolean approved) {
+    List<ChallengeWorkout> pending = challengeWorkoutRepository
+        .findAllByWorkoutSessionId(workoutId)
+        .stream()
+        .filter(cw -> cw.getApprovalStatus() == ApprovalStatus.PENDING)
+        .toList();
+
+    if (pending.isEmpty()) throw ApiException.notFound("no_pending_approval");
+
+    boolean voted = false;
+    for (ChallengeWorkout cw : pending) {
+      var myVoteOpt = indoorRunApprovalRepository
+          .findByChallengeWorkoutIdAndVoterId(cw.getId(), principal.userId());
+      if (myVoteOpt.isEmpty()) continue;
+
+      IndoorRunApproval myVote = myVoteOpt.get();
+      if (myVote.getApproved() != null) throw ApiException.badRequest("already_voted");
+
+      myVote.setApproved(approved);
+      myVote.setRespondedAt(OffsetDateTime.now());
+      indoorRunApprovalRepository.save(myVote);
+      voted = true;
+
+      if (!approved) {
+        cw.setApprovalStatus(ApprovalStatus.REJECTED);
+        challengeWorkoutRepository.save(cw);
+      } else {
+        List<IndoorRunApproval> all = indoorRunApprovalRepository
+            .findAllByChallengeWorkoutId(cw.getId());
+        boolean allApproved = all.stream().allMatch(a -> Boolean.TRUE.equals(a.getApproved()));
+        if (allApproved) {
+          challengeService.applyApprovedIndoorRun(cw.getId());
+        }
+      }
+    }
+    if (!voted) throw ApiException.forbidden("not_a_voter");
   }
 
   @Transactional(readOnly = true)

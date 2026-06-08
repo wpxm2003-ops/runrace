@@ -28,4 +28,16 @@ public interface ChallengeWorkoutRepository extends JpaRepository<ChallengeWorko
       order by ws.startedAt desc
       """)
   List<ChallengeWorkout> findAllForChallengeOrderByStartedDesc(@Param("challengeId") Long challengeId);
+
+  @Query("""
+      select cw from ChallengeWorkout cw
+      join fetch cw.workoutSession ws
+      join fetch cw.user u
+      where cw.challenge.id = :challengeId
+        and cw.approvalStatus = :status
+      order by ws.startedAt desc
+      """)
+  List<ChallengeWorkout> findAllByChallengeIdAndApprovalStatus(
+      @Param("challengeId") Long challengeId,
+      @Param("status") ApprovalStatus status);
 }

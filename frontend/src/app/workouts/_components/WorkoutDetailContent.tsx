@@ -68,6 +68,7 @@ export default function WorkoutDetailContent() {
     load.then(setDetail).catch((e) => setError(String(e)));
   }, [id, user, challengeId, fromChallenge]);
 
+  const isIndoor = detail?.workoutType === "INDOOR";
   const lastPosition = detail?.path[detail.path.length - 1] ?? null;
 
   async function onDelete() {
@@ -123,7 +124,21 @@ export default function WorkoutDetailContent() {
         <>
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
             <div className="relative h-64 sm:h-80">
-              <WorkoutMap path={detail.path} position={lastPosition} follow={false} />
+              {isIndoor ? (
+                detail.imageUrl ? (
+                  <img
+                    src={detail.imageUrl}
+                    alt="러닝머신 사진"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-zinc-50 text-sm text-zinc-400">
+                    🏃 실내러닝
+                  </div>
+                )
+              ) : (
+                <WorkoutMap path={detail.path} position={lastPosition} follow={false} />
+              )}
             </div>
           </div>
 

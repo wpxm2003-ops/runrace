@@ -40,3 +40,4 @@ frontend/android/capacitor-cordova-android-plugins/
 # OS
 .DS_Store
 Thumbs.db
+backend/src/main/resources/application-local.yml

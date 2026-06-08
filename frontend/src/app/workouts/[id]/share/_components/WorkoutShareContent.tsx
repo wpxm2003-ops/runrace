@@ -15,6 +15,8 @@ type WorkoutShare = {
   avgPaceSecPerKm: number | null;
   startedAt: string;
   path: PathPoint[];
+  workoutType: "GPS" | "INDOOR";
+  imageUrl: string | null;
 };
 
 function normalizePath(
@@ -137,10 +139,24 @@ export default function WorkoutShareContent() {
         {/* 페이지 타이틀 */}
         <h1 className="text-lg font-bold text-zinc-900">운동기록 공유</h1>
 
-        {/* 경로 카드 — WorkoutMap 카드와 동일한 스타일 */}
+        {/* 경로/이미지 카드 */}
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
           <div className="h-48 sm:h-64">
-            <PathSvg path={data.path} />
+            {data.workoutType === "INDOOR" ? (
+              data.imageUrl ? (
+                <img
+                  src={data.imageUrl}
+                  alt="러닝머신 사진"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center bg-zinc-50 text-sm text-zinc-400">
+                  🏃 실내러닝
+                </div>
+              )
+            ) : (
+              <PathSvg path={data.path} />
+            )}
           </div>
         </div>
 

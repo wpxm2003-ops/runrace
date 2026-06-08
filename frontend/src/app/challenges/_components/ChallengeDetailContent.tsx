@@ -7,11 +7,14 @@ import { Card } from "@/app/_components/ui/Card";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
   deleteChallenge,
+  fetchPendingApprovals,
   joinChallenge,
   leaveChallenge,
   useChallengeDetail,
   useMe,
+  voteIndoorRun,
 } from "@/lib/api";
+import type { PendingApproval } from "@/lib/api";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
@@ -23,7 +26,7 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
   const { user, loading: authLoading } = useAuthUser();
@@ -34,6 +37,8 @@ export default function ChallengeDetailContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [votingId, setVotingId] = useState<number | null>(null);
 
   const params = useParams();
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
@@ -106,6 +111,31 @@ export default function ChallengeDetailContent() {
     if (!detail || id == null) return;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
     return shareLink(`${appUrl}/challenges/${id}`, detail.title);
+  }
+
+  // 승인 대기 목록 로드 (레이스 참여 중인 경우만)
+  useEffect(() => {
+    if (!user || !id || !detail?.isMember || !detail?.hasStarted) return;
+    fetchPendingApprovals(id, user)
+      .then(setPendingApprovals)
+      .catch(() => {/* 조용히 무시 */});
+  }, [id, user, detail?.isMember, detail?.hasStarted]);
+
+  async function onVote(workoutId: number, approved: boolean) {
+    if (!user) return;
+    setVotingId(workoutId);
+    try {
+      await voteIndoorRun(workoutId, approved, user);
+      // 투표 후 목록 갱신
+      if (id) {
+        const updated = await fetchPendingApprovals(id, user);
+        setPendingApprovals(updated);
+      }
+    } catch (e) {
+      setActionError(String(e));
+    } finally {
+      setVotingId(null);
+    }
   }
 
   const pageActions = (
@@ -241,6 +271,62 @@ export default function ChallengeDetailContent() {
               isMember={detail.isMember}
               user={user}
             />
+          ) : null}
+
+          {/* 실내러닝 승인 대기건 */}
+          {detail.isMember && detail.hasStarted && pendingApprovals.length > 0 ? (
+            <Card className="mt-6">
+              <div className="text-base font-semibold">{t.pending_approvals_heading}</div>
+              <div className="mt-3 flex flex-col gap-3">
+                {pendingApprovals.map((item) => (
+                  <div key={item.challengeWorkoutId} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-zinc-900">
+                          {item.submitterNickname ?? t.no_name}
+                        </div>
+                        <div className="mt-0.5 text-xs text-zinc-500">
+                          {(item.distanceM / 1000).toFixed(2)} km · {t.pending_approval_votes(item.approvedCount, item.totalVoters)}
+                        </div>
+                      </div>
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt="러닝머신"
+                          className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      {item.myVote === null ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={votingId === item.workoutId}
+                            onClick={() => onVote(item.workoutId, true)}
+                            className="flex-1 rounded-lg bg-emerald-600 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {t.pending_approval_approve}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={votingId === item.workoutId}
+                            onClick={() => onVote(item.workoutId, false)}
+                            className="flex-1 rounded-lg border border-red-200 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            {t.pending_approval_reject}
+                          </button>
+                        </>
+                      ) : (
+                        <div className={`text-xs font-medium ${item.myVote ? "text-emerald-600" : "text-red-500"}`}>
+                          {item.myVote ? t.pending_approval_approved : t.pending_approval_rejected}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
           ) : null}
 
           {detail.canJoin || detail.canLeave ? (

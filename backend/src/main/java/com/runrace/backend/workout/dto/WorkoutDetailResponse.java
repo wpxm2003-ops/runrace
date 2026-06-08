@@ -10,4 +10,6 @@ public record WorkoutDetailResponse(
     int distanceM,
     int calories,
     Integer avgPaceSecPerKm,
-    List<PathPointDto> path) {}
+    List<PathPointDto> path,
+    String workoutType,
+    String imageUrl) {}

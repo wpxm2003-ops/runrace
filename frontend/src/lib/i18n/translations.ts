@@ -286,6 +286,34 @@ export const translations = {
     workout_delete_message: "이 운동 기록을 삭제할까요? 삭제 후에는 복구할 수 없습니다.",
     workout_start_label: "시작:",
     workout_end_label: "종료:",
+
+    // ── 실내러닝 ──────────────────────────
+    indoor_title: "실내러닝 등록",
+    indoor_subtitle: "러닝머신 기록을 입력하세요.",
+    indoor_field_distance: "거리 (km)",
+    indoor_field_distance_placeholder: "예: 5.0",
+    indoor_field_duration_h: "시간 (h)",
+    indoor_field_duration_m: "분",
+    indoor_field_duration_s: "초",
+    indoor_field_image: "러닝머신 사진",
+    indoor_field_image_hint: "러닝머신 화면 사진을 첨부해 주세요.",
+    indoor_field_image_select: "사진 선택",
+    indoor_field_image_change: "사진 변경",
+    indoor_submit: "등록",
+    indoor_submitting: "등록 중...",
+    indoor_err_distance: "거리를 올바르게 입력하세요 (0km 초과).",
+    indoor_err_duration: "시간을 올바르게 입력하세요 (1초 이상).",
+    indoor_err_image: "러닝머신 사진을 첨부해 주세요.",
+    indoor_badge: "실내러닝",
+
+    // ── 실내러닝 승인 ──────────────────────
+    pending_approvals_heading: "러닝승인 대기건",
+    pending_approvals_empty: "승인 대기 중인 실내러닝이 없습니다.",
+    pending_approval_approve: "승인",
+    pending_approval_reject: "거부",
+    pending_approval_approved: "승인함",
+    pending_approval_rejected: "거부함",
+    pending_approval_votes: (approved: number, total: number) => `${approved}/${total}명 승인`,
   },
 
   en: {
@@ -573,6 +601,34 @@ export const translations = {
     workout_delete_message: "Delete this workout? This cannot be undone.",
     workout_start_label: "Start:",
     workout_end_label: "End:",
+
+    // ── Indoor run ────────────────────────
+    indoor_title: "Indoor Run",
+    indoor_subtitle: "Enter your treadmill workout.",
+    indoor_field_distance: "Distance (km)",
+    indoor_field_distance_placeholder: "e.g. 5.0",
+    indoor_field_duration_h: "h",
+    indoor_field_duration_m: "min",
+    indoor_field_duration_s: "sec",
+    indoor_field_image: "Treadmill photo",
+    indoor_field_image_hint: "Attach a photo of the treadmill screen.",
+    indoor_field_image_select: "Select photo",
+    indoor_field_image_change: "Change photo",
+    indoor_submit: "Save",
+    indoor_submitting: "Saving...",
+    indoor_err_distance: "Enter a valid distance (greater than 0).",
+    indoor_err_duration: "Enter a valid duration (at least 1 second).",
+    indoor_err_image: "Please attach a photo of the treadmill.",
+    indoor_badge: "Indoor",
+
+    // ── Indoor run approval ───────────────
+    pending_approvals_heading: "Pending approvals",
+    pending_approvals_empty: "No indoor runs pending approval.",
+    pending_approval_approve: "Approve",
+    pending_approval_reject: "Reject",
+    pending_approval_approved: "Approved",
+    pending_approval_rejected: "Rejected",
+    pending_approval_votes: (approved: number, total: number) => `${approved}/${total} approved`,
   },
 } satisfies Record<Locale, Record<string, unknown>>;
 

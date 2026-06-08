@@ -9,4 +9,6 @@ public record WorkoutShareResponse(
     int calories,
     Integer avgPaceSecPerKm,
     String startedAt,
-    List<PathPointDto> path) {}
+    List<PathPointDto> path,
+    String workoutType,
+    String imageUrl) {}
