@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createIndoorRun, uploadImage } from "@/lib/api";
+import { compressImageForUpload } from "@/lib/compressImage";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -24,19 +25,27 @@ export default function IndoorRunPage() {
   const [seconds, setSeconds] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imagePreparing, setImagePreparing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImageFile(file);
     setFieldErrors((prev) => ({ ...prev, image: undefined }));
-    const url = URL.createObjectURL(file);
-    setImagePreview(url);
+    setImagePreview(URL.createObjectURL(file));
+    setImageFile(null);
+    setImagePreparing(true);
+    try {
+      setImageFile(await compressImageForUpload(file));
+    } catch {
+      setImageFile(file);
+    } finally {
+      setImagePreparing(false);
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -58,8 +67,8 @@ export default function IndoorRunPage() {
       errors.duration = t.indoor_err_duration;
     }
 
-    if (!imageFile) {
-      errors.image = t.indoor_err_image;
+    if (!imageFile || imagePreparing) {
+      errors.image = imagePreparing ? t.indoor_err_image_preparing : t.indoor_err_image;
     }
 
     if (Object.keys(errors).length > 0) {
@@ -112,6 +121,56 @@ export default function IndoorRunPage() {
       {submitError ? <Alert className="mb-4">{submitError}</Alert> : null}
 
       <form onSubmit={onSubmit} className="space-y-5" noValidate>
+        {/* 이미지 — 선택 시 압축이 시작되므로 맨 위 */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-700">
+            {t.indoor_field_image}
+            <span className="ml-0.5 text-red-500">*</span>
+          </label>
+          <p className="mt-0.5 text-xs text-zinc-500">{t.indoor_field_image_hint}</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onFileChange}
+            className="hidden"
+          />
+          {imagePreview ? (
+            <div className="mt-2">
+              <img
+                src={imagePreview}
+                alt="미리보기"
+                className="h-40 w-full rounded-2xl object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-2 text-sm text-zinc-500 hover:underline"
+              >
+                {t.indoor_field_image_change}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`mt-2 flex h-36 w-full items-center justify-center rounded-2xl border border-dashed text-sm ${
+                fieldErrors.image
+                  ? "border-red-400 bg-red-50 text-red-400"
+                  : "border-zinc-300 bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
+              }`}
+            >
+              {t.indoor_field_image_select}
+            </button>
+          )}
+          {imagePreparing ? (
+            <p className="mt-1 text-xs text-zinc-500">{t.indoor_image_preparing}</p>
+          ) : null}
+          {fieldErrors.image ? (
+            <p className="mt-1 text-xs text-red-500">{fieldErrors.image}</p>
+          ) : null}
+        </div>
+
         {/* 거리 */}
         <div>
           <label className="block text-sm font-medium text-zinc-700">
@@ -220,59 +279,12 @@ export default function IndoorRunPage() {
           ) : null}
         </div>
 
-        {/* 이미지 */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            {t.indoor_field_image}
-            <span className="ml-0.5 text-red-500">*</span>
-          </label>
-          <p className="mt-0.5 text-xs text-zinc-500">{t.indoor_field_image_hint}</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={onFileChange}
-            className="hidden"
-          />
-          {imagePreview ? (
-            <div className="mt-2">
-              <img
-                src={imagePreview}
-                alt="미리보기"
-                className="h-40 w-full rounded-2xl object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-2 text-sm text-zinc-500 hover:underline"
-              >
-                {t.indoor_field_image_change}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`mt-2 flex h-36 w-full items-center justify-center rounded-2xl border border-dashed text-sm ${
-                fieldErrors.image
-                  ? "border-red-400 bg-red-50 text-red-400"
-                  : "border-zinc-300 bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
-              }`}
-            >
-              {t.indoor_field_image_select}
-            </button>
-          )}
-          {fieldErrors.image ? (
-            <p className="mt-1 text-xs text-red-500">{fieldErrors.image}</p>
-          ) : null}
-        </div>
-
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || imagePreparing || !imageFile}
           className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
         >
-          {submitting ? t.indoor_submitting : t.indoor_submit}
+          {imagePreparing ? t.indoor_image_preparing : submitting ? t.indoor_submitting : t.indoor_submit}
         </button>
       </form>
     </PageLayout>

@@ -304,6 +304,8 @@ export const translations = {
     indoor_err_distance: "거리를 올바르게 입력하세요 (0km 초과).",
     indoor_err_duration: "시간을 올바르게 입력하세요 (1초 이상).",
     indoor_err_image: "러닝머신 사진을 첨부해 주세요.",
+    indoor_err_image_preparing: "사진을 준비 중입니다. 잠시만 기다려 주세요.",
+    indoor_image_preparing: "사진 준비 중...",
     upload_too_large: "사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.",
     indoor_badge: "실내러닝",
 
@@ -620,6 +622,8 @@ export const translations = {
     indoor_err_distance: "Enter a valid distance (greater than 0).",
     indoor_err_duration: "Enter a valid duration (at least 1 second).",
     indoor_err_image: "Please attach a photo of the treadmill.",
+    indoor_err_image_preparing: "Preparing photo. Please wait.",
+    indoor_image_preparing: "Preparing photo...",
     upload_too_large: "The photo is too large. Please choose a different image.",
     indoor_badge: "Indoor",
 
