@@ -149,7 +149,13 @@ public class ChallengeService {
 
   @Transactional(readOnly = true)
   public List<Challenge> listForMe(AuthPrincipal principal) {
-    return challengeRepository.findAllForUser(principal.userId());
+    OffsetDateTime now = OffsetDateTime.now();
+    return challengeRepository.findAllForUser(principal.userId()).stream()
+        .sorted(
+            Comparator.comparingInt((Challenge c) -> ChallengePhase.of(c, now).ordinal())
+                .thenComparing(Challenge::getStartAt, Comparator.reverseOrder())
+                .thenComparing(Challenge::getId, Comparator.reverseOrder()))
+        .toList();
   }
 
   @Transactional(readOnly = true)
