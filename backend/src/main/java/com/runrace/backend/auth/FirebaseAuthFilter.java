@@ -32,6 +32,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(FirebaseAuthFilter.class);
   private static final String BEARER_PREFIX = "Bearer ";
   private static final Pattern CHALLENGE_DETAIL = Pattern.compile("^/api/challenges/[0-9]+$");
+  private static final Pattern WORKOUT_SHARE = Pattern.compile("^/api/workouts/[0-9]+/share$");
 
   private final FirebaseUserService firebaseUserService;
 
@@ -43,6 +44,9 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     String path = request.getRequestURI();
     // 카카오 로그인은 Firebase 토큰 없이 호출되는 공개 엔드포인트
     if ("POST".equalsIgnoreCase(request.getMethod()) && "/api/auth/kakao".equals(path)) {
+      return true;
+    }
+    if ("GET".equalsIgnoreCase(request.getMethod()) && WORKOUT_SHARE.matcher(path).matches()) {
       return true;
     }
     return !path.startsWith("/api/") || path.startsWith("/api/public/");

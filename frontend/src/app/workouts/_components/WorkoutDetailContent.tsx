@@ -11,7 +11,7 @@ import { formatDate, formatDateTime, formatKm } from "@/lib/format";
 import { parseWorkoutId } from "@/lib/workoutRoute";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { ShareButton } from "@/app/_components/ShareButton";
-import { buildWorkoutCard, shareImageBlob } from "@/lib/shareCard";
+import { shareLink } from "@/lib/shareCard";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -53,21 +53,9 @@ export default function WorkoutDetailContent() {
   const { data: me } = useMe(fromChallenge ? null : user);
 
   async function onShare() {
-    if (!detail) return;
-    const blob = await buildWorkoutCard({
-      nickname: fromChallenge ? null : me?.nickname,
-      distanceKm: (detail.distanceM / 1000).toFixed(2),
-      durationLabel: formatDuration(detail.durationSec),
-      paceLabel: formatPaceMinPerKm(detail.distanceM, detail.durationSec),
-      calories: detail.calories,
-      dateLabel: formatDate(detail.startedAt),
-      path: detail.path,
-    });
-    await shareImageBlob(
-      blob,
-      `runrace-workout-${id}.png`,
-      `RunRace · ${(detail.distanceM / 1000).toFixed(2)}km`,
-    );
+    if (!id) return;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
+    return shareLink(`${appUrl}/workouts/${id}`, "RunRace");
   }
 
   useEffect(() => {

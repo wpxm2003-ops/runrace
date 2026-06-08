@@ -71,6 +71,14 @@ public class WorkoutService {
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
   }
 
+  /** 공개 공유 페이지용 — 소유자 확인 없이 ID로만 조회. */
+  @Transactional(readOnly = true)
+  public WorkoutSession getForShare(Long id) {
+    return workoutSessionRepository
+        .findById(id)
+        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+  }
+
   private static final ZoneId LIST_ZONE = ZoneId.of("Asia/Seoul");
 
   @Transactional(readOnly = true)

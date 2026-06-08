@@ -14,9 +14,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
+
 export const metadata: Metadata = {
   title: "RunRace",
-  description: "RunRace — 친구와 함께하는 러닝 레이스",
+  description: "🏃 RunRace — 기록과 경쟁, 친구와 함께",
+  openGraph: {
+    title: "RunRace",
+    description: "🏃 RunRace — 기록과 경쟁, 친구와 함께",
+    url: APP_URL,
+    siteName: "RunRace",
+    type: "website",
+    images: [{ url: `${APP_URL}/og-image.png`, width: 1200, height: 630 }],
+  },
 };
 
 export default function RootLayout({

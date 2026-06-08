@@ -12,10 +12,10 @@ import {
   invalidateWorkoutLists,
   useWorkoutDetail,
 } from "@/lib/api";
-import { formatDate, formatDateTime, formatKm } from "@/lib/format";
+import { formatDateTime, formatKm } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
-import { buildWorkoutCard, shareImageBlob } from "@/lib/shareCard";
+import { shareLink } from "@/lib/shareCard";
 import type { User } from "firebase/auth";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
@@ -74,20 +74,8 @@ export function WorkoutRecordPanel({
   const [deleting, setDeleting] = useState(false);
 
   async function onShare() {
-    if (!detail) return;
-    const blob = await buildWorkoutCard({
-      distanceKm: (detail.distanceM / 1000).toFixed(2),
-      durationLabel: formatDuration(detail.durationSec),
-      paceLabel: formatPaceMinPerKm(detail.distanceM, detail.durationSec),
-      calories: detail.calories,
-      dateLabel: formatDate(detail.startedAt),
-      path: detail.path,
-    });
-    await shareImageBlob(
-      blob,
-      `runrace-workout-${workoutId}.png`,
-      `RunRace · ${(detail.distanceM / 1000).toFixed(2)}km`,
-    );
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
+    return shareLink(`${appUrl}/workouts/${workoutId}/share`, "RunRace");
   }
 
   async function onDelete() {

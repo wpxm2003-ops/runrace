@@ -287,9 +287,43 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-/** 생성한 이미지 Blob을 네이티브/웹 환경에 맞게 공유한다. 사용자가 취소하면 조용히 무시. */
-export async function shareImageBlob(blob: Blob, filename: string, text: string): Promise<void> {
+/**
+ * URL 링크를 공유한다.
+ * - 네이티브 / Web Share API 지원 환경: 시스템 공유 시트
+ * - 미지원 환경: 클립보드 복사 후 'copied' 반환
+ */
+export async function shareLink(
+  url: string,
+  title: string,
+): Promise<"shared" | "copied"> {
   try {
+    if (Capacitor.isNativePlatform()) {
+      const { Share } = await import("@capacitor/share");
+      await Share.share({ title, url });
+      return "shared";
+    }
+    if (navigator.share) {
+      await navigator.share({ title, url });
+      return "shared";
+    }
+    await navigator.clipboard.writeText(url);
+    return "copied";
+  } catch (e) {
+    if ((e as { name?: string })?.name === "AbortError") return "shared";
+    throw e;
+  }
+}
+
+/** 생성한 이미지 Blob을 네이티브/웹 환경에 맞게 공유한다. 사용자가 취소하면 조용히 무시. */
+export async function shareImageBlob(
+  blob: Blob,
+  filename: string,
+  text: string,
+  url?: string,
+): Promise<void> {
+  try {
+    const shareText = url ? `${text}\n${url}` : text;
+
     if (Capacitor.isNativePlatform()) {
       const base64 = await blobToBase64(blob);
       const { Filesystem, Directory } = await import("@capacitor/filesystem");
@@ -299,7 +333,7 @@ export async function shareImageBlob(blob: Blob, filename: string, text: string)
         data: base64,
         directory: Directory.Cache,
       });
-      await Share.share({ text, files: [written.uri] });
+      await Share.share({ text: shareText, files: [written.uri] });
       return;
     }
 
@@ -308,17 +342,17 @@ export async function shareImageBlob(blob: Blob, filename: string, text: string)
       canShare?: (data?: unknown) => boolean;
     };
     if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
-      await nav.share({ files: [file], text } as ShareData);
+      await nav.share({ files: [file], text: shareText } as ShareData);
       return;
     }
 
     // 폴백: 이미지 다운로드
-    const url = URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
+    a.href = objectUrl;
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(objectUrl);
   } catch (e) {
     // 사용자가 공유 시트를 닫은 경우(AbortError 등)는 정상 흐름
     const name = (e as { name?: string })?.name;

@@ -16,6 +16,7 @@ export const translations = {
     no_name: "(이름 없음)",
     share_btn: "공유",
     share_busy: "준비 중...",
+    share_copied: "링크 복사됨",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "홈",
@@ -302,6 +303,7 @@ export const translations = {
     no_name: "(No name)",
     share_btn: "Share",
     share_busy: "Preparing...",
+    share_copied: "Link copied",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "Home",

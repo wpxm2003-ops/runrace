@@ -17,7 +17,7 @@ import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
 import { ShareButton } from "@/app/_components/ShareButton";
-import { buildRaceCard, shareImageBlob } from "@/lib/shareCard";
+import { shareLink } from "@/lib/shareCard";
 import { formatDateRange, formatKmAmount } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -103,19 +103,9 @@ export default function ChallengeDetailContent() {
 
 
   async function onShare() {
-    if (!detail) return;
-    const blob = await buildRaceCard({
-      title: detail.title,
-      goalKm: detail.goalKm,
-      members: detail.members.map((m) => ({
-        nickname: m.nickname,
-        totalKm: m.totalKm,
-        progressPercent: Number(m.progressPercent) || 0,
-      })),
-      winnerNickname: detail.winner?.nickname,
-      dateLabel: formatDateRange(detail.startAt, detail.endAt),
-    });
-    await shareImageBlob(blob, `runrace-race-${id}.png`, `RunRace · ${detail.title}`);
+    if (!detail || id == null) return;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
+    return shareLink(`${appUrl}/challenges/${id}`, detail.title);
   }
 
   const pageActions = (
@@ -253,13 +243,6 @@ export default function ChallengeDetailContent() {
             />
           ) : null}
 
-          <div className="mt-4">
-            <ShareButton
-              onShare={onShare}
-              className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-            />
-          </div>
-
           {detail.canJoin || detail.canLeave ? (
             <div className="mt-4">
               {detail.canJoin ? (
@@ -283,6 +266,13 @@ export default function ChallengeDetailContent() {
               )}
             </div>
           ) : null}
+
+          <div className="mt-4">
+            <ShareButton
+              onShare={onShare}
+              className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            />
+          </div>
         </>
       )}
     </PageLayout>

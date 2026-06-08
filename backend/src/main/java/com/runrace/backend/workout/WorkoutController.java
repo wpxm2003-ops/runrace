@@ -6,6 +6,7 @@ import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import com.runrace.backend.workout.dto.WorkoutListItem;
+import com.runrace.backend.workout.dto.WorkoutShareResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -93,6 +94,24 @@ public class WorkoutController {
             session.getDistanceM(),
             session.getCalories(),
             session.getAvgPaceSecPerKm(),
+            path));
+  }
+
+  /** 공개 공유 페이지 — 인증 불필요. */
+  @GetMapping("/{id:" + ID_PATH + "}/share")
+  public ResponseEntity<WorkoutShareResponse> share(@PathVariable("id") Long id) {
+    WorkoutSession session = workoutService.getForShare(id);
+    List<PathPointDto> path =
+        workoutService.parsePath(session.getPathJson()).stream()
+            .map(p -> new PathPointDto(p.lat(), p.lng()))
+            .toList();
+    return ResponseEntity.ok(
+        new WorkoutShareResponse(
+            session.getDurationSec(),
+            session.getDistanceM(),
+            session.getCalories(),
+            session.getAvgPaceSecPerKm(),
+            session.getStartedAt().toString(),
             path));
   }
 
