@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.ApprovalStatus;
+import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.challenge.ChallengeService;
 import com.runrace.backend.challenge.ChallengeWorkout;
 import com.runrace.backend.challenge.ChallengeWorkoutRepository;
@@ -32,6 +33,7 @@ public class WorkoutService {
   private final ChallengeService challengeService;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
+  private final ImageUploadService imageUploadService;
   private final ObjectMapper objectMapper;
 
   @Transactional
@@ -219,6 +221,8 @@ public class WorkoutService {
             .orElseThrow(() -> ApiException.notFound("workout_not_found"));
     // 레이스에 반영된 거리 먼저 차감 (cascade 삭제 전에 호출해야 함)
     challengeService.reverseWorkoutDistance(session.getId());
+    // 실내러닝 이미지 S3 삭제
+    imageUploadService.delete(session.getImageUrl());
     workoutSessionRepository.delete(session);
   }
 

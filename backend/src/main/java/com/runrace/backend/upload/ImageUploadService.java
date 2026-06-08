@@ -12,6 +12,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
@@ -58,6 +59,24 @@ public class ImageUploadService {
     return s3.utilities()
         .getUrl(GetUrlRequest.builder().bucket(bucket).key(key).build())
         .toString();
+  }
+
+  /**
+   * S3 URL에서 key를 추출해 해당 객체를 삭제한다.
+   * URL이 null이거나 파싱 실패 시 조용히 무시한다.
+   */
+  public void delete(String imageUrl) {
+    if (imageUrl == null || imageUrl.isBlank()) return;
+    try {
+      // https://<bucket>.s3.<region>.amazonaws.com/<key>
+      java.net.URI uri = java.net.URI.create(imageUrl);
+      String key = uri.getPath().replaceFirst("^/", "");
+      s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
+    } catch (Exception e) {
+      // 삭제 실패해도 운동 기록 삭제는 계속 진행
+      org.slf4j.LoggerFactory.getLogger(ImageUploadService.class)
+          .warn("S3 이미지 삭제 실패: {}", imageUrl, e);
+    }
   }
 
   private String resolveExtension(String originalFilename) {
