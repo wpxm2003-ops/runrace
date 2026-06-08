@@ -35,7 +35,7 @@ export default function WorkoutPage() {
   const handleStop = useCallback(async () => {
     if (!user) return;
 
-    if (session.distanceM === 0) {
+    if (Math.floor(session.distanceM) < 1) {
       const ok = await confirm({
         title: t.workout_save_empty_title,
         message: t.workout_save_empty_message,
