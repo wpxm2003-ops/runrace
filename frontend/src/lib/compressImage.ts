@@ -30,9 +30,20 @@ async function compressWithBitmap(file: File): Promise<File> {
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
 
-  const blob = await canvasToBlob(canvas, "image/jpeg", JPEG_QUALITY);
+  const blob = await encodeUnderLimit(canvas);
   if (!blob) throw new Error("blob_failed");
   return toOutputFile(blob, file);
+}
+
+async function encodeUnderLimit(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  let quality = JPEG_QUALITY;
+  let blob: Blob | null = null;
+  while (quality >= 0.4) {
+    blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    if (!blob || blob.size <= MAX_UPLOAD_BYTES) return blob;
+    quality -= 0.1;
+  }
+  return blob;
 }
 
 /** 구형 WebView 폴백 */
@@ -56,7 +67,7 @@ async function compressWithImage(file: File): Promise<File> {
   if (!ctx) return file;
   ctx.drawImage(img, 0, 0, width, height);
 
-  const blob = await canvasToBlob(canvas, "image/jpeg", JPEG_QUALITY);
+  const blob = await encodeUnderLimit(canvas);
   if (!blob) return file;
   return toOutputFile(blob, file);
 }

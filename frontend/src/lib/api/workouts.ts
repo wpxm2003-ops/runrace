@@ -44,9 +44,13 @@ export function voteIndoorRun(workoutId: number, approved: boolean, user: User) 
 }
 
 /** 이미지 업로드 — multipart/form-data. URL 반환. */
-export async function uploadImage(file: File, user: User): Promise<string> {
+export async function uploadImage(
+  file: File,
+  user: User,
+  opts?: { precompressed?: boolean },
+): Promise<string> {
   const token = await user.getIdToken();
-  const uploadFile = await compressImageForUpload(file);
+  const uploadFile = opts?.precompressed ? file : await compressImageForUpload(file);
   const formData = new FormData();
   formData.append("file", uploadFile);
   const res = await fetch(apiUrl("/api/uploads/image"), {

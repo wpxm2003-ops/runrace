@@ -80,7 +80,7 @@ export default function IndoorRunPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      const imageUrl = await uploadImage(imageFile!, user);
+      const imageUrl = await uploadImage(imageFile!, user, { precompressed: true });
       const res = await createIndoorRun(
         {
           distanceM: distM,
