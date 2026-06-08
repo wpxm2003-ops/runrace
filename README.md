@@ -15,10 +15,19 @@ docker compose up -d
 
 ### 2. 백엔드 실행
 
-```bash
+`backend/src/main/resources/application-local.yml` 파일 생성 (gitignore 등록됨):
+
+```yaml
+app:
+  aws:
+    access-key: 발급된_액세스키
+    secret-key: 발급된_시크릿키
+```
+
+```powershell
 cd backend
-set FIREBASE_SERVICE_ACCOUNT_PATH=C:\path\to\firebase-service-account.json
-.\mvnw.cmd spring-boot:run
+$env:FIREBASE_SERVICE_ACCOUNT_PATH="C:\path\to\firebase-service-account.json"
+$env:MAVEN_OPTS="-Xmx512m"; ./mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
 
 기본 포트: `8081`
