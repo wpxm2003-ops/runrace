@@ -21,7 +21,6 @@ import {
   safeReturnPath,
 } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { verifyLaunchpadTester } from "@/lib/launchpad";
 import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
 import { markLoggedIn } from "@/lib/AuthProvider";
 import { useLocale } from "@/lib/i18n";
@@ -79,7 +78,6 @@ function LoginContent() {
       }
       const cred = await signInWithGoogleApp();
       markLoggedIn(); // 페이지 이동 전에 플래그 세팅 → 다음 페이지 redirect 차단
-      await verifyLaunchpadTester(cred.user.email);
       await completeBackendLogin(cred.user);
     } catch (e) {
       if (isPopupBlockedError(e)) {

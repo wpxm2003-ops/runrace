@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { syncBackendLogin } from "@/lib/api";
-import { verifyLaunchpadTester } from "@/lib/launchpad";
 import {
   LOGIN_RETURN_KEY,
   LOGIN_PENDING_KEY,
@@ -39,7 +38,6 @@ export function AuthRedirectHandler() {
 
         sessionStorage.removeItem(LOGIN_PENDING_KEY);
         markLoggedIn();
-        await verifyLaunchpadTester(user.email);
         await syncBackendLogin(user);
 
         const saved = sessionStorage.getItem(LOGIN_RETURN_KEY);
