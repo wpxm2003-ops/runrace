@@ -4,7 +4,7 @@ import { useNavProgress } from "@/app/_components/NavProgressProvider";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 
 type NavItem = {
   id: string;
@@ -62,43 +62,46 @@ export function BottomNav() {
   const myHref = user || loading ? "/my" : "/login";
   const activePath = pendingHref?.split("?")[0].split("#")[0] ?? pathname;
 
-  const items: NavItem[] = [
-    {
-      id: "home",
-      label: t.nav_home,
-      href: "/",
-      icon: ICONS.home,
-      isActive: (p) => p === "/",
-    },
-    {
-      id: "challenges",
-      label: t.nav_races,
-      href: "/challenges",
-      icon: ICONS.challenge,
-      isActive: (p) => p === "/challenges" || p.startsWith("/challenges/"),
-    },
-    {
-      id: "workout",
-      label: t.nav_workout,
-      href: "/workout",
-      icon: ICONS.fitness,
-      isActive: (p) => p === "/workout",
-    },
-    {
-      id: "records",
-      label: t.nav_records,
-      href: "/records",
-      icon: ICONS.records,
-      isActive: (p) => p === "/records",
-    },
-    {
-      id: "my",
-      label: t.nav_profile,
-      href: myHref,
-      icon: ICONS.my,
-      isActive: (p) => p === "/login" || p === "/my",
-    },
-  ];
+  const items: NavItem[] = useMemo(
+    () => [
+      {
+        id: "home",
+        label: t.nav_home,
+        href: "/",
+        icon: ICONS.home,
+        isActive: (p) => p === "/",
+      },
+      {
+        id: "challenges",
+        label: t.nav_races,
+        href: "/challenges",
+        icon: ICONS.challenge,
+        isActive: (p) => p === "/challenges" || p.startsWith("/challenges/"),
+      },
+      {
+        id: "workout",
+        label: t.nav_workout,
+        href: "/workout",
+        icon: ICONS.fitness,
+        isActive: (p) => p === "/workout",
+      },
+      {
+        id: "records",
+        label: t.nav_records,
+        href: "/records",
+        icon: ICONS.records,
+        isActive: (p) => p === "/records",
+      },
+      {
+        id: "my",
+        label: t.nav_profile,
+        href: myHref,
+        icon: ICONS.my,
+        isActive: (p) => p === "/login" || p === "/my",
+      },
+    ],
+    [t, myHref],
+  );
 
   return (
     <nav

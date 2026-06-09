@@ -2,7 +2,7 @@
 
 import type { LatLng } from "@/lib/workoutTrack";
 import { latLngBounds } from "leaflet";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -102,7 +102,11 @@ function FitPathBounds({ path, enabled }: { path: LatLng[]; enabled: boolean }) 
 
 export default function WorkoutMap({ path, position, follow }: WorkoutMapProps) {
   const center = position ?? path[0] ?? DEFAULT_CENTER;
-  const latLngs = path.map((p) => [p.lat, p.lng] as [number, number]);
+  // path가 바뀔 때만 재계산 — 경로 변화 없는 리렌더에서 Polyline 재diff 방지
+  const latLngs = useMemo(
+    () => path.map((p) => [p.lat, p.lng] as [number, number]),
+    [path],
+  );
 
   return (
     <div className="absolute inset-0 z-0">
