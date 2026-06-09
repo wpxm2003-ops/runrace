@@ -35,8 +35,8 @@ export default function WorkoutPage() {
   const handleStop = useCallback(async () => {
     if (!user) return;
 
-    // distanceM은 미터 단위 — 1km(1000m) 미만이면 저장 확인
-    if (session.distanceM < 1000) {
+    // distanceM은 미터 단위 — 이동 거리가 사실상 없을 때(1m 미만)만 저장 확인
+    if (session.distanceM < 1) {
       const ok = await confirm({
         title: t.workout_save_empty_title,
         message: t.workout_save_empty_message,
