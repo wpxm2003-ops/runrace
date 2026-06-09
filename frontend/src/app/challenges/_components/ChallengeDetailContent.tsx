@@ -24,7 +24,7 @@ import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { shareLink } from "@/lib/shareCard";
-import { formatDateRange, formatKmAmount } from "@/lib/format";
+import { formatDateRange, formatKm, formatKmAmount } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
@@ -355,7 +355,7 @@ export default function ChallengeDetailContent() {
                           {item.submitterNickname ?? t.no_name}
                         </div>
                         <div className="mt-0.5 text-xs text-zinc-500">
-                          {(item.distanceM / 1000).toFixed(2)} km · {t.pending_approval_votes(item.approvedCount, item.totalVoters)}
+                          {formatKm(item.distanceM)} · {t.pending_approval_votes(item.approvedCount, item.totalVoters)}
                         </div>
                       </div>
                       {item.imageUrl ? (
@@ -426,7 +426,7 @@ export default function ChallengeDetailContent() {
                           {item.submitterNickname ?? t.no_name}
                         </div>
                         <div className="mt-0.5 text-xs text-zinc-500">
-                          {(item.distanceM / 1000).toFixed(2)} km
+                          {formatKm(item.distanceM)}
                         </div>
                         {item.rejectorNicknames.length > 0 ? (
                           <div className="mt-1 text-xs font-medium text-red-600">

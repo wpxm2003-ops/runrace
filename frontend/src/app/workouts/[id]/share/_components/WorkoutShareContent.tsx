@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiUrl } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
+import { pathBounds } from "@/lib/pathBounds";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 
 type PathPoint = { lat: number; lng: number };
@@ -27,12 +28,7 @@ function normalizePath(
 ): [number, number][] {
   if (points.length === 0) return [];
 
-  const lats = points.map((p) => p.lat);
-  const lngs = points.map((p) => p.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
+  const { minLat, maxLat, minLng, maxLng } = pathBounds(points);
 
   const latRange = maxLat - minLat || 1e-6;
   const lngRange = maxLng - minLng || 1e-6;

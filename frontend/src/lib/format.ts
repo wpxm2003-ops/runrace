@@ -44,11 +44,6 @@ export function formatShortDateTime(iso: string): string {
   return formatYmdHms(new Date(iso));
 }
 
-/** ISO → date input 값(yyyy-MM-dd). */
-export function toDateInputValue(iso: string): string {
-  return iso.slice(0, 10);
-}
-
 /** ISO → datetime-local 값(yyyy-MM-ddTHH:mm). */
 export function toDateTimeInputValue(iso: string): string {
   const d = new Date(iso);

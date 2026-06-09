@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { pathBounds } from "./pathBounds";
 
 /**
  * 운동/레이스 기록을 공유용 이미지 카드(PNG)로 렌더링하고,
@@ -114,12 +115,7 @@ function drawRoute(
   }
 
   const inset = 56;
-  const lats = path.map((p) => p.lat);
-  const lngs = path.map((p) => p.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
+  const { minLat, maxLat, minLng, maxLng } = pathBounds(path);
   const midLat = (minLat + maxLat) / 2;
   const cos = Math.cos((midLat * Math.PI) / 180);
   const spanX = Math.max((maxLng - minLng) * cos, 1e-6);
