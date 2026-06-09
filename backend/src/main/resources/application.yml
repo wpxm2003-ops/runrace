@@ -6,12 +6,25 @@ spring:
     url: jdbc:postgresql://localhost:5432/runrace
     username: runrace
     password: runrace
+    hikari:
+      # 동시 트래픽 대비 커넥션 풀 명시(기본 10). DB max_connections 한도 내에서 설정할 것.
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      # 풀 고갈 시 무한 대기 대신 빠르게 실패시켜 스레드 점유를 막는다.
+      connection-timeout: 10000
+      # 커넥션 누수 조기 감지(읽기 위주 경로에서 비정상 장기 점유 로깅).
+      leak-detection-threshold: 30000
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          # 승인 행 saveAll 등 다건 INSERT를 배치로 묶어 왕복 횟수를 줄인다.
+          batch_size: 30
+        order_inserts: true
+        order_updates: true
     open-in-view: false
   flyway:
     enabled: true
