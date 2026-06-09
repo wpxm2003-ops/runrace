@@ -2,8 +2,9 @@ package com.runrace.backend.upload;
 
 import com.runrace.backend.common.ApiException;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +22,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
  */
 @Service
 public class ImageUploadService {
+  private static final Logger log = LoggerFactory.getLogger(ImageUploadService.class);
 
   private final S3Client s3;
   private final String bucket;
@@ -52,7 +54,9 @@ public class ImageUploadService {
               .build(),
           RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
     } catch (IOException e) {
-      throw new IllegalStateException("S3 업로드 실패", e);
+      // 인프라 실패 — 안정적인 에러 코드로 전달하되 운영 추적을 위해 로깅한다.
+      log.error("S3 업로드 실패: key={}", key, e);
+      throw ApiException.internal("upload_failed");
     }
 
     // https://<bucket>.s3.<region>.amazonaws.com/<key>
@@ -74,8 +78,7 @@ public class ImageUploadService {
       s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
     } catch (Exception e) {
       // 삭제 실패해도 운동 기록 삭제는 계속 진행
-      org.slf4j.LoggerFactory.getLogger(ImageUploadService.class)
-          .warn("S3 이미지 삭제 실패: {}", imageUrl, e);
+      log.warn("S3 이미지 삭제 실패: {}", imageUrl, e);
     }
   }
 

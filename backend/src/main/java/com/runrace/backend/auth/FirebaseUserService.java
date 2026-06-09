@@ -1,6 +1,7 @@
 package com.runrace.backend.auth;
 
 import com.google.firebase.auth.FirebaseToken;
+import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.user.NicknameGenerator;
@@ -44,7 +45,7 @@ public class FirebaseUserService {
         return candidate;
       }
     }
-    throw new IllegalStateException("닉네임 생성 실패: 중복 충돌");
+    throw ApiException.conflict("nickname_unavailable");
   }
 
   private Optional<String> extractSignInProvider(FirebaseToken token) {

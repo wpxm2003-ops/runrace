@@ -46,4 +46,9 @@ public class ApiException extends RuntimeException {
   public static ApiException conflict(String code) {
     return new ApiException(HttpStatus.CONFLICT, code);
   }
+
+  /** 서버/인프라 실패를 안정적인 코드로 전달한다(외부 의존성 오류 등). */
+  public static ApiException internal(String code) {
+    return new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, code);
+  }
 }

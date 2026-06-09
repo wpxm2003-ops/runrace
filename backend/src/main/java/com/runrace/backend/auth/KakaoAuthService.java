@@ -147,7 +147,7 @@ public class KakaoAuthService {
         return candidate;
       }
     }
-    throw new IllegalStateException("닉네임 생성 실패: 중복 충돌");
+    throw ApiException.conflict("nickname_unavailable");
   }
 
   public record KakaoUser(String id, String email, String nickname, String photoUrl) {}

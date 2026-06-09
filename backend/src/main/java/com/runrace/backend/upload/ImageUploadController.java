@@ -1,6 +1,7 @@
 package com.runrace.backend.upload;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.ApiException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ public class ImageUploadController {
       AuthPrincipal principal,
       @RequestParam("file") MultipartFile file) {
     if (file.isEmpty()) {
-      return ResponseEntity.badRequest().build();
+      throw ApiException.badRequest("file_empty");
     }
     String url = imageUploadService.store(file);
     return ResponseEntity.ok(new ImageUploadResponse(url));
