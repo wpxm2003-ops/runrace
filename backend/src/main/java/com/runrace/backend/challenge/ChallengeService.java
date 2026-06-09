@@ -163,11 +163,11 @@ public class ChallengeService {
     return challengeRepository.countActiveByCreator(principal.userId(), OffsetDateTime.now());
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public ChallengeDetailView getDetail(Optional<UUID> currentUserId, Long id) {
     Challenge challenge = requireChallenge(id);
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(id);
-    resolveWinnerIfNeeded(challenge, members);
+    AppUser winner = resolveWinnerForDisplay(challenge, members);
 
     UUID userId = currentUserId.orElse(null);
     boolean isMember =
@@ -184,7 +184,7 @@ public class ChallengeService {
         isOwner,
         hasStarted(challenge, now),
         isEnded(challenge, now),
-        challenge.getWinner(),
+        winner,
         members.size());
   }
 
@@ -283,10 +283,15 @@ public class ChallengeService {
     return challenge.getEndAt() != null && now.isAfter(challenge.getEndAt());
   }
 
-  /** 승자가 비어 있으면 첫 완주자를, 종료 후라면 최상위 멤버를 승자로 확정한다. */
-  private void resolveWinnerIfNeeded(Challenge challenge, List<ChallengeMember> members) {
+  /**
+   * 표시용 승자 계산 — 영속화하지 않는다(읽기 경로 부작용 제거).
+   * - 이미 확정된 승자가 있으면 그대로 사용(완주 시 onMemberProgress가 확정).
+   * - 첫 완주자가 있으면 그 사람.
+   * - 완주자 없이 기간이 종료됐으면 누적 거리 최상위 멤버.
+   */
+  private AppUser resolveWinnerForDisplay(Challenge challenge, List<ChallengeMember> members) {
     if (challenge.getWinner() != null) {
-      return;
+      return challenge.getWinner();
     }
 
     Optional<ChallengeMember> firstFinisher =
@@ -294,27 +299,21 @@ public class ChallengeService {
             .filter(m -> m.getFinishedAt() != null)
             .min(Comparator.comparing(ChallengeMember::getFinishedAt));
     if (firstFinisher.isPresent()) {
-      assignWinner(challenge, firstFinisher.get());
-      return;
+      return firstFinisher.get().getUser();
     }
 
     OffsetDateTime now = OffsetDateTime.now();
     if (challenge.getEndAt() != null && now.isAfter(challenge.getEndAt()) && !members.isEmpty()) {
-      ChallengeMember top =
-          members.stream()
-              .max(
-                  Comparator.comparing(ChallengeMember::getTotalKm)
-                      .thenComparing(
-                          m -> m.getFinishedAt() == null ? OffsetDateTime.MAX : m.getFinishedAt(),
-                          Comparator.reverseOrder()))
-              .orElseThrow();
-      assignWinner(challenge, top);
+      return members.stream()
+          .max(
+              Comparator.comparing(ChallengeMember::getTotalKm)
+                  .thenComparing(
+                      m -> m.getFinishedAt() == null ? OffsetDateTime.MAX : m.getFinishedAt(),
+                      Comparator.reverseOrder()))
+          .map(ChallengeMember::getUser)
+          .orElse(null);
     }
-  }
-
-  private void assignWinner(Challenge challenge, ChallengeMember member) {
-    challenge.setWinner(member.getUser());
-    challengeRepository.save(challenge);
+    return null;
   }
 
   private Challenge requireChallenge(Long id) {
