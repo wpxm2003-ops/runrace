@@ -39,11 +39,6 @@ export function formatDateTime(iso: string): string {
   return formatYmdHms(new Date(iso));
 }
 
-/** ISO → yyyy/mm/dd HH:mm:ss (기록 탭 시간 칩 등) */
-export function formatShortDateTime(iso: string): string {
-  return formatYmdHms(new Date(iso));
-}
-
 /** ISO → datetime-local 값(yyyy-MM-ddTHH:mm). */
 export function toDateTimeInputValue(iso: string): string {
   const d = new Date(iso);

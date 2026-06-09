@@ -28,7 +28,7 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
   const { user, loading: authLoading } = useAuthUser();
@@ -61,11 +61,14 @@ export default function ChallengeDetailContent() {
 
   const error = actionError ?? (fetchError ? String(fetchError) : null);
 
-  function onEditClick(e: React.MouseEvent<HTMLAnchorElement>) {
-    if (!user) { e.preventDefault(); redirectToLogin(id ? challengeEditHref(id) : undefined); }
-  }
+  const onEditClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!user) { e.preventDefault(); redirectToLogin(id ? challengeEditHref(id) : undefined); }
+    },
+    [user, id],
+  );
 
-  async function onDelete() {
+  const onDelete = useCallback(async () => {
     if (!user || !detail || !id) { redirectToLogin(id ? `/challenges/${id}` : undefined); return; }
     const ok = await confirm({ title: t.detail_delete_title, message: t.detail_delete_message, confirmLabel: t.delete, destructive: true });
     if (!ok) return;
@@ -76,7 +79,7 @@ export default function ChallengeDetailContent() {
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     }
-  }
+  }, [user, detail, id, confirm, t]);
 
   async function onJoin() {
     if (!user || !id) { redirectToLogin(`/challenges/${id}`); return; }
@@ -197,24 +200,27 @@ export default function ChallengeDetailContent() {
     }
   }
 
-  const pageActions = (
-    <>
-      {detail?.showManage ? (
-        <div className="relative">
-          <button type="button" onClick={() => setMenuOpen((v) => !v)}
-            className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg leading-none" aria-label={t.detail_menu_label}>
-            ⋯
-          </button>
-          {menuOpen ? (
-            <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
-              <a href={id ? challengeEditHref(id) : "#"} onClick={onEditClick} className="block px-4 py-2 text-sm hover:bg-zinc-50">{t.detail_edit}</a>
-              <button type="button" onClick={() => { setMenuOpen(false); onDelete(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-zinc-50">{t.detail_delete}</button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      <a className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</a>
-    </>
+  const pageActions = useMemo(
+    () => (
+      <>
+        {detail?.showManage ? (
+          <div className="relative">
+            <button type="button" onClick={() => setMenuOpen((v) => !v)}
+              className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg leading-none" aria-label={t.detail_menu_label}>
+              ⋯
+            </button>
+            {menuOpen ? (
+              <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
+                <a href={id ? challengeEditHref(id) : "#"} onClick={onEditClick} className="block px-4 py-2 text-sm hover:bg-zinc-50">{t.detail_edit}</a>
+                <button type="button" onClick={() => { setMenuOpen(false); onDelete(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-zinc-50">{t.detail_delete}</button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <a className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</a>
+      </>
+    ),
+    [detail?.showManage, menuOpen, id, t, onEditClick, onDelete],
   );
 
   return (

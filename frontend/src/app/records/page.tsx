@@ -8,7 +8,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear } from "@/lib/api";
-import { formatShortDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import {
@@ -207,7 +207,7 @@ export default function RecordsPage() {
                         : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                     }`}
                   >
-                    <span className="block truncate">{formatShortDateTime(w.startedAt)}</span>
+                    <span className="block truncate">{formatDateTime(w.startedAt)}</span>
                   </button>
                 ))}
               </div>

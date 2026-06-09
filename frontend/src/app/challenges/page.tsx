@@ -31,12 +31,15 @@ export default function ChallengesPage() {
     );
   }, [challenges, phaseFilter]);
 
-  const filterLabel: Record<RacePhaseFilterValue, string> = {
-    all: t.races_filter_all,
-    scheduled: t.races_filter_scheduled,
-    in_progress: t.races_filter_in_progress,
-    ended: t.races_filter_ended,
-  };
+  const filterLabel: Record<RacePhaseFilterValue, string> = useMemo(
+    () => ({
+      all: t.races_filter_all,
+      scheduled: t.races_filter_scheduled,
+      in_progress: t.races_filter_in_progress,
+      ended: t.races_filter_ended,
+    }),
+    [t],
+  );
 
   function onCreateClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (!user) {
