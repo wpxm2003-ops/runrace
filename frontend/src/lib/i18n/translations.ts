@@ -17,6 +17,9 @@ export const translations = {
     share_btn: "공유",
     share_busy: "준비 중...",
     share_copied: "링크 복사됨",
+    share_page_title: "운동 기록 공유",
+    share_load_error: "운동 기록을 불러올 수 없어요.",
+    share_no_route: "경로 없음",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "홈",
@@ -350,6 +353,9 @@ export const translations = {
     share_btn: "Share",
     share_busy: "Preparing...",
     share_copied: "Link copied",
+    share_page_title: "Workout Share",
+    share_load_error: "Couldn't load this workout.",
+    share_no_route: "No route",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "Home",
@@ -683,6 +689,9 @@ export const translations = {
     share_btn: "Compartir",
     share_busy: "Preparando...",
     share_copied: "Enlace copiado",
+    share_page_title: "Compartir entreno",
+    share_load_error: "No se pudo cargar este entreno.",
+    share_no_route: "Sin ruta",
 
     // ── Cabecera / nav ────────────────────
     nav_home: "Inicio",
@@ -1016,6 +1025,9 @@ export const translations = {
     share_btn: "シェア",
     share_busy: "準備中...",
     share_copied: "リンクをコピーしました",
+    share_page_title: "運動記録の共有",
+    share_load_error: "運動記録を読み込めませんでした。",
+    share_no_route: "経路なし",
 
     // ── ヘッダー / ナビ ───────────────────
     nav_home: "ホーム",
@@ -1349,6 +1361,9 @@ export const translations = {
     share_btn: "分享",
     share_busy: "准备中...",
     share_copied: "已复制链接",
+    share_page_title: "运动记录分享",
+    share_load_error: "无法加载该运动记录。",
+    share_no_route: "无路线",
 
     // ── 顶栏 / 导航 ───────────────────────
     nav_home: "首页",

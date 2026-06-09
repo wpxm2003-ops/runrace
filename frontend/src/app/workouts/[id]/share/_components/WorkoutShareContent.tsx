@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 import type { DistanceUnit } from "@/lib/units";
+import { LOCALES, translations, type Locale } from "@/lib/i18n/translations";
 
 type PathPoint = { lat: number; lng: number };
 
@@ -46,7 +47,7 @@ function normalizePath(
   ]);
 }
 
-function PathSvg({ path }: { path: PathPoint[] }) {
+function PathSvg({ path, noRouteLabel }: { path: PathPoint[]; noRouteLabel: string }) {
   const W = 400;
   const H = 260;
   const PAD = 24;
@@ -56,7 +57,7 @@ function PathSvg({ path }: { path: PathPoint[] }) {
   if (pts.length === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center text-sm text-zinc-400">
-        경로 없음
+        {noRouteLabel}
       </div>
     );
   }
@@ -102,13 +103,26 @@ export default function WorkoutShareContent() {
 
   const [data, setData] = useState<WorkoutShare | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // 공개 페이지(Provider 밖)라 로컬 단위 토글. 로그인 유저의 기존 선호가 있으면 기본값으로.
+  // 공개 페이지(Provider 밖)라 로컬에서 단위·언어를 직접 해석한다.
+  // 로그인 유저는 본인 선호(localStorage), 외부 방문자는 브라우저 언어로 폴백.
   const [unit, setUnit] = useState<DistanceUnit>("km");
+  const [locale, setLocale] = useState<Locale>("ko");
 
   useEffect(() => {
-    const stored = localStorage.getItem("runrace_unit");
-    if (stored === "km" || stored === "mi") setUnit(stored);
+    const storedUnit = localStorage.getItem("runrace_unit");
+    if (storedUnit === "km" || storedUnit === "mi") setUnit(storedUnit);
+
+    const storedLocale = localStorage.getItem("runrace_locale");
+    if (storedLocale && LOCALES.some((l) => l.code === storedLocale)) {
+      setLocale(storedLocale as Locale);
+    } else {
+      const lang = navigator.language.toLowerCase();
+      const match = LOCALES.find((l) => lang.startsWith(l.code));
+      if (match) setLocale(match.code);
+    }
   }, []);
+
+  const t = translations[locale];
 
   useEffect(() => {
     if (!id) return;
@@ -124,7 +138,7 @@ export default function WorkoutShareContent() {
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-sm text-zinc-500">운동 기록을 불러올 수 없어요.</p>
+        <p className="text-sm text-zinc-500">{t.share_load_error}</p>
       </div>
     );
   }
@@ -142,7 +156,7 @@ export default function WorkoutShareContent() {
       <main className="mx-auto w-full max-w-sm flex-1 space-y-3 px-4 py-4">
         {/* 페이지 타이틀 + 단위 토글 */}
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-zinc-900">운동기록 공유</h1>
+          <h1 className="text-lg font-bold text-zinc-900">{t.share_page_title}</h1>
           <div className="inline-flex rounded-lg border border-zinc-200 p-0.5 text-xs">
             {(["km", "mi"] as const).map((u) => (
               <button
@@ -166,16 +180,16 @@ export default function WorkoutShareContent() {
               data.imageUrl ? (
                 <img
                   src={data.imageUrl}
-                  alt="러닝머신 사진"
+                  alt={t.indoor_field_image}
                   className="h-full w-full object-cover"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center bg-zinc-50 text-sm text-zinc-400">
-                  🏃 실내러닝
+                  🏃 {t.indoor_badge}
                 </div>
               )
             ) : (
-              <PathSvg path={data.path} />
+              <PathSvg path={data.path} noRouteLabel={t.share_no_route} />
             )}
           </div>
         </div>
@@ -187,12 +201,17 @@ export default function WorkoutShareContent() {
           calories={data.calories}
           columns={2}
           unit={unit}
-          labels={{ time: "시간", distance: "거리", pace: "페이스", calories: "칼로리" }}
+          labels={{
+            time: t.stat_time,
+            distance: t.stat_distance,
+            pace: t.stat_pace,
+            calories: t.stat_calories,
+          }}
         />
 
         {/* 날짜 카드 — WorkoutRecordPanel의 시간 카드와 동일 */}
         <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-          <div className="text-sm text-zinc-600">{formatDate(data.startedAt, "ko")}</div>
+          <div className="text-sm text-zinc-600">{formatDate(data.startedAt, locale)}</div>
         </div>
       </main>
     </div>
