@@ -5,6 +5,7 @@ import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.user.NicknameGenerator;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,16 @@ public class UserProvisioningService {
       String firebaseUid, String email, String displayName, String photoUrl, String provider) {
     AppUser user = appUserRepository.findByFirebaseUid(firebaseUid).orElseGet(AppUser::new);
     boolean isNew = user.getId() == null;
+
+    // 변경이 있을 때만 write — 기존 사용자의 동일 프로필 재방문은 SELECT만으로 끝낸다.
+    boolean changed = isNew;
+    changed |= !Objects.equals(user.getEmail(), email);
+    changed |= !Objects.equals(user.getDisplayName(), displayName);
+    changed |= !Objects.equals(user.getPhotoUrl(), photoUrl);
+    changed |= !Objects.equals(user.getProvider(), provider);
+    if (!changed) {
+      return user;
+    }
 
     user.setFirebaseUid(firebaseUid);
     user.setEmail(email);

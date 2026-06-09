@@ -2,12 +2,15 @@ package com.runrace.backend.auth;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.config.CacheConfig;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,7 @@ public class AccountService {
   private static final int NICKNAME_MAX_LEN = 20;
 
   private final AppUserRepository appUserRepository;
+  private final CacheManager cacheManager;
 
   @Transactional
   public AppUser updateNickname(UUID userId, String rawNickname) {
@@ -42,6 +46,12 @@ public class AccountService {
     AppUser user = appUserRepository.getRequired(userId);
     String firebaseUid = user.getFirebaseUid();
     appUserRepository.delete(user);
+
+    // 캐시된 인증 주체 즉시 무효화 — 삭제된 계정이 TTL 동안 통과하지 못하게 한다.
+    Cache cache = cacheManager.getCache(CacheConfig.AUTH_PRINCIPALS);
+    if (cache != null) {
+      cache.evict(firebaseUid);
+    }
 
     try {
       FirebaseAuth.getInstance().deleteUser(firebaseUid);
