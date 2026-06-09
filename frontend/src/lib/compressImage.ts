@@ -36,14 +36,14 @@ async function compressWithBitmap(file: File): Promise<File> {
 }
 
 async function encodeUnderLimit(canvas: HTMLCanvasElement): Promise<Blob | null> {
-  let quality = JPEG_QUALITY;
-  let blob: Blob | null = null;
-  while (quality >= 0.4) {
-    blob = await canvasToBlob(canvas, "image/jpeg", quality);
-    if (!blob || blob.size <= MAX_UPLOAD_BYTES) return blob;
-    quality -= 0.1;
-  }
-  return blob;
+  const blob = await canvasToBlob(canvas, "image/jpeg", JPEG_QUALITY);
+  if (!blob || blob.size <= MAX_UPLOAD_BYTES) return blob;
+
+  // 초과 시 초과 비율로 목표 품질을 추정해 한 번만 더 인코딩한다(품질 0.1씩 반복 인코딩 회피).
+  const estimated = JPEG_QUALITY * (MAX_UPLOAD_BYTES / blob.size);
+  const retryQuality = Math.max(0.35, Math.min(0.6, estimated));
+  const retry = await canvasToBlob(canvas, "image/jpeg", retryQuality);
+  return retry && retry.size < blob.size ? retry : blob;
 }
 
 /** 구형 WebView 폴백 */
