@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.ApprovalStatus;
 import com.runrace.backend.upload.ImageUploadService;
-import com.runrace.backend.challenge.ChallengeService;
+import com.runrace.backend.challenge.ChallengeProgressService;
+import com.runrace.backend.challenge.IndoorApprovalService;
 import com.runrace.backend.challenge.ChallengeWorkout;
 import com.runrace.backend.challenge.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.IndoorRunApproval;
@@ -30,7 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class WorkoutService {
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
-  private final ChallengeService challengeService;
+  private final ChallengeProgressService challengeProgressService;
+  private final IndoorApprovalService indoorApprovalService;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ImageUploadService imageUploadService;
@@ -68,7 +70,7 @@ public class WorkoutService {
     WorkoutSession saved = workoutSessionRepository.save(session);
 
     // 현재 참여 중인 진행 대결에 운동 거리 반영
-    challengeService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
+    challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
 
     return saved;
   }
@@ -105,7 +107,7 @@ public class WorkoutService {
     session.setCreatedAt(OffsetDateTime.now());
     WorkoutSession saved = workoutSessionRepository.save(session);
 
-    challengeService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
+    indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
     return saved;
   }
 
@@ -141,7 +143,7 @@ public class WorkoutService {
             .findAllByChallengeWorkoutId(cw.getId());
         boolean allApproved = all.stream().allMatch(a -> Boolean.TRUE.equals(a.getApproved()));
         if (allApproved) {
-          challengeService.applyApprovedIndoorRun(cw.getId());
+          indoorApprovalService.applyApprovedIndoorRun(cw.getId());
         }
       }
     }
@@ -220,7 +222,7 @@ public class WorkoutService {
             .findByIdAndUserId(id, principal.userId())
             .orElseThrow(() -> ApiException.notFound("workout_not_found"));
     // 레이스에 반영된 거리 먼저 차감 (cascade 삭제 전에 호출해야 함)
-    challengeService.reverseWorkoutDistance(session.getId());
+    challengeProgressService.reverseWorkoutDistance(session.getId());
     // 실내러닝 이미지 S3 삭제
     imageUploadService.delete(session.getImageUrl());
     workoutSessionRepository.delete(session);

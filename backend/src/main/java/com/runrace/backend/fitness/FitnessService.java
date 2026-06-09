@@ -3,6 +3,7 @@ package com.runrace.backend.fitness;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.ChallengeMember;
 import com.runrace.backend.challenge.ChallengeMemberRepository;
+import com.runrace.backend.challenge.ChallengeProgressService;
 import com.runrace.backend.challenge.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
@@ -23,7 +24,7 @@ public class FitnessService {
   private final AppUserRepository appUserRepository;
   private final DailyDistanceRepository dailyDistanceRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
-  private final ChallengeService challengeService;
+  private final ChallengeProgressService challengeProgressService;
   private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
@@ -72,7 +73,7 @@ public class FitnessService {
       BigDecimal next = member.getTotalKm().add(delta).max(BigDecimal.ZERO);
       member.setTotalKm(next);
       member.setLastSyncAt(now);
-      challengeService.onMemberProgress(member, next);
+      challengeProgressService.onMemberProgress(member, next);
       challengeMemberRepository.save(member);
     }
   }

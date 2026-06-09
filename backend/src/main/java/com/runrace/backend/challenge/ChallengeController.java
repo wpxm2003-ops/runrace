@@ -42,6 +42,7 @@ public class ChallengeController {
   private static final String ID_PATH = "[0-9]+";
 
   private final ChallengeService challengeService;
+  private final IndoorApprovalService indoorApprovalService;
   private final WorkoutService workoutService;
 
   @GetMapping("/active-count")
@@ -169,14 +170,14 @@ public class ChallengeController {
   @GetMapping("/{id:[0-9]+}/pending-approvals")
   public ResponseEntity<List<PendingApprovalResponse>> pendingApprovals(
       AuthPrincipal principal, @PathVariable("id") Long id) {
-    return ResponseEntity.ok(challengeService.getPendingApprovals(id, principal.userId()));
+    return ResponseEntity.ok(indoorApprovalService.getPendingApprovals(id, principal.userId()));
   }
 
   /** 레이스 거부된 실내러닝 목록. */
   @GetMapping("/{id:[0-9]+}/rejected-approvals")
   public ResponseEntity<List<RejectedApprovalResponse>> rejectedApprovals(
       AuthPrincipal principal, @PathVariable("id") Long id) {
-    return ResponseEntity.ok(challengeService.getRejectedApprovals(id));
+    return ResponseEntity.ok(indoorApprovalService.getRejectedApprovals(id));
   }
 
   private ChallengeListItem toListItem(
@@ -202,7 +203,7 @@ public class ChallengeController {
 
   private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {
     Challenge challenge = detail.challenge();
-    BigDecimal goal = challengeService.goalKmAsDecimal(challenge);
+    BigDecimal goal = ChallengeService.goalKmAsDecimal(challenge);
 
     List<MemberRow> rows =
         detail.members().stream()
