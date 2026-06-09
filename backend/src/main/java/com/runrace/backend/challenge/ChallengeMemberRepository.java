@@ -31,6 +31,23 @@ public interface ChallengeMemberRepository extends JpaRepository<ChallengeMember
       """)
   List<ChallengeMember> findAllActiveForUser(@Param("userId") UUID userId, @Param("now") OffsetDateTime now);
 
+  /**
+   * 사용자가 참여 중인 진행 대결들의 "다른 멤버" userId를 distinct로 한 번에 조회한다.
+   * 알림 팬아웃의 챌린지별 조회(N+1)를 방지한다. 활성 조건은 {@link #findAllActiveForUser}와 동일.
+   */
+  @Query("""
+      select distinct other.user.id
+      from ChallengeMember mine, ChallengeMember other
+      where mine.user.id = :userId
+        and other.challenge = mine.challenge
+        and other.user.id <> :userId
+        and mine.challenge.startAt <= :now
+        and (mine.challenge.endAt is null or mine.challenge.endAt >= :now)
+        and mine.challenge.isEnded = false
+        and mine.finishedAt is null
+      """)
+  List<UUID> findActiveCoMemberIds(@Param("userId") UUID userId, @Param("now") OffsetDateTime now);
+
   long countByChallengeId(Long challengeId);
 
   /** 본인(id)을 제외한 미완주 멤버 수 — 전원 완주 판정용(전체 로스터 로드 회피). */

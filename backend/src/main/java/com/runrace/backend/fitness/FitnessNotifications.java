@@ -1,6 +1,5 @@
 package com.runrace.backend.fitness;
 
-import com.runrace.backend.challenge.ChallengeMember;
 import com.runrace.backend.challenge.ChallengeMemberRepository;
 import com.runrace.backend.push.PushService;
 import java.time.OffsetDateTime;
@@ -23,12 +22,8 @@ public class FitnessNotifications {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onDailyDistanceSynced(DailyDistanceSyncedEvent event) {
     UUID actorId = event.userId();
-    challengeMemberRepository.findAllActiveForUser(actorId, OffsetDateTime.now()).stream()
-        .flatMap(my -> challengeMemberRepository.findAllForChallenge(my.getChallenge().getId()).stream())
-        .map(ChallengeMember::getUser)
-        .map(user -> user.getId())
-        .filter(memberId -> !memberId.equals(actorId))
-        .distinct()
-        .forEach(memberId -> pushService.sendToUserTokens(memberId, "RunRace", "오늘 기록이 대결에 반영됐어요."));
+    for (UUID memberId : challengeMemberRepository.findActiveCoMemberIds(actorId, OffsetDateTime.now())) {
+      pushService.sendToUserTokens(memberId, "RunRace", "오늘 기록이 대결에 반영됐어요.");
+    }
   }
 }
