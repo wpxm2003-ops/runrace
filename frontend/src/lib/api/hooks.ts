@@ -70,6 +70,23 @@ export function invalidateChallengeWorkouts(challengeId: number, userId: string)
   void globalMutate(["challenge", challengeId, "workouts", userId]);
 }
 
+/** 닉네임 변경 후 닉네임이 노출되는 SWR 캐시를 재검증한다. */
+export function invalidateAfterNicknameChange(userId: string) {
+  void globalMutate(
+    (key) => {
+      if (!Array.isArray(key)) return false;
+      const [head, a, b, c] = key;
+      if (head === "me" && a === userId) return true;
+      if (head === "friends" && a === userId) return true;
+      if (head === "challenges" && (a === userId || a === "mine")) return true;
+      if (head === "challenge" && (b === userId || c === userId)) return true;
+      return false;
+    },
+    undefined,
+    { revalidate: true },
+  );
+}
+
 export function useChallengeWorkouts(
   challengeId: number | null,
   user: User | null,

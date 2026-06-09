@@ -6,7 +6,8 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { useMyChallengeList, useWorkoutSummary, useMe } from "@/lib/api";
+import { invalidateAfterNicknameChange, useMyChallengeList, useWorkoutSummary, useMe } from "@/lib/api";
+import { containsForbiddenText, stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { formatDateRange } from "@/lib/format";
@@ -17,7 +18,6 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatGoalDistance } from "@/lib/units";
-import { mutate } from "swr";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
 /** 인증 확정 후에만 마운트 → SWR 훅이 로딩 단계에서 중복 기동되지 않음 */
@@ -41,31 +41,51 @@ function MyPageContent({ user }: { user: User }) {
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [nicknameHint, setNicknameHint] = useState<string | null>(null);
+
+  function onDraftChange(raw: string) {
+    const stripped = stripForbiddenText(raw).slice(0, 20);
+    setDraft(stripped);
+    if (stripped.length !== raw.length) {
+      setNicknameHint(t.my_nickname_invalid_chars);
+    } else {
+      setNicknameHint(null);
+    }
+    setNicknameError(null);
+  }
 
   function startEdit() {
     setDraft(me?.nickname ?? "");
     setNicknameError(null);
+    setNicknameHint(null);
     setEditing(true);
   }
 
   function cancelEdit() {
     setEditing(false);
     setNicknameError(null);
+    setNicknameHint(null);
   }
 
   async function saveNickname() {
     const trimmed = draft.trim();
     if (!trimmed || trimmed.length > 20) return;
+    if (containsForbiddenText(trimmed)) {
+      setNicknameError(t.my_nickname_invalid_chars);
+      return;
+    }
     setSaving(true);
     setNicknameError(null);
     try {
       await updateNickname(user, trimmed);
-      await mutate(["me", user.uid]);
+      invalidateAfterNicknameChange(user.uid);
       setEditing(false);
     } catch (e) {
       const msg = String(e);
       if (msg.includes("nickname_taken")) {
         setNicknameError(t.my_nickname_taken);
+      } else if (msg.includes("invalid_nickname_chars")) {
+        setNicknameError(t.my_nickname_invalid_chars);
       } else {
         setNicknameError(t.error_occurred);
       }
@@ -87,14 +107,17 @@ function MyPageContent({ user }: { user: User }) {
               <input
                 type="text"
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => onDraftChange(e.target.value)}
                 maxLength={20}
                 placeholder={t.my_nickname_placeholder}
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
               />
-              {nicknameError && (
+              {nicknameHint ? (
+                <p className="mt-1 text-xs text-zinc-500">{nicknameHint}</p>
+              ) : null}
+              {nicknameError ? (
                 <p className="mt-1 text-xs text-red-600">{nicknameError}</p>
-              )}
+              ) : null}
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"
