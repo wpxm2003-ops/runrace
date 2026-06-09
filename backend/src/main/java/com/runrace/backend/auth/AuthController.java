@@ -1,14 +1,10 @@
 package com.runrace.backend.auth;
 
-import com.google.firebase.auth.FirebaseAuth;
 import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
-import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,9 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
 
-  private static final Logger log = LoggerFactory.getLogger(AuthController.class);
-
   private final AppUserRepository appUserRepository;
+  private final AccountService accountService;
 
   @PostMapping("/auth/login")
   public ResponseEntity<MeResponse> login(AuthPrincipal principal) {
@@ -41,35 +36,13 @@ public class AuthController {
   @PatchMapping("/me/nickname")
   public ResponseEntity<MeResponse> updateNickname(
       AuthPrincipal principal, @RequestBody NicknameUpdateRequest body) {
-    String trimmed = body.nickname() == null ? "" : body.nickname().trim();
-    if (trimmed.isEmpty() || trimmed.length() > 20) {
-      throw ApiException.badRequest("invalid_nickname");
-    }
-    if (appUserRepository.existsByNickname(trimmed)) {
-      throw ApiException.badRequest("nickname_taken");
-    }
-    AppUser user = appUserRepository.getRequired(principal.userId());
-    user.setNickname(trimmed);
-    appUserRepository.save(user);
+    AppUser user = accountService.updateNickname(principal.userId(), body.nickname());
     return ResponseEntity.ok(MeResponse.from(user));
   }
 
   @DeleteMapping("/me")
   public ResponseEntity<Void> deleteAccount(AuthPrincipal principal) {
-    AppUser user = appUserRepository.getRequired(principal.userId());
-    String firebaseUid = user.getFirebaseUid();
-
-    // DB 삭제 (CASCADE로 관련 데이터 모두 삭제)
-    appUserRepository.delete(user);
-
-    // Firebase 계정도 삭제 (실패해도 DB 삭제는 유지)
-    try {
-      FirebaseAuth.getInstance().deleteUser(firebaseUid);
-    } catch (Exception e) {
-      log.warn("Firebase 계정 삭제 실패 (uid={}): {}", firebaseUid, e.getMessage());
-    }
-
+    accountService.deleteAccount(principal.userId());
     return ResponseEntity.noContent().build();
   }
 }
-
