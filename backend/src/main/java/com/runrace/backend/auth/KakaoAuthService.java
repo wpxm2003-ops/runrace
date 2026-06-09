@@ -5,21 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.user.AppUser;
-import com.runrace.backend.user.AppUserRepository;
-import com.runrace.backend.user.NicknameGenerator;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 카카오 OAuth 코드를 Firebase Custom Token으로 교환한다.
@@ -41,12 +36,12 @@ public class KakaoAuthService {
   @Value("${runrace.auth.kakao.rest-api-key:}")
   private String restApiKey;
 
-  private final AppUserRepository appUserRepository;
+  private final UserProvisioningService userProvisioningService;
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient = HttpClient.newHttpClient();
 
-  public KakaoAuthService(AppUserRepository appUserRepository, ObjectMapper objectMapper) {
-    this.appUserRepository = appUserRepository;
+  public KakaoAuthService(UserProvisioningService userProvisioningService, ObjectMapper objectMapper) {
+    this.userProvisioningService = userProvisioningService;
     this.objectMapper = objectMapper;
   }
 
@@ -66,9 +61,10 @@ public class KakaoAuthService {
     try {
       String accessToken = exchangeCode(code, redirectUri);
       KakaoUser kakaoUser = getUserInfo(accessToken);
-      upsertUser(kakaoUser);
 
       String firebaseUid = "kakao:" + kakaoUser.id();
+      userProvisioningService.upsert(
+          firebaseUid, kakaoUser.email(), kakaoUser.nickname(), kakaoUser.photoUrl(), "kakao");
       return FirebaseAuth.getInstance().createCustomToken(firebaseUid);
     } catch (ApiException e) {
       throw e;
@@ -121,33 +117,6 @@ public class KakaoAuthService {
     String photoUrl = profile.path("profile_image_url").asText(null);
 
     return new KakaoUser(id, email, nickname, photoUrl);
-  }
-
-  @Transactional
-  public void upsertUser(KakaoUser kakaoUser) {
-    String firebaseUid = "kakao:" + kakaoUser.id();
-    AppUser user = appUserRepository.findByFirebaseUid(firebaseUid).orElseGet(AppUser::new);
-    boolean isNew = user.getId() == null;
-    user.setFirebaseUid(firebaseUid);
-    user.setEmail(kakaoUser.email());
-    user.setDisplayName(kakaoUser.nickname());
-    user.setPhotoUrl(kakaoUser.photoUrl());
-    user.setProvider("kakao");
-    if (isNew) {
-      user.setCreatedAt(OffsetDateTime.now());
-      user.setNickname(generateUniqueNickname());
-    }
-    appUserRepository.save(user);
-  }
-
-  private String generateUniqueNickname() {
-    for (int i = 0; i < 10; i++) {
-      String candidate = NicknameGenerator.generate();
-      if (!appUserRepository.existsByNickname(candidate)) {
-        return candidate;
-      }
-    }
-    throw ApiException.conflict("nickname_unavailable");
   }
 
   public record KakaoUser(String id, String email, String nickname, String photoUrl) {}
