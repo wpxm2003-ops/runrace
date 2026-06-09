@@ -166,8 +166,8 @@ public class WorkoutService {
   private static final ZoneId LIST_ZONE = ZoneId.of("Asia/Seoul");
 
   @Transactional(readOnly = true)
-  public List<WorkoutSession> listForUser(UUID userId) {
-    return workoutSessionRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+  public List<WorkoutSessionRepository.WorkoutListView> listForUser(UUID userId) {
+    return workoutSessionRepository.findListByUserIdOrderByCreatedAtDesc(userId);
   }
 
   @Transactional(readOnly = true)
@@ -192,13 +192,13 @@ public class WorkoutService {
   }
 
   @Transactional(readOnly = true)
-  public List<WorkoutSession> listForUserInYear(UUID userId, int year) {
+  public List<WorkoutSessionRepository.WorkoutListView> listForUserInYear(UUID userId, int year) {
     OffsetDateTime from =
         LocalDate.of(year, 1, 1).atStartOfDay(LIST_ZONE).toOffsetDateTime();
     OffsetDateTime to =
         LocalDate.of(year + 1, 1, 1).atStartOfDay(LIST_ZONE).toOffsetDateTime();
     return workoutSessionRepository
-        .findAllByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
+        .findListByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
             userId, from, to);
   }
 
