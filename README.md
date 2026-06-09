@@ -27,7 +27,7 @@ app:
 ```powershell
 cd backend
 $env:FIREBASE_SERVICE_ACCOUNT_PATH="C:\path\to\firebase-service-account.json"
-$env:MAVEN_OPTS="-Xmx512m"; ./mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
+$env:MAVEN_OPTS="-Xmx512m"; ./mvnw spring-boot:run
 ```
 
 기본 포트: `8081`

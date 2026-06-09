@@ -81,6 +81,12 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!-- ./mvnw spring-boot:run 만 local 프로필 사용 (jar/배포에는 영향 없음) -->
+          <profiles>
+            <profile>local</profile>
+          </profiles>
+        </configuration>
       </plugin>
     </plugins>
   </build>
