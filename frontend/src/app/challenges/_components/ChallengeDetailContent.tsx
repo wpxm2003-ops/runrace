@@ -7,16 +7,15 @@ import { Card } from "@/app/_components/ui/Card";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
   deleteChallenge,
-  fetchPendingApprovals,
-  fetchRejectedApprovals,
   joinChallenge,
   leaveChallenge,
   invalidateChallengeWorkouts,
   useChallengeDetail,
   useMe,
+  usePendingApprovals,
+  useRejectedApprovals,
   voteIndoorRun,
 } from "@/lib/api";
-import type { PendingApproval, RejectedApproval } from "@/lib/api";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
@@ -29,7 +28,7 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
   const { user, loading: authLoading } = useAuthUser();
@@ -40,8 +39,6 @@ export default function ChallengeDetailContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
-  const [rejectedApprovals, setRejectedApprovals] = useState<RejectedApproval[]>([]);
   const [votingId, setVotingId] = useState<number | null>(null);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
 
@@ -54,6 +51,13 @@ export default function ChallengeDetailContent() {
     error: fetchError,
     mutate,
   } = useChallengeDetail(id, user, authLoading);
+
+  // 승인 대기·거부 목록 — 레이스 참여 중이고 시작된 경우에만 조회(SWR 캐시·중복요청 방지)
+  const approvalsEnabled = !!(detail?.isMember && detail?.hasStarted);
+  const { data: pendingApprovals = [], mutate: mutatePending } =
+    usePendingApprovals(id, user, approvalsEnabled);
+  const { data: rejectedApprovals = [], mutate: mutateRejected } =
+    useRejectedApprovals(id, user, approvalsEnabled);
 
   const error = actionError ?? (fetchError ? String(fetchError) : null);
 
@@ -118,28 +122,9 @@ export default function ChallengeDetailContent() {
     return shareLink(`${appUrl}/challenges/${id}`, detail.title);
   }
 
-  // 승인 대기·거부 목록 로드 (레이스 참여 중인 경우만)
-  useEffect(() => {
-    if (!user || !id || !detail?.isMember || !detail?.hasStarted) return;
-    Promise.all([
-      fetchPendingApprovals(id, user),
-      fetchRejectedApprovals(id, user),
-    ])
-      .then(([pending, rejected]) => {
-        setPendingApprovals(pending);
-        setRejectedApprovals(rejected);
-      })
-      .catch(() => {/* 조용히 무시 */});
-  }, [id, user, detail?.isMember, detail?.hasStarted]);
-
   async function refreshApprovalViews() {
     if (!id || !user) return;
-    const [pending, rejected] = await Promise.all([
-      fetchPendingApprovals(id, user),
-      fetchRejectedApprovals(id, user),
-    ]);
-    setPendingApprovals(pending);
-    setRejectedApprovals(rejected);
+    await Promise.all([mutatePending(), mutateRejected()]);
     await mutate();
     invalidateChallengeWorkouts(id, user.uid);
   }
@@ -150,45 +135,53 @@ export default function ChallengeDetailContent() {
     const prevPending = pendingApprovals;
     const prevRejected = rejectedApprovals;
 
-    // 버튼 클릭 직후 카드 상태를 먼저 반영
+    // 버튼 클릭 직후 카드 상태를 먼저 반영 (낙관적 업데이트, 재검증은 투표 성공 후)
     const votedItem = prevPending.find((item) => item.workoutId === workoutId);
     if (!approved) {
-      setPendingApprovals((items) => items.filter((item) => item.workoutId !== workoutId));
+      mutatePending(
+        (items = []) => items.filter((item) => item.workoutId !== workoutId),
+        { revalidate: false },
+      );
       const rejectorNickname = me?.nickname;
       if (votedItem && rejectorNickname) {
-        setRejectedApprovals((items) => {
-          if (items.some((r) => r.challengeWorkoutId === votedItem.challengeWorkoutId)) return items;
-          return [
-            {
-              challengeWorkoutId: votedItem.challengeWorkoutId,
-              workoutId: votedItem.workoutId,
-              submitterNickname: votedItem.submitterNickname,
-              distanceM: votedItem.distanceM,
-              durationSec: votedItem.durationSec,
-              imageUrl: votedItem.imageUrl,
-              startedAt: votedItem.startedAt,
-              rejectorNicknames: [rejectorNickname],
-            },
-            ...items,
-          ];
-        });
+        mutateRejected(
+          (items = []) => {
+            if (items.some((r) => r.challengeWorkoutId === votedItem.challengeWorkoutId)) return items;
+            return [
+              {
+                challengeWorkoutId: votedItem.challengeWorkoutId,
+                workoutId: votedItem.workoutId,
+                submitterNickname: votedItem.submitterNickname,
+                distanceM: votedItem.distanceM,
+                durationSec: votedItem.durationSec,
+                imageUrl: votedItem.imageUrl,
+                startedAt: votedItem.startedAt,
+                rejectorNicknames: [rejectorNickname],
+              },
+              ...items,
+            ];
+          },
+          { revalidate: false },
+        );
       }
     } else {
-      setPendingApprovals((items) =>
-        items
-          .map((item) =>
-            item.workoutId === workoutId
-              ? {
-                  ...item,
-                  myVote: true,
-                  approvedCount: Math.min(item.totalVoters, item.approvedCount + 1),
-                }
-              : item,
-          )
-          .filter(
-            (item) =>
-              !(item.workoutId === workoutId && item.approvedCount >= item.totalVoters),
-          ),
+      mutatePending(
+        (items = []) =>
+          items
+            .map((item) =>
+              item.workoutId === workoutId
+                ? {
+                    ...item,
+                    myVote: true,
+                    approvedCount: Math.min(item.totalVoters, item.approvedCount + 1),
+                  }
+                : item,
+            )
+            .filter(
+              (item) =>
+                !(item.workoutId === workoutId && item.approvedCount >= item.totalVoters),
+            ),
+        { revalidate: false },
       );
     }
 
@@ -196,8 +189,8 @@ export default function ChallengeDetailContent() {
       await voteIndoorRun(workoutId, approved, user);
       await refreshApprovalViews();
     } catch (e) {
-      setPendingApprovals(prevPending);
-      setRejectedApprovals(prevRejected);
+      mutatePending(prevPending, { revalidate: false });
+      mutateRejected(prevRejected, { revalidate: false });
       setActionError(String(e));
     } finally {
       setVotingId(null);

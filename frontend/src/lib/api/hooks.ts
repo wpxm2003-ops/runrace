@@ -11,6 +11,8 @@ import {
   fetchActiveCount,
   fetchMyChallenges,
   fetchChallengeWorkouts,
+  fetchPendingApprovals,
+  fetchRejectedApprovals,
 } from "./challenges";
 import { fetchFriends } from "./friends";
 import { fetchWorkout, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
@@ -78,6 +80,35 @@ export function useChallengeWorkouts(
       ? (["challenge", challengeId, "workouts", user.uid] as const)
       : null,
     () => fetchChallengeWorkouts(challengeId!, user!),
+    BASE_CONFIG,
+  );
+}
+
+// ── 실내러닝 승인 (레이스 참여·시작 후에만) ──────────────────────────────────
+export function usePendingApprovals(
+  challengeId: number | null,
+  user: User | null,
+  enabled: boolean,
+) {
+  return useSWR(
+    enabled && challengeId != null && user
+      ? (["challenge", challengeId, "pending-approvals", user.uid] as const)
+      : null,
+    () => fetchPendingApprovals(challengeId!, user!),
+    BASE_CONFIG,
+  );
+}
+
+export function useRejectedApprovals(
+  challengeId: number | null,
+  user: User | null,
+  enabled: boolean,
+) {
+  return useSWR(
+    enabled && challengeId != null && user
+      ? (["challenge", challengeId, "rejected-approvals", user.uid] as const)
+      : null,
+    () => fetchRejectedApprovals(challengeId!, user!),
     BASE_CONFIG,
   );
 }
