@@ -2,6 +2,7 @@ package com.runrace.backend.auth;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.config.CacheConfig;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
@@ -32,10 +33,13 @@ public class AccountService {
     if (trimmed.isEmpty() || trimmed.length() > NICKNAME_MAX_LEN) {
       throw ApiException.badRequest("invalid_nickname");
     }
-    if (appUserRepository.existsByNickname(trimmed)) {
-      throw ApiException.badRequest("nickname_taken");
+    if (ForbiddenTextChars.containsForbidden(trimmed)) {
+      throw ApiException.badRequest("invalid_nickname_chars");
     }
     AppUser user = appUserRepository.getRequired(userId);
+    if (!trimmed.equals(user.getNickname()) && appUserRepository.existsByNickname(trimmed)) {
+      throw ApiException.badRequest("nickname_taken");
+    }
     user.setNickname(trimmed);
     return appUserRepository.save(user);
   }

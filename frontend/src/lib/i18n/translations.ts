@@ -190,6 +190,8 @@ export const translations = {
     my_nickname_cancel: "취소",
     my_nickname_placeholder: "닉네임 입력 (최대 20자)",
     my_nickname_taken: "이미 사용 중인 닉네임입니다.",
+    my_nickname_invalid_chars:
+      "닉네임에 사용할 수 없는 문자가 있습니다. (' \" ; \\ ` < > 는 사용할 수 없습니다)",
     my_logout: "로그아웃",
     my_delete_account: "계정 삭제",
     my_delete_account_title: "계정을 삭제할까요?",
@@ -526,6 +528,8 @@ export const translations = {
     my_nickname_cancel: "Cancel",
     my_nickname_placeholder: "Enter nickname (max 20 chars)",
     my_nickname_taken: "This nickname is already taken.",
+    my_nickname_invalid_chars:
+      "This nickname contains invalid characters. (' \" ; \\ ` < > are not allowed)",
     my_logout: "Sign out",
     my_delete_account: "Delete account",
     my_delete_account_title: "Delete your account?",
@@ -862,6 +866,8 @@ export const translations = {
     my_nickname_cancel: "Cancelar",
     my_nickname_placeholder: "Escribe un apodo (máx. 20)",
     my_nickname_taken: "Ese apodo ya está en uso.",
+    my_nickname_invalid_chars:
+      "El apodo contiene caracteres no permitidos. (' \" ; \\ ` < > no están permitidos)",
     my_logout: "Salir",
     my_delete_account: "Eliminar cuenta",
     my_delete_account_title: "¿Eliminar tu cuenta?",
@@ -1198,6 +1204,8 @@ export const translations = {
     my_nickname_cancel: "キャンセル",
     my_nickname_placeholder: "ニックネーム入力（最大20文字）",
     my_nickname_taken: "すでに使われているニックネームです。",
+    my_nickname_invalid_chars:
+      "ニックネームに使用できない文字が含まれています。（' \" ; \\ ` < > は使用できません）",
     my_logout: "ログアウト",
     my_delete_account: "アカウント削除",
     my_delete_account_title: "アカウントを削除しますか？",
@@ -1534,6 +1542,8 @@ export const translations = {
     my_nickname_cancel: "取消",
     my_nickname_placeholder: "输入昵称（最多20字）",
     my_nickname_taken: "该昵称已被使用。",
+    my_nickname_invalid_chars:
+      "昵称包含不允许的字符。（' \" ; \\ ` < > 不可使用）",
     my_logout: "退出登录",
     my_delete_account: "删除账号",
     my_delete_account_title: "确定删除账号吗？",
