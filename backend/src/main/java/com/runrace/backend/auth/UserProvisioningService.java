@@ -6,6 +6,7 @@ import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.user.NicknameGenerator;
 import java.time.OffsetDateTime;
 import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +18,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserProvisioningService {
+  private static final Set<String> SUPPORTED_LANGS = Set.of("ko", "en", "es", "ja", "zh");
+
   private final AppUserRepository appUserRepository;
 
   /**
-   * firebaseUid 기준으로 사용자를 upsert한다. 신규면 생성 시각·고유 닉네임을 부여한다.
+   * firebaseUid 기준으로 사용자를 upsert한다. 신규면 생성 시각·언어·고유 닉네임을 부여한다.
    * (변경 없는 기존 사용자는 Hibernate dirty-checking이 UPDATE를 생략한다.)
+   *
+   * @param langHint 최초 가입 시 추정 언어(Accept-Language). 기존 사용자에게는 영향 없음.
    */
   @Transactional
   public AppUser upsert(
-      String firebaseUid, String email, String displayName, String photoUrl, String provider) {
+      String firebaseUid,
+      String email,
+      String displayName,
+      String photoUrl,
+      String provider,
+      String langHint) {
     AppUser user = appUserRepository.findByFirebaseUid(firebaseUid).orElseGet(AppUser::new);
     boolean isNew = user.getId() == null;
 
@@ -45,15 +55,21 @@ public class UserProvisioningService {
     user.setPhotoUrl(photoUrl);
     user.setProvider(provider);
     if (isNew) {
+      String lang = normalizeLang(langHint);
       user.setCreatedAt(OffsetDateTime.now());
-      user.setNickname(generateUniqueNickname());
+      user.setLangCd(lang);
+      user.setNickname(generateUniqueNickname(lang));
     }
     return appUserRepository.save(user);
   }
 
-  private String generateUniqueNickname() {
+  private static String normalizeLang(String langHint) {
+    return langHint != null && SUPPORTED_LANGS.contains(langHint) ? langHint : "ko";
+  }
+
+  private String generateUniqueNickname(String lang) {
     for (int i = 0; i < 10; i++) {
-      String candidate = NicknameGenerator.generate();
+      String candidate = NicknameGenerator.generate(lang);
       if (!appUserRepository.existsByNickname(candidate)) {
         return candidate;
       }

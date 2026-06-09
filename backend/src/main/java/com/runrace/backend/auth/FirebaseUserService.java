@@ -20,14 +20,15 @@ public class FirebaseUserService {
    * 캐시 미스(최초·TTL 만료)에만 upsert가 실행돼 신규 사용자 생성·프로필 갱신을 보장한다.
    */
   @Cacheable(cacheNames = CacheConfig.AUTH_PRINCIPALS, key = "#token.uid")
-  public AuthPrincipal upsertAndCreatePrincipal(FirebaseToken token) {
+  public AuthPrincipal upsertAndCreatePrincipal(FirebaseToken token, String langHint) {
     AppUser saved =
         userProvisioningService.upsert(
             token.getUid(),
             token.getEmail(),
             token.getName(),
             token.getPicture(),
-            extractSignInProvider(token).orElse(null));
+            extractSignInProvider(token).orElse(null),
+            langHint);
     return new AuthPrincipal(saved.getId(), saved.getFirebaseUid());
   }
 

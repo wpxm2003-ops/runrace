@@ -96,7 +96,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     if (token.isEmpty()) {
       return Optional.of("missing_bearer_token");
     }
-    authenticate(token.get());
+    authenticate(token.get(), preferredLang(request));
     return Optional.empty();
   }
 
@@ -109,16 +109,21 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
         .ifPresent(
             token -> {
               try {
-                authenticate(token);
+                authenticate(token, preferredLang(request));
               } catch (Exception e) {
                 log.debug("Optional auth skipped for {}: {}", request.getRequestURI(), e.getMessage());
               }
             });
   }
 
-  private void authenticate(String idToken) throws FirebaseAuthException {
+  private void authenticate(String idToken, String langHint) throws FirebaseAuthException {
     FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(idToken);
-    AuthContext.set(firebaseUserService.upsertAndCreatePrincipal(decoded));
+    AuthContext.set(firebaseUserService.upsertAndCreatePrincipal(decoded, langHint));
+  }
+
+  /** 최초 가입 시 닉네임·언어 추정에 쓸 Accept-Language 기본 언어. (기존 사용자에겐 무시됨) */
+  private String preferredLang(HttpServletRequest request) {
+    return request.getLocale().getLanguage();
   }
 
   private Optional<String> bearerToken(HttpServletRequest request) {

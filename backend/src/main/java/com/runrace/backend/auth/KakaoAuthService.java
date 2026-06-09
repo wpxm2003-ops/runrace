@@ -63,8 +63,9 @@ public class KakaoAuthService {
       KakaoUser kakaoUser = getUserInfo(accessToken);
 
       String firebaseUid = "kakao:" + kakaoUser.id();
+      // 카카오는 사실상 한국 사용자 → 닉네임/언어 기본값 ko. 이후 LanguageSync가 lang_cd를 갱신한다.
       userProvisioningService.upsert(
-          firebaseUid, kakaoUser.email(), kakaoUser.nickname(), kakaoUser.photoUrl(), "kakao");
+          firebaseUid, kakaoUser.email(), kakaoUser.nickname(), kakaoUser.photoUrl(), "kakao", "ko");
       return FirebaseAuth.getInstance().createCustomToken(firebaseUid);
     } catch (ApiException e) {
       throw e;
