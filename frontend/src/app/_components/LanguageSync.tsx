@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useAuthUser } from "@/lib/useAuthUser";
-import { useLocale } from "@/lib/i18n";
+import { mutate } from "swr";
+import { useMe } from "@/lib/api";
 import { updateLanguage } from "@/lib/api/auth";
+import { useLocale } from "@/lib/i18n";
+import { useAuthUser } from "@/lib/useAuthUser";
 
 /**
  * 로그인 사용자의 주력 언어(app_user.lang_cd)를 현재 UI 언어와 동기화한다.
@@ -12,20 +14,26 @@ import { updateLanguage } from "@/lib/api/auth";
 export function LanguageSync() {
   const { user } = useAuthUser();
   const { locale } = useLocale();
-  const sentRef = useRef<string | null>(null);
+  const { data: me } = useMe(user);
+  const syncingRef = useRef(false);
 
   useEffect(() => {
-    if (!user) {
-      sentRef.current = null;
-      return;
-    }
-    if (sentRef.current === locale) return;
-    sentRef.current = locale;
-    updateLanguage(user, locale).catch(() => {
-      // 실패하면 다음 변경에서 다시 시도되도록 마커를 해제한다.
-      sentRef.current = null;
-    });
-  }, [user, locale]);
+    if (!user || !me) return;
+    if (me.langCd === locale) return;
+    if (syncingRef.current) return;
+
+    syncingRef.current = true;
+    updateLanguage(user, locale)
+      .then((updated) => {
+        void mutate(["me", user.uid], updated, { revalidate: false });
+      })
+      .catch(() => {
+        // 실패 시 다음 effect에서 재시도
+      })
+      .finally(() => {
+        syncingRef.current = false;
+      });
+  }, [user, me, locale]);
 
   return null;
 }
