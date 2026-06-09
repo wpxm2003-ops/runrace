@@ -6,8 +6,8 @@ import { apiUrl } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
-import type { DistanceUnit } from "@/lib/units";
-import { LOCALES, translations, type Locale } from "@/lib/i18n/translations";
+import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
 
 type PathPoint = { lat: number; lng: number };
 
@@ -103,26 +103,9 @@ export default function WorkoutShareContent() {
 
   const [data, setData] = useState<WorkoutShare | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // 공개 페이지(Provider 밖)라 로컬에서 단위·언어를 직접 해석한다.
-  // 로그인 유저는 본인 선호(localStorage), 외부 방문자는 브라우저 언어로 폴백.
-  const [unit, setUnit] = useState<DistanceUnit>("km");
-  const [locale, setLocale] = useState<Locale>("ko");
-
-  useEffect(() => {
-    const storedUnit = localStorage.getItem("runrace_unit");
-    if (storedUnit === "km" || storedUnit === "mi") setUnit(storedUnit);
-
-    const storedLocale = localStorage.getItem("runrace_locale");
-    if (storedLocale && LOCALES.some((l) => l.code === storedLocale)) {
-      setLocale(storedLocale as Locale);
-    } else {
-      const lang = navigator.language.toLowerCase();
-      const match = LOCALES.find((l) => lang.startsWith(l.code));
-      if (match) setLocale(match.code);
-    }
-  }, []);
-
-  const t = translations[locale];
+  // AppShell(Provider) 안이라 앱 전역 언어·단위를 그대로 따른다 — 헤더에서 바꾸면 즉시 반영.
+  const { t, locale } = useLocale();
+  const { unit, setUnit } = useUnit();
 
   useEffect(() => {
     if (!id) return;
