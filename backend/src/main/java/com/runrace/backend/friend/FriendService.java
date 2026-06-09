@@ -2,7 +2,6 @@ package com.runrace.backend.friend;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.push.PushService;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import java.security.SecureRandom;
@@ -28,7 +27,6 @@ public class FriendService {
   private final FriendInviteRepository friendInviteRepository;
   private final FriendshipRepository friendshipRepository;
   private final FriendNudgeRepository friendNudgeRepository;
-  private final PushService pushService;
   private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
@@ -116,11 +114,10 @@ public class FriendService {
     nudge.setSentAt(OffsetDateTime.now());
     friendNudgeRepository.save(nudge);
 
+    // 외부 푸시(FCM)는 DB 트랜잭션 밖에서 — 커밋 후 처리(FriendNotifications)
     String senderNickname = sender.getNickname() != null ? sender.getNickname() : "친구";
-    pushService.sendToUserTokens(
-        receiver.getId(),
-        senderNickname + "님의 메시지 💬",
-        trimmed);
+    eventPublisher.publishEvent(
+        new FriendEvents.NudgeSent(receiver.getId(), senderNickname, trimmed));
   }
 
   /** {@code user → friend} 방향의 친구 관계를 없을 때만 생성한다(멱등). */

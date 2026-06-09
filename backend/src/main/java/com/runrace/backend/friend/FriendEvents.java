@@ -11,4 +11,7 @@ public final class FriendEvents {
 
   /** 친구 초대가 수락되어 양방향 친구 관계가 맺어짐. */
   public record InviteAccepted(UUID inviterUserId, UUID accepterUserId, String code) {}
+
+  /** 콕 찌르기(넛지)가 저장됨 — 커밋 후 수신자에게 푸시한다. */
+  public record NudgeSent(UUID receiverUserId, String senderNickname, String message) {}
 }
