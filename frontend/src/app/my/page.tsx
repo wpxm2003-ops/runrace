@@ -15,12 +15,14 @@ import { logout } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
 import { mutate } from "swr";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
 /** 인증 확정 후에만 마운트 → SWR 훅이 로딩 단계에서 중복 기동되지 않음 */
 function MyPageContent({ user }: { user: User }) {
   const { t } = useLocale();
+  const { unit, setUnit } = useUnit();
   const { data: me, isLoading: meLoading } = useMe(user);
   const {
     data: summary,
@@ -125,6 +127,26 @@ function MyPageContent({ user }: { user: User }) {
               </button>
             </div>
           )}
+        </div>
+      </Card>
+
+      <Card className="mt-4">
+        <div className="text-sm text-zinc-500">{t.my_unit_label}</div>
+        <div className="mt-2 inline-flex rounded-lg border border-zinc-200 p-0.5">
+          {(["km", "mi"] as const).map((u) => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => setUnit(u)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                unit === u
+                  ? "bg-zinc-900 text-white"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              {u === "km" ? t.unit_km : t.unit_mi}
+            </button>
+          ))}
         </div>
       </Card>
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useLocale } from "@/lib/i18n";
-import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { useUnit } from "@/lib/UnitContext";
+import { formatDistance, formatPace } from "@/lib/units";
+import { formatDuration } from "@/lib/workoutTrack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nativeNavigate } from "@/lib/nativeNav";
 
@@ -26,6 +28,7 @@ export function WorkoutCelebration({
   onConfirm,
 }: WorkoutCelebrationProps) {
   const { t } = useLocale();
+  const { unit } = useUnit();
   const [remaining, setRemaining] = useState(AUTO_NAVIGATE_SEC);
   const navigatedRef = useRef(false);
 
@@ -98,11 +101,11 @@ export function WorkoutCelebration({
           </div>
           <div>
             <div className="text-zinc-500">{t.stat_distance}</div>
-            <div className="font-semibold tabular-nums">{(distanceM / 1000).toFixed(2)}km</div>
+            <div className="font-semibold tabular-nums">{formatDistance(distanceM, unit)}</div>
           </div>
           <div>
             <div className="text-zinc-500">{t.stat_pace}</div>
-            <div className="font-semibold tabular-nums">{formatPaceMinPerKm(distanceM, durationSec)}</div>
+            <div className="font-semibold tabular-nums">{formatPace(distanceM, durationSec, unit)}</div>
           </div>
         </div>
         <p className="mt-2 text-xs text-zinc-500">{t.celebration_calories(calories)}</p>

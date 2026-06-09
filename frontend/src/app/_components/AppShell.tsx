@@ -9,6 +9,7 @@ import { ConfirmProvider } from "./ConfirmProvider";
 import { SiteHeader } from "./SiteHeader";
 import { AuthProvider } from "@/lib/AuthProvider";
 import { LocaleProvider } from "@/lib/i18n";
+import { UnitProvider } from "@/lib/UnitContext";
 import { WorkoutSessionProvider } from "@/lib/WorkoutSessionProvider";
 import { FcmBootstrap } from "./FcmBootstrap";
 import { NavProgressProvider } from "./NavProgressProvider";
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
     <LocaleProvider>
+    <UnitProvider>
     <FcmBootstrap />
     <WorkoutSessionProvider>
     <ConfirmProvider>
@@ -45,6 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </NavProgressProvider>
     </ConfirmProvider>
     </WorkoutSessionProvider>
+    </UnitProvider>
     </LocaleProvider>
     </AuthProvider>
   );

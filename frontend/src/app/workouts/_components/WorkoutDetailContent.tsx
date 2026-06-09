@@ -14,6 +14,7 @@ import { ShareButton } from "@/app/_components/ShareButton";
 import { shareLink } from "@/lib/shareCard";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -21,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 export default function WorkoutDetailContent() {
   const confirm = useConfirm();
   const { t } = useLocale();
+  const { unit } = useUnit();
   const [detail, setDetail] = useState<WorkoutDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -125,6 +127,7 @@ export default function WorkoutDetailContent() {
               distanceM={detail.distanceM}
               calories={detail.calories}
               size="lg"
+              unit={unit}
               labels={{
                 time: t.stat_time,
                 distance: t.stat_distance,

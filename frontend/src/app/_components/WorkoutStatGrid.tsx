@@ -1,5 +1,5 @@
-import { formatKm } from "@/lib/format";
-import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
+import { formatDuration } from "@/lib/workoutTrack";
 
 export type WorkoutStatLabels = {
   time: string;
@@ -20,6 +20,7 @@ export function WorkoutStatGrid({
   labels,
   size = "md",
   columns = 4,
+  unit = "km",
 }: {
   durationSec: number;
   distanceM: number;
@@ -29,6 +30,8 @@ export function WorkoutStatGrid({
   size?: "md" | "lg";
   /** 4: sm 이상에서 4열 / 2: 항상 2열(좁은 공유 페이지) */
   columns?: 2 | 4;
+  /** 거리/페이스 표시 단위. 컨텍스트 없는 공유 페이지는 기본 km. */
+  unit?: DistanceUnit;
 }) {
   const pad = size === "lg" ? "p-4" : "p-3";
   const valueText = size === "lg" ? "text-xl" : "text-lg";
@@ -36,8 +39,8 @@ export function WorkoutStatGrid({
 
   const cards: [string, string][] = [
     [labels.time, formatDuration(durationSec)],
-    [labels.distance, formatKm(distanceM)],
-    [labels.pace, formatPaceMinPerKm(distanceM, durationSec)],
+    [labels.distance, formatDistance(distanceM, unit)],
+    [labels.pace, formatPace(distanceM, durationSec, unit)],
     [labels.calories, `${calories} kcal`],
   ];
 

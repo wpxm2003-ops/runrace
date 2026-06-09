@@ -15,6 +15,7 @@ import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
 import { shareLink } from "@/lib/shareCard";
 import type { User } from "firebase/auth";
 
@@ -62,6 +63,7 @@ export function WorkoutRecordPanel({
   onDeleted,
 }: Props) {
   const { t } = useLocale();
+  const { unit } = useUnit();
   const confirm = useConfirm();
   const { data: detail, error, isLoading } = useWorkoutDetail(workoutId, user);
   const [deleting, setDeleting] = useState(false);
@@ -114,6 +116,7 @@ export function WorkoutRecordPanel({
         durationSec={detail.durationSec}
         distanceM={detail.distanceM}
         calories={detail.calories}
+        unit={unit}
         labels={{
           time: t.stat_time,
           distance: t.stat_distance,

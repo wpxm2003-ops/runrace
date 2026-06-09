@@ -1,9 +1,10 @@
 "use client";
 
-import { formatKm } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
+import { formatDistance, formatPace } from "@/lib/units";
 import type { WorkoutAggregate } from "@/lib/workoutStats";
-import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { formatDuration } from "@/lib/workoutTrack";
 
 type Props = {
   stats: WorkoutAggregate;
@@ -28,15 +29,17 @@ export function WorkoutAggregateStats({
   totalLabels = false,
 }: Props) {
   const { t } = useLocale();
-  const paceLabel = formatPaceMinPerKm(
+  const { unit } = useUnit();
+  const paceLabel = formatPace(
     stats.totalDistanceM,
     stats.totalDurationSec,
+    unit,
   );
 
   const cards = [
     {
       label: totalLabels ? t.stat_total_distance : t.stat_distance,
-      value: formatKm(stats.totalDistanceM),
+      value: formatDistance(stats.totalDistanceM, unit),
     },
     {
       label: totalLabels ? t.stat_total_time : t.stat_time,

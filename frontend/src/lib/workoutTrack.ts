@@ -393,14 +393,6 @@ export function formatDuration(totalSeconds: number): string {
   return `${pad(m)}:${pad(s)}`;
 }
 
-export function formatPaceMinPerKm(distanceM: number, elapsedSec: number): string {
-  if (distanceM < 10 || elapsedSec < 1) return "-";
-  const secPerKm = elapsedSec / (distanceM / 1000);
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return `${m}'${String(s).padStart(2, "0")}"`;
-}
-
 /** 거리(km) 기준 대략 칼로리 (체중 65kg 러닝 가정) */
 export function estimateCalories(distanceM: number): number {
   const km = distanceM / 1000;

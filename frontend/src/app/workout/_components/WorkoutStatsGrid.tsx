@@ -1,7 +1,8 @@
 "use client";
 
 import { useLocale } from "@/lib/i18n";
-import { formatKm } from "@/lib/format";
+import { useUnit } from "@/lib/UnitContext";
+import { formatDistance } from "@/lib/units";
 import type { WorkoutStatus } from "@/lib/workoutTrack";
 
 type StatCardProps = { label: string; value: string };
@@ -42,11 +43,12 @@ export function WorkoutStatsGrid({
   stopDisabled = false,
 }: WorkoutStatsGridProps) {
   const { t } = useLocale();
+  const { unit } = useUnit();
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:gap-3">
       <StatCard label={t.stat_time} value={elapsedLabel} />
-      <StatCard label={t.stat_distance} value={formatKm(distanceM)} />
+      <StatCard label={t.stat_distance} value={formatDistance(distanceM, unit)} />
       <StatCard label={t.stat_pace} value={paceLabel} />
       <div className="flex min-h-[4.25rem] flex-col justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-2.5 py-2 shadow-sm sm:min-h-[5rem] sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-3">
         {status === "idle" ? (

@@ -204,6 +204,9 @@ export const translations = {
     records_no_workout_day: "이 날짜에는 운동 기록이 없습니다.",
     records_delete_current: "현재 기록 삭제하기",
     records_month_summary: (month: string) => `${month} 요약`,
+    my_unit_label: "거리 단위",
+    unit_km: "킬로미터 (km)",
+    unit_mi: "마일 (mi)",
 
     // ── 개인정보처리방침 ──────────────────
     privacy_title: "개인정보처리방침",
@@ -533,6 +536,9 @@ export const translations = {
     records_no_workout_day: "No workout on this day.",
     records_delete_current: "Delete this record",
     records_month_summary: (month: string) => `${month} summary`,
+    my_unit_label: "Distance unit",
+    unit_km: "Kilometers (km)",
+    unit_mi: "Miles (mi)",
 
     // ── Privacy Policy ────────────────────
     privacy_title: "Privacy Policy",
@@ -862,6 +868,9 @@ export const translations = {
     records_no_workout_day: "Sin entrenamientos este día.",
     records_delete_current: "Eliminar este registro",
     records_month_summary: (month: string) => `Resumen de ${month}`,
+    my_unit_label: "Unidad de distancia",
+    unit_km: "Kilómetros (km)",
+    unit_mi: "Millas (mi)",
 
     // ── Política de privacidad ────────────
     privacy_title: "Política de privacidad",
@@ -1191,6 +1200,9 @@ export const translations = {
     records_no_workout_day: "この日の運動記録はありません。",
     records_delete_current: "この記録を削除",
     records_month_summary: (month: string) => `${month}のまとめ`,
+    my_unit_label: "距離の単位",
+    unit_km: "キロメートル (km)",
+    unit_mi: "マイル (mi)",
 
     // ── プライバシーポリシー ──────────────
     privacy_title: "プライバシーポリシー",
@@ -1520,6 +1532,9 @@ export const translations = {
     records_no_workout_day: "这一天没有运动记录。",
     records_delete_current: "删除当前记录",
     records_month_summary: (month: string) => `${month}汇总`,
+    my_unit_label: "距离单位",
+    unit_km: "公里 (km)",
+    unit_mi: "英里 (mi)",
 
     // ── 隐私政策 ──────────────────────────
     privacy_title: "隐私政策",

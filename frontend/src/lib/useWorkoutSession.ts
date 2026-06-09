@@ -5,7 +5,6 @@ import {
   estimateCalories,
   evaluateVehicleTier,
   formatDuration,
-  formatPaceMinPerKm,
   haversineMeters,
   normalizeGpsAccuracyM,
   pathDistanceMeters,
@@ -20,6 +19,8 @@ import {
   type WorkoutStatus,
 } from "./workoutTrack";
 import { saveWorkout, loadWorkout, clearWorkout } from "./workoutPersistence";
+import { useUnit } from "./UnitContext";
+import { formatPace } from "./units";
 import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
 import { Capacitor } from "@capacitor/core";
 import { waitForNativePermissions } from "./nativePermissions";
@@ -61,6 +62,7 @@ function resetVehicleState(): VehicleDetectState {
 
 // ── 메인 훅 ───────────────────────────────────────────────────────────────────
 export function useWorkoutSession(bgNotification?: { title: string; message: string }) {
+  const { unit } = useUnit();
   // ── 기본 상태 ─────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<WorkoutStatus>("idle");
   const [path, setPath] = useState<LatLng[]>([]);
@@ -439,7 +441,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     vehicleTier,
     isRestored,
     elapsedLabel: formatDuration(elapsedSec),
-    paceLabel: formatPaceMinPerKm(distanceM, elapsedSec),
+    paceLabel: formatPace(distanceM, elapsedSec, unit),
     calories: estimateCalories(distanceM),
     start,
     pause,
