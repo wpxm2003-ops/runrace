@@ -126,14 +126,6 @@ function MyPageContent({ user }: { user: User }) {
             </div>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={() => logout()}
-          className="mt-4 h-11 w-full rounded-xl border border-zinc-200 text-sm text-zinc-700 hover:bg-zinc-50"
-        >
-          {t.my_logout}
-        </button>
       </Card>
 
       <Card className="mt-4">

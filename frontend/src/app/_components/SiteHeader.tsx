@@ -3,11 +3,11 @@
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import { logout } from "@/lib/auth";
 import { useAuthUser } from "@/lib/useAuthUser";
-import { useLocale } from "@/lib/i18n";
+import { LOCALES, type Locale, useLocale } from "@/lib/i18n";
 
 export function SiteHeader() {
   const { user, loading } = useAuthUser();
-  const { locale, t, toggle } = useLocale();
+  const { locale, t, setLocale } = useLocale();
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
@@ -16,14 +16,18 @@ export function SiteHeader() {
           RunRace
         </a>
         <div className="flex items-center gap-3 text-sm">
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="언어 변경 / Change language"
-            className="rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-500 hover:border-zinc-400 hover:text-zinc-900"
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+            aria-label="Change language"
+            className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-500 hover:border-zinc-400 hover:text-zinc-900"
           >
-            {locale === "ko" ? "EN" : "KO"}
-          </button>
+            {LOCALES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
           {loading ? (
             <Skeleton className="h-4 w-12" />
           ) : user ? (

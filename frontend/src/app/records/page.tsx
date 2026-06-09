@@ -16,14 +16,10 @@ import {
   buildCalendarCells,
   filterWorkoutsByMonth,
   formatMonthLabel,
-  formatMonthSummaryTitle,
   localDateKey,
   workoutDateKeys,
   workoutsOnDate,
 } from "@/lib/workoutStats";
-
-const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
-const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function RecordsPage() {
   const { user, loading } = useRequireAuth("/records");
@@ -46,7 +42,11 @@ export default function RecordsPage() {
   );
 
   const monthStats = useMemo(() => aggregateWorkouts(monthItems), [monthItems]);
-  const monthSummaryTitle = formatMonthSummaryTitle(viewMonth, locale);
+  const monthName = useMemo(
+    () => new Date(viewYear, viewMonth, 1).toLocaleDateString(locale, { month: "long" }),
+    [viewYear, viewMonth, locale],
+  );
+  const monthSummaryTitle = t.records_month_summary(monthName);
   const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
   const calendarCells = useMemo(
     () => buildCalendarCells(viewYear, viewMonth),
@@ -58,7 +58,11 @@ export default function RecordsPage() {
     return workoutsOnDate(monthItems, selectedDateKey);
   }, [monthItems, selectedDateKey]);
 
-  const weekdays = locale === "ko" ? WEEKDAYS_KO : WEEKDAYS_EN;
+  // 2023-01-01은 일요일 → 일요일 시작 7칸을 현재 언어로 자동 생성
+  const weekdays = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
+    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)));
+  }, [locale]);
 
   function shiftMonth(delta: number) {
     const d = new Date(viewYear, viewMonth + delta, 1);

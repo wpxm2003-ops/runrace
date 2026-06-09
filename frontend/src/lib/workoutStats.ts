@@ -99,12 +99,3 @@ export function formatMonthLabel(year: number, month: number, locale: string): s
     month: "long",
   });
 }
-
-/** 기록 탭 월별 요약 제목 (예: 6월 요약) */
-export function formatMonthSummaryTitle(month: number, locale: string): string {
-  if (locale === "ko") {
-    return `${month + 1}월 요약`;
-  }
-  const name = new Date(2000, month, 1).toLocaleDateString(locale, { month: "long" });
-  return `${name} summary`;
-}
