@@ -5,6 +5,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.config.CacheConfig;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountService {
   private static final Logger log = LoggerFactory.getLogger(AccountService.class);
   private static final int NICKNAME_MAX_LEN = 20;
+  private static final Set<String> SUPPORTED_LANGS = Set.of("ko", "en", "es", "ja", "zh");
 
   private final AppUserRepository appUserRepository;
   private final CacheManager cacheManager;
@@ -35,6 +37,17 @@ public class AccountService {
     }
     AppUser user = appUserRepository.getRequired(userId);
     user.setNickname(trimmed);
+    return appUserRepository.save(user);
+  }
+
+  /** 주력 언어 선호값 변경 — 푸시 알림 언어에 사용된다. */
+  @Transactional
+  public AppUser updateLanguage(UUID userId, String langCd) {
+    if (langCd == null || !SUPPORTED_LANGS.contains(langCd)) {
+      throw ApiException.badRequest("invalid_lang_cd");
+    }
+    AppUser user = appUserRepository.getRequired(userId);
+    user.setLangCd(langCd);
     return appUserRepository.save(user);
   }
 

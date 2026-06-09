@@ -1,5 +1,6 @@
 package com.runrace.backend.auth;
 
+import com.runrace.backend.auth.dto.LanguageUpdateRequest;
 import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
 import com.runrace.backend.user.AppUser;
@@ -37,6 +38,13 @@ public class AuthController {
   public ResponseEntity<MeResponse> updateNickname(
       AuthPrincipal principal, @RequestBody NicknameUpdateRequest body) {
     AppUser user = accountService.updateNickname(principal.userId(), body.nickname());
+    return ResponseEntity.ok(MeResponse.from(user));
+  }
+
+  @PatchMapping("/me/language")
+  public ResponseEntity<MeResponse> updateLanguage(
+      AuthPrincipal principal, @RequestBody LanguageUpdateRequest body) {
+    AppUser user = accountService.updateLanguage(principal.userId(), body.langCd());
     return ResponseEntity.ok(MeResponse.from(user));
   }
 

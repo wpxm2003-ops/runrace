@@ -22,6 +22,14 @@ export function updateNickname(user: User, nickname: string): Promise<MeResponse
   });
 }
 
+export function updateLanguage(user: User, langCd: string): Promise<MeResponse> {
+  return apiFetch<MeResponse>("/api/me/language", {
+    method: "PATCH",
+    user,
+    body: { langCd },
+  });
+}
+
 export function deleteAccount(user: User): Promise<void> {
   return apiFetch<void>("/api/me", { method: "DELETE", user });
 }

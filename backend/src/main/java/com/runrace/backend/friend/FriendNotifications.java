@@ -25,15 +25,14 @@ public class FriendNotifications {
   public void onInviteAccepted(FriendEvents.InviteAccepted event) {
     analyticsService.track(
         event.accepterUserId(), "friend_invite.accepted", "{\"code\":\"" + event.code() + "\"}");
-    pushService.sendToUserTokens(event.inviterUserId(), "RunRace", "친구 초대가 수락됐어요.");
+    pushService.sendLocalized(
+        event.inviterUserId(), "common.brand", "friend.invite_accepted.body", null);
   }
 
-  /** 넛지 푸시 — DB 작업이 없으므로 트랜잭션 없이 커밋 후 전송한다. */
+  /** 넛지 푸시 — DB 작업이 없으므로 트랜잭션 없이 커밋 후 전송한다. body는 사용자 입력이라 번역하지 않는다. */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onNudgeSent(FriendEvents.NudgeSent event) {
-    pushService.sendToUserTokens(
-        event.receiverUserId(),
-        event.senderNickname() + "님의 메시지 💬",
-        event.message());
+    pushService.sendLocalizedRawBody(
+        event.receiverUserId(), "friend.nudge.title", event.senderNickname(), event.message());
   }
 }

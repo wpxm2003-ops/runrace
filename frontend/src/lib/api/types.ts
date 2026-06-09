@@ -82,6 +82,7 @@ export type MeResponse = {
   nickname: string | null;
   photoUrl: string | null;
   provider: string | null;
+  langCd: string;
 };
 
 // ── 친구(friend) ─────────────────────────────────────────────────

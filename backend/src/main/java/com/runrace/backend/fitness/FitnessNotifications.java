@@ -20,7 +20,7 @@ public class FitnessNotifications {
   public void onDailyDistanceSynced(DailyDistanceSyncedEvent event) {
     UUID actorId = event.userId();
     for (UUID memberId : challengeMemberRepository.findActiveCoMemberIds(actorId, OffsetDateTime.now())) {
-      pushService.sendToUserTokens(memberId, "RunRace", "오늘 기록이 대결에 반영됐어요.");
+      pushService.sendLocalized(memberId, "common.brand", "fitness.synced.body", null);
     }
   }
 }

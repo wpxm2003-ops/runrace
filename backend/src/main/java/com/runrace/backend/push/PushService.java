@@ -6,11 +6,14 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
+import com.runrace.backend.user.AppUserRepository;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,6 +22,34 @@ public class PushService {
   private static final Logger log = LoggerFactory.getLogger(PushService.class);
 
   private final DeviceTokenRepository deviceTokenRepository;
+  private final AppUserRepository appUserRepository;
+  private final MessageSource messageSource;
+
+  /**
+   * 수신자 언어로 title/body 키를 렌더링해 전송한다. {0} 자리표시자는 직접 치환하므로
+   * (MessageFormat 미사용) 영어·스페인어의 애포스트로피를 이스케이프하지 않아도 된다.
+   *
+   * @param arg {0}에 치환할 값(닉네임 등). 없으면 null.
+   */
+  public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg) {
+    Locale locale = localeOf(userId);
+    sendToUserTokens(userId, render(titleKey, locale, arg), render(bodyKey, locale, arg));
+  }
+
+  /** body가 사용자 입력(콕찌르기 메시지 등)이라 번역 대상이 아닌 경우. title만 현지화한다. */
+  public void sendLocalizedRawBody(UUID userId, String titleKey, String titleArg, String rawBody) {
+    Locale locale = localeOf(userId);
+    sendToUserTokens(userId, render(titleKey, locale, titleArg), rawBody);
+  }
+
+  private Locale localeOf(UUID userId) {
+    return Locale.forLanguageTag(appUserRepository.findLangCdById(userId).orElse("ko"));
+  }
+
+  private String render(String key, Locale locale, String arg) {
+    String msg = messageSource.getMessage(key, null, locale);
+    return arg == null ? msg : msg.replace("{0}", arg);
+  }
 
   public void sendToUserTokens(UUID userId, String title, String body) {
     if (FirebaseApp.getApps().isEmpty()) return;

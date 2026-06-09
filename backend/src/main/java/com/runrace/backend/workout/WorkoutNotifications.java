@@ -15,19 +15,16 @@ public class WorkoutNotifications {
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onIndoorRunPendingApproval(WorkoutEvents.IndoorRunPendingApprovalEvent event) {
-    String name = event.submitterNickname() != null ? event.submitterNickname() : "멤버";
-    String title = "실내러닝 승인 요청";
-    String body = name + " 님의 러닝머신 기록을 확인해 주세요.";
+    String name = event.submitterNickname() != null ? event.submitterNickname() : "";
     for (java.util.UUID voterId : event.voterUserIds()) {
-      pushService.sendToUserTokens(voterId, title, body);
+      pushService.sendLocalized(
+          voterId, "workout.approval_request.title", "workout.approval_request.body", name);
     }
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onIndoorRunApproved(WorkoutEvents.IndoorRunApprovedEvent event) {
-    pushService.sendToUserTokens(
-        event.submitterUserId(),
-        "실내러닝 승인 완료 ✅",
-        "모든 구성원이 승인했어요. 레이스 거리에 반영됐습니다.");
+    pushService.sendLocalized(
+        event.submitterUserId(), "workout.approved.title", "workout.approved.body", null);
   }
 }

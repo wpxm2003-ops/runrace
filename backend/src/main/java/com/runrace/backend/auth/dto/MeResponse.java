@@ -10,7 +10,8 @@ public record MeResponse(
     String displayName,
     String nickname,
     String photoUrl,
-    String provider) {
+    String provider,
+    String langCd) {
 
   public static MeResponse from(AppUser user) {
     return new MeResponse(
@@ -20,6 +21,7 @@ public record MeResponse(
         user.getDisplayName(),
         user.getNickname(),
         user.getPhotoUrl(),
-        user.getProvider());
+        user.getProvider(),
+        user.getLangCd());
   }
 }

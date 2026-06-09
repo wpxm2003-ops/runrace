@@ -12,6 +12,7 @@ import { LocaleProvider } from "@/lib/i18n";
 import { UnitProvider } from "@/lib/UnitContext";
 import { WorkoutSessionProvider } from "@/lib/WorkoutSessionProvider";
 import { FcmBootstrap } from "./FcmBootstrap";
+import { LanguageSync } from "./LanguageSync";
 import { NavProgressProvider } from "./NavProgressProvider";
 
 /** 하단 탭 네비 높이 */
@@ -31,6 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <LocaleProvider>
     <UnitProvider>
     <FcmBootstrap />
+    <LanguageSync />
     <WorkoutSessionProvider>
     <ConfirmProvider>
     <NavProgressProvider>

@@ -39,6 +39,10 @@ public class AppUser {
   @Column(name = "provider", length = 50)
   private String provider;
 
+  /** 사용자 언어 선호값(ko/en/es/ja/zh). 푸시 알림을 수신자 언어로 보낼 때 사용. */
+  @Column(name = "lang_cd", nullable = false, length = 5)
+  private String langCd = "ko";
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 }
