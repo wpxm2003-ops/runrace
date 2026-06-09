@@ -40,6 +40,8 @@ export type ChallengeDetail = {
   startAt: string;
   endAt: string | null;
   creatorUserId: string;
+  /** 로그인 사용자 UUID. 비로그인이면 null */
+  currentUserId: string | null;
   isMember: boolean;
   isOwner: boolean;
   hasStarted: boolean;

@@ -11,7 +11,6 @@ import {
   leaveChallenge,
   invalidateChallengeWorkouts,
   useChallengeDetail,
-  useMe,
   usePendingApprovals,
   useRejectedApprovals,
   voteIndoorRun,
@@ -35,7 +34,6 @@ import { useCallback, useMemo, useState } from "react";
 
 export default function ChallengeDetailContent() {
   const { user, loading: authLoading } = useAuthUser();
-  const { data: me } = useMe(user);
   const confirm = useConfirm();
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -64,6 +62,12 @@ export default function ChallengeDetailContent() {
     useRejectedApprovals(id, user, approvalsEnabled);
 
   const error = actionError ?? (fetchError ? String(fetchError) : null);
+
+  const myNickname = useMemo(() => {
+    if (!detail?.currentUserId) return null;
+    const nickname = detail.members.find((m) => m.userId === detail.currentUserId)?.nickname;
+    return nickname?.trim() ? nickname : null;
+  }, [detail]);
 
   const onEditClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -149,7 +153,7 @@ export default function ChallengeDetailContent() {
         (items = []) => items.filter((item) => item.workoutId !== workoutId),
         { revalidate: false },
       );
-      const rejectorNickname = me?.nickname;
+      const rejectorNickname = myNickname;
       if (votedItem && rejectorNickname) {
         mutateRejected(
           (items = []) => {
@@ -264,7 +268,7 @@ export default function ChallengeDetailContent() {
             goalKm={detail.goalKm}
             hasStarted={detail.hasStarted}
             hasEnded={detail.hasEnded}
-            myUserId={me?.id ?? null}
+            myUserId={detail.currentUserId}
           />
 
 
