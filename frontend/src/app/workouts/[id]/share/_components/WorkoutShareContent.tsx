@@ -167,7 +167,7 @@ export default function WorkoutShareContent() {
 
         {/* 날짜 카드 — WorkoutRecordPanel의 시간 카드와 동일 */}
         <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-          <div className="text-sm text-zinc-600">{formatDate(data.startedAt)}</div>
+          <div className="text-sm text-zinc-600">{formatDate(data.startedAt, "ko")}</div>
         </div>
       </main>
     </div>

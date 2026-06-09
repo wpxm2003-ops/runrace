@@ -211,7 +211,7 @@ export default function RecordsPage() {
                         : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                     }`}
                   >
-                    <span className="block truncate">{formatDateTime(w.startedAt)}</span>
+                    <span className="block truncate">{formatDateTime(w.startedAt, locale)}</span>
                   </button>
                 ))}
               </div>

@@ -21,7 +21,7 @@ import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
 /** 인증 확정 후에만 마운트 → SWR 훅이 로딩 단계에서 중복 기동되지 않음 */
 function MyPageContent({ user }: { user: User }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { unit, setUnit } = useUnit();
   const { data: me, isLoading: meLoading } = useMe(user);
   const {
@@ -197,7 +197,7 @@ function MyPageContent({ user }: { user: User }) {
                   {t.races_goal_members(c.goalKm, c.memberCount)}
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">
-                  {formatDateRange(c.startAt, c.endAt)}
+                  {formatDateRange(c.startAt, c.endAt, locale)}
                 </div>
               </a>
             ))

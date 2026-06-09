@@ -20,7 +20,7 @@ import { useLocale } from "@/lib/i18n";
 
 export default function ChallengesPage() {
   const { user, loading: authLoading } = useAuthUser();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { data: challenges = [], isLoading, error } = useChallengeList(user, authLoading);
   const [phaseFilter, setPhaseFilter] = useState<RacePhaseFilterValue>("all");
 
@@ -99,7 +99,7 @@ export default function ChallengesPage() {
                   {t.races_goal_members(c.goalKm, c.memberCount)}
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">
-                  {formatDateRange(c.startAt, c.endAt)}
+                  {formatDateRange(c.startAt, c.endAt, locale)}
                 </div>
               </a>
             ))

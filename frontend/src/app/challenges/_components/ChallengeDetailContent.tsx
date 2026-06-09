@@ -35,7 +35,7 @@ export default function ChallengeDetailContent() {
   const { user, loading: authLoading } = useAuthUser();
   const { data: me } = useMe(user);
   const confirm = useConfirm();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [actionError, setActionError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -252,7 +252,7 @@ export default function ChallengeDetailContent() {
               {t.detail_goal_members(detail.goalKm, detail.memberCount, detail.maxMembers)}
             </div>
             <div className="mt-1 text-xs text-zinc-500">
-              {formatDateRange(detail.startAt, detail.endAt)}
+              {formatDateRange(detail.startAt, detail.endAt, locale)}
             </div>
           </Card>
 

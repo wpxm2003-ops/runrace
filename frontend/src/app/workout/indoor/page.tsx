@@ -19,7 +19,7 @@ type FieldErrors = {
 
 export default function IndoorRunPage() {
   const { user, loading } = useRequireAuth("/workout/indoor");
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const [distanceKm, setDistanceKm] = useState("");
   const [hours, setHours] = useState("");
@@ -180,7 +180,7 @@ export default function IndoorRunPage() {
             <p className="mt-1 text-xs text-zinc-500">{t.indoor_image_preparing}</p>
           ) : photoTakenAt ? (
             <p className="mt-1 text-xs text-emerald-700">
-              {t.indoor_photo_time_hint(formatDateTimeMinute(photoTakenAt.toISOString()))}
+              {t.indoor_photo_time_hint(formatDateTimeMinute(photoTakenAt.toISOString(), locale))}
             </p>
           ) : null}
           {fieldErrors.image ? (

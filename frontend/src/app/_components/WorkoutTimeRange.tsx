@@ -25,6 +25,7 @@ type Props = {
   startedAt: string;
   endedAt: string;
   t: Translations;
+  locale: string;
 };
 
 function TimeCell({ label, value }: { label: string; value: string }) {
@@ -36,12 +37,12 @@ function TimeCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DateTimeCell({ label, iso }: { label: string; iso: string }) {
+function DateTimeCell({ label, iso, locale }: { label: string; iso: string; locale: string }) {
   return (
     <div className="flex min-h-[4.25rem] flex-col rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
       <div className="text-xs text-zinc-500">{label}</div>
       <div className="mt-1 text-sm font-semibold tabular-nums text-zinc-900">
-        {formatDate(iso)}
+        {formatDate(iso, locale)}
       </div>
       <div className="text-sm font-semibold tabular-nums text-zinc-900">
         {formatTimeHms(iso)}
@@ -50,7 +51,7 @@ function DateTimeCell({ label, iso }: { label: string; iso: string }) {
   );
 }
 
-export function WorkoutTimeRange({ startedAt, endedAt, t }: Props) {
+export function WorkoutTimeRange({ startedAt, endedAt, t, locale }: Props) {
   const startLabel = labelText(t.workout_start_label);
   const endLabel = labelText(t.workout_end_label);
 
@@ -58,7 +59,7 @@ export function WorkoutTimeRange({ startedAt, endedAt, t }: Props) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
         <div className="text-sm font-semibold tabular-nums text-zinc-900">
-          {formatDate(startedAt)}
+          {formatDate(startedAt, locale)}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-zinc-100 pt-3">
           <TimeCell label={startLabel} value={formatTimeHms(startedAt)} />
@@ -70,8 +71,8 @@ export function WorkoutTimeRange({ startedAt, endedAt, t }: Props) {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <DateTimeCell label={startLabel} iso={startedAt} />
-      <DateTimeCell label={endLabel} iso={endedAt} />
+      <DateTimeCell label={startLabel} iso={startedAt} locale={locale} />
+      <DateTimeCell label={endLabel} iso={endedAt} locale={locale} />
     </div>
   );
 }

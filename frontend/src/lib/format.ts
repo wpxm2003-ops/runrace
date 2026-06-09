@@ -1,42 +1,46 @@
-/** 화면 표시용 날짜/숫자 포맷 모음. (입력 폼용 날짜 계산은 challengeForm.ts 참고) */
+/** 화면 표시용 날짜/숫자 포맷 모음. 날짜 순서는 locale를 따르고 시간은 24h로 고정한다.
+ *  (입력 폼용 날짜 계산은 challengeForm.ts / toDateTimeInputValue 참고) */
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** 로컬 시각 기준 yyyy/mm/dd */
-function formatYmd(d: Date): string {
-  return `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
+/** 24h HH:mm */
+function timeHm(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-/** 로컬 시각 기준 yyyy/mm/dd HH:mm */
-function formatYmdHm(d: Date): string {
-  return `${formatYmd(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+/** 24h HH:mm:ss */
+function timeHms(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 }
 
-/** 로컬 시각 기준 yyyy/mm/dd HH:mm:ss */
-function formatYmdHms(d: Date): string {
-  return `${formatYmd(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+/** ISO → locale 순서의 숫자 날짜 (ko "2026. 06. 04.", en-US "06/04/2026", es "04/06/2026"). */
+export function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
-/** ISO → yyyy/mm/dd */
-export function formatDate(iso: string): string {
-  return formatYmd(new Date(iso));
-}
-
-/** ISO → yyyy/mm/dd HH:mm */
-export function formatDateTimeMinute(iso: string): string {
-  return formatYmdHm(new Date(iso));
+/** ISO → locale 날짜 + 24h HH:mm */
+export function formatDateTimeMinute(iso: string, locale: string): string {
+  return `${formatDate(iso, locale)} ${timeHm(new Date(iso))}`;
 }
 
 /** 시작~종료 일시 구간. 종료가 없으면 "-". */
-export function formatDateRange(startAt: string, endAt: string | null): string {
-  return `${formatDateTimeMinute(startAt)} ~ ${endAt ? formatDateTimeMinute(endAt) : "-"}`;
+export function formatDateRange(
+  startAt: string,
+  endAt: string | null,
+  locale: string,
+): string {
+  return `${formatDateTimeMinute(startAt, locale)} ~ ${endAt ? formatDateTimeMinute(endAt, locale) : "-"}`;
 }
 
-/** ISO → yyyy/mm/dd HH:mm:ss */
-export function formatDateTime(iso: string): string {
-  return formatYmdHms(new Date(iso));
+/** ISO → locale 날짜 + 24h HH:mm:ss */
+export function formatDateTime(iso: string, locale: string): string {
+  return `${formatDate(iso, locale)} ${timeHms(new Date(iso))}`;
 }
 
 /** ISO → datetime-local 값(yyyy-MM-ddTHH:mm). */

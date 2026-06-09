@@ -62,7 +62,7 @@ export function WorkoutRecordPanel({
   viewYear,
   onDeleted,
 }: Props) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { unit } = useUnit();
   const confirm = useConfirm();
   const { data: detail, error, isLoading } = useWorkoutDetail(workoutId, user);
@@ -125,7 +125,7 @@ export function WorkoutRecordPanel({
         }}
       />
 
-      <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} />
+      <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
 
       <ShareButton onShare={onShare} className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50" />
 

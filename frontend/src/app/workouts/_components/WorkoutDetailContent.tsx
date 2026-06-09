@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 
 export default function WorkoutDetailContent() {
   const confirm = useConfirm();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { unit } = useUnit();
   const [detail, setDetail] = useState<WorkoutDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export default function WorkoutDetailContent() {
           </div>
 
           <div className="mt-4">
-            <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} />
+            <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
           </div>
         </>
       )}

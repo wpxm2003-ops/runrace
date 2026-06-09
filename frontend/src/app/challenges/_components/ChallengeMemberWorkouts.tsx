@@ -15,7 +15,7 @@ type Props = {
 };
 
 export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { data: workouts = [], isLoading, error } = useChallengeWorkouts(
     challengeId,
     user,
@@ -46,7 +46,7 @@ export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) 
                 {w.nickname ?? t.no_name}
               </p>
               <p className="col-start-2 row-start-1 text-right text-xs tabular-nums text-zinc-500">
-                {formatDate(w.startedAt)}
+                {formatDate(w.startedAt, locale)}
               </p>
               <p className="col-start-2 row-start-2 whitespace-nowrap text-right text-xs tabular-nums">
                 <span className="text-zinc-500">{formatDuration(w.durationSec)}</span>
