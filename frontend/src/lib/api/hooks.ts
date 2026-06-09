@@ -26,7 +26,7 @@ const BASE_CONFIG = {
   /** 탭 전환·연도 변경 시 스켈레톤 깜빡임 없이 이전 데이터를 유지하며 갱신 */
   keepPreviousData: true,
   /** 짧은 시간 내 동일 키 재요청 방지(이중 마운트·연속 내비게이션) */
-  dedupingInterval: 30000,
+  dedupingInterval: 3000,
   ...SWR_ERROR_RETRY,
 };
 
