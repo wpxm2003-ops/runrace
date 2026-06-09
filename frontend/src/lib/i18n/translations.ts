@@ -207,6 +207,7 @@ export const translations = {
     my_unit_label: "거리 단위",
     unit_km: "킬로미터 (km)",
     unit_mi: "마일 (mi)",
+    races_show_all_langs: "다른 언어 레이스도 보기",
 
     // ── 개인정보처리방침 ──────────────────
     privacy_title: "개인정보처리방침",
@@ -539,6 +540,7 @@ export const translations = {
     my_unit_label: "Distance unit",
     unit_km: "Kilometers (km)",
     unit_mi: "Miles (mi)",
+    races_show_all_langs: "Show races in all languages",
 
     // ── Privacy Policy ────────────────────
     privacy_title: "Privacy Policy",
@@ -871,6 +873,7 @@ export const translations = {
     my_unit_label: "Unidad de distancia",
     unit_km: "Kilómetros (km)",
     unit_mi: "Millas (mi)",
+    races_show_all_langs: "Ver carreras en todos los idiomas",
 
     // ── Política de privacidad ────────────
     privacy_title: "Política de privacidad",
@@ -1203,6 +1206,7 @@ export const translations = {
     my_unit_label: "距離の単位",
     unit_km: "キロメートル (km)",
     unit_mi: "マイル (mi)",
+    races_show_all_langs: "他の言語のレースも表示",
 
     // ── プライバシーポリシー ──────────────
     privacy_title: "プライバシーポリシー",
@@ -1535,6 +1539,7 @@ export const translations = {
     my_unit_label: "距离单位",
     unit_km: "公里 (km)",
     unit_mi: "英里 (mi)",
+    races_show_all_langs: "显示所有语言的比赛",
 
     // ── 隐私政策 ──────────────────────────
     privacy_title: "隐私政策",

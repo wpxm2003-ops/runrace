@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -62,7 +63,8 @@ public class ChallengeController {
             body.goalKm(),
             body.maxMembers(),
             OffsetDateTime.parse(body.startAt()),
-            OffsetDateTime.parse(body.endAt()));
+            OffsetDateTime.parse(body.endAt()),
+            body.langCd());
     return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 
@@ -100,10 +102,12 @@ public class ChallengeController {
   }
 
   @GetMapping
-  public ResponseEntity<List<ChallengeListItem>> list(Optional<AuthPrincipal> principal) {
+  public ResponseEntity<List<ChallengeListItem>> list(
+      Optional<AuthPrincipal> principal,
+      @RequestParam(name = "lang", required = false) String lang) {
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
     OffsetDateTime now = OffsetDateTime.now();
-    List<Challenge> challenges = challengeService.listAll();
+    List<Challenge> challenges = challengeService.listAll(lang);
 
     Map<Long, Long> memberCounts = challengeService.batchMemberCounts(
         challenges.stream().map(Challenge::getId).toList());

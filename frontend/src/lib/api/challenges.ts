@@ -12,9 +12,10 @@ import type {
   WorkoutDetail,
 } from "./types";
 
-/** 대결 목록(공개 — 비로그인도 조회 가능, 로그인 시 isOwner 채워짐). */
-export function fetchChallenges(user?: User | null) {
-  return publicFetch<ChallengeListItem[]>("/api/challenges", user);
+/** 대결 목록(공개 — 비로그인도 조회 가능, 로그인 시 isOwner 채워짐). lang 지정 시 해당 언어방만. */
+export function fetchChallenges(user?: User | null, lang?: string) {
+  const path = lang ? `/api/challenges?lang=${encodeURIComponent(lang)}` : "/api/challenges";
+  return publicFetch<ChallengeListItem[]>(path, user);
 }
 
 /** 내가 참여한 레이스 목록. */

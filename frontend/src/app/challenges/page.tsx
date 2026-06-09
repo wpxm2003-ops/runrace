@@ -21,7 +21,12 @@ import { useLocale } from "@/lib/i18n";
 export default function ChallengesPage() {
   const { user, loading: authLoading } = useAuthUser();
   const { t, locale } = useLocale();
-  const { data: challenges = [], isLoading, error } = useChallengeList(user, authLoading);
+  const [showAllLangs, setShowAllLangs] = useState(false);
+  const { data: challenges = [], isLoading, error } = useChallengeList(
+    user,
+    authLoading,
+    showAllLangs ? undefined : locale,
+  );
   const [phaseFilter, setPhaseFilter] = useState<RacePhaseFilterValue>("all");
 
   const filtered = useMemo(() => {
@@ -72,6 +77,15 @@ export default function ChallengesPage() {
             labels={filterLabel}
             ariaLabel={t.races_filter_label}
           />
+          <label className="flex items-center gap-2 text-sm text-zinc-600">
+            <input
+              type="checkbox"
+              checked={showAllLangs}
+              onChange={(e) => setShowAllLangs(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-300"
+            />
+            {t.races_show_all_langs}
+          </label>
         </div>
         <div className="mt-3 grid gap-2">
           {isLoading ? (

@@ -53,4 +53,8 @@ public class Challenge {
 
   @Column(name = "is_ended", nullable = false)
   private boolean isEnded = false;
+
+  /** 생성 시점 작성자 UI 언어로 고정. 공개 목록 언어별 필터에 사용한다(번역 아님). */
+  @Column(name = "lang_cd", nullable = false, length = 5)
+  private String langCd = "ko";
 }

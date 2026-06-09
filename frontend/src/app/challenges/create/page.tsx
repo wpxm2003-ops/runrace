@@ -16,7 +16,7 @@ import { useState } from "react";
 
 export default function CreateChallengePage() {
   const { user } = useRequireAuth("/challenges/create");
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [submitting, setSubmitting] = useState(false);
 
   const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(1);
@@ -40,7 +40,7 @@ export default function CreateChallengePage() {
     }
     setSubmitting(true);
     try {
-      await createChallenge(form.getPayload(), user);
+      await createChallenge({ ...form.getPayload(), langCd: locale }, user);
       form.setFormSuccess(t.create_success);
       window.setTimeout(() => nativeNavigate("/challenges"), 1200);
     } catch (e) {

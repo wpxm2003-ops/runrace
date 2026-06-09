@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChallengeService {
   static final int MAX_ACTIVE_ROOMS_PER_CREATOR = 3;
   private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+  private static final Set<String> SUPPORTED_LANGS = Set.of("ko", "en", "es", "ja", "zh");
 
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
@@ -48,7 +50,8 @@ public class ChallengeService {
       int goalKm,
       int maxMembers,
       OffsetDateTime startAt,
-      OffsetDateTime endAt) {
+      OffsetDateTime endAt,
+      String langCd) {
     validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
 
     AppUser creator = appUserRepository.getRequired(principal.userId());
@@ -60,6 +63,8 @@ public class ChallengeService {
     Challenge challenge = new Challenge();
     challenge.setCreator(creator);
     challenge.setCreatedAt(OffsetDateTime.now());
+    // 언어는 생성 시점에만 고정한다(수정 시 변경하지 않음).
+    challenge.setLangCd(SUPPORTED_LANGS.contains(langCd) ? langCd : "ko");
     applyRoomInput(challenge, title, goalKm, maxMembers, startAt, endAt);
     Challenge saved = challengeRepository.save(challenge);
 
@@ -136,10 +141,15 @@ public class ChallengeService {
     challengeMemberRepository.delete(member);
   }
 
+  /**
+   * 공개 목록. lang이 지원 언어면 해당 언어방만, 그 외(null·빈값·"all")는 전체를 반환한다(소프트 필터).
+   */
   @Transactional(readOnly = true)
-  public List<Challenge> listAll() {
+  public List<Challenge> listAll(String lang) {
+    boolean filterByLang = lang != null && SUPPORTED_LANGS.contains(lang);
     OffsetDateTime now = OffsetDateTime.now();
     return challengeRepository.findAllWithCreator().stream()
+        .filter(c -> !filterByLang || lang.equals(c.getLangCd()))
         .sorted(
             Comparator.comparingInt((Challenge c) -> ChallengePhase.of(c, now).ordinal())
                 .thenComparing(Challenge::getStartAt)

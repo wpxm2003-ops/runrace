@@ -71,6 +71,8 @@ export type ChallengeFormBody = {
   maxMembers: number;
   startAt: string;
   endAt: string;
+  /** 생성 시점 작성자 UI 언어. 생성에만 전송하며 수정 시에는 무시된다(백엔드가 고정값 유지). */
+  langCd?: string;
 };
 
 // ── 내 정보 ──────────────────────────────────────────────────────
