@@ -6,6 +6,7 @@ import { apiUrl } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
+import type { DistanceUnit } from "@/lib/units";
 
 type PathPoint = { lat: number; lng: number };
 
@@ -101,6 +102,13 @@ export default function WorkoutShareContent() {
 
   const [data, setData] = useState<WorkoutShare | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 공개 페이지(Provider 밖)라 로컬 단위 토글. 로그인 유저의 기존 선호가 있으면 기본값으로.
+  const [unit, setUnit] = useState<DistanceUnit>("km");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("runrace_unit");
+    if (stored === "km" || stored === "mi") setUnit(stored);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -132,8 +140,24 @@ export default function WorkoutShareContent() {
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50">
       <main className="mx-auto w-full max-w-sm flex-1 space-y-3 px-4 py-4">
-        {/* 페이지 타이틀 */}
-        <h1 className="text-lg font-bold text-zinc-900">운동기록 공유</h1>
+        {/* 페이지 타이틀 + 단위 토글 */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-zinc-900">운동기록 공유</h1>
+          <div className="inline-flex rounded-lg border border-zinc-200 p-0.5 text-xs">
+            {(["km", "mi"] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => setUnit(u)}
+                className={`rounded-md px-2 py-1 font-medium ${
+                  unit === u ? "bg-zinc-900 text-white" : "text-zinc-500"
+                }`}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* 경로/이미지 카드 */}
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -162,6 +186,7 @@ export default function WorkoutShareContent() {
           distanceM={data.distanceM}
           calories={data.calories}
           columns={2}
+          unit={unit}
           labels={{ time: "시간", distance: "거리", pace: "페이스", calories: "칼로리" }}
         />
 
