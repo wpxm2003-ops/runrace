@@ -417,9 +417,8 @@ public class ChallengeService {
       if (challenge.getWinner() == null) {
         challenge.setWinner(member.getUser());
       }
-      boolean allOtherFinished = challengeMemberRepository.findAllForChallenge(challenge.getId()).stream()
-          .filter(m -> !m.getId().equals(member.getId()))
-          .allMatch(m -> m.getFinishedAt() != null);
+      boolean allOtherFinished = challengeMemberRepository
+          .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
       if (allOtherFinished) {
         challenge.setEnded(true);
       }
@@ -584,15 +583,17 @@ public class ChallengeService {
 
       List<ChallengeMember> allMembers = challengeMemberRepository.findAllForChallenge(challenge.getId());
       List<UUID> voterIds = new ArrayList<>();
+      List<IndoorRunApproval> approvals = new ArrayList<>();
       for (ChallengeMember voter : allMembers) {
         if (voter.getUser().getId().equals(userId)) continue;
         IndoorRunApproval approval = new IndoorRunApproval();
         approval.setChallengeWorkout(saved);
         approval.setVoter(voter.getUser());
         approval.setCreatedAt(now);
-        indoorRunApprovalRepository.save(approval);
+        approvals.add(approval);
         voterIds.add(voter.getUser().getId());
       }
+      indoorRunApprovalRepository.saveAll(approvals);
 
       // 투표자가 없으면(혼자 참가 중) 즉시 승인
       if (voterIds.isEmpty()) {
@@ -645,9 +646,12 @@ public class ChallengeService {
     List<ChallengeWorkout> pending = challengeWorkoutRepository
         .findAllByChallengeIdAndApprovalStatus(challengeId, ApprovalStatus.PENDING);
 
+    Map<Long, List<IndoorRunApproval>> votesByWorkout = votesByChallengeWorkout(pending);
+
     return pending.stream().map(cw -> {
       WorkoutSession ws = cw.getWorkoutSession();
-      List<IndoorRunApproval> votes = indoorRunApprovalRepository.findAllByChallengeWorkoutId(cw.getId());
+      List<IndoorRunApproval> votes =
+          votesByWorkout.getOrDefault(cw.getId(), List.of());
       long approvedCount = votes.stream().filter(v -> Boolean.TRUE.equals(v.getApproved())).count();
       Boolean myVote = votes.stream()
           .filter(v -> v.getVoter().getId().equals(viewerUserId))
@@ -680,9 +684,12 @@ public class ChallengeService {
     List<ChallengeWorkout> rejected = challengeWorkoutRepository
         .findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(challengeId, ApprovalStatus.REJECTED);
 
+    Map<Long, List<IndoorRunApproval>> votesByWorkout = votesByChallengeWorkout(rejected);
+
     return rejected.stream().map(cw -> {
       WorkoutSession ws = cw.getWorkoutSession();
-      List<String> rejectorNicknames = indoorRunApprovalRepository.findAllByChallengeWorkoutId(cw.getId())
+      List<String> rejectorNicknames =
+          votesByWorkout.getOrDefault(cw.getId(), List.<IndoorRunApproval>of())
           .stream()
           .filter(v -> Boolean.FALSE.equals(v.getApproved()))
           .map(v -> v.getVoter().getNickname())
@@ -701,6 +708,14 @@ public class ChallengeService {
           rejectorNicknames
       );
     }).toList();
+  }
+
+  /** 여러 ChallengeWorkout의 투표를 한 번의 쿼리로 조회해 workoutId별로 묶는다(N+1 방지). */
+  private Map<Long, List<IndoorRunApproval>> votesByChallengeWorkout(List<ChallengeWorkout> workouts) {
+    if (workouts.isEmpty()) return Map.of();
+    List<Long> ids = workouts.stream().map(ChallengeWorkout::getId).toList();
+    return indoorRunApprovalRepository.findAllByChallengeWorkoutIdIn(ids).stream()
+        .collect(Collectors.groupingBy(a -> a.getChallengeWorkout().getId()));
   }
 
   public record ChallengeDetailView(

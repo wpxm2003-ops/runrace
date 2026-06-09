@@ -100,14 +100,14 @@ public class FriendService {
     AppUser receiver = appUserRepository.findByNickname(receiverNickname)
         .orElseThrow(() -> ApiException.notFound("user_not_found"));
 
-    /* if (!friendshipRepository.existsByUserIdAndFriendId(sender.getId(), receiver.getId())) {
+    if (!friendshipRepository.existsByUserIdAndFriendId(sender.getId(), receiver.getId())) {
       throw ApiException.forbidden("not_friends");
-    } */
+    }
 
-    /* OffsetDateTime startOfDay = LocalDate.now(KST).atStartOfDay(KST).toOffsetDateTime();
+    OffsetDateTime startOfDay = LocalDate.now(KST).atStartOfDay(KST).toOffsetDateTime();
     if (friendNudgeRepository.existsTodayNudge(sender.getId(), receiver.getId(), startOfDay)) {
       throw ApiException.conflict("nudge_daily_limit");
-    } */
+    }
 
     FriendNudge nudge = new FriendNudge();
     nudge.setSender(sender);

@@ -1,6 +1,7 @@
 /**
  * SWR 기반 데이터 훅 모음.
- * 캐싱 없음 — 페이지 진입 시 항상 최신 데이터를 서버에서 받아온다.
+ * stale-while-revalidate — 캐시된 데이터를 즉시 보여주고 백그라운드에서 갱신한다.
+ * 쓰기(참여/투표/기록 등) 후에는 각 invalidate* 헬퍼로 즉시 재검증한다.
  */
 import useSWR, { mutate as globalMutate } from "swr";
 import type { User } from "firebase/auth";
@@ -17,11 +18,13 @@ import { fetchMe } from "./auth";
 import { SWR_ERROR_RETRY } from "./swrConfig";
 
 const BASE_CONFIG = {
+  /** 진입 시 항상 백그라운드 재검증하되, 그동안 캐시된 데이터를 먼저 보여준다. */
   revalidateOnMount: true,
   revalidateOnFocus: false,
-  keepPreviousData: false,
-  /** 개발 모드 이중 마운트·동시 훅 호출 시 같은 API 중복 요청 방지 */
-  dedupingInterval: 5000,
+  /** 탭 전환·연도 변경 시 스켈레톤 깜빡임 없이 이전 데이터를 유지하며 갱신 */
+  keepPreviousData: true,
+  /** 짧은 시간 내 동일 키 재요청 방지(이중 마운트·연속 내비게이션) */
+  dedupingInterval: 30000,
   ...SWR_ERROR_RETRY,
 };
 

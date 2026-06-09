@@ -1,8 +1,8 @@
-import exifr from "exifr";
-
 /** 사진 EXIF에서 촬영 시각을 읽는다. 없으면 null. */
 export async function readPhotoTakenAt(file: File): Promise<Date | null> {
   try {
+    // exifr은 사진 선택 시점에만 필요하므로 지연 로드해 초기 번들에서 제외한다.
+    const exifr = (await import("exifr")).default;
     const meta = await exifr.parse(file, {
       pick: ["DateTimeOriginal", "CreateDate", "DateTime"],
       reviveValues: true,
