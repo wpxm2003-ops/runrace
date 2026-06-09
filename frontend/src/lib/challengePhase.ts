@@ -1,3 +1,5 @@
+// 단계 판정은 백엔드 ChallengePhase.java 가 권위 — API 값(challengePhaseFromApi)을 우선 사용하고,
+// 아래 날짜 기반 계산(challengePhaseFromDates)은 API 값이 없을 때의 폴백이다. 규칙 변경 시 양쪽 함께.
 export type ChallengePhase = "scheduled" | "in_progress" | "ended";
 
 export function challengePhaseFromDates(

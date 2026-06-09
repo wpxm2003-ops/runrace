@@ -9,13 +9,15 @@ export type WorkoutAggregate = {
   avgPaceSecPerKm: number | null;
 };
 
+/** yyyy-MM-dd 키 (month는 1~12). */
+function ymdKey(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 /** 로컬 날짜 yyyy-MM-dd */
 export function localDateKey(iso: string): string {
   const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return ymdKey(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
 export function aggregateWorkouts(items: WorkoutListItem[]): WorkoutAggregate {
@@ -86,9 +88,7 @@ export function buildCalendarCells(year: number, month: number): CalendarCell[] 
     cells.push({ day: null, dateKey: null });
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    const m = String(month + 1).padStart(2, "0");
-    const day = String(d).padStart(2, "0");
-    cells.push({ day: d, dateKey: `${year}-${m}-${day}` });
+    cells.push({ day: d, dateKey: ymdKey(year, month + 1, d) });
   }
   return cells;
 }

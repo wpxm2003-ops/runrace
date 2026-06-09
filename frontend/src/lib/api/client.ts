@@ -41,10 +41,7 @@ export async function publicPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
     cache: "no-store",
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new ApiError(res.status, `API ${res.status}: ${text}`);
-  }
+  await throwIfNotOk(res);
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   return text.trim() ? (JSON.parse(text) as T) : (undefined as T);
@@ -57,6 +54,13 @@ async function authHeaders(user: User, forceRefresh = false) {
     "Content-Type": "application/json",
     Authorization: `Bearer ${idToken}`,
   };
+}
+
+/** 응답이 실패면 본문을 읽어 ApiError를 던진다(401 등 특수 처리가 없는 단순 경로용). */
+async function throwIfNotOk(res: Response): Promise<void> {
+  if (res.ok) return;
+  const text = await res.text().catch(() => "");
+  throw new ApiError(res.status, `API ${res.status}: ${text}`);
 }
 
 async function parseResponse<T>(res: Response): Promise<T> {
@@ -85,10 +89,7 @@ export async function publicFetch<T>(
 
   const res = await fetch(url, { method: "GET", headers, cache: "no-store" });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new ApiError(res.status, `API ${res.status}: ${text}`);
-  }
+  await throwIfNotOk(res);
 
   return parseResponse<T>(res);
 }
