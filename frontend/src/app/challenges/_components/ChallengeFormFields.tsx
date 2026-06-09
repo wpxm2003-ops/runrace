@@ -85,8 +85,7 @@ export function ChallengeFormFields({
         </label>
         <input
           className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-          inputMode="numeric"
-          pattern="[0-9]*"
+          inputMode="decimal"
           value={values.goalKm}
           onChange={(e) => handlers.onGoalKmChange(e.target.value)}
           placeholder={labels.goalPlaceholder}

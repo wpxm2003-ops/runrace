@@ -1,12 +1,13 @@
 package com.runrace.backend.challenge.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 public record ChallengeDetailResponse(
     Long id,
     String title,
-    int goalKm,
+    BigDecimal goalKm,
     int maxMembers,
     String startAt,
     String endAt,

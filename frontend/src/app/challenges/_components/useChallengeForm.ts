@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  MAX_GOAL_KM,
   MAX_MEMBERS,
   clampGoalKm,
   clampMaxMembers,
@@ -15,6 +14,8 @@ import {
   type ChallengeFormValues,
   type ValidateChallengeFormOptions,
 } from "@/lib/challengeForm";
+import { goalMaxInUnit } from "@/lib/units";
+import { useUnit } from "@/lib/UnitContext";
 import { useCallback, useMemo, useState } from "react";
 
 export type ChallengeFormHints = {
@@ -57,6 +58,7 @@ export function useChallengeForm({
   hints,
 }: Options) {
   const startAtMin = useMemo(() => minStartAtLocal(), []);
+  const { unit } = useUnit();
 
   const [title, setTitle] = useState(initial?.title ?? "");
   const [goalKm, setGoalKm] = useState(initial?.goalKm ?? "");
@@ -100,14 +102,14 @@ export function useChallengeForm({
 
   const onGoalKmChange = useCallback(
     (raw: string) => {
-      const { value, clamped } = clampGoalKm(raw);
+      const { value, clamped } = clampGoalKm(raw, unit);
       setGoalKm(value);
-      if (clamped) setFormHint(hints.goalMax(MAX_GOAL_KM));
+      if (clamped) setFormHint(hints.goalMax(goalMaxInUnit(unit)));
       else setFormHint(null);
       setFormError(null);
       setFormSuccess(null);
     },
-    [hints.goalMax],
+    [hints.goalMax, unit],
   );
 
   const onMaxMembersChange = useCallback(
@@ -142,12 +144,12 @@ export function useChallengeForm({
   }, []);
 
   const validate = useCallback((): string | null => {
-    return validateChallengeForm(values, validationMsgs, validateOptions);
-  }, [values, validationMsgs, validateOptions]);
+    return validateChallengeForm(values, validationMsgs, { ...validateOptions, unit });
+  }, [values, validationMsgs, validateOptions, unit]);
 
   const getPayload = useCallback((): ChallengeFormPayload => {
-    return toChallengeFormPayload(values);
-  }, [values]);
+    return toChallengeFormPayload(values, unit);
+  }, [values, unit]);
 
   return {
     startAtMin,

@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,8 +42,8 @@ public class Challenge {
   @Column(name = "title", nullable = false, length = 200)
   private String title;
 
-  @Column(name = "goal_km", nullable = false)
-  private Integer goalKm;
+  @Column(name = "goal_km", nullable = false, precision = 10, scale = 3)
+  private BigDecimal goalKm;
 
   @Column(name = "max_members", nullable = false)
   private Integer maxMembers;

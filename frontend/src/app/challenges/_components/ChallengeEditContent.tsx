@@ -9,6 +9,8 @@ import { challengeDetailHref, challengeEditHref, parseChallengeId } from "@/lib/
 import { toDateTimeInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
+import { goalInputFromKm } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +20,7 @@ export default function ChallengeEditContent() {
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
   const { user } = useRequireAuth(id ? challengeEditHref(id) : undefined);
   const { t } = useLocale();
+  const { unit } = useUnit();
   const [memberCount, setMemberCount] = useState(1);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -46,7 +49,7 @@ export default function ChallengeEditContent() {
         setMemberCount(d.memberCount);
         form.reset({
           title: d.title,
-          goalKm: String(d.goalKm),
+          goalKm: goalInputFromKm(d.goalKm, unit),
           maxMembers: String(d.maxMembers),
           startAt: toDateTimeInputValue(d.startAt),
           endAt: d.endAt ? toDateTimeInputValue(d.endAt) : "",

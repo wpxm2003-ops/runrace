@@ -1,4 +1,6 @@
 package com.runrace.backend.challenge.dto;
 
+import java.math.BigDecimal;
+
 public record CreateChallengeRequest(
-    String title, int goalKm, int maxMembers, String startAt, String endAt, String langCd) {}
+    String title, BigDecimal goalKm, int maxMembers, String startAt, String endAt, String langCd) {}

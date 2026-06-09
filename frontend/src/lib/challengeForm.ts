@@ -2,6 +2,7 @@ import {
   containsForbiddenText,
   stripForbiddenText,
 } from "@/lib/forbiddenTextChars";
+import { goalKmFromInput, goalMaxInUnit, type DistanceUnit } from "@/lib/units";
 
 export function formatLocalDate(d: Date): string {
   const y = d.getFullYear();
@@ -114,18 +115,21 @@ export type ClampNumericResult = {
   clamped: boolean;
 };
 
-/** 목표 km: 숫자만, DB Integer 상한 */
-export function clampGoalKm(value: string): ClampNumericResult {
-  const rawDigits = sanitizeDigits(value);
-  const digits = rawDigits.slice(0, 4);
-  if (!digits) return { value: "", clamped: rawDigits.length > 0 };
-  let n = parseInt(digits, 10);
-  let clamped = rawDigits.length > digits.length;
-  if (n > MAX_GOAL_KM) {
-    n = MAX_GOAL_KM;
-    clamped = true;
+/** 목표 거리: 숫자+소수점, 선택 단위 기준 상한(=GOAL_MAX_KM km) 클램프. */
+export function clampGoalKm(value: string, unit: DistanceUnit): ClampNumericResult {
+  let cleaned = value.replace(/[^0-9.]/g, "");
+  const dot = cleaned.indexOf(".");
+  if (dot !== -1) {
+    // 소수점은 하나만 — 이후의 점은 제거
+    cleaned = cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, "");
   }
-  return { value: String(n), clamped };
+  if (cleaned === "" || cleaned === ".") return { value: cleaned, clamped: false };
+  const n = parseFloat(cleaned);
+  const max = goalMaxInUnit(unit);
+  if (Number.isFinite(n) && n > max) {
+    return { value: String(max), clamped: true };
+  }
+  return { value: cleaned, clamped: false };
 }
 
 /** 인원수: 숫자만, 최대 {@link MAX_MEMBERS}명 */
@@ -159,6 +163,8 @@ export type CreateChallengeValidationMessages = ChallengeFormValidationMessages;
 export type ValidateChallengeFormOptions = {
   /** 수정 시 현재 참여 인원(인원수 하한) */
   minMembers?: number;
+  /** 목표 입력 단위(목표를 km로 환산해 범위 검증) */
+  unit?: DistanceUnit;
 };
 
 export function validateChallengeForm(
@@ -173,8 +179,8 @@ export function validateChallengeForm(
   if (utf8ByteLength(title) > TITLE_MAX_BYTES) return msgs.titleMax;
 
   if (!form.goalKm.trim()) return msgs.goalRequired;
-  const goal = parseInt(form.goalKm, 10);
-  if (!Number.isFinite(goal) || goal < 1 || goal > MAX_GOAL_KM) {
+  const goalKm = goalKmFromInput(form.goalKm, options?.unit ?? "km");
+  if (!Number.isFinite(goalKm) || goalKm <= 0 || goalKm > MAX_GOAL_KM) {
     return msgs.goalRange;
   }
 
@@ -222,10 +228,13 @@ export type ChallengeFormPayload = {
   endAt: string;
 };
 
-export function toChallengeFormPayload(form: ChallengeFormValues): ChallengeFormPayload {
+export function toChallengeFormPayload(
+  form: ChallengeFormValues,
+  unit: DistanceUnit,
+): ChallengeFormPayload {
   return {
     title: form.title.trim(),
-    goalKm: parseInt(form.goalKm, 10),
+    goalKm: goalKmFromInput(form.goalKm, unit),
     maxMembers: parseInt(form.maxMembers, 10),
     startAt: localDatetimeToIso(form.startAt),
     endAt: localDatetimeToIso(form.endAt),

@@ -1,9 +1,11 @@
 package com.runrace.backend.challenge.dto;
 
+import java.math.BigDecimal;
+
 public record ChallengeListItem(
     Long id,
     String title,
-    int goalKm,
+    BigDecimal goalKm,
     String phase,
     String startAt,
     String endAt,

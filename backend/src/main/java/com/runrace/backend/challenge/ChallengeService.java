@@ -47,7 +47,7 @@ public class ChallengeService {
   public Challenge createRoom(
       AuthPrincipal principal,
       String title,
-      int goalKm,
+      BigDecimal goalKm,
       int maxMembers,
       OffsetDateTime startAt,
       OffsetDateTime endAt,
@@ -79,7 +79,7 @@ public class ChallengeService {
       AuthPrincipal principal,
       Long id,
       String title,
-      int goalKm,
+      BigDecimal goalKm,
       int maxMembers,
       OffsetDateTime startAt,
       OffsetDateTime endAt) {
@@ -221,7 +221,7 @@ public class ChallengeService {
   }
 
   public static BigDecimal goalKmAsDecimal(Challenge challenge) {
-    return BigDecimal.valueOf(challenge.getGoalKm());
+    return challenge.getGoalKm();
   }
 
   @Transactional(readOnly = true)
@@ -272,7 +272,7 @@ public class ChallengeService {
   }
 
   public BigDecimal progressPercent(ChallengeMember member, Challenge challenge) {
-    if (challenge.getGoalKm() == null || challenge.getGoalKm() <= 0) {
+    if (challenge.getGoalKm() == null || challenge.getGoalKm().signum() <= 0) {
       return BigDecimal.ZERO;
     }
     return member
@@ -343,12 +343,12 @@ public class ChallengeService {
   private void applyRoomInput(
       Challenge challenge,
       String title,
-      int goalKm,
+      BigDecimal goalKm,
       int maxMembers,
       OffsetDateTime startAt,
       OffsetDateTime endAt) {
     challenge.setTitle(title.trim());
-    challenge.setGoalKm(goalKm);
+    challenge.setGoalKm(goalKm.setScale(3, RoundingMode.HALF_UP));
     challenge.setMaxMembers(maxMembers);
     challenge.setStartAt(startAt);
     challenge.setEndAt(endAt);
@@ -359,7 +359,7 @@ public class ChallengeService {
   private static final int MAX_MEMBERS_LIMIT = 50;
   private void validateRoomInput(
       String title,
-      int goalKm,
+      BigDecimal goalKm,
       int maxMembers,
       OffsetDateTime startAt,
       OffsetDateTime endAt) {
@@ -370,7 +370,9 @@ public class ChallengeService {
     if (ForbiddenTextChars.containsForbidden(trimmed)) {
       throw ApiException.badRequest("invalid_title_chars");
     }
-    if (goalKm < 1 || goalKm > MAX_GOAL_KM) {
+    if (goalKm == null
+        || goalKm.signum() <= 0
+        || goalKm.compareTo(BigDecimal.valueOf(MAX_GOAL_KM)) > 0) {
       throw ApiException.badRequest("invalid_goal_km");
     }
     if (maxMembers < 1 || maxMembers > MAX_MEMBERS_LIMIT) {
