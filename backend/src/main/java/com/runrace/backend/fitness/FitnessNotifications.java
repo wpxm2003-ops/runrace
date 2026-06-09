@@ -6,8 +6,6 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -19,7 +17,6 @@ public class FitnessNotifications {
   private final PushService pushService;
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onDailyDistanceSynced(DailyDistanceSyncedEvent event) {
     UUID actorId = event.userId();
     for (UUID memberId : challengeMemberRepository.findActiveCoMemberIds(actorId, OffsetDateTime.now())) {

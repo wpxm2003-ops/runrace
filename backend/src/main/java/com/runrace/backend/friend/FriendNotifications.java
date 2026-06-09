@@ -4,8 +4,6 @@ import com.runrace.backend.analytics.AnalyticsService;
 import com.runrace.backend.push.PushService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -17,7 +15,6 @@ public class FriendNotifications {
   private final PushService pushService;
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onInviteCreated(FriendEvents.InviteCreated event) {
     // MVP: 초대 생성 시점엔 상대를 특정할 수 없어 푸시는 링크 공유로 대체한다.
     analyticsService.track(
@@ -25,7 +22,6 @@ public class FriendNotifications {
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onInviteAccepted(FriendEvents.InviteAccepted event) {
     analyticsService.track(
         event.accepterUserId(), "friend_invite.accepted", "{\"code\":\"" + event.code() + "\"}");

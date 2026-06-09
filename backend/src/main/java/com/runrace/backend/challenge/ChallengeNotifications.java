@@ -5,8 +5,6 @@ import com.runrace.backend.push.PushService;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -14,7 +12,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 대결 도메인의 부가 효과(분석·푸시)를 처리한다.
  *
  * <p>트랜잭션 커밋 이후에만 동작하므로, 롤백된 대결에 대해 알림이 나가지 않는다.
- * 새 트랜잭션({@code REQUIRES_NEW})에서 멤버를 다시 조회한다.
+ * 외부 푸시(FCM)를 DB 트랜잭션으로 감싸지 않도록 리스너 자체에는 트랜잭션을 두지 않는다
+ * (필요한 읽기는 각 리포지토리 호출이 자체 트랜잭션으로 처리).
  */
 @Component
 @RequiredArgsConstructor
@@ -63,7 +62,6 @@ public class ChallengeNotifications {
   };
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onChallengeCreated(ChallengeCreatedEvent event) {
     analyticsService.track(
         event.creatorUserId(), "challenge.created", "{\"challengeId\":" + event.challengeId() + "}");
@@ -75,7 +73,6 @@ public class ChallengeNotifications {
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onMilestoneReached(MilestoneReachedEvent event) {
     String[] pool = event.milestonePercent() >= 80 ? MILESTONE_80 : MILESTONE_50;
     String body = String.format(randomFrom(pool), event.achieverNickname());
@@ -84,7 +81,6 @@ public class ChallengeNotifications {
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onRankOvertake(RankOvertakeEvent event) {
     String body = String.format(randomFrom(OVERTAKE), event.overtakerNickname());
     event.overtakenUserIds().forEach(userId ->
