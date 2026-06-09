@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -8,9 +7,9 @@ import { Card } from "@/app/_components/ui/Card";
 import { deleteWorkout, fetchChallengeWorkout, fetchWorkout, useMe, type WorkoutDetail } from "@/lib/api";
 import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
-import { formatDate, formatKm } from "@/lib/format";
+import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
+import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutId } from "@/lib/workoutRoute";
-import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { shareLink } from "@/lib/shareCard";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -18,15 +17,6 @@ import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-
-const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-64 items-center justify-center rounded-2xl bg-zinc-100 text-sm text-zinc-500">
-      Loading map...
-    </div>
-  ),
-});
 
 export default function WorkoutDetailContent() {
   const confirm = useConfirm();
@@ -70,7 +60,6 @@ export default function WorkoutDetailContent() {
   }, [id, user, challengeId, fromChallenge]);
 
   const isIndoor = detail?.workoutType === "INDOOR";
-  const lastPosition = detail?.path[detail.path.length - 1] ?? null;
 
   async function onDelete() {
     if (!user || !id || fromChallenge) return;
@@ -123,49 +112,26 @@ export default function WorkoutDetailContent() {
         <Card className="text-sm text-zinc-600">{t.loading}</Card>
       ) : (
         <>
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-            <div className="relative h-64 sm:h-80">
-              {isIndoor ? (
-                detail.imageUrl ? (
-                  <img
-                    src={detail.imageUrl}
-                    alt="러닝머신 사진"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center bg-zinc-50 text-sm text-zinc-400">
-                    🏃 실내러닝
-                  </div>
-                )
-              ) : (
-                <WorkoutMap path={detail.path} position={lastPosition} follow={false} />
-              )}
-            </div>
-          </div>
+          <WorkoutMedia
+            isIndoor={isIndoor}
+            imageUrl={detail.imageUrl ?? null}
+            path={detail.path}
+            heightClass="h-64 sm:h-80"
+          />
 
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <div className="text-xs text-zinc-500">{t.stat_time}</div>
-              <div className="mt-1 text-xl font-semibold tabular-nums">
-                {formatDuration(detail.durationSec)}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <div className="text-xs text-zinc-500">{t.stat_distance}</div>
-              <div className="mt-1 text-xl font-semibold tabular-nums">
-                {formatKm(detail.distanceM)}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <div className="text-xs text-zinc-500">{t.stat_pace}</div>
-              <div className="mt-1 text-xl font-semibold tabular-nums">
-                {formatPaceMinPerKm(detail.distanceM, detail.durationSec)}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <div className="text-xs text-zinc-500">{t.stat_calories}</div>
-              <div className="mt-1 text-xl font-semibold tabular-nums">{detail.calories} kcal</div>
-            </div>
+          <div className="mt-4">
+            <WorkoutStatGrid
+              durationSec={detail.durationSec}
+              distanceM={detail.distanceM}
+              calories={detail.calories}
+              size="lg"
+              labels={{
+                time: t.stat_time,
+                distance: t.stat_distance,
+                pace: t.stat_pace,
+                calories: t.stat_calories,
+              }}
+            />
           </div>
 
           <div className="mt-4">

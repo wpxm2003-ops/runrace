@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiUrl } from "@/lib/api/client";
-import { formatDate, formatKm } from "@/lib/format";
-import { formatDuration, formatPaceMinPerKm } from "@/lib/workoutTrack";
+import { formatDate } from "@/lib/format";
+import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 
 type PathPoint = { lat: number; lng: number };
 
@@ -160,33 +160,14 @@ export default function WorkoutShareContent() {
           </div>
         </div>
 
-        {/* 스탯 카드 — WorkoutRecordPanel과 동일 */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
-            <div className="text-xs text-zinc-500">거리</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">
-              {formatKm(data.distanceM)}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
-            <div className="text-xs text-zinc-500">시간</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">
-              {formatDuration(data.durationSec)}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
-            <div className="text-xs text-zinc-500">페이스</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">
-              {formatPaceMinPerKm(data.distanceM, data.durationSec)}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
-            <div className="text-xs text-zinc-500">칼로리</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">
-              {data.calories} kcal
-            </div>
-          </div>
-        </div>
+        {/* 스탯 카드 — 운동 상세·기록 패널과 공통 컴포넌트 */}
+        <WorkoutStatGrid
+          durationSec={data.durationSec}
+          distanceM={data.distanceM}
+          calories={data.calories}
+          columns={2}
+          labels={{ time: "시간", distance: "거리", pace: "페이스", calories: "칼로리" }}
+        />
 
         {/* 날짜 카드 — WorkoutRecordPanel의 시간 카드와 동일 */}
         <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
