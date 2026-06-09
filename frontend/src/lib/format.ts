@@ -48,15 +48,3 @@ export function toDateTimeInputValue(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
-
-/** 미터 → "1.23 km" 문자열(소수 2자리). */
-export function formatKm(distanceM: number): string {
-  return `${(distanceM / 1000).toFixed(2)} km`;
-}
-
-/** km 숫자(문자열·숫자) → 소수 둘째 자리까지 표시. */
-export function formatKmAmount(value: string | number): string {
-  const n = typeof value === "string" ? Number(value) : value;
-  if (!Number.isFinite(n)) return String(value);
-  return n.toFixed(2);
-}

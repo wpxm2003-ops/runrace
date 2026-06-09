@@ -16,6 +16,7 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { formatGoalDistance } from "@/lib/units";
 import { mutate } from "swr";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
@@ -194,7 +195,7 @@ function MyPageContent({ user }: { user: User }) {
                   />
                 </div>
                 <div className="mt-1 text-sm text-zinc-600">
-                  {t.races_goal_members(c.goalKm, c.memberCount)}
+                  {t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">
                   {formatDateRange(c.startAt, c.endAt, locale)}

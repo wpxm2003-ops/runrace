@@ -66,10 +66,10 @@ export const translations = {
     races_filter_ended: "종료",
     races_filter_empty: "해당 상태의 레이스가 없습니다.",
     races_empty: "레이스가 없습니다. 등록으로 새 레이스를 시작해 보세요.",
-    races_goal_members: (goalKm: number, memberCount: number) =>
-      `목표 ${goalKm}km · ${memberCount}명 참여`,
-    detail_goal_members: (goalKm: number, memberCount: number, maxMembers: number) =>
-      `목표 ${goalKm}km · ${memberCount}/${maxMembers}명`,
+    races_goal_members: (goal: string, memberCount: number) =>
+      `목표 ${goal} · ${memberCount}명 참여`,
+    detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
+      `목표 ${goal} · ${memberCount}/${maxMembers}명`,
 
     // ── 레이스 만들기 ───────────────────────
     create_title: "레이스 등록",
@@ -79,8 +79,8 @@ export const translations = {
     create_solo_notice: "혼자 진행하는 레이스는 고지없이 종료될 수 있습니다.",
     create_field_title: "제목",
     create_field_title_placeholder: "예: 6월 러닝 레이스",
-    create_field_goal: "목표 km",
-    create_field_goal_placeholder: "정수만 입력",
+    create_field_goal: "목표",
+    create_field_goal_placeholder: "예: 5",
     create_field_members: "인원수 (최대 50명)",
     create_field_start: "시작 일시",
     create_field_end: "종료 일시",
@@ -91,15 +91,15 @@ export const translations = {
     create_hint_no_special:
       "다음 문자는 사용할 수 없습니다: ' \" ; \\ ` < > (그 외 특수문자는 입력 가능)",
     create_hint_title_max: "입력 가능한 길이를 초과하셨습니다.",
-    create_hint_goal_max: (max: number) => `목표 km는 최대 ${max.toLocaleString()}km까지 입력할 수 있습니다.`,
+    create_hint_goal_max: (max: number) => `목표는 최대 ${max.toLocaleString()}까지 입력할 수 있습니다.`,
     create_hint_members_max: (max: number) => `인원수는 최대 ${max}명까지 입력할 수 있습니다.`,
     create_err_title_required: "제목을 입력하세요.",
     create_err_title_special:
       "제목에 사용할 수 없는 문자가 있습니다. (' \" ; \\ ` < > 는 사용할 수 없습니다)",
     create_err_title_max: "입력 가능한 길이를 초과하셨습니다.",
-    create_err_goal_required: "목표 km를 입력하세요.",
+    create_err_goal_required: "목표를 입력하세요.",
     create_err_goal_range: (min: number, max: number) =>
-      `목표 km는 ${min}~${max.toLocaleString()} 사이 정수로 입력하세요.`,
+      `목표는 ${min}~${max.toLocaleString()} 사이로 입력하세요.`,
     create_err_members_required: "인원수를 입력하세요.",
     create_err_members_range: (min: number, max: number) =>
       `인원수는 ${min}~${max}명입니다.`,
@@ -399,10 +399,10 @@ export const translations = {
     races_filter_ended: "Ended",
     races_filter_empty: "No races in this status.",
     races_empty: "No races yet. Create one to get started!",
-    races_goal_members: (goalKm: number, memberCount: number) =>
-      `${goalKm}km goal · ${memberCount} joined`,
-    detail_goal_members: (goalKm: number, memberCount: number, maxMembers: number) =>
-      `${goalKm}km goal · ${memberCount}/${maxMembers} members`,
+    races_goal_members: (goal: string, memberCount: number) =>
+      `${goal} goal · ${memberCount} joined`,
+    detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
+      `${goal} goal · ${memberCount}/${maxMembers} members`,
 
     // ── 대결 만들기 ───────────────────────
     create_title: "New Race",
@@ -412,8 +412,8 @@ export const translations = {
     create_solo_notice: "Solo races may be ended without notice.",
     create_field_title: "Title",
     create_field_title_placeholder: "e.g. June Running Race",
-    create_field_goal: "Goal (km)",
-    create_field_goal_placeholder: "Whole number",
+    create_field_goal: "Goal",
+    create_field_goal_placeholder: "e.g. 5",
     create_field_members: "Max members (up to 50)",
     create_field_start: "Start date & time",
     create_field_end: "End date & time",
@@ -424,7 +424,7 @@ export const translations = {
     create_hint_no_special:
       "These characters cannot be used: ' \" ; \\ ` < > (other symbols are allowed)",
     create_hint_title_max: "You have exceeded the allowed length.",
-    create_hint_goal_max: (max: number) => `Goal distance can be up to ${max.toLocaleString()} km.`,
+    create_hint_goal_max: (max: number) => `Goal can be up to ${max.toLocaleString()}.`,
     create_hint_members_max: (max: number) => `Up to ${max} members.`,
     create_err_title_required: "Please enter a title.",
     create_err_title_special:
@@ -432,7 +432,7 @@ export const translations = {
     create_err_title_max: "You have exceeded the allowed length.",
     create_err_goal_required: "Please enter a goal distance.",
     create_err_goal_range: (min: number, max: number) =>
-      `Goal must be a whole number between ${min} and ${max.toLocaleString()}.`,
+      `Goal must be between ${min} and ${max.toLocaleString()}.`,
     create_err_members_required: "Please enter max members.",
     create_err_members_range: (min: number, max: number) =>
       `Members must be between ${min} and ${max}.`,
@@ -732,10 +732,10 @@ export const translations = {
     races_filter_ended: "Finalizadas",
     races_filter_empty: "No hay carreras en este estado.",
     races_empty: "No hay carreras. ¡Crea una para empezar!",
-    races_goal_members: (goalKm: number, memberCount: number) =>
-      `Meta ${goalKm}km · ${memberCount} inscritos`,
-    detail_goal_members: (goalKm: number, memberCount: number, maxMembers: number) =>
-      `Meta ${goalKm}km · ${memberCount}/${maxMembers}`,
+    races_goal_members: (goal: string, memberCount: number) =>
+      `Meta ${goal} · ${memberCount} inscritos`,
+    detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
+      `Meta ${goal} · ${memberCount}/${maxMembers}`,
 
     // ── Crear carrera ─────────────────────
     create_title: "Crear carrera",
@@ -745,8 +745,8 @@ export const translations = {
     create_solo_notice: "Las carreras en solitario pueden cerrarse sin aviso.",
     create_field_title: "Título",
     create_field_title_placeholder: "Ej.: Carrera de junio",
-    create_field_goal: "Meta (km)",
-    create_field_goal_placeholder: "Número entero",
+    create_field_goal: "Meta",
+    create_field_goal_placeholder: "Ej.: 5",
     create_field_members: "Máx. participantes (hasta 50)",
     create_field_start: "Inicio",
     create_field_end: "Fin",
@@ -757,7 +757,7 @@ export const translations = {
     create_hint_no_special:
       "No puedes usar estos caracteres: ' \" ; \\ ` < > (otros símbolos sí)",
     create_hint_title_max: "Has superado la longitud permitida.",
-    create_hint_goal_max: (max: number) => `La meta puede ser de hasta ${max.toLocaleString()} km.`,
+    create_hint_goal_max: (max: number) => `La meta puede ser de hasta ${max.toLocaleString()}.`,
     create_hint_members_max: (max: number) => `Hasta ${max} participantes.`,
     create_err_title_required: "Escribe un título.",
     create_err_title_special:
@@ -765,7 +765,7 @@ export const translations = {
     create_err_title_max: "Has superado la longitud permitida.",
     create_err_goal_required: "Escribe la meta.",
     create_err_goal_range: (min: number, max: number) =>
-      `La meta debe ser un entero entre ${min} y ${max.toLocaleString()}.`,
+      `La meta debe estar entre ${min} y ${max.toLocaleString()}.`,
     create_err_members_required: "Indica el número de participantes.",
     create_err_members_range: (min: number, max: number) =>
       `Debe estar entre ${min} y ${max}.`,
@@ -1065,10 +1065,10 @@ export const translations = {
     races_filter_ended: "終了",
     races_filter_empty: "この状態のレースはありません。",
     races_empty: "レースがありません。作成して始めましょう。",
-    races_goal_members: (goalKm: number, memberCount: number) =>
-      `目標${goalKm}km · ${memberCount}人参加`,
-    detail_goal_members: (goalKm: number, memberCount: number, maxMembers: number) =>
-      `目標${goalKm}km · ${memberCount}/${maxMembers}人`,
+    races_goal_members: (goal: string, memberCount: number) =>
+      `目標${goal} · ${memberCount}人参加`,
+    detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
+      `目標${goal} · ${memberCount}/${maxMembers}人`,
 
     // ── レース作成 ────────────────────────
     create_title: "レース作成",
@@ -1078,8 +1078,8 @@ export const translations = {
     create_solo_notice: "ひとりだけのレースは予告なく終了する場合があります。",
     create_field_title: "タイトル",
     create_field_title_placeholder: "例：6月のランレース",
-    create_field_goal: "目標km",
-    create_field_goal_placeholder: "整数のみ",
+    create_field_goal: "目標",
+    create_field_goal_placeholder: "例：5",
     create_field_members: "人数（最大50人）",
     create_field_start: "開始日時",
     create_field_end: "終了日時",
@@ -1090,15 +1090,15 @@ export const translations = {
     create_hint_no_special:
       "次の文字は使えません： ' \" ; \\ ` < >（他の記号は使えます）",
     create_hint_title_max: "入力できる長さを超えています。",
-    create_hint_goal_max: (max: number) => `目標kmは最大${max.toLocaleString()}kmまで入力できます。`,
+    create_hint_goal_max: (max: number) => `目標は最大${max.toLocaleString()}まで入力できます。`,
     create_hint_members_max: (max: number) => `人数は最大${max}人までです。`,
     create_err_title_required: "タイトルを入力してください。",
     create_err_title_special:
       "タイトルに使えない文字があります（' \" ; \\ ` < > は使えません）。",
     create_err_title_max: "入力できる長さを超えています。",
-    create_err_goal_required: "目標kmを入力してください。",
+    create_err_goal_required: "目標を入力してください。",
     create_err_goal_range: (min: number, max: number) =>
-      `目標kmは${min}〜${max.toLocaleString()}の整数で入力してください。`,
+      `目標は${min}〜${max.toLocaleString()}の範囲で入力してください。`,
     create_err_members_required: "人数を入力してください。",
     create_err_members_range: (min: number, max: number) =>
       `人数は${min}〜${max}人です。`,
@@ -1398,10 +1398,10 @@ export const translations = {
     races_filter_ended: "已结束",
     races_filter_empty: "没有该状态的比赛。",
     races_empty: "暂无比赛。创建一个开始吧！",
-    races_goal_members: (goalKm: number, memberCount: number) =>
-      `目标${goalKm}km · ${memberCount}人参加`,
-    detail_goal_members: (goalKm: number, memberCount: number, maxMembers: number) =>
-      `目标${goalKm}km · ${memberCount}/${maxMembers}人`,
+    races_goal_members: (goal: string, memberCount: number) =>
+      `目标${goal} · ${memberCount}人参加`,
+    detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
+      `目标${goal} · ${memberCount}/${maxMembers}人`,
 
     // ── 创建比赛 ──────────────────────────
     create_title: "创建比赛",
@@ -1411,8 +1411,8 @@ export const translations = {
     create_solo_notice: "仅自己参加的比赛可能会被无通知结束。",
     create_field_title: "标题",
     create_field_title_placeholder: "例：6月跑步比赛",
-    create_field_goal: "目标km",
-    create_field_goal_placeholder: "仅限整数",
+    create_field_goal: "目标",
+    create_field_goal_placeholder: "例：5",
     create_field_members: "人数（最多50人）",
     create_field_start: "开始时间",
     create_field_end: "结束时间",
@@ -1423,15 +1423,15 @@ export const translations = {
     create_hint_no_special:
       "不能使用以下字符： ' \" ; \\ ` < >（其他符号可以使用）",
     create_hint_title_max: "已超出可输入长度。",
-    create_hint_goal_max: (max: number) => `目标km最多可输入${max.toLocaleString()}km。`,
+    create_hint_goal_max: (max: number) => `目标最多可输入${max.toLocaleString()}。`,
     create_hint_members_max: (max: number) => `人数最多${max}人。`,
     create_err_title_required: "请输入标题。",
     create_err_title_special:
       "标题包含不可用字符（' \" ; \\ ` < > 不能使用）。",
     create_err_title_max: "已超出可输入长度。",
-    create_err_goal_required: "请输入目标km。",
+    create_err_goal_required: "请输入目标。",
     create_err_goal_range: (min: number, max: number) =>
-      `目标km请输入${min}~${max.toLocaleString()}之间的整数。`,
+      `目标请输入${min}~${max.toLocaleString()}之间的值。`,
     create_err_members_required: "请输入人数。",
     create_err_members_range: (min: number, max: number) =>
       `人数为${min}~${max}人。`,

@@ -20,6 +20,50 @@ export function formatDistanceAmount(km: string | number, unit: DistanceUnit): s
   return value.toFixed(2);
 }
 
+/** 레이스 목표 최대값(canonical km). 백엔드 validateRoomInput과 일치. */
+export const GOAL_MAX_KM = 1000;
+
+/** 불필요한 끝자리 0을 없앤 숫자 문자열. */
+function trimNum(n: number, digits: number): string {
+  return String(Number(n.toFixed(digits)));
+}
+
+/** 레이스 목표 표시: 선택 단위로 변환 + 단위 라벨(소수 끝자리 0 제거). */
+export function formatGoalDistance(km: number, unit: DistanceUnit): string {
+  const v = unit === "mi" ? km / KM_PER_MI : km;
+  return `${trimNum(v, 1)} ${unit}`;
+}
+
+/** 목표 입력(선택 단위 문자열) → canonical km 숫자. 유효하지 않으면 NaN. */
+export function goalKmFromInput(value: string, unit: DistanceUnit): number {
+  const v = parseFloat(value);
+  if (!Number.isFinite(v)) return NaN;
+  return unit === "mi" ? v * KM_PER_MI : v;
+}
+
+/** canonical km 목표 → 입력칸 표시 문자열(선택 단위, 끝자리 0 제거). */
+export function goalInputFromKm(km: number, unit: DistanceUnit): string {
+  const v = unit === "mi" ? km / KM_PER_MI : km;
+  return trimNum(v, unit === "mi" ? 1 : 3);
+}
+
+/** 목표 최대값(=GOAL_MAX_KM km)을 선택 단위로. 입력 클램프·안내에 사용. */
+export function goalMaxInUnit(unit: DistanceUnit): number {
+  return unit === "mi" ? Math.floor((GOAL_MAX_KM / KM_PER_MI) * 10) / 10 : GOAL_MAX_KM;
+}
+
+/** 사용자가 선택 단위로 입력한 거리 → 미터(반올림). 유효하지 않으면 NaN. */
+export function metersFromInput(value: string, unit: DistanceUnit): number {
+  const per = unit === "mi" ? METERS_PER_MI : METERS_PER_KM;
+  return Math.round(parseFloat(value) * per);
+}
+
+/** 사용자가 선택 단위로 입력한 거리 → km 숫자(거리 동기화용). */
+export function kmFromInput(value: string, unit: DistanceUnit): number {
+  const v = Number(value);
+  return unit === "mi" ? v * KM_PER_MI : v;
+}
+
 /** 미터+초 → 선택 단위 기준 페이스("m'ss"" / 단위당). 단위가 마일이면 min/mi. */
 export function formatPace(distanceM: number, elapsedSec: number, unit: DistanceUnit): string {
   if (distanceM < 10 || elapsedSec < 1) return "-";

@@ -6,11 +6,14 @@ import { Card } from "@/app/_components/ui/Card";
 import { syncDailyDistance } from "@/lib/api";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
+import { kmFromInput } from "@/lib/units";
 import { useState } from "react";
 
 export default function FitnessPage() {
   const { user } = useRequireAuth("/fitness");
   const { t } = useLocale();
+  const { unit } = useUnit();
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [source, setSource] = useState("apple_health");
   const [distanceKm, setDistanceKm] = useState("5.0");
@@ -22,7 +25,7 @@ export default function FitnessPage() {
     setError(null);
     setResult(null);
     try {
-      const res = await syncDailyDistance({ date, source, distanceKm: Number(distanceKm) }, user);
+      const res = await syncDailyDistance({ date, source, distanceKm: kmFromInput(distanceKm, unit) }, user);
       setResult(`prev=${res.prevKm} now=${res.nowKm} delta=${res.deltaKm}`);
     } catch (e) {
       setError(String(e));
@@ -46,7 +49,7 @@ export default function FitnessPage() {
             </select>
           </label>
           <label className="grid gap-1 text-sm">
-            <span className="text-zinc-600">{t.fitness_distance}</span>
+            <span className="text-zinc-600">{t.stat_distance} ({unit})</span>
             <input className="h-11 rounded-xl border border-zinc-200 px-3" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} inputMode="decimal" />
           </label>
           <button type="button" onClick={onSync} className="mt-2 h-11 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">

@@ -17,10 +17,13 @@ import { resolveChallengePhase } from "@/lib/challengePhase";
 import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
+import { formatGoalDistance } from "@/lib/units";
 
 export default function ChallengesPage() {
   const { user, loading: authLoading } = useAuthUser();
   const { t, locale } = useLocale();
+  const { unit } = useUnit();
   const [showAllLangs, setShowAllLangs] = useState(false);
   const { data: challenges = [], isLoading, error } = useChallengeList(
     user,
@@ -110,7 +113,7 @@ export default function ChallengesPage() {
                   />
                 </div>
                 <div className="mt-1 text-sm text-zinc-600">
-                  {t.races_goal_members(c.goalKm, c.memberCount)}
+                  {t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">
                   {formatDateRange(c.startAt, c.endAt, locale)}

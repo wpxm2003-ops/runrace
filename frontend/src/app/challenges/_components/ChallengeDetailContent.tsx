@@ -24,10 +24,12 @@ import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeM
 import { ChallengeLeaderboard } from "@/app/challenges/_components/ChallengeLeaderboard";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { shareLink } from "@/lib/shareCard";
-import { formatDateRange, formatKm } from "@/lib/format";
+import { formatDateRange } from "@/lib/format";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
+import { formatDistance, formatGoalDistance } from "@/lib/units";
 import { useParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
@@ -36,6 +38,7 @@ export default function ChallengeDetailContent() {
   const { data: me } = useMe(user);
   const confirm = useConfirm();
   const { t, locale } = useLocale();
+  const { unit } = useUnit();
   const [actionError, setActionError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -249,7 +252,7 @@ export default function ChallengeDetailContent() {
               />
             </div>
             <div className="mt-2 text-sm text-zinc-600">
-              {t.detail_goal_members(detail.goalKm, detail.memberCount, detail.maxMembers)}
+              {t.detail_goal_members(formatGoalDistance(detail.goalKm, unit), detail.memberCount, detail.maxMembers)}
             </div>
             <div className="mt-1 text-xs text-zinc-500">
               {formatDateRange(detail.startAt, detail.endAt, locale)}
@@ -290,7 +293,7 @@ export default function ChallengeDetailContent() {
                           {item.submitterNickname ?? t.no_name}
                         </div>
                         <div className="mt-0.5 text-xs text-zinc-500">
-                          {formatKm(item.distanceM)} · {t.pending_approval_votes(item.approvedCount, item.totalVoters)}
+                          {formatDistance(item.distanceM, unit)} · {t.pending_approval_votes(item.approvedCount, item.totalVoters)}
                         </div>
                       </div>
                       {item.imageUrl ? (
@@ -361,7 +364,7 @@ export default function ChallengeDetailContent() {
                           {item.submitterNickname ?? t.no_name}
                         </div>
                         <div className="mt-0.5 text-xs text-zinc-500">
-                          {formatKm(item.distanceM)}
+                          {formatDistance(item.distanceM, unit)}
                         </div>
                         {item.rejectorNicknames.length > 0 ? (
                           <div className="mt-1 text-xs font-medium text-red-600">

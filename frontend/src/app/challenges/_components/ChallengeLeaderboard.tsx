@@ -2,8 +2,9 @@
 
 import { memo } from "react";
 import { Card } from "@/app/_components/ui/Card";
-import { formatKmAmount } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
+import { formatDistanceAmount } from "@/lib/units";
 import type { ChallengeMember } from "@/lib/api/types";
 
 const MEDALS = ["🥇", "🥈", "🥉"] as const;
@@ -50,6 +51,7 @@ const MemberRow = memo(function MemberRow({
   goalKm,
 }: MemberRowProps) {
   const { t } = useLocale();
+  const { unit } = useUnit();
   const pct = Math.min(100, Math.max(0, Number(m.progressPercent) || 0));
   const pctLabel = Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
 
@@ -78,7 +80,7 @@ const MemberRow = memo(function MemberRow({
             {pctLabel}%
           </div>
           <div className={`mt-0.5 text-[11px] ${isMe ? "text-emerald-700" : "text-zinc-500"}`}>
-            {formatKmAmount(m.totalKm)} / {goalKm} km
+            {formatDistanceAmount(m.totalKm, unit)} / {formatDistanceAmount(goalKm, unit)} {unit}
           </div>
         </div>
       </div>

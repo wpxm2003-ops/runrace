@@ -9,6 +9,8 @@ import { readPhotoTakenAt, workoutStartedAtFromPhotoEnd } from "@/lib/imageExif"
 import { formatDateTimeMinute } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { useUnit } from "@/lib/UnitContext";
+import { metersFromInput } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
 
 type FieldErrors = {
@@ -20,6 +22,7 @@ type FieldErrors = {
 export default function IndoorRunPage() {
   const { user, loading } = useRequireAuth("/workout/indoor");
   const { t, locale } = useLocale();
+  const { unit } = useUnit();
 
   const [distanceKm, setDistanceKm] = useState("");
   const [hours, setHours] = useState("");
@@ -63,7 +66,7 @@ export default function IndoorRunPage() {
 
     const errors: FieldErrors = {};
 
-    const distM = Math.round(parseFloat(distanceKm) * 1000);
+    const distM = metersFromInput(distanceKm, unit);
     if (!distanceKm || isNaN(distM) || distM <= 0) {
       errors.distance = t.indoor_err_distance;
     }
@@ -191,7 +194,7 @@ export default function IndoorRunPage() {
         {/* 거리 */}
         <div>
           <label className="block text-sm font-medium text-zinc-700">
-            {t.indoor_field_distance}
+            {t.stat_distance} ({unit})
             <span className="ml-0.5 text-red-500">*</span>
           </label>
           <input

@@ -3,7 +3,9 @@
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useChallengeWorkouts } from "@/lib/api";
-import { formatDate, formatKm } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { useUnit } from "@/lib/UnitContext";
+import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
 import { formatDuration } from "@/lib/workoutTrack";
 import type { User } from "firebase/auth";
@@ -16,6 +18,7 @@ type Props = {
 
 export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) {
   const { t, locale } = useLocale();
+  const { unit } = useUnit();
   const { data: workouts = [], isLoading, error } = useChallengeWorkouts(
     challengeId,
     user,
@@ -53,7 +56,7 @@ export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) 
                 <span className="mx-1.5 text-zinc-300" aria-hidden>
                   ·
                 </span>
-                <span className="font-semibold text-zinc-900">{formatKm(w.distanceM)}</span>
+                <span className="font-semibold text-zinc-900">{formatDistance(w.distanceM, unit)}</span>
               </p>
             </li>
           ))}
