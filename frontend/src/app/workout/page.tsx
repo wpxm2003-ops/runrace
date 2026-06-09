@@ -35,7 +35,8 @@ export default function WorkoutPage() {
   const handleStop = useCallback(async () => {
     if (!user) return;
 
-    if (Math.floor(session.distanceM) < 1) {
+    // distanceM은 미터 단위 — 1km(1000m) 미만이면 저장 확인
+    if (session.distanceM < 1000) {
       const ok = await confirm({
         title: t.workout_save_empty_title,
         message: t.workout_save_empty_message,
