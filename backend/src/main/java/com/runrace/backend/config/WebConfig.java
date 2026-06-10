@@ -48,7 +48,7 @@ public class WebConfig implements WebMvcConfigurer {
   }
 
   /**
-   * http://98.94.84.40 → http://98.94.84.40:* (80·8081 등) 프론트가 :8081 로 직접 호출해도 허용
+   * http://15.164.250.88 → http://15.164.250.88:* (80·8081 등) 프론트가 :8081 로 직접 호출해도 허용
    */
   static List<String> expandOriginPatterns(String allowedOrigins) {
     Set<String> patterns = new LinkedHashSet<>();

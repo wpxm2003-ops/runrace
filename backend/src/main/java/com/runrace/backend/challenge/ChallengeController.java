@@ -211,19 +211,7 @@ public class ChallengeController {
 
     List<MemberRow> rows =
         detail.members().stream()
-            .sorted((m1, m2) -> {
-              boolean f1 = m1.getFinishedAt() != null;
-              boolean f2 = m2.getFinishedAt() != null;
-              if (f1 && f2) {
-                return m1.getFinishedAt().compareTo(m2.getFinishedAt());
-              } else if (f1) {
-                return -1;
-              } else if (f2) {
-                return 1;
-              } else {
-                return m2.getTotalKm().compareTo(m1.getTotalKm());
-              }
-            })
+            .sorted(memberDisplayOrder(detail.hasStarted()))
             .map(member -> toMemberRow(member, challenge, goal))
             .toList();
 
@@ -262,6 +250,26 @@ public class ChallengeController {
         detail.memberCount(),
         winner,
         rows);
+  }
+
+  /** 시작 전: 참여 순(먼저 참여한 사람이 위). 시작 후: 완주 우선 → 완주 시각 → 미완주는 누적 km. */
+  private static Comparator<ChallengeMember> memberDisplayOrder(boolean hasStarted) {
+    if (!hasStarted) {
+      return Comparator.comparing(ChallengeMember::getJoinedAt);
+    }
+    return (m1, m2) -> {
+      boolean f1 = m1.getFinishedAt() != null;
+      boolean f2 = m2.getFinishedAt() != null;
+      if (f1 && f2) {
+        return m1.getFinishedAt().compareTo(m2.getFinishedAt());
+      } else if (f1) {
+        return -1;
+      } else if (f2) {
+        return 1;
+      } else {
+        return m2.getTotalKm().compareTo(m1.getTotalKm());
+      }
+    };
   }
 
   private MemberRow toMemberRow(ChallengeMember member, Challenge challenge, BigDecimal goal) {

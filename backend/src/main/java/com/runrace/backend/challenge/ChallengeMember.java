@@ -7,6 +7,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -42,5 +43,22 @@ public class ChallengeMember {
 
   @Column(name = "finished_at")
   private OffsetDateTime finishedAt;
+
+  @Column(name = "created_at", nullable = false)
+  private OffsetDateTime createdAt;
+
+  @Column(name = "joined_at", nullable = false)
+  private OffsetDateTime joinedAt;
+
+  @PrePersist
+  void onCreate() {
+    OffsetDateTime now = OffsetDateTime.now();
+    if (createdAt == null) {
+      createdAt = now;
+    }
+    if (joinedAt == null) {
+      joinedAt = now;
+    }
+  }
 }
 
