@@ -12,7 +12,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +24,6 @@ public class FitnessService {
   private final DailyDistanceRepository dailyDistanceRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
   private final ChallengeProgressService challengeProgressService;
-  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public UpsertResult upsertDailyDistance(
@@ -43,7 +41,6 @@ public class FitnessService {
     BigDecimal delta = distanceKm.subtract(previousKm);
     if (delta.signum() != 0) {
       applyDeltaToActiveChallenges(me, delta);
-      eventPublisher.publishEvent(new DailyDistanceSyncedEvent(me.getId()));
     }
 
     return new UpsertResult(previousKm, distanceKm, delta);

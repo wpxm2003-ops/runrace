@@ -89,6 +89,11 @@ public class ChallengeProgressService {
           .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
       if (allOtherFinished) {
         challenge.setEnded(true);
+        var winner = challenge.getWinner();
+        List<UUID> memberIds = challengeMemberRepository.findAllForChallenge(challenge.getId())
+            .stream().map(m -> m.getUser().getId()).toList();
+        eventPublisher.publishEvent(new ChallengeEndedEvent(
+            challenge.getId(), winner != null ? winner.getNickname() : null, memberIds));
       }
       challengeRepository.save(challenge);
     }
@@ -152,7 +157,7 @@ public class ChallengeProgressService {
 
     if (otherIds.isEmpty()) return;
 
-    for (int pct : new int[]{50, 80}) {
+    for (int pct : new int[]{50}) {
       BigDecimal threshold = goal.multiply(BigDecimal.valueOf(pct))
           .divide(HUNDRED, 3, RoundingMode.HALF_UP);
       if (prevKm.compareTo(threshold) < 0 && next.compareTo(threshold) >= 0) {

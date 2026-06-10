@@ -18,7 +18,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 public class ChallengeNotifications {
-  private final ChallengeMemberRepository challengeMemberRepository;
   private final PushService pushService;
   private final AnalyticsService analyticsService;
 
@@ -27,21 +26,15 @@ public class ChallengeNotifications {
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onChallengeCreated(ChallengeCreatedEvent event) {
+    // 생성 푸시는 제거. 분석 기록만 남긴다.
     analyticsService.track(
         event.creatorUserId(), "challenge.created", "{\"challengeId\":" + event.challengeId() + "}");
-
-    challengeMemberRepository.findAllForChallenge(event.challengeId()).stream()
-        .map(member -> member.getUser().getId())
-        .filter(userId -> !userId.equals(event.creatorUserId()))
-        .forEach(userId ->
-            pushService.sendLocalized(userId, "common.brand", "challenge.created.body", null));
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onMilestoneReached(MilestoneReachedEvent event) {
     // 변형은 이벤트당 한 번만 골라(=모두 같은 문구) 각 수신자의 언어로 렌더링한다.
-    String prefix = event.milestonePercent() >= 80 ? "challenge.milestone80." : "challenge.milestone50.";
-    String bodyKey = prefix + ThreadLocalRandom.current().nextInt(VARIANTS);
+    String bodyKey = "challenge.milestone50." + ThreadLocalRandom.current().nextInt(VARIANTS);
     event.otherMemberIds().forEach(userId ->
         pushService.sendLocalized(userId, "challenge.race_title", bodyKey, event.achieverNickname()));
   }
@@ -53,6 +46,14 @@ public class ChallengeNotifications {
         "challenge.ended_no_member.title",
         "challenge.ended_no_member.body",
         null);
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onChallengeEnded(ChallengeEndedEvent event) {
+    String bodyKey =
+        event.winnerNickname() != null ? "challenge.ended.body" : "challenge.ended.body_no_winner";
+    event.memberIds().forEach(userId ->
+        pushService.sendLocalized(userId, "challenge.race_title", bodyKey, event.winnerNickname()));
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

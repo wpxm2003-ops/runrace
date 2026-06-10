@@ -25,8 +25,7 @@ public class FriendNotifications {
   public void onInviteAccepted(FriendEvents.InviteAccepted event) {
     analyticsService.track(
         event.accepterUserId(), "friend_invite.accepted", "{\"code\":\"" + event.code() + "\"}");
-    pushService.sendLocalized(
-        event.inviterUserId(), "common.brand", "friend.invite_accepted.body", null);
+    // 초대 수락 푸시는 제거.
   }
 
   /** 넛지 푸시 — DB 작업이 없으므로 트랜잭션 없이 커밋 후 전송한다. body는 사용자 입력이라 번역하지 않는다. */

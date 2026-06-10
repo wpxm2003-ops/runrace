@@ -206,9 +206,14 @@ public class ChallengeService {
     if (challenge.isEnded()) return false;
     if (challenge.getEndAt() == null || !now.isAfter(challenge.getEndAt())) return false;
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challenge.getId());
+    AppUser winner = resolveWinnerForDisplay(challenge, members);
     challenge.setEnded(true);
-    challenge.setWinner(resolveWinnerForDisplay(challenge, members));
+    challenge.setWinner(winner);
     challengeRepository.save(challenge);
+    eventPublisher.publishEvent(new ChallengeEndedEvent(
+        challenge.getId(),
+        winner != null ? winner.getNickname() : null,
+        members.stream().map(m -> m.getUser().getId()).toList()));
     return true;
   }
 
