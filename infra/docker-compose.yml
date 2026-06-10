@@ -3,11 +3,12 @@ services:
     image: postgres:16
     container_name: runrace-postgres
     environment:
-      POSTGRES_DB: runrace
-      POSTGRES_USER: runrace
-      POSTGRES_PASSWORD: runrace
+      POSTGRES_DB: ${DB_NAME:-runrace}
+      POSTGRES_USER: ${DB_USERNAME:-runrace}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-runrace}
     ports:
-      - "5432:5432"
+      # 호스트 외부 노출 방지: 로컬호스트에만 바인딩 (앱·adminer는 같은 호스트라 OK)
+      - "127.0.0.1:5432:5432"
     volumes:
       - runrace_pgdata:/var/lib/postgresql/data
 
