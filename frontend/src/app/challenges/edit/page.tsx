@@ -1,16 +1,24 @@
-import { redirect } from "next/navigation";
-import { parseChallengeId } from "@/lib/challengeRoute";
+"use client";
 
-/** 예전 /challenges/edit?id=123 링크 호환 — 서버에서 즉시 리다이렉트. */
-export default async function LegacyChallengeEditQueryPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ id?: string }>;
-}) {
-  const { id: rawId } = await searchParams;
-  const id = parseChallengeId(rawId ?? null);
-  if (id != null) {
-    redirect(`/challenges/${id}/edit`);
-  }
-  redirect("/challenges");
+import { parseChallengeId } from "@/lib/challengeRoute";
+import { useEffect } from "react";
+
+/** 예전 ?id= 링크 호환 */
+export default function LegacyChallengeEditQueryPage() {
+  useEffect(() => {
+    const id = parseChallengeId(
+      new URLSearchParams(window.location.search).get("id"),
+    );
+    if (id != null) {
+      window.location.replace(`/challenges/${id}/edit`);
+      return;
+    }
+    window.location.replace("/challenges");
+  }, []);
+
+  return (
+    <div className="min-h-dvh flex items-center justify-center text-sm text-zinc-600">
+      이동 중...
+    </div>
+  );
 }
