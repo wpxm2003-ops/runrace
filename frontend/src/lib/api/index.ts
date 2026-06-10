@@ -3,7 +3,6 @@
 export * from "./apiError";
 export * from "./client";
 export * from "./types";
-export * from "./analytics";
 export * from "./auth";
 export * from "./errors";
 export * from "./challenges";
