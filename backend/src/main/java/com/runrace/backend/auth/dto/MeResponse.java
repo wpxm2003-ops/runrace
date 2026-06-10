@@ -9,7 +9,6 @@ public record MeResponse(
     String email,
     String displayName,
     String nickname,
-    String photoUrl,
     String provider,
     String langCd) {
 
@@ -20,7 +19,6 @@ public record MeResponse(
         user.getEmail(),
         user.getDisplayName(),
         user.getNickname(),
-        user.getPhotoUrl(),
         user.getProvider(),
         user.getLangCd());
   }

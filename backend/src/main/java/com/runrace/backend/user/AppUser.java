@@ -33,9 +33,6 @@ public class AppUser {
   @Column(name = "nickname", length = 50)
   private String nickname;
 
-  @Column(name = "photo_url", columnDefinition = "text")
-  private String photoUrl;
-
   @Column(name = "provider", length = 50)
   private String provider;
 

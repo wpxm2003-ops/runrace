@@ -57,7 +57,6 @@ public class FriendController {
                     new FriendResponse(
                         friendship.getFriend().getId(),
                         friendship.getFriend().getNickname(),
-                        friendship.getFriend().getPhotoUrl(),
                         friendship.getFriend().getEmail()))
             .toList();
     return ResponseEntity.ok(friends);

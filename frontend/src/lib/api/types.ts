@@ -92,7 +92,6 @@ export type MeResponse = {
   email: string | null;
   displayName: string | null;
   nickname: string | null;
-  photoUrl: string | null;
   provider: string | null;
   langCd: string;
 };
@@ -101,7 +100,6 @@ export type MeResponse = {
 export type Friend = {
   id: string;
   nickname: string | null;
-  photoUrl: string | null;
   email: string | null;
 };
 

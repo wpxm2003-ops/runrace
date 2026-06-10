@@ -33,7 +33,6 @@ public class UserProvisioningService {
       String firebaseUid,
       String email,
       String displayName,
-      String photoUrl,
       String provider,
       String langHint) {
     AppUser user = appUserRepository.findByFirebaseUid(firebaseUid).orElseGet(AppUser::new);
@@ -43,7 +42,6 @@ public class UserProvisioningService {
     boolean changed = isNew;
     changed |= !Objects.equals(user.getEmail(), email);
     changed |= !Objects.equals(user.getDisplayName(), displayName);
-    changed |= !Objects.equals(user.getPhotoUrl(), photoUrl);
     changed |= !Objects.equals(user.getProvider(), provider);
     if (!changed) {
       return user;
@@ -52,7 +50,6 @@ public class UserProvisioningService {
     user.setFirebaseUid(firebaseUid);
     user.setEmail(email);
     user.setDisplayName(displayName);
-    user.setPhotoUrl(photoUrl);
     user.setProvider(provider);
     if (isNew) {
       String lang = normalizeLang(langHint);

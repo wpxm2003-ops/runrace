@@ -294,7 +294,6 @@ public class ChallengeController {
     return new MemberRow(
         member.getUser().getId(),
         member.getUser().getNickname(),
-        member.getUser().getPhotoUrl(),
         member.getTotalKm(),
         goal.subtract(member.getTotalKm()).max(BigDecimal.ZERO),
         challengeService.progressPercent(member, challenge),

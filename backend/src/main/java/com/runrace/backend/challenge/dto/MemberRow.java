@@ -6,7 +6,6 @@ import java.util.UUID;
 public record MemberRow(
     UUID userId,
     String nickname,
-    String photoUrl,
     BigDecimal totalKm,
     BigDecimal remainingKm,
     BigDecimal progressPercent,

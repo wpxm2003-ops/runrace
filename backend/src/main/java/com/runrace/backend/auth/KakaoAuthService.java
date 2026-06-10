@@ -65,7 +65,7 @@ public class KakaoAuthService {
       String firebaseUid = "kakao:" + kakaoUser.id();
       // 카카오는 사실상 한국 사용자 → 닉네임/언어 기본값 ko. 이후 LanguageSync가 lang_cd를 갱신한다.
       userProvisioningService.upsert(
-          firebaseUid, kakaoUser.email(), kakaoUser.nickname(), kakaoUser.photoUrl(), "kakao", "ko");
+          firebaseUid, kakaoUser.email(), kakaoUser.nickname(), "kakao", "ko");
       return FirebaseAuth.getInstance().createCustomToken(firebaseUid);
     } catch (ApiException e) {
       throw e;
@@ -115,10 +115,9 @@ public class KakaoAuthService {
     String email = account.path("email").asText(null);
     JsonNode profile = account.path("profile");
     String nickname = profile.path("nickname").asText(null);
-    String photoUrl = profile.path("profile_image_url").asText(null);
 
-    return new KakaoUser(id, email, nickname, photoUrl);
+    return new KakaoUser(id, email, nickname);
   }
 
-  public record KakaoUser(String id, String email, String nickname, String photoUrl) {}
+  public record KakaoUser(String id, String email, String nickname) {}
 }
