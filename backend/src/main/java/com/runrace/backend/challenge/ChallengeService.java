@@ -144,14 +144,11 @@ public class ChallengeService {
   /**
    * 공개 목록. lang이 지원 언어면 해당 언어방만, 그 외(null·빈값·"all")는 전체를 반환한다(소프트 필터).
    */
-  @Transactional
+  @Transactional(readOnly = true)
   public List<Challenge> listAll(String lang) {
     boolean filterByLang = lang != null && SUPPORTED_LANGS.contains(lang);
     OffsetDateTime now = OffsetDateTime.now();
     List<Challenge> all = challengeRepository.findAllWithCreator();
-    for (Challenge c : all) {
-      endIfSolo(c, now); // 시작됐는데 방장 혼자인 레이스는 접근 시점에 무효 종료
-    }
     Map<Long, Long> memberCounts =
         batchMemberCounts(all.stream().map(Challenge::getId).toList());
     return all.stream()
@@ -165,13 +162,10 @@ public class ChallengeService {
         .toList();
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public List<Challenge> listForMe(AuthPrincipal principal) {
     OffsetDateTime now = OffsetDateTime.now();
     List<Challenge> mine = challengeRepository.findAllForUser(principal.userId());
-    for (Challenge c : mine) {
-      endIfSolo(c, now); // 시작됐는데 방장 혼자인 레이스는 접근 시점에 무효 종료
-    }
     return mine.stream()
         .sorted(
             Comparator.comparingInt((Challenge c) -> ChallengePhase.of(c, now).ordinal())
@@ -203,10 +197,24 @@ public class ChallengeService {
     return true;
   }
 
-  @Transactional
+  /**
+   * 기간(endAt)이 지난 레이스를 확정한다: 상태 ENDED + 우승자 영속화.
+   * 지금까지 읽기 시점에만 계산하던 종료/우승을 실제 DB에 박는다(스케줄러에서 호출).
+   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다. 확정했으면 true.
+   */
+  public boolean finalizeIfTimeEnded(Challenge challenge, OffsetDateTime now) {
+    if (challenge.isEnded()) return false;
+    if (challenge.getEndAt() == null || !now.isAfter(challenge.getEndAt())) return false;
+    List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challenge.getId());
+    challenge.setEnded(true);
+    challenge.setWinner(resolveWinnerForDisplay(challenge, members));
+    challengeRepository.save(challenge);
+    return true;
+  }
+
+  @Transactional(readOnly = true)
   public ChallengeDetailView getDetail(Optional<UUID> currentUserId, Long id) {
     Challenge challenge = requireChallenge(id);
-    endIfSolo(challenge, OffsetDateTime.now());
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(id);
     AppUser winner = resolveWinnerForDisplay(challenge, members);
 
