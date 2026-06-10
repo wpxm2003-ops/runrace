@@ -5,6 +5,7 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
+import { Button } from "@/app/_components/ui/Button";
 import {
   deleteWorkout,
   invalidateWorkoutDetail,
@@ -16,7 +17,7 @@ import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { shareLink } from "@/lib/shareCard";
+import { getAppUrl } from "@/lib/appUrl";
 import type { User } from "firebase/auth";
 
 type Props = {
@@ -69,8 +70,8 @@ export function WorkoutRecordPanel({
   const [deleting, setDeleting] = useState(false);
 
   async function onShare() {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
-    return shareLink(`${appUrl}/workouts/${workoutId}/share`, "RunRace");
+    const { shareLink } = await import("@/lib/shareCard");
+    return shareLink(`${getAppUrl()}/workouts/${workoutId}/share`, "RunRace");
   }
 
   async function onDelete() {
@@ -129,14 +130,14 @@ export function WorkoutRecordPanel({
 
       <ShareButton onShare={onShare} className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50" />
 
-      <button
-        type="button"
+      <Button
+        variant="destructive"
         disabled={deleting}
         onClick={onDelete}
-        className="h-11 w-full rounded-xl border border-red-200 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+        className="h-11 w-full"
       >
         {deleting ? t.workout_deleting_btn : t.records_delete_current}
-      </button>
+      </Button>
     </div>
   );
 }

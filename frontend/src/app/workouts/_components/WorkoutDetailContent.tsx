@@ -4,28 +4,33 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { deleteWorkout, fetchChallengeWorkout, fetchWorkout, useMe, type WorkoutDetail } from "@/lib/api";
+import {
+  deleteWorkout,
+  useChallengeWorkoutDetail,
+  useWorkoutDetail,
+  invalidateWorkoutDetail,
+  invalidateWorkoutLists,
+} from "@/lib/api";
 import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutId } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
-import { shareLink } from "@/lib/shareCard";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { getAppUrl } from "@/lib/appUrl";
 
 export default function WorkoutDetailContent() {
   const confirm = useConfirm();
   const { t, locale } = useLocale();
   const { unit } = useUnit();
-  const [detail, setDetail] = useState<WorkoutDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const params = useParams();
   const searchParams = useSearchParams();
@@ -42,26 +47,34 @@ export default function WorkoutDetailContent() {
         : `/workouts/${id}`
       : undefined;
   const { user } = useRequireAuth(returnPath);
-  // 내 운동일 때만 닉네임 카드에 표시 (레이스 맥락은 타인 기록일 수 있음)
-  const { data: me } = useMe(fromChallenge ? null : user);
+
+  const {
+    data: directDetail,
+    error: directError,
+    isLoading: directLoading,
+  } = useWorkoutDetail(fromChallenge ? null : id, user ?? null);
+
+  const {
+    data: challengeDetail,
+    error: challengeError,
+    isLoading: challengeLoading,
+  } = useChallengeWorkoutDetail(
+    fromChallenge ? id : null,
+    fromChallenge ? challengeId : null,
+    user ?? null,
+  );
+
+  const detail = fromChallenge ? challengeDetail : directDetail;
+  const fetchError = fromChallenge ? challengeError : directError;
+  const isLoading = fromChallenge ? challengeLoading : directLoading;
+
+  const isIndoor = detail?.workoutType === "INDOOR";
 
   async function onShare() {
     if (!id) return;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
-    return shareLink(`${appUrl}/workouts/${id}`, "RunRace");
+    const { shareLink } = await import("@/lib/shareCard");
+    return shareLink(`${getAppUrl()}/workouts/${id}`, "RunRace");
   }
-
-  useEffect(() => {
-    if (!id || !user) return;
-    setDetail(null);
-    setError(null);
-    const load = fromChallenge
-      ? fetchChallengeWorkout(challengeId!, id, user)
-      : fetchWorkout(id, user);
-    load.then(setDetail).catch((e) => setError(String(e)));
-  }, [id, user, challengeId, fromChallenge]);
-
-  const isIndoor = detail?.workoutType === "INDOOR";
 
   async function onDelete() {
     if (!user || !id || fromChallenge) return;
@@ -73,12 +86,14 @@ export default function WorkoutDetailContent() {
     });
     if (!ok) return;
     setDeleting(true);
-    setError(null);
+    setDeleteError(null);
     try {
       await deleteWorkout(id, user);
+      invalidateWorkoutDetail(id, user.uid);
+      invalidateWorkoutLists(user.uid);
       nativeNavigate("/records");
     } catch (e) {
-      setError(String(e));
+      setDeleteError(String(e));
       setDeleting(false);
     }
   }
@@ -106,11 +121,13 @@ export default function WorkoutDetailContent() {
     </>
   );
 
+  const error = deleteError ?? (fetchError ? String(fetchError) : null);
+
   return (
     <PageLayout title={t.workout_detail_title} actions={pageActions}>
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
-      {!detail ? (
+      {isLoading || !detail ? (
         <Card className="text-sm text-zinc-600">{t.loading}</Card>
       ) : (
         <>

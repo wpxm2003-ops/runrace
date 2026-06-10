@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import WorkoutDetailContent from "../_components/WorkoutDetailContent";
 import { workoutStaticParamIds } from "@/lib/workoutRoute";
+import { getAppUrl } from "@/lib/appUrl";
 
 export function generateStaticParams() {
   return workoutStaticParamIds();
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
+  const appUrl = getAppUrl();
   return {
     openGraph: {
       title: "RunRace",

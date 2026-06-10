@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -19,20 +19,17 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
+import { ChallengeListItem } from "@/app/_components/ChallengeListItem";
 import {
   RacePhaseFilter,
   type RacePhaseFilterValue,
 } from "@/app/_components/RacePhaseFilter";
-import { challengeDetailHref } from "@/lib/challengeRoute";
-import { formatDateRange } from "@/lib/format";
-import { formatGoalDistance } from "@/lib/units";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
 /** 내가 참여한 레이스 — 예정·진행중 / 종료 2탭 + 무한스크롤. */
 function MyRacesSection({ user }: { user: User }) {
-  const { t, locale } = useLocale();
-  const { unit } = useUnit();
+  const { t } = useLocale();
   const [phase, setPhase] = useState<RacePhaseFilterValue>("active");
   const { data: pages, size, setSize, isLoading, isValidating, error } =
     useMyChallengeListInfinite(user, phase);
@@ -41,25 +38,11 @@ function MyRacesSection({ user }: { user: User }) {
     void setSize(1);
   }, [phase, setSize]);
 
-  const items = useMemo(() => (pages ? pages.flatMap((p) => p.items) : []), [pages]);
+  const items = pages ? pages.flatMap((p) => p.items) : [];
   const hasNext = pages ? (pages[pages.length - 1]?.hasNext ?? false) : false;
   const initialLoading = isLoading && !pages;
 
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasNext) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && !isValidating) {
-          void setSize((s) => s + 1);
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasNext, isValidating, setSize, size]);
+  const sentinelRef = useInfiniteScroll({ hasNext, isValidating, setSize, size });
 
   const labels: Record<RacePhaseFilterValue, string> = {
     active: t.races_filter_active,
@@ -86,26 +69,7 @@ function MyRacesSection({ user }: { user: User }) {
         ) : (
           <>
             {items.map((c) => (
-              <a
-                key={c.id}
-                href={challengeDetailHref(c.id)}
-                className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-medium">{c.title}</div>
-                  <ChallengePhaseBadge
-                    startAt={c.startAt}
-                    endAt={c.endAt}
-                    apiPhase={c.phase}
-                  />
-                </div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  {t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  {formatDateRange(c.startAt, c.endAt, locale)}
-                </div>
-              </a>
+              <ChallengeListItem key={c.id} challenge={c} />
             ))}
             {hasNext ? (
               <div ref={sentinelRef} className="py-3 text-center text-sm text-zinc-400">

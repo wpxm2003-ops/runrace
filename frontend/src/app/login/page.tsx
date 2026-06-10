@@ -24,6 +24,7 @@ import { nativeNavigate } from "@/lib/nativeNav";
 import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
 import { markLoggedIn } from "@/lib/AuthProvider";
 import { useLocale } from "@/lib/i18n";
+import { Button } from "@/app/_components/ui/Button";
 
 function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string {
   const msg = String(e);
@@ -126,14 +127,14 @@ function LoginContent() {
         )}
 
         <div className="mt-6">
-          <button
-            type="button"
+          <Button
+            variant="primary"
             disabled={busy || inApp}
             onClick={signInGoogle}
-            className="h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
+            className="h-11 w-full disabled:opacity-50"
           >
             {busy ? t.login_busy : t.login_google}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

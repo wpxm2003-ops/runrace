@@ -1,26 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiUrl } from "@/lib/api/client";
+import { useWorkoutShare } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { useMemo } from "react";
 
 type PathPoint = { lat: number; lng: number };
-
-type WorkoutShare = {
-  durationSec: number;
-  distanceM: number;
-  calories: number;
-  avgPaceSecPerKm: number | null;
-  startedAt: string;
-  path: PathPoint[];
-  workoutType: "GPS" | "INDOOR";
-  imageUrl: string | null;
-};
 
 function normalizePath(
   points: PathPoint[],
@@ -99,24 +88,13 @@ function PathSvg({ path, noRouteLabel }: { path: PathPoint[]; noRouteLabel: stri
 
 export default function WorkoutShareContent() {
   const params = useParams();
-  const id = params?.id as string | undefined;
+  const rawId = params?.id as string | undefined;
+  const id = useMemo(() => (rawId ? parseInt(rawId, 10) : null), [rawId]);
 
-  const [data, setData] = useState<WorkoutShare | null>(null);
-  const [error, setError] = useState<string | null>(null);
   // AppShell(Provider) 안이라 앱 전역 언어·단위를 그대로 따른다 — 헤더에서 바꾸면 즉시 반영.
   const { t, locale } = useLocale();
   const { unit, setUnit } = useUnit();
-
-  useEffect(() => {
-    if (!id) return;
-    fetch(apiUrl(`/api/workouts/${id}/share`), { cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status}`);
-        return res.json() as Promise<WorkoutShare>;
-      })
-      .then(setData)
-      .catch((e: unknown) => setError(String(e)));
-  }, [id]);
+  const { data, error } = useWorkoutShare(Number.isFinite(id) ? id : null);
 
   if (error) {
     return (

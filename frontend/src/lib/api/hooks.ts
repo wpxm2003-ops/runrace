@@ -12,11 +12,12 @@ import {
   fetchActiveCount,
   fetchMyChallengesPage,
   fetchChallengeWorkouts,
+  fetchChallengeWorkout,
   fetchPendingApprovals,
   fetchRejectedApprovals,
 } from "./challenges";
 import { fetchFriends } from "./friends";
-import { fetchWorkout, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
+import { fetchWorkout, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
 import { SWR_ERROR_RETRY } from "./swrConfig";
 
@@ -242,6 +243,30 @@ export function useWorkoutDetail(workoutId: number | null, user: User | null) {
 
 export function invalidateWorkoutDetail(workoutId: number, userId: string) {
   void globalMutate(["workout", workoutId, userId]);
+}
+
+/** 레이스 맥락에서 특정 운동 상세 (타인 기록도 포함) */
+export function useChallengeWorkoutDetail(
+  workoutId: number | null,
+  challengeId: number | null,
+  user: User | null,
+) {
+  return useSWR(
+    user && workoutId != null && challengeId != null
+      ? (["challenge-workout", challengeId, workoutId, user.uid] as const)
+      : null,
+    () => fetchChallengeWorkout(challengeId!, workoutId!, user!),
+    BASE_CONFIG,
+  );
+}
+
+/** 공개 공유 페이지용 운동 데이터 (인증 불필요, id 변경 시 재요청). */
+export function useWorkoutShare(id: number | null) {
+  return useSWR(
+    id != null ? (["workout-share", id] as const) : null,
+    () => fetchWorkoutShare(id!),
+    { ...BASE_CONFIG, revalidateOnFocus: false },
+  );
 }
 
 // ── 내 정보 (닉네임 포함) ────────────────────────────────────────────────────

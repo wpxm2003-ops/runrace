@@ -186,3 +186,15 @@ export type RejectedApproval = {
 
 /** 단일 식별자만 돌려주는 생성 응답(대결/운동 공용). */
 export type CreatedId = { id: number };
+
+/** 공개 공유 페이지용 운동 데이터 (인증 불필요). */
+export type WorkoutShare = {
+  durationSec: number;
+  distanceM: number;
+  calories: number;
+  avgPaceSecPerKm: number | null;
+  startedAt: string;
+  path: LatLng[];
+  workoutType: WorkoutType;
+  imageUrl: string | null;
+};

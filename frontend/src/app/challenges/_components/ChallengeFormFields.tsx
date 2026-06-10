@@ -2,6 +2,7 @@
 
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
+import { Button } from "@/app/_components/ui/Button";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 
 type FormHandlers = {
@@ -139,14 +140,14 @@ export function ChallengeFormFields({
           <p className="mt-6 text-xs leading-relaxed text-black">{submitNotice}</p>
         ) : null}
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
           disabled={disabled || submitting || !!formSuccess}
           onClick={onSubmit}
-          className={`${submitNotice ? "mt-2" : "mt-6"} h-11 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300`}
+          className={`${submitNotice ? "mt-2" : "mt-6"} h-11 w-full`}
         >
           {submitting ? submitBusyLabel : submitLabel}
-        </button>
+        </Button>
       </Card>
     </>
   );

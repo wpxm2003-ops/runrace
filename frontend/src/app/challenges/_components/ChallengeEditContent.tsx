@@ -4,7 +4,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormFields";
 import { useChallengeForm } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
-import { fetchChallengeDetail, updateChallenge } from "@/lib/api";
+import { useChallengeDetail, updateChallenge } from "@/lib/api";
 import { challengeDetailHref, challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { toDateTimeInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -13,18 +13,18 @@ import { useUnit } from "@/lib/UnitContext";
 import { goalInputFromKm } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export default function ChallengeEditContent() {
   const params = useParams();
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
-  const { user } = useRequireAuth(id ? challengeEditHref(id) : undefined);
+  const { user, loading: authLoading } = useRequireAuth(id ? challengeEditHref(id) : undefined);
   const { t } = useLocale();
   const { unit } = useUnit();
   const [memberCount, setMemberCount] = useState(1);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  // 현재 id에 대해 폼 초기화가 완료됐는지 추적 (SWR 재검증 시 form.reset 중복 방지)
+  const initializedIdRef = useRef<number | null>(null);
 
   const { labels, hints, validationMsgs, validateOptions } =
     useChallengeFormMessages(memberCount);
@@ -34,31 +34,39 @@ export default function ChallengeEditContent() {
     hints,
   });
 
+  const {
+    data: detail,
+    isLoading,
+    error: fetchError,
+  } = useChallengeDetail(id, user, authLoading);
+
+  // 상세 데이터가 처음 로드됐을 때 폼 초기화
   useEffect(() => {
-    if (!id) {
-      setLoadError(t.detail_no_id);
+    if (!detail || !id || initializedIdRef.current === id) return;
+
+    if (!detail.showManage) {
+      nativeNavigate(challengeDetailHref(id));
       return;
     }
-    if (!user) return;
-    fetchChallengeDetail(id, user)
-      .then((d) => {
-        if (!d.showManage) {
-          nativeNavigate(challengeDetailHref(id));
-          return;
-        }
-        setMemberCount(d.memberCount);
-        form.reset({
-          title: d.title,
-          goalKm: goalInputFromKm(d.goalKm, unit),
-          maxMembers: String(d.maxMembers),
-          startAt: toDateTimeInputValue(d.startAt),
-          endAt: d.endAt ? toDateTimeInputValue(d.endAt) : "",
-        });
-        setLoaded(true);
-      })
-      .catch((e) => setLoadError(String(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- id·user 변경 시에만 재조회
-  }, [id, user, t.detail_no_id]);
+
+    initializedIdRef.current = id;
+    setMemberCount(detail.memberCount);
+    form.reset({
+      title: detail.title,
+      goalKm: goalInputFromKm(detail.goalKm, unit),
+      maxMembers: String(detail.maxMembers),
+      startAt: toDateTimeInputValue(detail.startAt),
+      endAt: detail.endAt ? toDateTimeInputValue(detail.endAt) : "",
+    });
+  }, [detail, id, unit, form]);
+
+  // id가 바뀌면 초기화 상태 리셋
+  useEffect(() => {
+    initializedIdRef.current = null;
+  }, [id]);
+
+  const loaded = initializedIdRef.current === id && !!detail;
+  const loadError = !id ? t.detail_no_id : (fetchError ? String(fetchError) : null);
 
   async function onSubmit() {
     if (!user || !id || !loaded) return;
@@ -80,6 +88,7 @@ export default function ChallengeEditContent() {
   }
 
   const error = form.formError ?? loadError;
+  const showLoading = isLoading && !detail;
 
   return (
     <PageLayout title={t.edit_title}>
@@ -100,7 +109,7 @@ export default function ChallengeEditContent() {
         submitLabel={t.edit_btn}
         submitBusyLabel={t.edit_btn_busy}
         submitting={submitting}
-        disabled={!loaded || !!loadError}
+        disabled={showLoading || !loaded || !!loadError}
         onSubmit={onSubmit}
       />
     </PageLayout>

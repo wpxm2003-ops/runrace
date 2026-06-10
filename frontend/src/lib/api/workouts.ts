@@ -1,12 +1,13 @@
 import type { User } from "firebase/auth";
 import { compressImageForUpload } from "@/lib/compressImage";
-import { apiFetch, apiUrl } from "./client";
+import { apiFetch, apiUrl, publicFetch } from "./client";
 import type {
   CreatedId,
   IndoorRunCreateBody,
   WorkoutCreateBody,
   WorkoutDetail,
   WorkoutListItem,
+  WorkoutShare,
   WorkoutSummary,
 } from "./types";
 
@@ -41,6 +42,11 @@ export function createIndoorRun(body: IndoorRunCreateBody, user: User) {
 /** 실내러닝 승인/거부 투표. */
 export function voteIndoorRun(workoutId: number, approved: boolean, user: User) {
   return apiFetch<void>(`/api/workouts/${workoutId}/vote`, { method: "POST", user, body: { approved } });
+}
+
+/** 공개 공유 페이지용 운동 데이터 (인증 불필요). */
+export function fetchWorkoutShare(id: number) {
+  return publicFetch<WorkoutShare>(`/api/workouts/${id}/share`);
 }
 
 /** 이미지 업로드 — multipart/form-data. URL 반환. */

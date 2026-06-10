@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ChallengeDetailContent from "../_components/ChallengeDetailContent";
 import { challengeStaticParamIds, parseChallengeId } from "@/lib/challengeRoute";
 import { resolveServerApiBaseUrl } from "@/lib/serverApiBase";
+import { getAppUrl } from "@/lib/appUrl";
 
 export function generateStaticParams() {
   return challengeStaticParamIds();
@@ -35,7 +36,7 @@ export async function generateMetadata({
     const res = await fetch(`${serverApiBase}/api/challenges/${id}`, { cache: "force-cache" });
     if (!res.ok) return {};
     const detail = await res.json() as import("@/lib/api/types").ChallengeDetail;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
+    const appUrl = getAppUrl();
     const url = `${appUrl}/challenges/${id}`;
     const title = `${detail.title} | RunRace`;
     const description = `🏃 ${detail.goalKm}km · 👥 ${detail.memberCount}`;

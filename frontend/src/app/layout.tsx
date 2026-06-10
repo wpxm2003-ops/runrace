@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "./_components/AppShell";
+import { getAppUrl } from "@/lib/appUrl";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://runrace.co.kr";
+const APP_URL = getAppUrl();
 
 export const metadata: Metadata = {
   title: "RunRace",
