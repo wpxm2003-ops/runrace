@@ -107,20 +107,20 @@ cd ~/runrace
 git pull origin main
 
 cd backend
-MAVEN_OPTS="-Xmx512m" ./mvnw -q -DskipTests package
+MAVEN_OPTS="-Xmx512m" ./mvnw -q clean package -DskipTests
 
 sudo systemctl restart runrace
 ```
 
-### 배포 확인
 
-```bash
-# 실시간 로그
-sudo journalctl -u runrace -f
+---
 
-# 기동 확인 (Started BackendApplication 나오면 OK)
-sudo journalctl -u runrace -n 30 --no-pager
+## 트러블슈팅
 
-# API 응답 확인
-curl http://localhost:8081/actuator/health
-```
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| 빌드 중 멈춤 / 서버 다운 | RAM 부족(OOM) | 스왑 확인(`free -h`) 후 빌드. 스왑 없으면 위 "스왑 재설정" |
+| `zip file is empty` 빌드 에러 | 이전에 죽은 빌드가 깨진 jar를 남김 | `./mvnw clean package` (clean으로 제거) |
+| `Access key ID cannot be blank` 기동 실패 | 손으로 `java -jar` 실행해 환경변수 누락 | `sudo systemctl restart runrace` 로 실행 |
+| 웹만 옛 서버로 접속(타임아웃), 앱은 정상 | 브라우저/Service Worker 캐시 | F12 → Application → Clear site data |
+| 재부팅 후 백엔드 안 뜸 | — | `runrace.service`는 enabled라 자동 기동. 안 뜨면 `systemctl status runrace` 확인 |
