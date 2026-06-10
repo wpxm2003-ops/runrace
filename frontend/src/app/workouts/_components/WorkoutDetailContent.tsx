@@ -89,9 +89,9 @@ export default function WorkoutDetailContent() {
     setDeleteError(null);
     try {
       await deleteWorkout(id, user);
+      nativeNavigate("/records");
       invalidateWorkoutDetail(id, user.uid);
       invalidateWorkoutLists(user.uid);
-      nativeNavigate("/records");
     } catch (e) {
       setDeleteError(String(e));
       setDeleting(false);
