@@ -253,6 +253,13 @@ export default function ChallengeDetailContent() {
               <ChallengePhaseBadge
                 startAt={detail.startAt}
                 endAt={detail.endAt}
+                phase={
+                  detail.hasEnded
+                    ? "ended"
+                    : detail.hasStarted
+                      ? "in_progress"
+                      : "scheduled"
+                }
               />
             </div>
             <div className="mt-2 text-sm text-zinc-600">
