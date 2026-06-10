@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -34,9 +34,10 @@ function MyRacesSection({ user }: { user: User }) {
   const { data: pages, size, setSize, isLoading, isValidating, error } =
     useMyChallengeListInfinite(user, phase);
 
-  useEffect(() => {
+  function handlePhaseChange(newPhase: RacePhaseFilterValue) {
+    setPhase(newPhase);
     void setSize(1);
-  }, [phase, setSize]);
+  }
 
   const items = pages ? pages.flatMap((p) => p.items) : [];
   const hasNext = pages ? (pages[pages.length - 1]?.hasNext ?? false) : false;
@@ -55,7 +56,7 @@ function MyRacesSection({ user }: { user: User }) {
         <div className="text-lg font-semibold">{t.my_races_heading}</div>
         <RacePhaseFilter
           value={phase}
-          onChange={setPhase}
+          onChange={handlePhaseChange}
           labels={labels}
           ariaLabel={t.races_filter_label}
         />
