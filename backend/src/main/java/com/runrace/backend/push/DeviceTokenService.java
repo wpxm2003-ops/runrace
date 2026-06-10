@@ -16,18 +16,20 @@ public class DeviceTokenService {
 
   @Transactional
   public void upsert(UUID userId, String platform, String fcmToken) {
-    DeviceToken token =
-        deviceTokenRepository
-            .findByUserIdAndPlatform(userId, platform)
-            .orElseGet(
-                () -> {
-                  DeviceToken created = new DeviceToken();
-                  created.setUser(appUserRepository.getReferenceById(userId));
-                  created.setPlatform(platform);
-                  return created;
-                });
-    token.setFcmToken(fcmToken);
-    token.setUpdatedAt(OffsetDateTime.now());
+    OffsetDateTime now = OffsetDateTime.now();
+    DeviceToken token = deviceTokenRepository
+        .findByUserIdAndPlatform(userId, platform)
+        .orElseGet(() -> DeviceToken.builder()
+            .user(appUserRepository.getReferenceById(userId))
+            .platform(platform)
+            .fcmToken(fcmToken)
+            .updatedAt(now)
+            .build());
+
+    // 기존 행이면 토큰만 갱신
+    if (token.getId() != null) {
+      token.updateToken(fcmToken, now);
+    }
     deviceTokenRepository.save(token);
   }
 }

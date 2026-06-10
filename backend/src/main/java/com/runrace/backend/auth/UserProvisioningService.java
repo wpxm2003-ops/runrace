@@ -35,29 +35,31 @@ public class UserProvisioningService {
       String displayName,
       String provider,
       String langHint) {
-    AppUser user = appUserRepository.findByFirebaseUid(firebaseUid).orElseGet(AppUser::new);
-    boolean isNew = user.getId() == null;
 
-    // 변경이 있을 때만 write — 기존 사용자의 동일 프로필 재방문은 SELECT만으로 끝낸다.
-    boolean changed = isNew;
-    changed |= !Objects.equals(user.getEmail(), email);
-    changed |= !Objects.equals(user.getDisplayName(), displayName);
-    changed |= !Objects.equals(user.getProvider(), provider);
-    if (!changed) {
-      return user;
+    AppUser existing = appUserRepository.findByFirebaseUid(firebaseUid).orElse(null);
+
+    if (existing != null) {
+      // 변경이 있을 때만 dirty — 동일 프로필 재방문은 SELECT만으로 끝낸다.
+      boolean changed = !Objects.equals(existing.getEmail(), email)
+          || !Objects.equals(existing.getDisplayName(), displayName)
+          || !Objects.equals(existing.getProvider(), provider);
+      if (!changed) return existing;
+
+      existing.updateProfile(firebaseUid, email, displayName, provider);
+      return appUserRepository.save(existing);
     }
 
-    user.setFirebaseUid(firebaseUid);
-    user.setEmail(email);
-    user.setDisplayName(displayName);
-    user.setProvider(provider);
-    if (isNew) {
-      String lang = normalizeLang(langHint);
-      user.setCreatedAt(OffsetDateTime.now());
-      user.setLangCd(lang);
-      user.setNickname(generateUniqueNickname(lang));
-    }
-    return appUserRepository.save(user);
+    String lang = normalizeLang(langHint);
+    AppUser newUser = AppUser.builder()
+        .firebaseUid(firebaseUid)
+        .email(email)
+        .displayName(displayName)
+        .provider(provider)
+        .createdAt(OffsetDateTime.now())
+        .langCd(lang)
+        .nickname(generateUniqueNickname(lang))
+        .build();
+    return appUserRepository.save(newUser);
   }
 
   private static String normalizeLang(String langHint) {

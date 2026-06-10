@@ -4,7 +4,6 @@ import com.runrace.backend.auth.dto.LanguageUpdateRequest;
 import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
 import com.runrace.backend.user.AppUser;
-import com.runrace.backend.user.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
 
-  private final AppUserRepository appUserRepository;
   private final AccountService accountService;
 
   @PostMapping("/auth/login")
@@ -30,7 +28,7 @@ public class AuthController {
 
   @GetMapping("/me")
   public ResponseEntity<MeResponse> me(AuthPrincipal principal) {
-    AppUser user = appUserRepository.getRequired(principal.userId());
+    AppUser user = accountService.getUser(principal.userId());
     return ResponseEntity.ok(MeResponse.from(user));
   }
 

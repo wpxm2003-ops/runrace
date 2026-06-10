@@ -14,15 +14,18 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "challenge_workout")
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class ChallengeWorkout {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,7 +49,20 @@ public class ChallengeWorkout {
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
+  @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(name = "approval_status", nullable = false)
   private ApprovalStatus approvalStatus = ApprovalStatus.APPROVED;
+
+  // ── 도메인 메서드 ──────────────────────────────────────────────
+
+  /** 승인 처리. APPROVED로 전이한다. */
+  public void approve() {
+    this.approvalStatus = ApprovalStatus.APPROVED;
+  }
+
+  /** 거부 처리. REJECTED로 전이한다. */
+  public void reject() {
+    this.approvalStatus = ApprovalStatus.REJECTED;
+  }
 }

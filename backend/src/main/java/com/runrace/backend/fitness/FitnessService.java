@@ -1,6 +1,7 @@
 package com.runrace.backend.fitness;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.challenge.Challenge;
 import com.runrace.backend.challenge.ChallengeMember;
 import com.runrace.backend.challenge.ChallengeMemberRepository;
 import com.runrace.backend.challenge.ChallengeProgressService;
@@ -11,6 +12,7 @@ import com.runrace.backend.user.AppUserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ public class FitnessService {
   private final DailyDistanceRepository dailyDistanceRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
   private final ChallengeProgressService challengeProgressService;
+  private final ChallengeService challengeService;
 
   @Transactional
   public UpsertResult upsertDailyDistance(
@@ -34,8 +37,7 @@ public class FitnessService {
     DailyDistance record = findOrCreateRecord(me, date, source);
 
     BigDecimal previousKm = record.getDistanceKm() == null ? BigDecimal.ZERO : record.getDistanceKm();
-    record.setDistanceKm(distanceKm);
-    record.setUpdatedAt(OffsetDateTime.now());
+    record.updateDistance(distanceKm, OffsetDateTime.now());
     dailyDistanceRepository.save(record);
 
     BigDecimal delta = distanceKm.subtract(previousKm);
@@ -49,29 +51,34 @@ public class FitnessService {
   private DailyDistance findOrCreateRecord(AppUser user, LocalDate date, String source) {
     return dailyDistanceRepository
         .findByUserIdAndDateAndSource(user.getId(), date, source)
-        .orElseGet(
-            () -> {
-              DailyDistance record = new DailyDistance();
-              record.setUser(user);
-              record.setDate(date);
-              record.setSource(source);
-              record.setCreatedAt(OffsetDateTime.now());
-              return record;
-            });
+        .orElseGet(() -> DailyDistance.builder()
+            .user(user)
+            .date(date)
+            .source(source)
+            .createdAt(OffsetDateTime.now())
+            .updatedAt(OffsetDateTime.now())
+            .distanceKm(BigDecimal.ZERO)
+            .build());
   }
 
-  /** 진행 중인 모든 대결의 누적 거리에 델타를 더하고(음수 방지), 완주 여부를 갱신한다. */
+  /**
+   * 진행 중인 모든 대결의 누적 거리에 델타를 더하고(음수 방지), 완주/마일스톤/추월 이벤트를 처리한다.
+   * applyDistanceToMember를 공통 경로로 사용하여 이벤트 발행 누락을 방지한다.
+   */
   private void applyDeltaToActiveChallenges(AppUser user, BigDecimal delta) {
     OffsetDateTime now = OffsetDateTime.now();
-    for (ChallengeMember member : challengeMemberRepository.findAllActiveForUser(user.getId(), now)) {
-      if (ChallengeService.isEnded(member.getChallenge(), now)) {
-        continue;
-      }
-      BigDecimal next = member.getTotalKm().add(delta).max(BigDecimal.ZERO);
-      member.setTotalKm(next);
-      member.setLastSyncAt(now);
-      challengeProgressService.onMemberProgress(member, next);
-      challengeMemberRepository.save(member);
+    List<ChallengeMember> activeMembers =
+        challengeMemberRepository.findAllActiveForUser(user.getId(), now);
+    for (ChallengeMember member : activeMembers) {
+      Challenge challenge = member.getChallenge();
+      if (ChallengeService.isEnded(challenge, now)) continue;
+      // endIfSolo: 방장 혼자 남은 레이스 정리
+      if (challengeService.endIfSolo(challenge, now)) continue;
+      // 음수 델타(수정)는 0 아래로 내려가지 않도록 보정 후 공통 경로 사용
+      BigDecimal effectiveDelta = member.getTotalKm().add(delta).max(BigDecimal.ZERO)
+          .subtract(member.getTotalKm());
+      if (effectiveDelta.signum() == 0) continue;
+      challengeProgressService.applyDistanceToMember(member, effectiveDelta, now);
     }
   }
 

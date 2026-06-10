@@ -16,7 +16,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 내 계정 관련 쓰기(닉네임 변경·탈퇴). */
+/** 내 계정 관련 읽기/쓰기(본인 조회, 닉네임 변경, 탈퇴). */
 @Service
 @RequiredArgsConstructor
 public class AccountService {
@@ -26,6 +26,11 @@ public class AccountService {
 
   private final AppUserRepository appUserRepository;
   private final CacheManager cacheManager;
+
+  @Transactional(readOnly = true)
+  public AppUser getUser(UUID userId) {
+    return appUserRepository.getRequired(userId);
+  }
 
   @Transactional
   public AppUser updateNickname(UUID userId, String rawNickname) {
@@ -40,7 +45,7 @@ public class AccountService {
     if (!trimmed.equals(user.getNickname()) && appUserRepository.existsByNickname(trimmed)) {
       throw ApiException.badRequest("nickname_taken");
     }
-    user.setNickname(trimmed);
+    user.changeNickname(trimmed);
     return appUserRepository.save(user);
   }
 
@@ -51,7 +56,7 @@ public class AccountService {
       throw ApiException.badRequest("invalid_lang_cd");
     }
     AppUser user = appUserRepository.getRequired(userId);
-    user.setLangCd(langCd);
+    user.changeLangCd(langCd);
     return appUserRepository.save(user);
   }
 

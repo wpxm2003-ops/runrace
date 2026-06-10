@@ -45,15 +45,15 @@ public class ErrorLogService {
   private void persist(
       String source, String message, String stack, String context, UUID userId, String requestId) {
     try {
-      AppErrorLog entry = new AppErrorLog();
-      entry.setSource(source);
-      entry.setMessage(truncate(message == null ? "(no message)" : message, MAX_MESSAGE));
-      entry.setStack(truncate(stack, MAX_TEXT));
-      entry.setContext(truncate(context, MAX_TEXT));
-      entry.setUserId(userId);
-      entry.setRequestId(requestId);
-      entry.setCreatedAt(OffsetDateTime.now());
-      repository.save(entry);
+      repository.save(AppErrorLog.builder()
+          .source(source)
+          .message(truncate(message == null ? "(no message)" : message, MAX_MESSAGE))
+          .stack(truncate(stack, MAX_TEXT))
+          .context(truncate(context, MAX_TEXT))
+          .userId(userId)
+          .requestId(requestId)
+          .createdAt(OffsetDateTime.now())
+          .build());
     } catch (Exception e) {
       // 로그 적재 실패가 원래 흐름을 깨지 않도록 삼킨다.
       log.warn("Failed to persist error log: {}", e.getMessage());

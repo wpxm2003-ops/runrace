@@ -12,16 +12,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "daily_distance")
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class DailyDistance {
   @Id
   @UuidGenerator
@@ -45,5 +48,12 @@ public class DailyDistance {
 
   @Column(name = "updated_at", nullable = false)
   private OffsetDateTime updatedAt;
-}
 
+  // ── 도메인 메서드 ──────────────────────────────────────────────
+
+  /** 동일 소스·날짜의 거리를 새 값으로 갱신한다(upsert 업데이트 경로). */
+  public void updateDistance(BigDecimal distanceKm, OffsetDateTime updatedAt) {
+    this.distanceKm = distanceKm;
+    this.updatedAt = updatedAt;
+  }
+}

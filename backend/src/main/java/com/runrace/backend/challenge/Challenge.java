@@ -12,15 +12,18 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "challenge")
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Challenge {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,10 +55,49 @@ public class Challenge {
   @JoinColumn(name = "winner_user_id")
   private AppUser winner;
 
+  @Builder.Default
   @Column(name = "is_ended", nullable = false)
   private boolean isEnded = false;
 
   /** 생성 시점 작성자 UI 언어로 고정. 공개 목록 언어별 필터에 사용한다(번역 아님). */
+  @Builder.Default
   @Column(name = "lang_cd", nullable = false, length = 5)
   private String langCd = "ko";
+
+  // ── 도메인 메서드 ──────────────────────────────────────────────
+
+  /** 방 속성 일괄 수정 (제목·목표·정원·기간). 수정 API 경로에서만 사용한다. */
+  public void updateRoom(String title, BigDecimal goalKm, int maxMembers,
+                          OffsetDateTime startAt, OffsetDateTime endAt) {
+    this.title = title;
+    this.goalKm = goalKm;
+    this.maxMembers = maxMembers;
+    this.startAt = startAt;
+    this.endAt = endAt;
+  }
+
+  /**
+   * 최초 완주자를 승자로 확정한다. 이미 승자가 있으면 무시한다.
+   * winner null 체크를 호출자마다 중복하지 않아도 된다.
+   */
+  public void declareWinner(AppUser user) {
+    if (this.winner == null) {
+      this.winner = user;
+    }
+  }
+
+  /** 승자를 초기화한다(운동 삭제·되돌림용). */
+  public void clearWinner() {
+    this.winner = null;
+  }
+
+  /** 대결을 종료 상태로 전이한다. */
+  public void end() {
+    this.isEnded = true;
+  }
+
+  /** 대결 종료 상태를 초기화한다(운동 삭제·되돌림용). */
+  public void resetEnded() {
+    this.isEnded = false;
+  }
 }

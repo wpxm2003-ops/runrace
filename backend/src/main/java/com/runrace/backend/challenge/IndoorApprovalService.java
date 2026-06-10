@@ -39,6 +39,14 @@ public class IndoorApprovalService {
     if (distanceM <= 0) return;
     OffsetDateTime now = OffsetDateTime.now();
     List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
+    if (activeMembers.isEmpty()) return;
+
+    // N+1 방지: 관련 챌린지 전체 멤버를 단일 쿼리로 사전 로드
+    List<Long> challengeIds = activeMembers.stream()
+        .map(m -> m.getChallenge().getId()).toList();
+    Map<Long, List<ChallengeMember>> membersByChallenge =
+        challengeMemberRepository.findAllByChallengeIdIn(challengeIds).stream()
+            .collect(Collectors.groupingBy(m -> m.getChallenge().getId()));
 
     for (ChallengeMember member : activeMembers) {
       Challenge challenge = member.getChallenge();
@@ -47,32 +55,33 @@ public class IndoorApprovalService {
       if (challengeWorkoutRepository.existsByChallengeIdAndWorkoutSessionId(
           challenge.getId(), session.getId())) continue;
 
-      ChallengeWorkout cw = new ChallengeWorkout();
-      cw.setChallenge(challenge);
-      cw.setWorkoutSession(session);
-      cw.setUser(member.getUser());
-      cw.setAppliedDistanceM(distanceM);
-      cw.setApprovalStatus(ApprovalStatus.PENDING);
-      cw.setCreatedAt(now);
-      ChallengeWorkout saved = challengeWorkoutRepository.save(cw);
+      ChallengeWorkout saved = challengeWorkoutRepository.save(ChallengeWorkout.builder()
+          .challenge(challenge)
+          .workoutSession(session)
+          .user(member.getUser())
+          .appliedDistanceM(distanceM)
+          .approvalStatus(ApprovalStatus.PENDING)
+          .createdAt(now)
+          .build());
 
-      List<ChallengeMember> allMembers = challengeMemberRepository.findAllForChallenge(challenge.getId());
+      List<ChallengeMember> allMembers =
+          membersByChallenge.getOrDefault(challenge.getId(), List.of());
       List<UUID> voterIds = new ArrayList<>();
       List<IndoorRunApproval> approvals = new ArrayList<>();
       for (ChallengeMember voter : allMembers) {
         if (voter.getUser().getId().equals(userId)) continue;
-        IndoorRunApproval approval = new IndoorRunApproval();
-        approval.setChallengeWorkout(saved);
-        approval.setVoter(voter.getUser());
-        approval.setCreatedAt(now);
-        approvals.add(approval);
+        approvals.add(IndoorRunApproval.builder()
+            .challengeWorkout(saved)
+            .voter(voter.getUser())
+            .createdAt(now)
+            .build());
         voterIds.add(voter.getUser().getId());
       }
       indoorRunApprovalRepository.saveAll(approvals);
 
       // 투표자가 없으면(혼자 참가 중) 즉시 승인
       if (voterIds.isEmpty()) {
-        saved.setApprovalStatus(ApprovalStatus.APPROVED);
+        saved.approve();
         challengeWorkoutRepository.save(saved);
         applyApprovedIndoorRun(saved.getId());
       } else {
@@ -83,13 +92,17 @@ public class IndoorApprovalService {
     }
   }
 
-  /** 전원 승인 시 호출 — 거리를 레이스 멤버 기록에 반영한다. */
+  /** 전원 승인 시 호출 — 거리를 레이스 멤버 기록에 반영한다.
+   * 동시 투표로 중복 호출될 수 있으므로 이미 APPROVED인 경우 skip(멱등성 보장). */
   @Transactional
   public void applyApprovedIndoorRun(Long challengeWorkoutId) {
     ChallengeWorkout cw = challengeWorkoutRepository.findById(challengeWorkoutId)
         .orElseThrow(() -> ApiException.notFound("challenge_workout_not_found"));
 
-    cw.setApprovalStatus(ApprovalStatus.APPROVED);
+    // 동시 투표로 이미 처리된 경우 — 거리 이중 반영 방지
+    if (cw.getApprovalStatus() == ApprovalStatus.APPROVED) return;
+
+    cw.approve();
     challengeWorkoutRepository.save(cw);
 
     Challenge challenge = cw.getChallenge();

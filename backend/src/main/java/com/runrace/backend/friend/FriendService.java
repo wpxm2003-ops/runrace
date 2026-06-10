@@ -33,13 +33,14 @@ public class FriendService {
   public FriendInvite createInvite(AuthPrincipal principal, int expireHours) {
     AppUser inviter = appUserRepository.getRequired(principal.userId());
 
-    FriendInvite invite = new FriendInvite();
-    invite.setInviter(inviter);
-    invite.setInviteCode(generateCode());
-    invite.setStatus(FriendInviteStatus.PENDING);
-    invite.setCreatedAt(OffsetDateTime.now());
-    invite.setExpiresAt(OffsetDateTime.now().plusHours(expireHours));
-    FriendInvite saved = friendInviteRepository.save(invite);
+    OffsetDateTime now = OffsetDateTime.now();
+    FriendInvite saved = friendInviteRepository.save(FriendInvite.builder()
+        .inviter(inviter)
+        .inviteCode(generateCode())
+        .status(FriendInviteStatus.PENDING)
+        .createdAt(now)
+        .expiresAt(now.plusHours(expireHours))
+        .build());
 
     eventPublisher.publishEvent(
         new FriendEvents.InviteCreated(inviter.getId(), saved.getInviteCode()));
@@ -60,8 +61,7 @@ public class FriendService {
     linkFriendship(inviter, me);
     linkFriendship(me, inviter);
 
-    invite.setStatus(FriendInviteStatus.ACCEPTED);
-    invite.setAcceptedUser(me);
+    invite.accept(me);
     friendInviteRepository.save(invite);
 
     eventPublisher.publishEvent(
@@ -78,8 +78,8 @@ public class FriendService {
       throw ApiException.conflict("not_pending");
     }
     if (invite.getExpiresAt().isBefore(OffsetDateTime.now())) {
-      invite.setStatus(FriendInviteStatus.EXPIRED);
-      friendInviteRepository.save(invite);
+    invite.expire();
+    friendInviteRepository.save(invite);
       throw ApiException.conflict("expired");
     }
     if (invite.getInviter().getId().equals(accepter.getId())) {
@@ -107,12 +107,12 @@ public class FriendService {
       throw ApiException.conflict("nudge_daily_limit");
     }
 
-    FriendNudge nudge = new FriendNudge();
-    nudge.setSender(sender);
-    nudge.setReceiver(receiver);
-    nudge.setMessage(trimmed);
-    nudge.setSentAt(OffsetDateTime.now());
-    friendNudgeRepository.save(nudge);
+    friendNudgeRepository.save(FriendNudge.builder()
+        .sender(sender)
+        .receiver(receiver)
+        .message(trimmed)
+        .sentAt(OffsetDateTime.now())
+        .build());
 
     // 외부 푸시(FCM)는 DB 트랜잭션 밖에서 — 커밋 후 처리(FriendNotifications)
     String senderNickname = sender.getNickname() != null ? sender.getNickname() : "친구";
@@ -125,11 +125,11 @@ public class FriendService {
     if (friendshipRepository.existsByUserIdAndFriendId(user.getId(), friend.getId())) {
       return;
     }
-    Friendship friendship = new Friendship();
-    friendship.setUser(user);
-    friendship.setFriend(friend);
-    friendship.setCreatedAt(OffsetDateTime.now());
-    friendshipRepository.save(friendship);
+    friendshipRepository.save(Friendship.builder()
+        .user(user)
+        .friend(friend)
+        .createdAt(OffsetDateTime.now())
+        .build());
   }
 
   private static String generateCode() {

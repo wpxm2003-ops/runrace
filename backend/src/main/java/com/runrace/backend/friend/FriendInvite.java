@@ -12,16 +12,19 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "friend_invite")
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class FriendInvite {
   @Id
   @UuidGenerator
@@ -47,5 +50,17 @@ public class FriendInvite {
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
-}
 
+  // ── 도메인 메서드 ──────────────────────────────────────────────
+
+  /** 초대를 수락한다. 수락자를 기록하고 상태를 ACCEPTED로 전이한다. */
+  public void accept(AppUser accepter) {
+    this.status = FriendInviteStatus.ACCEPTED;
+    this.acceptedUser = accepter;
+  }
+
+  /** 만료 처리. 상태를 EXPIRED로 전이한다. */
+  public void expire() {
+    this.status = FriendInviteStatus.EXPIRED;
+  }
+}

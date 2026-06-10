@@ -12,16 +12,20 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
+import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "challenge_member")
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class ChallengeMember {
   @Id
   @UuidGenerator
@@ -60,5 +64,30 @@ public class ChallengeMember {
       joinedAt = now;
     }
   }
-}
 
+  // ── 도메인 메서드 ──────────────────────────────────────────────
+
+  /** 누적 거리에 deltaKm를 더하고 마지막 동기화 시각을 갱신한다. */
+  public void addDistance(BigDecimal deltaKm, OffsetDateTime now) {
+    this.totalKm = this.totalKm.add(deltaKm);
+    this.lastSyncAt = now;
+  }
+
+  /** 누적 거리를 직접 설정하고 마지막 동기화 시각을 갱신한다(FitnessService 보정용). */
+  public void setDistanceAndSync(BigDecimal km, OffsetDateTime now) {
+    this.totalKm = km;
+    this.lastSyncAt = now;
+  }
+
+  /** 완주 시각을 현재 시각으로 기록한다. 이미 완주한 경우 무시한다. */
+  public void markFinished(@Nullable OffsetDateTime at) {
+    if (this.finishedAt == null) {
+      this.finishedAt = at != null ? at : OffsetDateTime.now();
+    }
+  }
+
+  /** 완주 상태를 초기화한다(운동 삭제·되돌림용). */
+  public void resetFinished() {
+    this.finishedAt = null;
+  }
+}

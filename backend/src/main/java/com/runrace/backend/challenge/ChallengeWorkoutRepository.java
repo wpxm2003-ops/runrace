@@ -19,16 +19,6 @@ public interface ChallengeWorkoutRepository extends JpaRepository<ChallengeWorko
       """)
   List<ChallengeWorkout> findAllByWorkoutSessionId(@Param("workoutSessionId") Long workoutSessionId);
 
-  @Query(
-      """
-      select cw from ChallengeWorkout cw
-      join fetch cw.workoutSession ws
-      join fetch ws.user u
-      where cw.challenge.id = :challengeId
-      order by ws.startedAt desc
-      """)
-  List<ChallengeWorkout> findAllForChallengeOrderByStartedDesc(@Param("challengeId") Long challengeId);
-
   /** 레이스에 반영된 운동만 — 실내러닝 PENDING/REJECTED 제외 */
   @Query(
       """

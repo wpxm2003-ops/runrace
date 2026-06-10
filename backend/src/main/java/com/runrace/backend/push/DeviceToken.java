@@ -11,9 +11,11 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
@@ -21,8 +23,9 @@ import org.hibernate.annotations.UuidGenerator;
     name = "device_token",
     uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "platform"}))
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class DeviceToken {
   @Id
   @UuidGenerator
@@ -40,5 +43,12 @@ public class DeviceToken {
 
   @Column(name = "updated_at", nullable = false)
   private OffsetDateTime updatedAt;
-}
 
+  // ── 도메인 메서드 ──────────────────────────────────────────────
+
+  /** FCM 토큰을 최신 값으로 갱신하고 업데이트 시각을 기록한다(upsert 업데이트 경로). */
+  public void updateToken(String fcmToken, OffsetDateTime updatedAt) {
+    this.fcmToken = fcmToken;
+    this.updatedAt = updatedAt;
+  }
+}

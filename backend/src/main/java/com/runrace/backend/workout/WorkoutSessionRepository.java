@@ -11,8 +11,6 @@ import org.springframework.data.repository.query.Param;
 public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long> {
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
-  List<WorkoutSession> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
-
   List<WorkoutSession> findAllByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
       UUID userId, OffsetDateTime from, OffsetDateTime to);
 

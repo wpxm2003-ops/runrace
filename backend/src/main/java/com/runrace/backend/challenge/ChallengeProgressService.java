@@ -6,7 +6,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -42,11 +44,22 @@ public class ChallengeProgressService {
     OffsetDateTime now = OffsetDateTime.now();
 
     List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
+    if (activeMembers.isEmpty()) return;
+
+    // N+1 방지: 관련 챌린지 전체 멤버를 단일 쿼리로 사전 로드
+    List<Long> challengeIds = activeMembers.stream()
+        .map(m -> m.getChallenge().getId()).toList();
+    Map<Long, List<ChallengeMember>> membersByChallenge =
+        challengeMemberRepository.findAllByChallengeIdIn(challengeIds).stream()
+            .collect(Collectors.groupingBy(m -> m.getChallenge().getId()));
+
     for (ChallengeMember member : activeMembers) {
       Challenge challenge = member.getChallenge();
       // 방장 혼자인 레이스는 무효 종료하고 거리 반영하지 않는다.
       if (challengeService.endIfSolo(challenge, now)) continue;
-      applyDistanceToMember(member, distanceKm, now);
+      List<ChallengeMember> allMembers =
+          membersByChallenge.getOrDefault(challenge.getId(), List.of());
+      applyDistanceToMemberWithContext(member, distanceKm, now, allMembers);
       recordWorkoutLink(challenge, workoutSessionId, userId, distanceM, now);
     }
   }
@@ -54,44 +67,63 @@ public class ChallengeProgressService {
   /**
    * 멤버 누적 거리에 deltaKm를 더하고, 완주/마일스톤/추월 이벤트를 발행한다.
    * 진행 중 트랜잭션 안에서 호출되는 것을 전제로 한다(GPS·실내러닝 승인 공통 경로).
+   * 단건 호출용 — 내부에서 전체 멤버를 조회한다.
    */
   public void applyDistanceToMember(ChallengeMember member, BigDecimal deltaKm, OffsetDateTime now) {
+    List<ChallengeMember> allMembers =
+        challengeMemberRepository.findAllForChallenge(member.getChallenge().getId());
+    applyDistanceToMemberWithContext(member, deltaKm, now, allMembers);
+  }
+
+  /**
+   * 사전 로드된 챌린지 멤버 목록을 받아 거리를 반영한다.
+   * 다중 챌린지 일괄 처리 경로(applyWorkoutDistance)에서 N+1 방지용으로 사용한다.
+   */
+  private void applyDistanceToMemberWithContext(
+      ChallengeMember member, BigDecimal deltaKm, OffsetDateTime now,
+      List<ChallengeMember> allChallengeMembers) {
     Challenge challenge = member.getChallenge();
     BigDecimal prevKm = member.getTotalKm();
     BigDecimal next = prevKm.add(deltaKm);
     BigDecimal goal = ChallengeService.goalKmAsDecimal(challenge);
 
-    // 순위 변동 감지: 업데이트 전 전체 멤버 조회
-    List<ChallengeMember> allMembers = challengeMemberRepository.findAllForChallenge(challenge.getId());
-
-    member.setTotalKm(next);
-    member.setLastSyncAt(now);
-    onMemberProgress(member, next);
+    member.addDistance(deltaKm, now);
+    onMemberProgress(member, next, allChallengeMembers);
     challengeMemberRepository.save(member);
 
-    publishMilestoneEvents(member, prevKm, next, goal, allMembers);
-    publishOvertakeEvent(member, prevKm, next, allMembers);
+    publishMilestoneEvents(member, prevKm, next, goal, allChallengeMembers);
+    publishOvertakeEvent(member, prevKm, next, allChallengeMembers);
   }
 
   /**
    * 멤버 누적 거리가 목표를 처음 달성하면 완주 시각을 기록하고, 아직 승자가 없으면 승자로 확정한다.
    * 진행 중 트랜잭션 안에서 호출되는 것을 전제로 한다.
+   * FitnessService 등 단건 경로용 — 내부에서 전체 멤버를 조회한다.
    */
   public void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm) {
+    List<ChallengeMember> allMembers =
+        challengeMemberRepository.findAllForChallenge(member.getChallenge().getId());
+    onMemberProgress(member, nextTotalKm, allMembers);
+  }
+
+  /**
+   * 사전 로드된 멤버 목록을 받아 완주/종료 처리한다.
+   * applyDistanceToMemberWithContext 에서 호출되며, findAllForChallenge 중복 조회를 방지한다.
+   */
+  private void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm,
+                                 List<ChallengeMember> allMembers) {
     Challenge challenge = member.getChallenge();
     if (nextTotalKm.compareTo(ChallengeService.goalKmAsDecimal(challenge)) >= 0
         && member.getFinishedAt() == null) {
-      member.setFinishedAt(OffsetDateTime.now());
-      if (challenge.getWinner() == null) {
-        challenge.setWinner(member.getUser());
-      }
+      member.markFinished(OffsetDateTime.now());
+      challenge.declareWinner(member.getUser());
       boolean allOtherFinished = challengeMemberRepository
           .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
       if (allOtherFinished) {
-        challenge.setEnded(true);
+        challenge.end();
         var winner = challenge.getWinner();
-        List<UUID> memberIds = challengeMemberRepository.findAllForChallenge(challenge.getId())
-            .stream().map(m -> m.getUser().getId()).toList();
+        List<UUID> memberIds = allMembers.stream()
+            .map(m -> m.getUser().getId()).toList();
         eventPublisher.publishEvent(new ChallengeEndedEvent(
             challenge.getId(), winner != null ? winner.getNickname() : null, memberIds));
       }
@@ -121,16 +153,15 @@ public class ChallengeProgressService {
           .findByChallengeIdAndUserId(challenge.getId(), userId)
           .ifPresent(member -> {
             BigDecimal next = member.getTotalKm().subtract(subtractKm).max(BigDecimal.ZERO);
-            member.setTotalKm(next);
-            member.setLastSyncAt(OffsetDateTime.now());
+            member.setDistanceAndSync(next, OffsetDateTime.now());
 
             // 목표 미달로 내려가면 완주 상태 초기화
             if (member.getFinishedAt() != null
                 && next.compareTo(ChallengeService.goalKmAsDecimal(challenge)) < 0) {
-              member.setFinishedAt(null);
-              challenge.setEnded(false);
+              member.resetFinished();
+              challenge.resetEnded();
               if (challenge.getWinner() != null && challenge.getWinner().getId().equals(userId)) {
-                challenge.setWinner(null);
+                challenge.clearWinner();
               }
               challengeRepository.save(challenge);
             }
@@ -196,12 +227,13 @@ public class ChallengeProgressService {
     if (challengeWorkoutRepository.existsByChallengeIdAndWorkoutSessionId(challengeId, workoutSessionId)) {
       return;
     }
-    ChallengeWorkout link = new ChallengeWorkout();
-    link.setChallenge(challenge);
-    link.setWorkoutSession(workoutSessionRepository.getReferenceById(workoutSessionId));
-    link.setUser(appUserRepository.getReferenceById(userId));
-    link.setAppliedDistanceM(appliedDistanceM);
-    link.setCreatedAt(now);
+    ChallengeWorkout link = ChallengeWorkout.builder()
+        .challenge(challenge)
+        .workoutSession(workoutSessionRepository.getReferenceById(workoutSessionId))
+        .user(appUserRepository.getReferenceById(userId))
+        .appliedDistanceM(appliedDistanceM)
+        .createdAt(now)
+        .build();
     challengeWorkoutRepository.save(link);
   }
 

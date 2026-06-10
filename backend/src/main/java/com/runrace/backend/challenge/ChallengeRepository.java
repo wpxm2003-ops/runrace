@@ -12,21 +12,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
   @Query("""
-      select distinct c from Challenge c
-      join fetch c.creator
-      join ChallengeMember cm on cm.challenge.id = c.id
-      where cm.user.id = :userId
-      order by c.createdAt desc
-      """)
-  List<Challenge> findAllForUser(@Param("userId") UUID userId);
-
-  @Query("""
-      select c from Challenge c
-      join fetch c.creator
-      """)
-  List<Challenge> findAllWithCreator();
-
-  @Query("""
       select c from Challenge c
       join fetch c.creator
       left join fetch c.winner

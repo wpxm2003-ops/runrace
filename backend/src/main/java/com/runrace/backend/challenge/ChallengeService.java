@@ -62,12 +62,17 @@ public class ChallengeService {
       throw ApiException.conflict("active_room_limit");
     }
 
-    Challenge challenge = new Challenge();
-    challenge.setCreator(creator);
-    challenge.setCreatedAt(OffsetDateTime.now());
-    // 언어는 생성 시점에만 고정한다(수정 시 변경하지 않음).
-    challenge.setLangCd(SUPPORTED_LANGS.contains(langCd) ? langCd : "ko");
-    applyRoomInput(challenge, title, goalKm, maxMembers, startAt, endAt);
+    Challenge challenge = Challenge.builder()
+        .creator(creator)
+        .createdAt(OffsetDateTime.now())
+        // 언어는 생성 시점에만 고정한다(수정 시 변경하지 않음).
+        .langCd(SUPPORTED_LANGS.contains(langCd) ? langCd : "ko")
+        .title(title.trim())
+        .goalKm(goalKm.setScale(3, RoundingMode.HALF_UP))
+        .maxMembers(maxMembers)
+        .startAt(startAt)
+        .endAt(endAt)
+        .build();
     Challenge saved = challengeRepository.save(challenge);
 
     challengeMemberRepository.save(newMember(saved, creator));
@@ -94,7 +99,7 @@ public class ChallengeService {
       throw ApiException.badRequest("max_members_too_small");
     }
 
-    applyRoomInput(challenge, title, goalKm, maxMembers, startAt, endAt);
+    challenge.updateRoom(title.trim(), goalKm.setScale(3, RoundingMode.HALF_UP), maxMembers, startAt, endAt);
     return challengeRepository.save(challenge);
   }
 
@@ -194,8 +199,8 @@ public class ChallengeService {
     if (challenge.isEnded()) return false;
     if (!hasStarted(challenge, now)) return false; // 모집 중(SCHEDULED)은 유지
     if (challengeMemberRepository.countByChallengeId(challenge.getId()) > 1) return false;
-    challenge.setEnded(true);
-    challenge.setWinner(null);
+    challenge.end();
+    challenge.clearWinner();
     challengeRepository.save(challenge);
     eventPublisher.publishEvent(
         new ChallengeEndedNoParticipantsEvent(challenge.getId(), challenge.getCreator().getId()));
@@ -212,8 +217,8 @@ public class ChallengeService {
     if (challenge.getEndAt() == null || !now.isAfter(challenge.getEndAt())) return false;
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challenge.getId());
     AppUser winner = resolveWinnerForDisplay(challenge, members);
-    challenge.setEnded(true);
-    challenge.setWinner(winner);
+    challenge.end();
+    if (winner != null) challenge.declareWinner(winner);
     challengeRepository.save(challenge);
     eventPublisher.publishEvent(new ChallengeEndedEvent(
         challenge.getId(),
@@ -386,25 +391,11 @@ public class ChallengeService {
   }
 
   private ChallengeMember newMember(Challenge challenge, AppUser user) {
-    ChallengeMember member = new ChallengeMember();
-    member.setChallenge(challenge);
-    member.setUser(user);
-    member.setTotalKm(BigDecimal.ZERO);
-    return member;
-  }
-
-  private void applyRoomInput(
-      Challenge challenge,
-      String title,
-      BigDecimal goalKm,
-      int maxMembers,
-      OffsetDateTime startAt,
-      OffsetDateTime endAt) {
-    challenge.setTitle(title.trim());
-    challenge.setGoalKm(goalKm.setScale(3, RoundingMode.HALF_UP));
-    challenge.setMaxMembers(maxMembers);
-    challenge.setStartAt(startAt);
-    challenge.setEndAt(endAt);
+    return ChallengeMember.builder()
+        .challenge(challenge)
+        .user(user)
+        .totalKm(BigDecimal.ZERO)
+        .build();
   }
 
   private static final int TITLE_MAX_BYTES = 50;
