@@ -144,12 +144,20 @@ public class ChallengeService {
   /**
    * 공개 목록. lang이 지원 언어면 해당 언어방만, 그 외(null·빈값·"all")는 전체를 반환한다(소프트 필터).
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public List<Challenge> listAll(String lang) {
     boolean filterByLang = lang != null && SUPPORTED_LANGS.contains(lang);
     OffsetDateTime now = OffsetDateTime.now();
-    return challengeRepository.findAllWithCreator().stream()
+    List<Challenge> all = challengeRepository.findAllWithCreator();
+    for (Challenge c : all) {
+      endIfSolo(c, now); // 시작됐는데 방장 혼자인 레이스는 접근 시점에 무효 종료
+    }
+    Map<Long, Long> memberCounts =
+        batchMemberCounts(all.stream().map(Challenge::getId).toList());
+    return all.stream()
         .filter(c -> !filterByLang || lang.equals(c.getLangCd()))
+        // 참여자 1명짜리 종료방은 공개 목록에서 숨긴다(내 레이스 목록에는 그대로 노출).
+        .filter(c -> !(isEnded(c, now) && memberCounts.getOrDefault(c.getId(), 0L) <= 1))
         .sorted(
             Comparator.comparingInt((Challenge c) -> ChallengePhase.of(c, now).ordinal())
                 .thenComparing(Challenge::getStartAt)
@@ -157,10 +165,14 @@ public class ChallengeService {
         .toList();
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public List<Challenge> listForMe(AuthPrincipal principal) {
     OffsetDateTime now = OffsetDateTime.now();
-    return challengeRepository.findAllForUser(principal.userId()).stream()
+    List<Challenge> mine = challengeRepository.findAllForUser(principal.userId());
+    for (Challenge c : mine) {
+      endIfSolo(c, now); // 시작됐는데 방장 혼자인 레이스는 접근 시점에 무효 종료
+    }
+    return mine.stream()
         .sorted(
             Comparator.comparingInt((Challenge c) -> ChallengePhase.of(c, now).ordinal())
                 .thenComparing(Challenge::getStartAt, Comparator.reverseOrder())
@@ -173,9 +185,28 @@ public class ChallengeService {
     return challengeRepository.countActiveByCreator(principal.userId(), OffsetDateTime.now());
   }
 
-  @Transactional(readOnly = true)
+  /**
+   * 시작됐는데 참여자가 1명 이하(방장 혼자)인 레이스를 무효 종료한다(우승자 없음).
+   * 스케줄러 없이 상세·목록 조회나 운동 반영 등 "접근 시점"에 호출되어 종료를 보장한다.
+   * 시작 전(모집 중)이거나 이미 종료됐거나 2명 이상이면 아무것도 하지 않는다.
+   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다. 종료시켰으면 true.
+   */
+  public boolean endIfSolo(Challenge challenge, OffsetDateTime now) {
+    if (challenge.isEnded()) return false;
+    if (!hasStarted(challenge, now)) return false; // 모집 중(SCHEDULED)은 유지
+    if (challengeMemberRepository.countByChallengeId(challenge.getId()) > 1) return false;
+    challenge.setEnded(true);
+    challenge.setWinner(null);
+    challengeRepository.save(challenge);
+    eventPublisher.publishEvent(
+        new ChallengeEndedNoParticipantsEvent(challenge.getId(), challenge.getCreator().getId()));
+    return true;
+  }
+
+  @Transactional
   public ChallengeDetailView getDetail(Optional<UUID> currentUserId, Long id) {
     Challenge challenge = requireChallenge(id);
+    endIfSolo(challenge, OffsetDateTime.now());
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(id);
     AppUser winner = resolveWinnerForDisplay(challenge, members);
 
@@ -300,6 +331,10 @@ public class ChallengeService {
    * - 완주자 없이 기간이 종료됐으면 누적 거리 최상위 멤버.
    */
   private AppUser resolveWinnerForDisplay(Challenge challenge, List<ChallengeMember> members) {
+    // 참여자가 1명뿐(방장 혼자)인 레이스는 대결이 성립하지 않으므로 우승자 없음.
+    if (members.size() <= 1) {
+      return null;
+    }
     if (challenge.getWinner() != null) {
       return challenge.getWinner();
     }

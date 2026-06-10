@@ -47,6 +47,15 @@ public class ChallengeNotifications {
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onChallengeEndedNoParticipants(ChallengeEndedNoParticipantsEvent event) {
+    pushService.sendLocalized(
+        event.creatorUserId(),
+        "challenge.ended_no_member.title",
+        "challenge.ended_no_member.body",
+        null);
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onRankOvertake(RankOvertakeEvent event) {
     String bodyKey = "challenge.overtake." + ThreadLocalRandom.current().nextInt(VARIANTS);
     event.overtakenUserIds().forEach(userId ->

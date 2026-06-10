@@ -30,6 +30,7 @@ public class IndoorApprovalService {
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ChallengeProgressService challengeProgressService;
+  private final ChallengeService challengeService;
   private final ApplicationEventPublisher eventPublisher;
 
   /** 실내러닝 — 레이스별 PENDING ChallengeWorkout + 개별 승인 행 생성. */
@@ -41,6 +42,8 @@ public class IndoorApprovalService {
 
     for (ChallengeMember member : activeMembers) {
       Challenge challenge = member.getChallenge();
+      // 방장 혼자인 레이스는 무효 종료하고 승인 절차(자동승인·푸시)를 만들지 않는다.
+      if (challengeService.endIfSolo(challenge, now)) continue;
       if (challengeWorkoutRepository.existsByChallengeIdAndWorkoutSessionId(
           challenge.getId(), session.getId())) continue;
 

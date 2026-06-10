@@ -28,6 +28,7 @@ public class ChallengeProgressService {
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final ChallengeService challengeService;
 
   /**
    * 운동 기록 저장 시 호출. 사용자가 현재 참여 중인 진행 대결의 total_km을 distanceM만큼 증가시킨다.
@@ -43,6 +44,8 @@ public class ChallengeProgressService {
     List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
     for (ChallengeMember member : activeMembers) {
       Challenge challenge = member.getChallenge();
+      // 방장 혼자인 레이스는 무효 종료하고 거리 반영하지 않는다.
+      if (challengeService.endIfSolo(challenge, now)) continue;
       applyDistanceToMember(member, distanceKm, now);
       recordWorkoutLink(challenge, workoutSessionId, userId, distanceM, now);
     }
