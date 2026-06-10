@@ -1,5 +1,4 @@
-/** 경로 위경도 경계 박스. */
-export type PathBounds = {
+type PathBounds = {
   minLat: number;
   maxLat: number;
   minLng: number;

@@ -1707,7 +1707,6 @@ export const translations = {
   },
 } satisfies Record<Locale, Record<string, unknown>>;
 
-export type TranslationKey = keyof (typeof translations)["ko"];
 export type Translations = (typeof translations)["ko"];
 
 /** 언어 선택 드롭다운에 노출할 순서·표기(각 언어 자기 이름) */

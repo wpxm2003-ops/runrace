@@ -34,17 +34,13 @@ public class FriendService {
     AppUser inviter = appUserRepository.getRequired(principal.userId());
 
     OffsetDateTime now = OffsetDateTime.now();
-    FriendInvite saved = friendInviteRepository.save(FriendInvite.builder()
+    return friendInviteRepository.save(FriendInvite.builder()
         .inviter(inviter)
         .inviteCode(generateCode())
         .status(FriendInviteStatus.PENDING)
         .createdAt(now)
         .expiresAt(now.plusHours(expireHours))
         .build());
-
-    eventPublisher.publishEvent(
-        new FriendEvents.InviteCreated(inviter.getId(), saved.getInviteCode()));
-    return saved;
   }
 
   @Transactional
@@ -63,9 +59,6 @@ public class FriendService {
 
     invite.accept(me);
     friendInviteRepository.save(invite);
-
-    eventPublisher.publishEvent(
-        new FriendEvents.InviteAccepted(inviter.getId(), me.getId(), code));
   }
 
   @Transactional(readOnly = true)

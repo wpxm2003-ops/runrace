@@ -21,7 +21,7 @@ export function formatDistanceAmount(km: string | number, unit: DistanceUnit): s
 }
 
 /** 레이스 목표 최대값(canonical km). 백엔드 validateRoomInput과 일치. */
-export const GOAL_MAX_KM = 1000;
+const GOAL_MAX_KM = 1000;
 
 /** 불필요한 끝자리 0을 없앤 숫자 문자열. */
 function trimNum(n: number, digits: number): string {

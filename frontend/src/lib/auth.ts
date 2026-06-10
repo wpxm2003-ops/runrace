@@ -3,7 +3,7 @@ import { auth } from "./firebase";
 import { nativeNavigate } from "./nativeNav";
 import { AUTH_HINT_KEY } from "./AuthProvider";
 
-export function loginRedirectUrl(returnTo?: string) {
+function loginRedirectUrl(returnTo?: string) {
   const ret =
     returnTo ??
     (typeof window !== "undefined"

@@ -5,9 +5,6 @@
  */
 export const FORBIDDEN_TEXT_RE = /["';\\`<>\p{Cc}]/u;
 
-/** 안내 문구에 표시할 금지 문자 목록 */
-export const FORBIDDEN_TEXT_CHARS_LABEL = `' " ; \\ \` < >`;
-
 export function containsForbiddenText(value: string): boolean {
   return FORBIDDEN_TEXT_RE.test(value);
 }

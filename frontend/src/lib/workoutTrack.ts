@@ -49,41 +49,41 @@ export type VehicleTier =
   | "recovering";
 
 /** 단순 Pause: accuracy(m) 초과 시 즉시 Weak (Grok/초기 권장 30m) */
-export const GPS_ACCURACY_PAUSE_M = 30;
+const GPS_ACCURACY_PAUSE_M = 30;
 /** 지속 Poor: 현재·5초 평균 모두 초과 시 Weak */
-export const GPS_ACCURACY_SUSTAINED_M = 25;
-export const GPS_ACCURACY_AVG_WINDOW_MS = 5_000;
+const GPS_ACCURACY_SUSTAINED_M = 25;
+const GPS_ACCURACY_AVG_WINDOW_MS = 5_000;
 /** 복귀 시 양호 GPS (들어갈 때보다 엄격 — 점프 방지) */
-export const GPS_ACCURACY_GOOD_M = 20;
+const GPS_ACCURACY_GOOD_M = 20;
 /** Weak/No-Fix 15초+ → confirmed(지하철 의심) */
-export const WEAK_GPS_FORCE_CONFIRM_MS = 15_000;
+const WEAK_GPS_FORCE_CONFIRM_MS = 15_000;
 /** accuracy 나쁨 + 속도 ≥ 8km/h → 즉시 Weak (GPS·속도 모순) */
-export const GPS_SPEED_COMBO_KMH = 8;
-export const GPS_SPEED_COMBO_MS = (GPS_SPEED_COMBO_KMH * 1000) / 3600;
+const GPS_SPEED_COMBO_KMH = 8;
+const GPS_SPEED_COMBO_MS = (GPS_SPEED_COMBO_KMH * 1000) / 3600;
 
 /** Suspect: 거리만 중단, GPS 경로는 계속 (~21 km/h) */
-export const SUSPECT_SPEED_MS = 5.8;
-export const SUSPECT_CONFIRM_MS = 2_500;
+const SUSPECT_SPEED_MS = 5.8;
+const SUSPECT_CONFIRM_MS = 2_500;
 /** Confirmed: 경로·거리 완전 중단 (~23 km/h) */
-export const CONFIRMED_SPEED_MS = 6.5;
-export const CONFIRMED_CONFIRM_MS = 4_000;
+const CONFIRMED_SPEED_MS = 6.5;
+const CONFIRMED_CONFIRM_MS = 4_000;
 /** 즉시 Confirmed (~32 km/h) */
-export const INSTANT_VEHICLE_SPEED_MS = 9;
+const INSTANT_VEHICLE_SPEED_MS = 9;
 /** Suspect/Confirmed 해제(이력) */
-export const VEHICLE_BAND_EXIT_MS = 5.0;
+const VEHICLE_BAND_EXIT_MS = 5.0;
 /** 복귀: 양호 GPS + 이 속도 이하가 8~10초 지속 (~14 km/h) */
-export const RECOVERY_MAX_SPEED_MS = 4.0;
-export const RECOVERY_CONFIRM_MS = 5_000;
+const RECOVERY_MAX_SPEED_MS = 4.0;
+const RECOVERY_CONFIRM_MS = 5_000;
 
 /** 추후 심박·케이던스·도시 민감도 등 (현재 미연동) */
-export type VehicleSignals = {
+type VehicleSignals = {
   heartRateBpm?: number | null;
   cadenceSpm?: number | null;
   /** true면 Suspect/Confirmed 임계를 약간 낮춤 (도시 버스·지하철) */
   urbanSensitive?: boolean;
 };
 
-export type AccuracySample = { atMs: number; accuracyM: number };
+type AccuracySample = { atMs: number; accuracyM: number };
 
 export type VehicleDetectState = {
   tier: VehicleTier;
@@ -94,7 +94,7 @@ export type VehicleDetectState = {
   accuracyRecent: AccuracySample[];
 };
 
-export type VehicleDetectInput = {
+type VehicleDetectInput = {
   speedMps: number | null;
   /** Geolocation accuracy (m), iOS horizontalAccuracy / Android getAccuracy */
   accuracyM: number | null;
@@ -103,7 +103,7 @@ export type VehicleDetectInput = {
   signals?: VehicleSignals;
 };
 
-export type VehicleDetectResult = {
+type VehicleDetectResult = {
   tier: VehicleTier;
   blockDistance: boolean;
   blockPathPoints: boolean;
@@ -138,7 +138,7 @@ export function pushAccuracySample(
   return next.filter((s) => nowMs - s.atMs <= maxAgeMs);
 }
 
-export function averageAccuracyM(samples: AccuracySample[]): number | null {
+function averageAccuracyM(samples: AccuracySample[]): number | null {
   if (samples.length === 0) return null;
   return samples.reduce((sum, s) => sum + s.accuracyM, 0) / samples.length;
 }
@@ -147,7 +147,7 @@ export function averageAccuracyM(samples: AccuracySample[]): number | null {
  * Weak GPS 판정 (미터, iOS/Android 동일 비교).
  * 1) No Fix  2) >30m 즉시  3) >25m + 5초 평균 >25m  4) >25m + 속도 ≥8km/h
  */
-export function isGpsWeak(
+function isGpsWeak(
   accuracyM: number | null,
   speedMps: number | null,
   recentSamples: AccuracySample[],
@@ -178,7 +178,7 @@ export function isGpsWeak(
   return false;
 }
 
-export function isGpsGood(accuracyM: number | null): boolean {
+function isGpsGood(accuracyM: number | null): boolean {
   return accuracyM != null && accuracyM <= GPS_ACCURACY_GOOD_M;
 }
 
@@ -195,13 +195,12 @@ function effectiveThreshold(base: number, signals?: VehicleSignals): number {
  */
 export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectResult {
   const { speedMps, accuracyM, nowMs, state, signals } = input;
+  const { tier, accuracyRecent } = state;
   let {
-    tier,
     suspectHighSinceMs,
     confirmedHighSinceMs,
     lowSpeedSinceMs,
     weakGpsSinceMs,
-    accuracyRecent,
   } = state;
 
   const suspectMs = effectiveThreshold(SUSPECT_SPEED_MS, signals);

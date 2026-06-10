@@ -77,7 +77,6 @@ public class ChallengeService {
 
     challengeMemberRepository.save(newMember(saved, creator));
 
-    eventPublisher.publishEvent(new ChallengeCreatedEvent(saved.getId(), creator.getId()));
     return saved;
   }
 

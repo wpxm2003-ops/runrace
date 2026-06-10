@@ -1,9 +1,5 @@
 const WORKOUT_ID_PATTERN = /^\d+$/;
 
-export function workoutDetailHref(id: number) {
-  return `/workouts/${id}`;
-}
-
 export function parseWorkoutId(value: string | null | undefined): number | null {
   if (!value || !WORKOUT_ID_PATTERN.test(value)) return null;
   const n = Number(value);

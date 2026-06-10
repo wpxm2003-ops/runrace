@@ -43,14 +43,6 @@ type Options = {
   hints: ChallengeFormHints;
 };
 
-const EMPTY: ChallengeFormValues = {
-  title: "",
-  goalKm: "",
-  maxMembers: "",
-  startAt: "",
-  endAt: "",
-};
-
 export function useChallengeForm({
   initial,
   validationMsgs,

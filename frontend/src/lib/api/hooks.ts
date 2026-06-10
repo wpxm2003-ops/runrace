@@ -105,11 +105,6 @@ export function useChallengeDetail(id: number | null, user?: User | null, authLo
   );
 }
 
-/** 대결 상세를 SWR 캐시에서 무효화한다 (참여/수정/삭제 후 갱신용). */
-export function invalidateChallengeDetail(id: number, userId?: string | null) {
-  void globalMutate(["challenge", id, userId ?? null]);
-}
-
 /** 레이스 목록(공개·내 레이스) 무한스크롤 캐시 무효화 — 생성/참여/탈퇴/삭제 후 호출. */
 export function invalidateChallengeLists() {
   void globalMutate(

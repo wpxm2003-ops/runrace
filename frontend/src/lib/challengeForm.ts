@@ -4,22 +4,11 @@ import {
 } from "@/lib/forbiddenTextChars";
 import { goalKmFromInput, goalMaxInUnit, type DistanceUnit } from "@/lib/units";
 
-export function formatLocalDate(d: Date): string {
+function formatLocalDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-export function todayStr(): string {
-  return formatLocalDate(new Date());
-}
-
-export function addDays(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + days);
-  return formatLocalDate(dt);
 }
 
 function pad2(n: number): string {
@@ -56,9 +45,6 @@ export type ChallengeFormValues = {
   startAt: string;
   endAt: string;
 };
-
-/** @deprecated ChallengeFormValues 사용 */
-export type CreateChallengeForm = ChallengeFormValues;
 
 /** 레이스 제목 최대 길이 (UTF-8 바이트) */
 export const TITLE_MAX_BYTES = 50;
@@ -157,9 +143,6 @@ export type ChallengeFormValidationMessages = {
   endAfterStart: string;
 };
 
-/** @deprecated ChallengeFormValidationMessages 사용 */
-export type CreateChallengeValidationMessages = ChallengeFormValidationMessages;
-
 export type ValidateChallengeFormOptions = {
   /** 수정 시 현재 참여 인원(인원수 하한) */
   minMembers?: number;
@@ -210,14 +193,6 @@ export function validateChallengeForm(
   }
 
   return null;
-}
-
-/** @deprecated validateChallengeForm 사용 */
-export function validateCreateChallengeForm(
-  form: ChallengeFormValues,
-  msgs: ChallengeFormValidationMessages,
-): string | null {
-  return validateChallengeForm(form, msgs);
 }
 
 export type ChallengeFormPayload = {

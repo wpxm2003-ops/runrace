@@ -13,7 +13,7 @@ import { useMemo, useState } from "react";
 export default function FriendsPage() {
   const { user } = useRequireAuth("/friends");
   const { t } = useLocale();
-  const { data: friends = [], isLoading, error, mutate } = useFriendList(user);
+  const { data: friends = [], isLoading, error } = useFriendList(user);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
 

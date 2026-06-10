@@ -11,9 +11,6 @@ import org.springframework.data.repository.query.Param;
 public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long> {
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
-  List<WorkoutSession> findAllByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
-      UUID userId, OffsetDateTime from, OffsetDateTime to);
-
   /**
    * 기록 목록용 닫힌 프로젝션 — 대용량 {@code path_json}(GPS 트랙)을 제외한 스칼라 컬럼만 SELECT한다.
    * Spring Data가 프로젝션 게터에 대응하는 컬럼만 조회하므로 DB I/O·네트워크 전송·힙 사용을 줄인다.
