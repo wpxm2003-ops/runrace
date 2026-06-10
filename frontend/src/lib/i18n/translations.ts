@@ -68,6 +68,9 @@ export const translations = {
     races_filter_in_progress: "진행중",
     races_filter_ended: "종료",
     races_filter_empty: "해당 상태의 레이스가 없습니다.",
+    races_filter_active: "예정·진행중",
+    races_joined: "참여중",
+    races_joined_done: "참여완료",
     races_empty: "레이스가 없습니다. 등록으로 새 레이스를 시작해 보세요.",
     races_goal_members: (goal: string, memberCount: number) =>
       `목표 ${goal} · ${memberCount}명 참여`,
@@ -406,6 +409,9 @@ export const translations = {
     races_filter_in_progress: "In progress",
     races_filter_ended: "Ended",
     races_filter_empty: "No races in this status.",
+    races_filter_active: "Upcoming & live",
+    races_joined: "Joined",
+    races_joined_done: "Completed",
     races_empty: "No races yet. Create one to get started!",
     races_goal_members: (goal: string, memberCount: number) =>
       `${goal} goal · ${memberCount} joined`,
@@ -744,6 +750,9 @@ export const translations = {
     races_filter_in_progress: "En curso",
     races_filter_ended: "Finalizadas",
     races_filter_empty: "No hay carreras en este estado.",
+    races_filter_active: "Próximas y en curso",
+    races_joined: "Unido",
+    races_joined_done: "Completada",
     races_empty: "No hay carreras. ¡Crea una para empezar!",
     races_goal_members: (goal: string, memberCount: number) =>
       `Meta ${goal} · ${memberCount} inscritos`,
@@ -1082,6 +1091,9 @@ export const translations = {
     races_filter_in_progress: "進行中",
     races_filter_ended: "終了",
     races_filter_empty: "この状態のレースはありません。",
+    races_filter_active: "予定・進行中",
+    races_joined: "参加中",
+    races_joined_done: "参加完了",
     races_empty: "レースがありません。作成して始めましょう。",
     races_goal_members: (goal: string, memberCount: number) =>
       `目標${goal} · ${memberCount}人参加`,
@@ -1420,6 +1432,9 @@ export const translations = {
     races_filter_in_progress: "进行中",
     races_filter_ended: "已结束",
     races_filter_empty: "没有该状态的比赛。",
+    races_filter_active: "未开始·进行中",
+    races_joined: "参与中",
+    races_joined_done: "已参与",
     races_empty: "暂无比赛。创建一个开始吧！",
     races_goal_members: (goal: string, memberCount: number) =>
       `目标${goal} · ${memberCount}人参加`,

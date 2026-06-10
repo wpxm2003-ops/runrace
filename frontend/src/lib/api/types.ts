@@ -16,6 +16,14 @@ export type ChallengeListItem = {
   memberCount: number;
   createdAt: string;
   isOwner: boolean;
+  /** 로그인 사용자가 이 레이스에 참여 중인지 — 공개 목록의 참여 라벨용. */
+  isMember: boolean;
+};
+
+/** 공개 목록 페이지 응답 (무한스크롤). */
+export type ChallengeListPage = {
+  items: ChallengeListItem[];
+  hasNext: boolean;
 };
 
 export type ChallengeMember = {

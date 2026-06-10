@@ -4,12 +4,13 @@
  * 쓰기(참여/투표/기록 등) 후에는 각 invalidate* 헬퍼로 즉시 재검증한다.
  */
 import useSWR, { mutate as globalMutate } from "swr";
+import useSWRInfinite from "swr/infinite";
 import type { User } from "firebase/auth";
 import {
-  fetchChallenges,
+  fetchChallengesPage,
   fetchChallengeDetail,
   fetchActiveCount,
-  fetchMyChallenges,
+  fetchMyChallengesPage,
   fetchChallengeWorkouts,
   fetchPendingApprovals,
   fetchRejectedApprovals,
@@ -35,19 +36,62 @@ const BASE_CONFIG = {
  * 공개 API이지만 로그인 여부에 따라 isOwner 필드가 달라지므로 userId를 키에 포함한다.
  * 비로그인 상태에서도 목록 자체는 즉시 보여준다.
  */
-export function useChallengeList(user?: User | null, authLoading = false, lang?: string) {
-  return useSWR(
-    authLoading ? null : (["challenges", user?.uid ?? null, lang ?? null] as const),
-    () => fetchChallenges(user, lang),
-    BASE_CONFIG,
+/**
+ * 공개 레이스 목록 — phase 필터별 무한스크롤. 페이지 끝(hasNext=false)에 도달하면 추가 키를 만들지 않는다.
+ * 필터/언어 변경 시 호출 측에서 setSize(1)로 첫 페이지부터 다시 로드한다.
+ */
+const PUBLIC_PAGE_SIZE = 20;
+
+export function useChallengeListInfinite(
+  user: User | null | undefined,
+  authLoading: boolean,
+  lang: string | undefined,
+  phase: string,
+) {
+  return useSWRInfinite(
+    (index, previous) => {
+      if (authLoading) return null;
+      if (previous && !previous.hasNext) return null;
+      return ["challenges-page", user?.uid ?? null, lang ?? null, phase, index] as const;
+    },
+    (key) =>
+      fetchChallengesPage(user, {
+        lang,
+        phase,
+        page: key[4] as number,
+        size: PUBLIC_PAGE_SIZE,
+      }),
+    {
+      revalidateFirstPage: false,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+      dedupingInterval: 3000,
+      ...SWR_ERROR_RETRY,
+    },
   );
 }
 
-export function useMyChallengeList(user: User | null) {
-  return useSWR(
-    user ? (["challenges", "mine", user.uid] as const) : null,
-    () => fetchMyChallenges(user!),
-    BASE_CONFIG,
+/** 내 레이스 — phase(active/ended)별 무한스크롤. 필터 변경 시 호출 측에서 setSize(1). */
+export function useMyChallengeListInfinite(user: User | null, phase: string) {
+  return useSWRInfinite(
+    (index, previous) => {
+      if (!user) return null;
+      if (previous && !previous.hasNext) return null;
+      return ["challenges-mine-page", user.uid, phase, index] as const;
+    },
+    (key) =>
+      fetchMyChallengesPage(user!, {
+        phase,
+        page: key[3] as number,
+        size: PUBLIC_PAGE_SIZE,
+      }),
+    {
+      revalidateFirstPage: false,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+      dedupingInterval: 3000,
+      ...SWR_ERROR_RETRY,
+    },
   );
 }
 
@@ -63,6 +107,17 @@ export function useChallengeDetail(id: number | null, user?: User | null, authLo
 /** 대결 상세를 SWR 캐시에서 무효화한다 (참여/수정/삭제 후 갱신용). */
 export function invalidateChallengeDetail(id: number, userId?: string | null) {
   void globalMutate(["challenge", id, userId ?? null]);
+}
+
+/** 레이스 목록(공개·내 레이스) 무한스크롤 캐시 무효화 — 생성/참여/탈퇴/삭제 후 호출. */
+export function invalidateChallengeLists() {
+  void globalMutate(
+    (key) =>
+      Array.isArray(key) &&
+      (key[0] === "challenges-page" || key[0] === "challenges-mine-page"),
+    undefined,
+    { revalidate: true },
+  );
 }
 
 /** 레이스 참여자 운동기록 목록을 갱신한다 (실내러닝 승인 반영 후). */

@@ -4,6 +4,7 @@ import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.dto.ActiveCountResponse;
 import com.runrace.backend.challenge.dto.ChallengeDetailResponse;
 import com.runrace.backend.challenge.dto.ChallengeListItem;
+import com.runrace.backend.challenge.dto.ChallengeListPage;
 import com.runrace.backend.challenge.dto.CreateChallengeRequest;
 import com.runrace.backend.challenge.dto.CreateChallengeResponse;
 import com.runrace.backend.challenge.dto.MemberRow;
@@ -23,8 +24,10 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -102,33 +105,46 @@ public class ChallengeController {
   }
 
   @GetMapping
-  public ResponseEntity<List<ChallengeListItem>> list(
+  public ResponseEntity<ChallengeListPage> list(
       Optional<AuthPrincipal> principal,
-      @RequestParam(name = "lang", required = false) String lang) {
+      @RequestParam(name = "lang", required = false) String lang,
+      @RequestParam(name = "phase", required = false, defaultValue = "all") String phase,
+      @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+      @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
     OffsetDateTime now = OffsetDateTime.now();
-    List<Challenge> challenges = challengeService.listAll(lang);
+    Slice<Challenge> slice = challengeService.listPublicPage(lang, phase, page, size);
+    List<Challenge> challenges = slice.getContent();
+    List<Long> ids = challenges.stream().map(Challenge::getId).toList();
 
-    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(
-        challenges.stream().map(Challenge::getId).toList());
+    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
+    Set<Long> memberIds = userId
+        .map(uid -> challengeService.memberChallengeIds(uid, ids))
+        .orElse(Set.of());
 
     List<ChallengeListItem> items = challenges.stream()
-        .map(challenge -> toListItem(challenge, now, userId, memberCounts))
+        .map(challenge -> toListItem(challenge, now, userId, memberCounts, memberIds))
         .toList();
-    return ResponseEntity.ok(items);
+    return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
   }
 
   @GetMapping("/mine")
-  public ResponseEntity<List<ChallengeListItem>> listMine(AuthPrincipal principal) {
+  public ResponseEntity<ChallengeListPage> listMine(
+      AuthPrincipal principal,
+      @RequestParam(name = "phase", required = false, defaultValue = "all") String phase,
+      @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+      @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
     OffsetDateTime now = OffsetDateTime.now();
     UUID userId = principal.userId();
-    List<Challenge> challenges = challengeService.listForMe(principal);
-    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(
-        challenges.stream().map(Challenge::getId).toList());
+    Slice<Challenge> slice = challengeService.listMinePage(userId, phase, page, size);
+    List<Challenge> challenges = slice.getContent();
+    List<Long> ids = challenges.stream().map(Challenge::getId).toList();
+    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
+    Set<Long> memberIds = Set.copyOf(ids); // 내 레이스는 전부 참여 중
     List<ChallengeListItem> items = challenges.stream()
-        .map(challenge -> toListItem(challenge, now, Optional.of(userId), memberCounts))
+        .map(challenge -> toListItem(challenge, now, Optional.of(userId), memberCounts, memberIds))
         .toList();
-    return ResponseEntity.ok(items);
+    return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
   }
 
   @GetMapping("/{id:" + ID_PATH + "}")
@@ -188,7 +204,8 @@ public class ChallengeController {
       Challenge challenge,
       OffsetDateTime now,
       Optional<UUID> currentUserId,
-      Map<Long, Long> memberCounts) {
+      Map<Long, Long> memberCounts,
+      Set<Long> memberIds) {
     ChallengePhase phase = ChallengePhase.of(challenge, now);
     boolean isOwner =
         currentUserId.map(uid -> challenge.getCreator().getId().equals(uid)).orElse(false);
@@ -202,7 +219,8 @@ public class ChallengeController {
         toIsoOrNull(challenge.getEndAt()),
         memberCount,
         challenge.getCreatedAt().toString(),
-        isOwner);
+        isOwner,
+        memberIds.contains(challenge.getId()));
   }
 
   private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {

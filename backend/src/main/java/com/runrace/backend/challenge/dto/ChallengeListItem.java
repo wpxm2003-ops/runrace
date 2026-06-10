@@ -11,4 +11,5 @@ public record ChallengeListItem(
     String endAt,
     int memberCount,
     String createdAt,
-    boolean isOwner) {}
+    boolean isOwner,
+    boolean isMember) {}

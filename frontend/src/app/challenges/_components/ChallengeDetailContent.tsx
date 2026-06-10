@@ -10,11 +10,13 @@ import {
   joinChallenge,
   leaveChallenge,
   invalidateChallengeWorkouts,
+  invalidateChallengeLists,
   useChallengeDetail,
   usePendingApprovals,
   useRejectedApprovals,
   voteIndoorRun,
 } from "@/lib/api";
+import Link from "next/link";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
@@ -83,6 +85,7 @@ export default function ChallengeDetailContent() {
     setActionError(null);
     try {
       await deleteChallenge(id, user, `/challenges/${id}`);
+      invalidateChallengeLists();
       nativeNavigate("/challenges");
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
@@ -95,6 +98,7 @@ export default function ChallengeDetailContent() {
     setActionError(null);
     try {
       await joinChallenge(id, user, `/challenges/${id}`);
+      invalidateChallengeLists();
       await mutate();
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
@@ -117,6 +121,7 @@ export default function ChallengeDetailContent() {
     setActionError(null);
     try {
       await leaveChallenge(id, user, `/challenges/${id}`);
+      invalidateChallengeLists();
       await mutate();
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
@@ -225,7 +230,7 @@ export default function ChallengeDetailContent() {
             ) : null}
           </div>
         ) : null}
-        <a className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</a>
+        <Link className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</Link>
       </>
     ),
     [detail?.showManage, menuOpen, id, t, onEditClick, onDelete],

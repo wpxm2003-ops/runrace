@@ -4,7 +4,7 @@ import type {
   ActiveCount,
   ChallengeDetail,
   ChallengeFormBody,
-  ChallengeListItem,
+  ChallengeListPage,
   ChallengeWorkoutListItem,
   CreatedId,
   PendingApproval,
@@ -12,15 +12,32 @@ import type {
   WorkoutDetail,
 } from "./types";
 
-/** 대결 목록(공개 — 비로그인도 조회 가능, 로그인 시 isOwner 채워짐). lang 지정 시 해당 언어방만. */
-export function fetchChallenges(user?: User | null, lang?: string) {
-  const path = lang ? `/api/challenges?lang=${encodeURIComponent(lang)}` : "/api/challenges";
-  return publicFetch<ChallengeListItem[]>(path, user);
+/**
+ * 공개 레이스 목록 — 페이지 단위(무한스크롤). 비로그인도 조회 가능(로그인 시 isOwner 채워짐).
+ * phase: all|scheduled|in_progress|ended, lang 지정 시 해당 언어방만.
+ */
+export function fetchChallengesPage(
+  user: User | null | undefined,
+  opts: { lang?: string; phase?: string; page: number; size?: number },
+) {
+  const p = new URLSearchParams();
+  if (opts.lang) p.set("lang", opts.lang);
+  if (opts.phase && opts.phase !== "all") p.set("phase", opts.phase);
+  p.set("page", String(opts.page));
+  p.set("size", String(opts.size ?? 20));
+  return publicFetch<ChallengeListPage>(`/api/challenges?${p.toString()}`, user);
 }
 
-/** 내가 참여한 레이스 목록. */
-export function fetchMyChallenges(user: User) {
-  return apiFetch<ChallengeListItem[]>("/api/challenges/mine", { user });
+/** 내가 참여한 레이스 — 페이지 단위(무한스크롤). phase: all|active|ended. */
+export function fetchMyChallengesPage(
+  user: User,
+  opts: { phase?: string; page: number; size?: number },
+) {
+  const p = new URLSearchParams();
+  if (opts.phase && opts.phase !== "all") p.set("phase", opts.phase);
+  p.set("page", String(opts.page));
+  p.set("size", String(opts.size ?? 20));
+  return apiFetch<ChallengeListPage>(`/api/challenges/mine?${p.toString()}`, { user });
 }
 
 /** 대결 상세(공개). */

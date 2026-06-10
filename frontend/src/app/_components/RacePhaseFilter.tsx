@@ -1,15 +1,8 @@
 "use client";
 
-import type { ChallengePhase } from "@/lib/challengePhase";
+export type RacePhaseFilterValue = "active" | "ended";
 
-export type RacePhaseFilterValue = "all" | ChallengePhase;
-
-const ORDER: RacePhaseFilterValue[] = [
-  "all",
-  "scheduled",
-  "in_progress",
-  "ended",
-];
+const ORDER: RacePhaseFilterValue[] = ["active", "ended"];
 
 type Props = {
   value: RacePhaseFilterValue;
@@ -23,7 +16,7 @@ export function RacePhaseFilter({ value, onChange, labels, ariaLabel }: Props) {
     <div
       role="group"
       aria-label={ariaLabel}
-      className="grid w-full grid-cols-4 gap-1 rounded-xl bg-zinc-100 p-1 ring-1 ring-inset ring-zinc-200/70"
+      className="grid w-full grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 ring-1 ring-inset ring-zinc-200/70"
     >
       {ORDER.map((key) => {
         const active = value === key;

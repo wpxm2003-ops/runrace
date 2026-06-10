@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormFields";
@@ -8,7 +9,7 @@ import {
   useChallengeForm,
 } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
-import { createChallenge, useActiveCount } from "@/lib/api";
+import { createChallenge, invalidateChallengeLists, useActiveCount } from "@/lib/api";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -41,6 +42,7 @@ export default function CreateChallengePage() {
     setSubmitting(true);
     try {
       await createChallenge({ ...form.getPayload(), langCd: locale }, user);
+      invalidateChallengeLists();
       form.setFormSuccess(t.create_success);
       window.setTimeout(() => nativeNavigate("/challenges"), 1200);
     } catch (e) {
@@ -56,9 +58,9 @@ export default function CreateChallengePage() {
     <PageLayout
       title={t.create_title}
       actions={
-        <a className="text-sm text-zinc-600 hover:underline" href="/challenges">
+        <Link className="text-sm text-zinc-600 hover:underline" href="/challenges">
           {t.create_list_link}
-        </a>
+        </Link>
       }
     >
       {activeCount && !canCreate ? (

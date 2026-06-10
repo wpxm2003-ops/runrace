@@ -22,6 +22,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -144,35 +146,38 @@ public class ChallengeService {
   /**
    * 공개 목록. lang이 지원 언어면 해당 언어방만, 그 외(null·빈값·"all")는 전체를 반환한다(소프트 필터).
    */
+  /**
+   * 공개 목록 페이지. phase(all/scheduled/in_progress/ended) 필터 + 언어(soft) + 페이징.
+   * 참여자 1명짜리 종료방 숨김·정렬은 쿼리에서 처리한다.
+   */
   @Transactional(readOnly = true)
-  public List<Challenge> listAll(String lang) {
-    boolean filterByLang = lang != null && SUPPORTED_LANGS.contains(lang);
-    OffsetDateTime now = OffsetDateTime.now();
-    List<Challenge> all = challengeRepository.findAllWithCreator();
-    Map<Long, Long> memberCounts =
-        batchMemberCounts(all.stream().map(Challenge::getId).toList());
-    return all.stream()
-        .filter(c -> !filterByLang || lang.equals(c.getLangCd()))
-        // 참여자 1명짜리 종료방은 공개 목록에서 숨긴다(내 레이스 목록에는 그대로 노출).
-        .filter(c -> !(isEnded(c, now) && memberCounts.getOrDefault(c.getId(), 0L) <= 1))
-        .sorted(
-            Comparator.comparingInt((Challenge c) -> ChallengePhase.of(c, now).ordinal())
-                .thenComparing(Challenge::getStartAt)
-                .thenComparing(Challenge::getId))
-        .toList();
+  public Slice<Challenge> listPublicPage(String lang, String phase, int page, int size) {
+    String langFilter = (lang != null && SUPPORTED_LANGS.contains(lang)) ? lang : null;
+    return challengeRepository.findPublicPage(
+        langFilter, normalizePhase(phase), OffsetDateTime.now(), PageRequest.of(page, size));
   }
 
+  /** 주어진 레이스들 중 사용자가 참여 중인 것의 id 집합 — 공개 목록 "참여" 라벨용. */
   @Transactional(readOnly = true)
-  public List<Challenge> listForMe(AuthPrincipal principal) {
-    OffsetDateTime now = OffsetDateTime.now();
-    List<Challenge> mine = challengeRepository.findAllForUser(principal.userId());
-    return mine.stream()
-        .sorted(
-            Comparator.comparingInt((Challenge c) -> ChallengePhase.of(c, now).ordinal())
-                .thenComparing(Challenge::getStartAt, Comparator.reverseOrder())
-                .thenComparing(Challenge::getId, Comparator.reverseOrder()))
-        .toList();
+  public Set<Long> memberChallengeIds(UUID userId, List<Long> challengeIds) {
+    if (challengeIds.isEmpty()) return Set.of();
+    return Set.copyOf(challengeMemberRepository.findMemberChallengeIds(userId, challengeIds));
   }
+
+  /** 내가 참여한 레이스 페이지. phase(all/active/ended) 필터 + 페이징. */
+  @Transactional(readOnly = true)
+  public Slice<Challenge> listMinePage(UUID userId, String phase, int page, int size) {
+    return challengeRepository.findMinePage(
+        userId, normalizePhase(phase), OffsetDateTime.now(), PageRequest.of(page, size));
+  }
+
+  private static String normalizePhase(String phase) {
+    return ("active".equals(phase) || "scheduled".equals(phase)
+            || "in_progress".equals(phase) || "ended".equals(phase))
+        ? phase
+        : "all";
+  }
+
 
   @Transactional(readOnly = true)
   public long countActiveRoomsForCreator(AuthPrincipal principal) {

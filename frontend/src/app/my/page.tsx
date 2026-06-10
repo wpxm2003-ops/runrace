@@ -1,28 +1,127 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { invalidateAfterNicknameChange, useMyChallengeList, useWorkoutSummary, useMe } from "@/lib/api";
+import {
+  invalidateAfterNicknameChange,
+  useWorkoutSummary,
+  useMe,
+  useMyChallengeListInfinite,
+} from "@/lib/api";
 import { containsForbiddenText, stripForbiddenText } from "@/lib/forbiddenTextChars";
-import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
-import { challengeDetailHref } from "@/lib/challengeRoute";
-import { formatDateRange } from "@/lib/format";
 import { updateNickname, deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
+import {
+  RacePhaseFilter,
+  type RacePhaseFilterValue,
+} from "@/app/_components/RacePhaseFilter";
+import { challengeDetailHref } from "@/lib/challengeRoute";
+import { formatDateRange } from "@/lib/format";
 import { formatGoalDistance } from "@/lib/units";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
+/** 내가 참여한 레이스 — 예정·진행중 / 종료 2탭 + 무한스크롤. */
+function MyRacesSection({ user }: { user: User }) {
+  const { t, locale } = useLocale();
+  const { unit } = useUnit();
+  const [phase, setPhase] = useState<RacePhaseFilterValue>("active");
+  const { data: pages, size, setSize, isLoading, isValidating, error } =
+    useMyChallengeListInfinite(user, phase);
+
+  useEffect(() => {
+    void setSize(1);
+  }, [phase, setSize]);
+
+  const items = useMemo(() => (pages ? pages.flatMap((p) => p.items) : []), [pages]);
+  const hasNext = pages ? (pages[pages.length - 1]?.hasNext ?? false) : false;
+  const initialLoading = isLoading && !pages;
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNext) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isValidating) {
+          void setSize((s) => s + 1);
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNext, isValidating, setSize, size]);
+
+  const labels: Record<RacePhaseFilterValue, string> = {
+    active: t.races_filter_active,
+    ended: t.races_filter_ended,
+  };
+
+  return (
+    <Card className="mt-4">
+      <div className="flex flex-col gap-3">
+        <div className="text-lg font-semibold">{t.my_races_heading}</div>
+        <RacePhaseFilter
+          value={phase}
+          onChange={setPhase}
+          labels={labels}
+          ariaLabel={t.races_filter_label}
+        />
+      </div>
+      {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
+      <div className="mt-3 grid gap-2">
+        {initialLoading ? (
+          <SkeletonLines count={2} />
+        ) : items.length === 0 ? (
+          <div className="text-sm text-zinc-600">{t.my_races_empty}</div>
+        ) : (
+          <>
+            {items.map((c) => (
+              <a
+                key={c.id}
+                href={challengeDetailHref(c.id)}
+                className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-medium">{c.title}</div>
+                  <ChallengePhaseBadge
+                    startAt={c.startAt}
+                    endAt={c.endAt}
+                    apiPhase={c.phase}
+                  />
+                </div>
+                <div className="mt-1 text-sm text-zinc-600">
+                  {t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}
+                </div>
+                <div className="mt-1 text-xs text-zinc-500">
+                  {formatDateRange(c.startAt, c.endAt, locale)}
+                </div>
+              </a>
+            ))}
+            {hasNext ? (
+              <div ref={sentinelRef} className="py-3 text-center text-sm text-zinc-400">
+                {t.loading}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 /** 인증 확정 후에만 마운트 → SWR 훅이 로딩 단계에서 중복 기동되지 않음 */
 function MyPageContent({ user }: { user: User }) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const { unit, setUnit } = useUnit();
   const { data: me, isLoading: meLoading } = useMe(user);
   const {
@@ -30,11 +129,6 @@ function MyPageContent({ user }: { user: User }) {
     isLoading: summaryLoading,
     error: summaryError,
   } = useWorkoutSummary(user);
-  const {
-    data: myRaces = [],
-    isLoading: myRacesLoading,
-    error: myRacesError,
-  } = useMyChallengeList(user);
 
   const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
@@ -192,42 +286,7 @@ function MyPageContent({ user }: { user: User }) {
         </div>
       </Card>
 
-      <Card className="mt-4">
-        <div className="text-lg font-semibold">{t.my_races_heading}</div>
-        {myRacesError ? (
-          <Alert className="mt-3">{String(myRacesError)}</Alert>
-        ) : null}
-        <div className="mt-3 grid gap-2">
-          {myRacesLoading && myRaces.length === 0 ? (
-            <SkeletonLines count={2} />
-          ) : myRaces.length === 0 ? (
-            <div className="text-sm text-zinc-600">{t.my_races_empty}</div>
-          ) : (
-            myRaces.map((c) => (
-              <a
-                key={c.id}
-                href={challengeDetailHref(c.id)}
-                className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-medium">{c.title}</div>
-                  <ChallengePhaseBadge
-                    startAt={c.startAt}
-                    endAt={c.endAt}
-                    apiPhase={c.phase}
-                  />
-                </div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  {t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  {formatDateRange(c.startAt, c.endAt, locale)}
-                </div>
-              </a>
-            ))
-          )}
-        </div>
-      </Card>
+      <MyRacesSection user={user} />
 
       <button
         type="button"

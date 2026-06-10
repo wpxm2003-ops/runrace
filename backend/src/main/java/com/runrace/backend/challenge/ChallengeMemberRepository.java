@@ -50,6 +50,13 @@ public interface ChallengeMemberRepository extends JpaRepository<ChallengeMember
 
   long countByChallengeId(Long challengeId);
 
+  /** 주어진 레이스 id들 중 사용자가 멤버인 것만 — 공개 목록의 "참여" 라벨용. */
+  @Query("""
+      select cm.challenge.id from ChallengeMember cm
+      where cm.user.id = :userId and cm.challenge.id in :ids
+      """)
+  List<Long> findMemberChallengeIds(@Param("userId") UUID userId, @Param("ids") List<Long> ids);
+
   /** 본인(id)을 제외한 미완주 멤버 수 — 전원 완주 판정용(전체 로스터 로드 회피). */
   long countByChallengeIdAndIdNotAndFinishedAtIsNull(Long challengeId, UUID id);
 
