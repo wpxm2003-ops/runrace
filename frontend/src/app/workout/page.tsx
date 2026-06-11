@@ -7,6 +7,7 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createWorkout } from "@/lib/api";
 import { track } from "@/lib/analytics";
+import { withRetry } from "@/lib/retry";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
@@ -32,6 +33,50 @@ export default function WorkoutPage() {
   const [celebration, setCelebration] = useState<CelebrationState | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // 저장 실패 시 스냅샷을 보관해 "다시 시도"로 재저장한다(stop이 localStorage를 비우므로 메모리에 보존).
+  const [pendingSnapshot, setPendingSnapshot] = useState<WorkoutFinishSnapshot | null>(null);
+
+  const saveSnapshot = useCallback(
+    async (snapshot: WorkoutFinishSnapshot) => {
+      if (!user) return;
+      setSaveError(null);
+      setSaving(true);
+      try {
+        // 1차 방어: 3초 간격 3회 자동 재시도 (서버 재시작·네트워크 깜빡임 흡수)
+        const res = await withRetry(
+          () =>
+            createWorkout(
+              {
+                startedAt: snapshot.startedAt,
+                endedAt: snapshot.endedAt,
+                durationSec: snapshot.durationSec,
+                distanceM: snapshot.distanceM,
+                calories: snapshot.calories,
+                avgPaceSecPerKm: snapshot.avgPaceSecPerKm,
+                path: snapshot.path,
+              },
+              user,
+            ),
+          3,
+          3000,
+        );
+        void track("workout_recorded", {
+          type: "gps",
+          distanceM: snapshot.distanceM,
+          durationSec: snapshot.durationSec,
+        });
+        setPendingSnapshot(null);
+        setCelebration({ recordId: res.id, snapshot });
+      } catch {
+        // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
+        setSaveError(t.workout_save_failed);
+        setPendingSnapshot(snapshot);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user, t.workout_save_failed],
+  );
 
   const handleStop = useCallback(async () => {
     if (!user) return;
@@ -56,27 +101,11 @@ export default function WorkoutPage() {
       setSaveError(t.workout_no_route);
       return;
     }
-    setSaveError(null);
-    setSaving(true);
-    try {
-      const res = await createWorkout(
-        { startedAt: snapshot.startedAt, endedAt: snapshot.endedAt, durationSec: snapshot.durationSec, distanceM: snapshot.distanceM, calories: snapshot.calories, avgPaceSecPerKm: snapshot.avgPaceSecPerKm, path: snapshot.path },
-        user,
-      );
-      void track("workout_recorded", {
-        type: "gps",
-        distanceM: snapshot.distanceM,
-        durationSec: snapshot.durationSec,
-      });
-      setCelebration({ recordId: res.id, snapshot });
-    } catch (e) {
-      setSaveError(String(e));
-    } finally {
-      setSaving(false);
-    }
+    await saveSnapshot(snapshot);
   }, [
     session,
     user,
+    saveSnapshot,
     confirm,
     t.workout_no_route,
     t.workout_save_empty_title,
@@ -145,6 +174,16 @@ export default function WorkoutPage() {
             </div>
           ) : null}
           {saveError ? <Alert className="mb-3">{saveError}</Alert> : null}
+          {pendingSnapshot ? (
+            <button
+              type="button"
+              onClick={() => saveSnapshot(pendingSnapshot)}
+              disabled={saving}
+              className="mb-3 h-11 w-full rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {saving ? t.saving : t.retry}
+            </button>
+          ) : null}
           <WorkoutStatsGrid
             status={session.status}
             elapsedLabel={session.elapsedLabel}

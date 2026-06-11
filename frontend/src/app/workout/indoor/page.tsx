@@ -1,10 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createIndoorRun, uploadImage } from "@/lib/api";
 import { track } from "@/lib/analytics";
+import { withRetry } from "@/lib/retry";
 import { compressImageForUpload } from "@/lib/compressImage";
 import { readPhotoTakenAt, workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
 import { formatDateTimeMinute } from "@/lib/format";
@@ -98,22 +100,24 @@ export default function IndoorRunPage() {
         ? workoutStartedAtFromPhotoEnd(photoTakenAt, durationSec)
         : new Date().toISOString();
 
-      const res = await createIndoorRun(
-        {
-          distanceM: distM,
-          durationSec,
-          startedAt,
-          imageUrl,
-        },
-        user,
+      // 1차 방어: 3초 간격 3회 자동 재시도 (서버 재시작·네트워크 깜빡임 흡수)
+      const res = await withRetry(
+        () =>
+          createIndoorRun(
+            { distanceM: distM, durationSec, startedAt, imageUrl },
+            user,
+          ),
+        3,
+        3000,
       );
       void track("workout_recorded", { type: "indoor", distanceM: distM, durationSec });
       nativeNavigate(`/workouts/${res.id}`);
     } catch (e) {
+      // 2차 방어: 업로드 용량 초과는 전용 안내, 그 외엔 친절 안내(폼 그대로 → 다시 제출이 곧 재시도)
       const msg =
         e instanceof Error && e.message === "upload_too_large"
           ? t.upload_too_large
-          : String(e);
+          : t.workout_save_failed;
       setSubmitError(msg);
       setSubmitting(false);
     }
@@ -131,9 +135,9 @@ export default function IndoorRunPage() {
     <PageLayout
       title={t.indoor_title}
       actions={
-        <a className="text-sm text-zinc-600 hover:underline" href="/">
+        <Link className="text-sm text-zinc-600 hover:underline" href="/">
           {t.nav_home}
-        </a>
+        </Link>
       }
     >
       {submitError ? <Alert className="mb-4">{submitError}</Alert> : null}
