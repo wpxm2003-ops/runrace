@@ -55,7 +55,7 @@ public class FitnessService {
   }
 
   /**
-   * 진행 중인 모든 대결의 누적 거리에 델타를 더하고(음수 방지), 완주/마일스톤/추월 이벤트를 처리한다.
+   * 진행 중인 모든 레이스의 누적 거리에 델타를 더하고(음수 방지), 완주/마일스톤/추월 이벤트를 처리한다.
    * applyDistanceToMember를 공통 경로로 사용하여 이벤트 발행 누락을 방지한다.
    */
   private void applyDeltaToActiveChallenges(AppUser user, BigDecimal delta) {

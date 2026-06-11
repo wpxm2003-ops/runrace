@@ -73,7 +73,7 @@ public class WorkoutService {
         .createdAt(OffsetDateTime.now())
         .build());
 
-    // 현재 참여 중인 진행 대결에 운동 거리 반영
+    // 현재 참여 중인 진행 레이스에 운동 거리 반영
     challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
 
     return saved;

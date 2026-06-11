@@ -40,7 +40,7 @@ export function fetchMyChallengesPage(
   return apiFetch<ChallengeListPage>(`/api/challenges/mine?${p.toString()}`, { user });
 }
 
-/** 대결 상세(공개). */
+/** 레이스 상세(공개). */
 export function fetchChallengeDetail(id: number, user?: User | null) {
   return publicFetch<ChallengeDetail>(`/api/challenges/${id}`, user);
 }

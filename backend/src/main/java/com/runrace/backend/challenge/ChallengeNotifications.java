@@ -8,9 +8,9 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * 대결 도메인의 푸시 알림을 처리한다.
+ * 레이스 도메인의 푸시 알림을 처리한다.
  *
- * <p>트랜잭션 커밋 이후에만 동작하므로, 롤백된 대결에 대해 알림이 나가지 않는다.
+ * <p>트랜잭션 커밋 이후에만 동작하므로, 롤백된 레이스에 대해 알림이 나가지 않는다.
  * 외부 푸시(FCM)를 DB 트랜잭션으로 감싸지 않도록 리스너 자체에는 트랜잭션을 두지 않는다
  * (필요한 읽기는 각 리포지토리 호출이 자체 트랜잭션으로 처리).
  */

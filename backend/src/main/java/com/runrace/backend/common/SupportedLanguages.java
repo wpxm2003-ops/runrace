@@ -2,7 +2,7 @@ package com.runrace.backend.common;
 
 import java.util.Set;
 
-/** 지원 언어 코드의 단일 출처 — 사용자/대결 언어 검증·정규화에 사용한다. */
+/** 지원 언어 코드의 단일 출처 — 사용자/레이스 언어 검증·정규화에 사용한다. */
 public final class SupportedLanguages {
   /** 미지원·미상 언어의 기본값. */
   public static final String DEFAULT = "ko";

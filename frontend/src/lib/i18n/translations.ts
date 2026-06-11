@@ -405,7 +405,7 @@ export const translations = {
     kakao_callback_error: "Kakao sign-in failed.",
     kakao_callback_retry: "Try again",
 
-    // ── 대결 목록 ─────────────────────────
+    // ── 레이스 목록 ─────────────────────────
     races_title: "Races",
     races_create_btn: "New Race",
     races_list_heading: "Race List",
@@ -424,7 +424,7 @@ export const translations = {
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
       `${goal} goal · ${memberCount}/${maxMembers} members`,
 
-    // ── 대결 만들기 ───────────────────────
+    // ── 레이스 만들기 ───────────────────────
     create_title: "New Race",
     create_list_link: "All Races",
     create_limit_warning: (maxActive: number, activeCount: number) =>
@@ -461,7 +461,7 @@ export const translations = {
     create_err_start_too_soon: "Start must be after the current time.",
     create_err_end_after_start: "End must be after the start date and time.",
 
-    // ── 대결 상세 ─────────────────────────
+    // ── 레이스 상세 ─────────────────────────
     detail_title: "Race Details",
     detail_no_id: "Race not found.",
     detail_link_copied: "Link copied!",
@@ -489,7 +489,7 @@ export const translations = {
     detail_member_workouts_applied: (km: string) => `Applied ${km} km`,
     challenge_workout_back: "Race details",
 
-    // ── 대결 수정 ─────────────────────────
+    // ── 레이스 수정 ─────────────────────────
     edit_title: "Edit Race",
     edit_btn: "Save changes",
     edit_btn_busy: "Saving...",

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 대결 진행(누적 거리) 엔진.
+ * 레이스 진행(누적 거리) 엔진.
  * 운동 기록 반영/되돌림, 완주·마일스톤·추월 처리를 담당한다.
  * GPS 운동(WorkoutService)과 실내러닝 승인(IndoorApprovalService)이 공통으로 사용한다.
  */
@@ -37,8 +37,8 @@ public class ChallengeProgressService {
   private final ChallengeService challengeService;
 
   /**
-   * 운동 기록 저장 시 호출. 사용자가 현재 참여 중인 진행 대결의 total_km을 distanceM만큼 증가시킨다.
-   * - 대결 기간(startAt ~ endAt) 안에 있고 아직 승자가 없는 대결만 대상으로 한다.
+   * 운동 기록 저장 시 호출. 사용자가 현재 참여 중인 진행 레이스의 total_km을 distanceM만큼 증가시킨다.
+   * - 레이스 기간(startAt ~ endAt) 안에 있고 아직 승자가 없는 레이스만 대상으로 한다.
    * - 목표 달성 시 완주 처리 및 승자 확정까지 함께 수행한다.
    */
   @Transactional
@@ -54,9 +54,9 @@ public class ChallengeProgressService {
   }
 
   /**
-   * 사용자가 현재 참여 중(진행 중·미완주)인 모든 대결 멤버를 순회하며 {@code body}를 실행한다.
-   * - 관련 대결의 전체 멤버를 단일 쿼리로 사전 로드해 루프 내 N+1을 방지하고, {@code body}에 함께 넘긴다.
-   * - 방장 혼자인 대결은 무효 종료({@link ChallengeService#endIfSolo})하고 건너뛴다.
+   * 사용자가 현재 참여 중(진행 중·미완주)인 모든 레이스 멤버를 순회하며 {@code body}를 실행한다.
+   * - 관련 레이스의 전체 멤버를 단일 쿼리로 사전 로드해 루프 내 N+1을 방지하고, {@code body}에 함께 넘긴다.
+   * - 방장 혼자인 레이스은 무효 종료({@link ChallengeService#endIfSolo})하고 건너뛴다.
    * GPS 운동 반영·실내러닝 승인 생성·헬스데이터 동기화가 공통으로 사용한다.
    * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다.
    */
@@ -114,7 +114,7 @@ public class ChallengeProgressService {
 
   /**
    * 멤버 누적 거리가 목표를 처음 달성하면 완주 시각을 기록하고, 아직 승자가 없으면 승자로 확정한다.
-   * 전원 완주 시 대결을 종료하고 종료 이벤트를 발행한다.
+   * 전원 완주 시 레이스을 종료하고 종료 이벤트를 발행한다.
    * 사전 로드된 멤버 목록을 받아 findAllForChallenge 중복 조회를 방지하며,
    * applyDistanceToMemberWithContext 에서 호출된다(진행 중 트랜잭션 전제).
    */
@@ -142,7 +142,7 @@ public class ChallengeProgressService {
   /**
    * 운동 기록 삭제 시 호출. challenge_workout 링크를 찾아 적용된 거리를 총 거리에서 차감한다.
    * - 완주 처리된 멤버가 목표 이하로 내려가면 finishedAt을 초기화한다.
-   * - 해당 멤버가 대결 승자였으면 winner도 초기화한다.
+   * - 해당 멤버가 레이스 승자였으면 winner도 초기화한다.
    */
   @Transactional
   public void reverseWorkoutDistance(long workoutSessionId) {

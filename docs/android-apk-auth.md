@@ -61,7 +61,7 @@ cd android
 .\gradlew.bat clean assembleDebug
 ```
 
-## 대결 API (`Failed to fetch`)
+## 레이스 API (`Failed to fetch`)
 
 - `capacitor.config.ts` 에 **CapacitorHttp** 활성화 → WebView CORS 우회
 - EC2 `RUNRACE_CORS_ALLOWED_ORIGINS` 에 `http://localhost,https://localhost` 포함 후 `sudo systemctl restart runrace`

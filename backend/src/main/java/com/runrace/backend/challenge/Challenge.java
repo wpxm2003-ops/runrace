@@ -67,7 +67,7 @@ public class Challenge {
 
   // ── 도메인 메서드 ──────────────────────────────────────────────
 
-  /** 주어진 사용자가 이 대결의 방장(생성자)인지 여부. */
+  /** 주어진 사용자가 이 레이스의 방장(생성자)인지 여부. */
   public boolean isOwner(UUID userId) {
     return userId != null && creator.getId().equals(userId);
   }
@@ -97,12 +97,12 @@ public class Challenge {
     this.winner = null;
   }
 
-  /** 대결을 종료 상태로 전이한다. */
+  /** 레이스을 종료 상태로 전이한다. */
   public void end() {
     this.isEnded = true;
   }
 
-  /** 대결 종료 상태를 초기화한다(운동 삭제·되돌림용). */
+  /** 레이스 종료 상태를 초기화한다(운동 삭제·되돌림용). */
   public void resetEnded() {
     this.isEnded = false;
   }

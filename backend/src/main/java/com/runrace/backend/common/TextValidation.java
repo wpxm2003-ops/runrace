@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * 사용자 입력 텍스트 검증의 단일 출처 — 트림 후 비어있음·길이 초과·금지문자를 거른다.
- * 호출부는 길이 한도와 에러 코드 접두사만 지정한다(닉네임·대결 제목 등).
+ * 호출부는 길이 한도와 에러 코드 접두사만 지정한다(닉네임·레이스 제목 등).
  */
 public final class TextValidation {
   private TextValidation() {}

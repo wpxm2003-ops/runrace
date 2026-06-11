@@ -32,7 +32,7 @@ const BASE_CONFIG = {
   ...SWR_ERROR_RETRY,
 };
 
-// ── 대결 목록 ────────────────────────────────────────────────────────────────
+// ── 레이스 목록 ────────────────────────────────────────────────────────────────
 /**
  * 공개 API이지만 로그인 여부에 따라 isOwner 필드가 달라지므로 userId를 키에 포함한다.
  * 비로그인 상태에서도 목록 자체는 즉시 보여준다.
@@ -96,7 +96,7 @@ export function useMyChallengeListInfinite(user: User | null, phase: string) {
   );
 }
 
-// ── 대결 상세 ────────────────────────────────────────────────────────────────
+// ── 레이스 상세 ────────────────────────────────────────────────────────────────
 export function useChallengeDetail(id: number | null, user?: User | null, authLoading = false) {
   return useSWR(
     authLoading || id == null ? null : (["challenge", id, user?.uid ?? null] as const),

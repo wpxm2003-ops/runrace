@@ -5,7 +5,7 @@ import type { LatLng } from "@/lib/workoutTrack";
  * 페이지마다 인라인으로 흩어져 있던 정의를 한 곳에 모은다.
  */
 
-// ── 대결(challenge) ──────────────────────────────────────────────
+// ── 레이스(challenge) ──────────────────────────────────────────────
 export type ChallengeListItem = {
   id: number;
   title: string;
@@ -184,7 +184,7 @@ export type RejectedApproval = {
   rejectorNicknames: string[];
 };
 
-/** 단일 식별자만 돌려주는 생성 응답(대결/운동 공용). */
+/** 단일 식별자만 돌려주는 생성 응답(레이스/운동 공용). */
 export type CreatedId = { id: number };
 
 /** 공개 공유 페이지용 운동 데이터 (인증 불필요). */
