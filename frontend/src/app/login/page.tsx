@@ -6,9 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { syncBackendLogin } from "@/lib/api";
 import {
-  IN_APP_LOGIN_MESSAGE,
-  IN_APP_OPEN_BROWSER_LABEL,
-  IN_APP_URL_COPIED_MESSAGE,
   LOGIN_PENDING_KEY,
   OAUTH_REDIRECT_FAILED_KEY,
   buildLoginPageUrl,
@@ -63,12 +60,12 @@ function LoginContent() {
     setError(null);
     setInAppHint(null);
     const method = await openInExternalBrowser(buildLoginPageUrl(returnTo));
-    if (method === "copy") setInAppHint(IN_APP_URL_COPIED_MESSAGE);
+    if (method === "copy") setInAppHint(t.login_inapp_url_copied);
   }
 
   async function signInGoogle() {
     setError(null);
-    if (inApp) { setError(IN_APP_LOGIN_MESSAGE); return; }
+    if (inApp) { setError(t.login_inapp_message); return; }
     setBusy(true);
     let redirecting = false;
     try {
@@ -108,7 +105,7 @@ function LoginContent() {
         {inApp && (
           <div className="mt-4 space-y-2">
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              {IN_APP_LOGIN_MESSAGE}
+              {t.login_inapp_message}
             </p>
             {inAppHint && (
               <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{inAppHint}</p>
@@ -118,7 +115,7 @@ function LoginContent() {
               onClick={handleOpenExternalBrowser}
               className="h-11 w-full rounded-xl border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50"
             >
-              {IN_APP_OPEN_BROWSER_LABEL}
+              {t.login_inapp_open_browser}
             </button>
           </div>
         )}

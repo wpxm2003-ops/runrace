@@ -114,18 +114,9 @@ public class ChallengeProgressService {
 
   /**
    * 멤버 누적 거리가 목표를 처음 달성하면 완주 시각을 기록하고, 아직 승자가 없으면 승자로 확정한다.
-   * 진행 중 트랜잭션 안에서 호출되는 것을 전제로 한다.
-   * FitnessService 등 단건 경로용 — 내부에서 전체 멤버를 조회한다.
-   */
-  public void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm) {
-    List<ChallengeMember> allMembers =
-        challengeMemberRepository.findAllForChallenge(member.getChallenge().getId());
-    onMemberProgress(member, nextTotalKm, allMembers);
-  }
-
-  /**
-   * 사전 로드된 멤버 목록을 받아 완주/종료 처리한다.
-   * applyDistanceToMemberWithContext 에서 호출되며, findAllForChallenge 중복 조회를 방지한다.
+   * 전원 완주 시 대결을 종료하고 종료 이벤트를 발행한다.
+   * 사전 로드된 멤버 목록을 받아 findAllForChallenge 중복 조회를 방지하며,
+   * applyDistanceToMemberWithContext 에서 호출된다(진행 중 트랜잭션 전제).
    */
   private void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm,
                                  List<ChallengeMember> allMembers) {

@@ -70,14 +70,6 @@ export function canOAuthRedirectFallback(): boolean {
 /** AuthRedirectHandler redirect 복귀 실패 시 로그인 페이지에 표시 */
 export const OAUTH_REDIRECT_FAILED_KEY = "runrace_oauth_redirect_failed";
 
-export const IN_APP_LOGIN_MESSAGE =
-  "네이버·카카오톡·인스타 등 앱 안 브라우저에서는 Google 로그인이 차단됩니다. 아래 버튼으로 Chrome·Safari에서 열어 주세요.";
-
-export const IN_APP_OPEN_BROWSER_LABEL = "Chrome/Safari에서 열기";
-
-export const IN_APP_URL_COPIED_MESSAGE =
-  "주소가 복사되었습니다. Safari 또는 Chrome 앱 주소창에 붙여넣어 주세요.";
-
 export function buildLoginPageUrl(returnTo: string): string {
   if (typeof window === "undefined") return "/login";
   const base = `${window.location.origin}/login`;

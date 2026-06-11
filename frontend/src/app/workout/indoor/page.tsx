@@ -130,7 +130,7 @@ export default function IndoorRunPage() {
       title={t.indoor_title}
       actions={
         <a className="text-sm text-zinc-600 hover:underline" href="/">
-          홈
+          {t.nav_home}
         </a>
       }
     >
