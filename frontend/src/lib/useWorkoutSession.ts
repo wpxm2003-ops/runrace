@@ -285,7 +285,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       setStatus("paused");
       setIsRestored(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

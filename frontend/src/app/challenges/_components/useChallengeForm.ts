@@ -61,7 +61,10 @@ export function useChallengeForm({
   const [formHint, setFormHint] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
-  const values: ChallengeFormValues = { title, goalKm, maxMembers, startAt, endAt };
+  const values: ChallengeFormValues = useMemo(
+    () => ({ title, goalKm, maxMembers, startAt, endAt }),
+    [title, goalKm, maxMembers, startAt, endAt],
+  );
   const endMin = startAt || startAtMin;
 
   const clearFeedback = useCallback(() => {
@@ -101,7 +104,7 @@ export function useChallengeForm({
       setFormError(null);
       setFormSuccess(null);
     },
-    [hints.goalMax, unit],
+    [hints, unit],
   );
 
   const onMaxMembersChange = useCallback(
@@ -113,7 +116,7 @@ export function useChallengeForm({
       setFormError(null);
       setFormSuccess(null);
     },
-    [hints.membersMax],
+    [hints],
   );
 
   const onStartAtChange = useCallback((v: string) => {

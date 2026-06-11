@@ -173,6 +173,8 @@ export function FcmBootstrap() {
         FirebaseMessaging.removeAllListeners();
       });
     };
+    // user 객체 식별자(uid)에만 의존해 재등록 — user 객체 자체는 동일 uid라도 매 렌더 바뀔 수 있어 제외.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
   return null;
