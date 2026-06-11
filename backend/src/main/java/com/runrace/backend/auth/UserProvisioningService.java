@@ -8,6 +8,7 @@ import com.runrace.backend.user.NicknameGenerator;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class UserProvisioningService {
   private static final int MAX_NICKNAME_ATTEMPTS = 10;
 
   private final AppUserRepository appUserRepository;
+  private final UserInsertTx userInsertTx;
 
   /**
    * firebaseUid 기준으로 사용자를 upsert한다. 신규면 생성 시각·언어·고유 닉네임을 부여한다.
@@ -51,23 +53,39 @@ public class UserProvisioningService {
     }
 
     String lang = SupportedLanguages.normalizeOrDefault(langHint);
-    AppUser newUser = AppUser.builder()
-        .firebaseUid(firebaseUid)
-        .email(email)
-        .displayName(displayName)
-        .provider(provider)
-        .createdAt(OffsetDateTime.now())
-        .langCd(lang)
-        .nickname(generateUniqueNickname(lang))
-        .build();
-    return appUserRepository.save(newUser);
+    return createNewUser(firebaseUid, email, displayName, provider, lang);
   }
 
-  private String generateUniqueNickname(String lang) {
+  /**
+   * 신규 사용자 생성 — 닉네임 유니크 충돌·동시 가입 경쟁을 안전하게 처리한다.
+   * <ul>
+   *   <li>빠른 회피: 후보 닉네임이 이미 있으면 INSERT 없이 다음 후보로.</li>
+   *   <li>경쟁 방어: 독립 트랜잭션 INSERT가 유니크 위반 나면(동시 가입) 닉네임은 재시도,
+   *       같은 firebaseUid가 이미 생성됐으면 그 행을 회수한다.</li>
+   * </ul>
+   */
+  private AppUser createNewUser(
+      String firebaseUid, String email, String displayName, String provider, String lang) {
     for (int i = 0; i < MAX_NICKNAME_ATTEMPTS; i++) {
-      String candidate = NicknameGenerator.generate(lang);
-      if (!appUserRepository.existsByNickname(candidate)) {
-        return candidate;
+      String nickname = NicknameGenerator.generate(lang);
+      if (appUserRepository.existsByNickname(nickname)) continue; // 빠른 회피
+
+      AppUser candidate = AppUser.builder()
+          .firebaseUid(firebaseUid)
+          .email(email)
+          .displayName(displayName)
+          .provider(provider)
+          .createdAt(OffsetDateTime.now())
+          .langCd(lang)
+          .nickname(nickname)
+          .build();
+      try {
+        return userInsertTx.insert(candidate);
+      } catch (DataIntegrityViolationException e) {
+        // 동시 가입으로 같은 firebaseUid 행이 이미 생성됐으면 그 행을 사용(경쟁에서 진 경우)
+        AppUser raced = appUserRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        if (raced != null) return raced;
+        // 닉네임 경쟁에서 진 경우 → 다음 후보로 재시도
       }
     }
     throw ApiException.conflict("nickname_unavailable");
