@@ -101,14 +101,8 @@ export function FcmBootstrap() {
           console.warn("FCM getToken retry", attempt + 1, e);
         }
       }
-      // 최종 실패 시 app_error_log에 기록
-      if (lastError !== undefined) {
-        void reportClientError({
-          message: lastError instanceof Error ? lastError.message : String(lastError),
-          stack: lastError instanceof Error ? lastError.stack : undefined,
-          kind: "fcm_token_failed",
-        });
-      }
+      // 재시도 모두 실패 → 호출부(syncToken)에서 한 번에 기록하도록 throw
+      if (lastError !== undefined) throw lastError;
       return null;
     }
 
@@ -117,22 +111,32 @@ export function FcmBootstrap() {
       if (initialDelayMs > 0) await sleep(initialDelayMs);
       if (cancelled) return;
 
-      const granted = await ensureNotificationPermission();
-      if (cancelled || !granted) return;
+      try {
+        const granted = await ensureNotificationPermission();
+        if (cancelled || !granted) return;
 
-      const token = await fetchFcmTokenWithRetry();
-      if (cancelled || !token || token === registeredRef.current) return;
+        const token = await fetchFcmTokenWithRetry();
+        if (cancelled || !token || token === registeredRef.current) return;
 
-      await registerDeviceToken(user as User, token, Capacitor.getPlatform());
-      registeredRef.current = token;
+        await registerDeviceToken(user as User, token, Capacitor.getPlatform());
+        registeredRef.current = token;
 
-      const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
-      if (!tokenListenerAdded && !cancelled) {
-        tokenListenerAdded = true;
-        await FirebaseMessaging.addListener("tokenReceived", async ({ token: newToken }) => {
-          if (!newToken || newToken === registeredRef.current) return;
-          await registerDeviceToken(user as User, newToken, Capacitor.getPlatform());
-          registeredRef.current = newToken;
+        const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
+        if (!tokenListenerAdded && !cancelled) {
+          tokenListenerAdded = true;
+          await FirebaseMessaging.addListener("tokenReceived", async ({ token: newToken }) => {
+            if (!newToken || newToken === registeredRef.current) return;
+            await registerDeviceToken(user as User, newToken, Capacitor.getPlatform());
+            registeredRef.current = newToken;
+          });
+        }
+      } catch (e) {
+        if (cancelled) return;
+        // Play Services/FCM 초기화 실패(저 다이얼로그의 원인) — 빈도·대상 유저 집계용으로 기록
+        void reportClientError({
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+          kind: "fcm_play_services",
         });
       }
     }
@@ -154,6 +158,8 @@ export function FcmBootstrap() {
         if (!isActive || cancelled) return;
         clearTimeout(resumeTimer);
         resumeTimer = setTimeout(() => {
+          // 이미 토큰이 등록됐으면 복귀 시 재요청하지 않는다 — Play Services 팝업 유발 방지(완화 ②)
+          if (registeredRef.current) return;
           void syncToken(0);
         }, RESUME_TOKEN_DELAY_MS);
       });
