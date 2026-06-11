@@ -19,6 +19,7 @@
 
   <properties>
     <java.version>21</java.version>
+    <querydsl.version>5.1.0</querydsl.version>
   </properties>
 
   <dependencies>
@@ -79,6 +80,14 @@
       <optional>true</optional>
     </dependency>
 
+    <!-- QueryDSL (Spring Boot 3 / Hibernate 6 = jakarta) -->
+    <dependency>
+      <groupId>com.querydsl</groupId>
+      <artifactId>querydsl-jpa</artifactId>
+      <version>${querydsl.version}</version>
+      <classifier>jakarta</classifier>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
@@ -96,6 +105,35 @@
           <profiles>
             <profile>local</profile>
           </profiles>
+        </configuration>
+      </plugin>
+
+      <!-- QueryDSL Q클래스 생성 — APT를 컴파일러 프로세서 경로로 등록 (Lombok과 함께 동작) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+            <path>
+              <groupId>com.querydsl</groupId>
+              <artifactId>querydsl-apt</artifactId>
+              <version>${querydsl.version}</version>
+              <classifier>jakarta</classifier>
+            </path>
+            <path>
+              <groupId>jakarta.persistence</groupId>
+              <artifactId>jakarta.persistence-api</artifactId>
+            </path>
+            <path>
+              <groupId>jakarta.annotation</groupId>
+              <artifactId>jakarta.annotation-api</artifactId>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
     </plugins>

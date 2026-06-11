@@ -267,10 +267,7 @@ public class ChallengeService {
     if (challengeIds.isEmpty()) {
       return Map.of();
     }
-    return challengeMemberRepository.countsByChallengeIdIn(challengeIds).stream()
-        .collect(Collectors.toMap(
-            row -> (Long) row[0],
-            row -> (Long) row[1]));
+    return challengeMemberRepository.memberCountsByChallengeId(challengeIds);
   }
 
   public static BigDecimal goalKmAsDecimal(Challenge challenge) {
