@@ -96,15 +96,6 @@ export type MeResponse = {
   langCd: string;
 };
 
-// ── 친구(friend) ─────────────────────────────────────────────────
-export type Friend = {
-  id: string;
-  nickname: string | null;
-  email: string | null;
-};
-
-export type InviteResult = { code: string; expiresAt: string };
-
 // ── 거리 동기화(fitness) ─────────────────────────────────────────
 export type DailyDistanceResult = { prevKm: string; nowKm: string; deltaKm: string };
 

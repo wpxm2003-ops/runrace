@@ -11,6 +11,7 @@ import {
   joinChallenge,
   leaveChallenge,
   invalidateChallengeLists,
+  nudgeMember,
   useChallengeDetail,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
@@ -64,6 +65,8 @@ export default function ChallengeDetailContent() {
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
+  const [nudgingId, setNudgingId] = useState<string | null>(null);
+  const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
 
   const params = useParams();
   const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
@@ -147,6 +150,24 @@ export default function ChallengeDetailContent() {
 
 
 
+  const onNudge = useCallback(
+    async (targetUserId: string, variant: number) => {
+      if (!user || id == null) return;
+      setNudgingId(targetUserId);
+      setActionError(null);
+      try {
+        await nudgeMember(id, targetUserId, variant, user);
+        setNudgedIds((prev) => new Set(prev).add(targetUserId));
+      } catch (e) {
+        const msg = String(e);
+        setActionError(msg.includes("nudge_daily_limit") ? t.nudge_daily_limit : msg);
+      } finally {
+        setNudgingId(null);
+      }
+    },
+    [user, id, t],
+  );
+
   async function onShare() {
     if (!detail || id == null) return;
     const { shareLink } = await import("@/lib/shareCard");
@@ -181,7 +202,7 @@ export default function ChallengeDetailContent() {
       title={t.detail_title}
       actions={pageActions}
     >
-      {error ? <Alert className="mb-4">{error}</Alert> : null}
+      {error ? <Alert className="mb-4 whitespace-pre-line">{error}</Alert> : null}
 
       {isLoading && !detail ? (
         // 첫 로드 스켈레톤 (캐시 데이터가 없을 때만)
@@ -221,6 +242,11 @@ export default function ChallengeDetailContent() {
             hasStarted={detail.hasStarted}
             hasEnded={detail.hasEnded}
             myUserId={detail.currentUserId}
+            onNudge={
+              detail.isMember && detail.hasStarted && !detail.hasEnded ? onNudge : undefined
+            }
+            nudgingId={nudgingId}
+            nudgedIds={nudgedIds}
           />
 
 

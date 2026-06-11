@@ -16,7 +16,6 @@ import {
   fetchPendingApprovals,
   fetchRejectedApprovals,
 } from "./challenges";
-import { fetchFriends } from "./friends";
 import { fetchWorkout, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
 import { SWR_ERROR_RETRY } from "./swrConfig";
@@ -128,7 +127,6 @@ export function invalidateAfterNicknameChange(userId: string) {
       if (!Array.isArray(key)) return false;
       const [head, a, b, c] = key;
       if (head === "me" && a === userId) return true;
-      if (head === "friends" && a === userId) return true;
       if (head === "challenges" && (a === userId || a === "mine")) return true;
       if (head === "challenge" && (b === userId || c === userId)) return true;
       return false;
@@ -186,15 +184,6 @@ export function useActiveCount(user: User | null) {
   return useSWR(
     user ? (["active-count", user.uid] as const) : null,
     () => fetchActiveCount(user!),
-    BASE_CONFIG,
-  );
-}
-
-// ── 친구 목록 ────────────────────────────────────────────────────────────────
-export function useFriendList(user: User | null) {
-  return useSWR(
-    user ? (["friends", user.uid] as const) : null,
-    () => fetchFriends(user!),
     BASE_CONFIG,
   );
 }

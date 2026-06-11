@@ -98,8 +98,6 @@ export function resolveBackFallback(pathname: string, search: string): string | 
 
   if (pathname === "/challenges/create") return "/challenges";
 
-  if (pathname.startsWith("/friends/")) return "/friends";
-
   return null;
 }
 

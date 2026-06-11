@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -37,6 +37,10 @@ type MemberRowProps = {
   isMe: boolean;
   showMedal: boolean;
   goalKm: number;
+  /** 지정 시 다른 참가자 행에 콕 찌르기 버튼을 표시한다(진행 중·참여자일 때만 부모가 전달). */
+  onNudge?: (targetUserId: string, variant: number) => void;
+  nudging?: boolean;
+  nudged?: boolean;
 };
 
 /**
@@ -49,9 +53,13 @@ const MemberRow = memo(function MemberRow({
   isMe,
   showMedal,
   goalKm,
+  onNudge,
+  nudging,
+  nudged,
 }: MemberRowProps) {
   const { t } = useLocale();
   const { unit } = useUnit();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const pct = Math.min(100, Math.max(0, Number(m.progressPercent) || 0));
   const pctLabel = Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
 
@@ -90,6 +98,39 @@ const MemberRow = memo(function MemberRow({
           style={{ width: `${pct}%` }}
         />
       </div>
+      {onNudge && !isMe && !m.finished ? (
+        <div className="mt-2 flex flex-col items-end gap-1.5">
+          {nudged ? (
+            <span className="text-xs font-medium text-emerald-600">{t.nudge_sent}</span>
+          ) : pickerOpen ? (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {t.nudge_presets.map((label, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={nudging}
+                  onClick={() => {
+                    setPickerOpen(false);
+                    onNudge(m.userId, i);
+                  }}
+                  className="rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={nudging}
+              onClick={() => setPickerOpen(true)}
+              className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              👊 {t.nudge_btn}
+            </button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 });
@@ -101,6 +142,10 @@ type ChallengeLeaderboardProps = {
   hasEnded: boolean;
   /** 내 행 강조용 — 내 백엔드 userId (me.id). */
   myUserId: string | null;
+  /** 지정 시 다른 참가자에게 콕 찌르기 버튼 노출(진행 중·참여자일 때만 전달). */
+  onNudge?: (targetUserId: string, variant: number) => void;
+  nudgingId?: string | null;
+  nudgedIds?: Set<string>;
 };
 
 export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
@@ -109,6 +154,9 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
   hasStarted,
   hasEnded,
   myUserId,
+  onNudge,
+  nudgingId,
+  nudgedIds,
 }: ChallengeLeaderboardProps) {
   const { t } = useLocale();
   const heading = !hasStarted
@@ -129,6 +177,9 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
             isMe={myUserId != null && m.userId === myUserId}
             showMedal={m.finished || hasEnded}
             goalKm={goalKm}
+            onNudge={onNudge}
+            nudging={nudgingId === m.userId}
+            nudged={nudgedIds?.has(m.userId)}
           />
         ))}
       </div>

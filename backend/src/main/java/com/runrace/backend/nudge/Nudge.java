@@ -1,4 +1,4 @@
-package com.runrace.backend.friend;
+package com.runrace.backend.nudge;
 
 import com.runrace.backend.user.AppUser;
 import jakarta.persistence.Column;
@@ -17,13 +17,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** 콕 찌르기(독려) 기록 — 같은 레이스 참가자끼리 보낸다. 일일 중복 방지에 사용한다. */
 @Entity
 @Table(name = "friend_nudge")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class FriendNudge {
+public class Nudge {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
