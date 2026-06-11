@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/AuthProvider";
 import { registerDeviceToken } from "@/lib/api/push";
 import { markNativePermissionsReady } from "@/lib/nativePermissions";
 import { reportClientError } from "@/lib/api";
+import { track } from "@/lib/analytics";
 
 /** 백그라운드 복귀 직후 Play Services 미준비 시 Google Play 팝업이 뜨는 것을 줄이기 위한 대기 */
 const COLD_START_TOKEN_DELAY_MS = 1500;
@@ -137,6 +138,16 @@ export function FcmBootstrap() {
     }
 
     void syncToken(COLD_START_TOKEN_DELAY_MS);
+
+    // 알림 탭 시 분석 이벤트 — 푸시 효과/복귀 측정 (cleanup의 removeAllListeners로 해제)
+    void import("@capacitor-firebase/messaging").then(async ({ FirebaseMessaging }) => {
+      if (cancelled) return;
+      await FirebaseMessaging.addListener("notificationActionPerformed", (event) => {
+        const data = event.notification?.data as Record<string, unknown> | undefined;
+        const type = typeof data?.type === "string" ? data.type : "unknown";
+        void track("push_opened", { type });
+      });
+    });
 
     void import("@capacitor/app").then(async ({ App }) => {
       appListener = await App.addListener("appStateChange", ({ isActive }) => {

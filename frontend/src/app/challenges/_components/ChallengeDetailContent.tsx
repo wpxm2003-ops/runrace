@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
 import Link from "next/link";
+import { track } from "@/lib/analytics";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
@@ -112,6 +113,7 @@ export default function ChallengeDetailContent() {
     try {
       await joinChallenge(id, user, `/challenges/${id}`);
       invalidateChallengeLists();
+      void track("race_joined", { challengeId: id });
       await mutate();
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));

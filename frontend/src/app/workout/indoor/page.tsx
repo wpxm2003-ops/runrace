@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createIndoorRun, uploadImage } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { compressImageForUpload } from "@/lib/compressImage";
 import { readPhotoTakenAt, workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
 import { formatDateTimeMinute } from "@/lib/format";
@@ -106,6 +107,7 @@ export default function IndoorRunPage() {
         },
         user,
       );
+      void track("workout_recorded", { type: "indoor", distanceM: distM, durationSec });
       nativeNavigate(`/workouts/${res.id}`);
     } catch (e) {
       const msg =

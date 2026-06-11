@@ -10,6 +10,7 @@ import {
 } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
 import { createChallenge, invalidateChallengeLists, useActiveCount } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -43,6 +44,7 @@ export default function CreateChallengePage() {
     try {
       await createChallenge({ ...form.getPayload(), langCd: locale }, user);
       invalidateChallengeLists();
+      void track("race_created");
       form.setFormSuccess(t.create_success);
       window.setTimeout(() => nativeNavigate("/challenges"), 1200);
     } catch (e) {

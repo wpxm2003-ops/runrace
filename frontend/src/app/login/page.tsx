@@ -19,6 +19,7 @@ import {
 } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
+import { track, setAnalyticsUser } from "@/lib/analytics";
 import { markLoggedIn } from "@/lib/AuthProvider";
 import { useLocale } from "@/lib/i18n";
 import { Button } from "@/app/_components/ui/Button";
@@ -47,6 +48,8 @@ function LoginContent() {
 
   async function completeBackendLogin(user: Parameters<typeof syncBackendLogin>[0]) {
     await syncBackendLogin(user);
+    void setAnalyticsUser(user.uid);
+    void track("login", { method: "google" });
     nativeNavigate(returnTo);
   }
 

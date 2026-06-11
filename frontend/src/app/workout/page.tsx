@@ -6,6 +6,7 @@ import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createWorkout } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
@@ -62,6 +63,11 @@ export default function WorkoutPage() {
         { startedAt: snapshot.startedAt, endedAt: snapshot.endedAt, durationSec: snapshot.durationSec, distanceM: snapshot.distanceM, calories: snapshot.calories, avgPaceSecPerKm: snapshot.avgPaceSecPerKm, path: snapshot.path },
         user,
       );
+      void track("workout_recorded", {
+        type: "gps",
+        distanceM: snapshot.distanceM,
+        durationSec: snapshot.durationSec,
+      });
       setCelebration({ recordId: res.id, snapshot });
     } catch (e) {
       setSaveError(String(e));
