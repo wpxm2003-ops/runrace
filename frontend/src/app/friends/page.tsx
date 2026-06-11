@@ -3,7 +3,7 @@
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { Skeleton } from "@/app/_components/ui/Skeleton";
+import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { createInvite, useFriendList } from "@/lib/api";
 import { friendAcceptUrl } from "@/lib/friendRoute";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -63,16 +63,7 @@ export default function FriendsPage() {
         <div className="text-lg font-semibold">{t.friends_list_heading}</div>
         <div className="mt-3 grid gap-2">
           {isLoading && friends.length === 0 ? (
-            <>
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="mt-1.5 h-3 w-48" />
-              </div>
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="mt-1.5 h-3 w-40" />
-              </div>
-            </>
+            <SkeletonLines count={2} />
           ) : friends.length === 0 ? (
             <div className="text-sm text-zinc-600">{t.friends_empty}</div>
           ) : (

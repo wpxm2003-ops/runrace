@@ -1,6 +1,7 @@
 package com.runrace.backend.challenge;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.challenge.dto.ActiveCountResponse;
 import com.runrace.backend.challenge.dto.ChallengeDetailResponse;
 import com.runrace.backend.challenge.dto.ChallengeListItem;
@@ -15,7 +16,6 @@ import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.WinnerRow;
 import com.runrace.backend.workout.WorkoutService;
 import com.runrace.backend.workout.WorkoutSession;
-import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -167,22 +167,8 @@ public class ChallengeController {
       @PathVariable("id") Long id,
       @PathVariable("workoutId") Long workoutId) {
     WorkoutSession session = challengeService.getLinkedWorkoutForMember(principal, id, workoutId);
-    List<PathPointDto> path =
-        workoutService.parsePath(session.getPathJson()).stream()
-            .map(p -> new PathPointDto(p.lat(), p.lng()))
-            .toList();
     return ResponseEntity.ok(
-        new WorkoutDetailResponse(
-            session.getId(),
-            session.getStartedAt().toString(),
-            session.getEndedAt().toString(),
-            session.getDurationSec(),
-            session.getDistanceM(),
-            session.getCalories(),
-            session.getAvgPaceSecPerKm(),
-            path,
-            session.getWorkoutType().name(),
-            session.getImageUrl()));
+        WorkoutDetailResponse.from(session, workoutService.toPath(session.getPathJson())));
   }
 
   /** 레이스 승인 대기 중인 실내러닝 목록. */
@@ -206,18 +192,17 @@ public class ChallengeController {
       Map<Long, Long> memberCounts,
       Set<Long> memberIds) {
     ChallengePhase phase = ChallengePhase.of(challenge, now);
-    boolean isOwner =
-        currentUserId.map(uid -> challenge.getCreator().getId().equals(uid)).orElse(false);
+    boolean isOwner = currentUserId.map(challenge::isOwner).orElse(false);
     int memberCount = memberCounts.getOrDefault(challenge.getId(), 0L).intValue();
     return new ChallengeListItem(
         challenge.getId(),
         challenge.getTitle(),
         challenge.getGoalKm(),
         phase.name(),
-        challenge.getStartAt().toString(),
-        toIsoOrNull(challenge.getEndAt()),
+        IsoTime.format(challenge.getStartAt()),
+        IsoTime.formatOrNull(challenge.getEndAt()),
         memberCount,
-        challenge.getCreatedAt().toString(),
+        IsoTime.format(challenge.getCreatedAt()),
         isOwner,
         memberIds.contains(challenge.getId()));
   }
@@ -253,8 +238,8 @@ public class ChallengeController {
         challenge.getTitle(),
         challenge.getGoalKm(),
         challenge.getMaxMembers(),
-        challenge.getStartAt().toString(),
-        toIsoOrNull(challenge.getEndAt()),
+        IsoTime.format(challenge.getStartAt()),
+        IsoTime.formatOrNull(challenge.getEndAt()),
         challenge.getCreator().getId(),
         detail.currentUserId(),
         detail.isMember(),
@@ -297,9 +282,5 @@ public class ChallengeController {
         goal.subtract(member.getTotalKm()).max(BigDecimal.ZERO),
         challengeService.progressPercent(member, challenge),
         member.getFinishedAt() != null);
-  }
-
-  private static String toIsoOrNull(OffsetDateTime value) {
-    return value != null ? value.toString() : null;
   }
 }

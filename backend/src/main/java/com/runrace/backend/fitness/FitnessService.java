@@ -1,18 +1,13 @@
 package com.runrace.backend.fitness;
 
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.Challenge;
-import com.runrace.backend.challenge.ChallengeMember;
-import com.runrace.backend.challenge.ChallengeMemberRepository;
 import com.runrace.backend.challenge.ChallengeProgressService;
-import com.runrace.backend.challenge.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +19,7 @@ public class FitnessService {
 
   private final AppUserRepository appUserRepository;
   private final DailyDistanceRepository dailyDistanceRepository;
-  private final ChallengeMemberRepository challengeMemberRepository;
   private final ChallengeProgressService challengeProgressService;
-  private final ChallengeService challengeService;
 
   @Transactional
   public UpsertResult upsertDailyDistance(
@@ -67,19 +60,14 @@ public class FitnessService {
    */
   private void applyDeltaToActiveChallenges(AppUser user, BigDecimal delta) {
     OffsetDateTime now = OffsetDateTime.now();
-    List<ChallengeMember> activeMembers =
-        challengeMemberRepository.findAllActiveForUser(user.getId(), now);
-    for (ChallengeMember member : activeMembers) {
-      Challenge challenge = member.getChallenge();
-      if (ChallengeService.isEnded(challenge, now)) continue;
-      // endIfSolo: 방장 혼자 남은 레이스 정리
-      if (challengeService.endIfSolo(challenge, now)) continue;
+    // 활성 멤버 순회·방장 혼자 정리·멤버 사전 로드는 공통 경로(forEachActiveChallengeMember)에 위임한다.
+    challengeProgressService.forEachActiveChallengeMember(user.getId(), now, (member, allMembers) -> {
       // 음수 델타(수정)는 0 아래로 내려가지 않도록 보정 후 공통 경로 사용
       BigDecimal effectiveDelta = member.getTotalKm().add(delta).max(BigDecimal.ZERO)
           .subtract(member.getTotalKm());
-      if (effectiveDelta.signum() == 0) continue;
-      challengeProgressService.applyDistanceToMember(member, effectiveDelta, now);
-    }
+      if (effectiveDelta.signum() == 0) return;
+      challengeProgressService.applyDistanceToMemberWithContext(member, effectiveDelta, now, allMembers);
+    });
   }
 
   private void validateDistance(BigDecimal distanceKm) {

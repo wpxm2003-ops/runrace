@@ -1,24 +1,8 @@
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTimeHms, isSameLocalDay } from "@/lib/format";
 import type { Translations } from "@/lib/i18n/translations";
-
-function formatTimeHms(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
 
 function labelText(label: string): string {
   return label.replace(/:$/, "");
-}
-
-function isSameLocalDay(a: string, b: string): boolean {
-  const da = new Date(a);
-  const db = new Date(b);
-  return (
-    da.getFullYear() === db.getFullYear() &&
-    da.getMonth() === db.getMonth() &&
-    da.getDate() === db.getDate()
-  );
 }
 
 type Props = {

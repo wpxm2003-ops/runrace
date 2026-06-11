@@ -6,6 +6,7 @@ import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 import { WorkoutRecordPanel } from "@/app/_components/WorkoutRecordPanel";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
+import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
@@ -105,7 +106,7 @@ export default function RecordsPage() {
   if (loading || !user) {
     return (
       <PageLayout title={t.records_title}>
-        <Card className="text-sm text-zinc-600">{t.loading}</Card>
+        <LoadingCard />
       </PageLayout>
     );
   }

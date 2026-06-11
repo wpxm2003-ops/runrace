@@ -2,7 +2,9 @@ package com.runrace.backend.challenge;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.common.ForbiddenTextChars;
+import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.common.SupportedLanguages;
+import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
@@ -17,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChallengeService {
   static final int MAX_ACTIVE_ROOMS_PER_CREATOR = 3;
   private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
-  private static final Set<String> SUPPORTED_LANGS = Set.of("ko", "en", "es", "ja", "zh");
 
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
@@ -66,7 +66,7 @@ public class ChallengeService {
         .creator(creator)
         .createdAt(OffsetDateTime.now())
         // 언어는 생성 시점에만 고정한다(수정 시 변경하지 않음).
-        .langCd(SUPPORTED_LANGS.contains(langCd) ? langCd : "ko")
+        .langCd(SupportedLanguages.normalizeOrDefault(langCd))
         .title(title.trim())
         .goalKm(goalKm.setScale(3, RoundingMode.HALF_UP))
         .maxMembers(maxMembers)
@@ -137,7 +137,7 @@ public class ChallengeService {
     if (isEnded(challenge, OffsetDateTime.now())) {
       throw ApiException.conflict("ended");
     }
-    if (challenge.getCreator().getId().equals(principal.userId())) {
+    if (challenge.isOwner(principal.userId())) {
       throw ApiException.badRequest("owner_cannot_leave");
     }
     ChallengeMember member =
@@ -156,7 +156,7 @@ public class ChallengeService {
    */
   @Transactional(readOnly = true)
   public Slice<Challenge> listPublicPage(String lang, String phase, int page, int size) {
-    String langFilter = (lang != null && SUPPORTED_LANGS.contains(lang)) ? lang : null;
+    String langFilter = SupportedLanguages.isSupported(lang) ? lang : null;
     return challengeRepository.findPublicPage(
         langFilter, normalizePhase(phase), OffsetDateTime.now(), PageRequest.of(page, size));
   }
@@ -236,7 +236,7 @@ public class ChallengeService {
     boolean isMember =
         userId != null
             && challengeMemberRepository.findByChallengeIdAndUserId(id, userId).isPresent();
-    boolean isOwner = userId != null && challenge.getCreator().getId().equals(userId);
+    boolean isOwner = challenge.isOwner(userId);
     OffsetDateTime now = OffsetDateTime.now();
 
     return new ChallengeDetailView(
@@ -317,8 +317,8 @@ public class ChallengeService {
         session.getId(),
         user.getId(),
         user.getNickname(),
-        session.getStartedAt().toString(),
-        session.getEndedAt().toString(),
+        IsoTime.format(session.getStartedAt()),
+        IsoTime.format(session.getEndedAt()),
         session.getDurationSec(),
         session.getDistanceM(),
         link.getAppliedDistanceM());
@@ -352,6 +352,13 @@ public class ChallengeService {
    * - 첫 완주자가 있으면 그 사람.
    * - 완주자 없이 기간이 종료됐으면 누적 거리 최상위 멤버.
    */
+  /** 누적 거리 내림차순, 동률이면 먼저 완주한 멤버 우선(미완주는 후순위). */
+  private static final Comparator<ChallengeMember> BY_DISTANCE_THEN_FINISH =
+      Comparator.comparing(ChallengeMember::getTotalKm)
+          .thenComparing(
+              m -> m.getFinishedAt() == null ? OffsetDateTime.MAX : m.getFinishedAt(),
+              Comparator.reverseOrder());
+
   private AppUser resolveWinnerForDisplay(Challenge challenge, List<ChallengeMember> members) {
     // 참여자가 1명뿐(방장 혼자)인 레이스는 대결이 성립하지 않으므로 우승자 없음.
     if (members.size() <= 1) {
@@ -361,26 +368,32 @@ public class ChallengeService {
       return challenge.getWinner();
     }
 
-    Optional<ChallengeMember> firstFinisher =
-        members.stream()
-            .filter(m -> m.getFinishedAt() != null)
-            .min(Comparator.comparing(ChallengeMember::getFinishedAt));
-    if (firstFinisher.isPresent()) {
-      return firstFinisher.get().getUser();
+    AppUser firstFinisher = firstFinisher(members);
+    if (firstFinisher != null) {
+      return firstFinisher;
     }
 
+    // 완주자 없이 기간이 종료됐으면 누적 거리 최상위 멤버.
     OffsetDateTime now = OffsetDateTime.now();
-    if (challenge.getEndAt() != null && now.isAfter(challenge.getEndAt()) && !members.isEmpty()) {
-      return members.stream()
-          .max(
-              Comparator.comparing(ChallengeMember::getTotalKm)
-                  .thenComparing(
-                      m -> m.getFinishedAt() == null ? OffsetDateTime.MAX : m.getFinishedAt(),
-                      Comparator.reverseOrder()))
-          .map(ChallengeMember::getUser)
-          .orElse(null);
-    }
-    return null;
+    boolean timeEnded = challenge.getEndAt() != null && now.isAfter(challenge.getEndAt());
+    return timeEnded ? topByDistance(members) : null;
+  }
+
+  /** 가장 먼저 완주한 멤버의 사용자, 완주자가 없으면 null. */
+  private static AppUser firstFinisher(List<ChallengeMember> members) {
+    return members.stream()
+        .filter(m -> m.getFinishedAt() != null)
+        .min(Comparator.comparing(ChallengeMember::getFinishedAt))
+        .map(ChallengeMember::getUser)
+        .orElse(null);
+  }
+
+  /** 누적 거리(동률 시 완주 시각) 최상위 멤버의 사용자. */
+  private static AppUser topByDistance(List<ChallengeMember> members) {
+    return members.stream()
+        .max(BY_DISTANCE_THEN_FINISH)
+        .map(ChallengeMember::getUser)
+        .orElse(null);
   }
 
   private Challenge requireChallenge(Long id) {
@@ -406,13 +419,7 @@ public class ChallengeService {
       int maxMembers,
       OffsetDateTime startAt,
       OffsetDateTime endAt) {
-    String trimmed = title == null ? "" : title.trim();
-    if (trimmed.isBlank() || utf8ByteLength(trimmed) > TITLE_MAX_BYTES) {
-      throw ApiException.badRequest("invalid_title");
-    }
-    if (ForbiddenTextChars.containsForbidden(trimmed)) {
-      throw ApiException.badRequest("invalid_title_chars");
-    }
+    TextValidation.requireCleanText(title, TITLE_MAX_BYTES, true, "title");
     if (goalKm == null
         || goalKm.signum() <= 0
         || goalKm.compareTo(BigDecimal.valueOf(MAX_GOAL_KM)) > 0) {
@@ -433,12 +440,8 @@ public class ChallengeService {
     }
   }
 
-  private static int utf8ByteLength(String value) {
-    return value.getBytes(StandardCharsets.UTF_8).length;
-  }
-
   private void ensureOwner(AuthPrincipal principal, Challenge challenge) {
-    if (!challenge.getCreator().getId().equals(principal.userId())) {
+    if (!challenge.isOwner(principal.userId())) {
       throw ApiException.forbidden("forbidden");
     }
   }

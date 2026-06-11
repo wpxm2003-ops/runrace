@@ -13,6 +13,7 @@ import com.runrace.backend.challenge.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -27,6 +28,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class WorkoutService {
+  /** 평균 페이스를 계산할 최소 거리(m) — 그 미만은 의미 있는 페이스를 산출하지 않는다. */
+  static final int MIN_DISTANCE_FOR_PACE_M = 10;
+  /** 실내러닝 칼로리 추정 계수(kcal/km). */
+  private static final int KCAL_PER_KM = 65;
+
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
   private final ChallengeProgressService challengeProgressService;
@@ -87,9 +93,8 @@ public class WorkoutService {
     OffsetDateTime start = OffsetDateTime.parse(startedAt);
     OffsetDateTime end = start.plusSeconds(durationSec);
 
-    int calories = Math.max(1, Math.round(distanceM / 1000f * 65));
-    Integer avgPaceSecPerKm = distanceM >= 10
-        ? (int) Math.round(durationSec / (distanceM / 1000.0)) : null;
+    int calories = Math.max(1, Math.round(distanceM / 1000f * KCAL_PER_KM));
+    Integer avgPaceSecPerKm = avgPaceSecPerKm(distanceM, durationSec);
 
     WorkoutSession saved = workoutSessionRepository.save(WorkoutSession.builder()
         .user(user)
@@ -121,30 +126,33 @@ public class WorkoutService {
 
     boolean voted = false;
     for (ChallengeWorkout cw : pending) {
-      var myVoteOpt = indoorRunApprovalRepository
-          .findByChallengeWorkoutIdAndVoterId(cw.getId(), principal.userId());
-      if (myVoteOpt.isEmpty()) continue;
-
-      IndoorRunApproval myVote = myVoteOpt.get();
-      if (myVote.getApproved() != null) throw ApiException.badRequest("already_voted");
-
-      myVote.castVote(approved);
-      indoorRunApprovalRepository.save(myVote);
-      voted = true;
-
-      if (!approved) {
-        cw.reject();
-        challengeWorkoutRepository.save(cw);
-      } else {
-        List<IndoorRunApproval> all = indoorRunApprovalRepository
-            .findAllByChallengeWorkoutId(cw.getId());
-        boolean allApproved = all.stream().allMatch(a -> Boolean.TRUE.equals(a.getApproved()));
-        if (allApproved) {
-          indoorApprovalService.applyApprovedIndoorRun(cw.getId());
-        }
-      }
+      voted |= applyMyVote(cw, principal.userId(), approved);
     }
     if (!voted) throw ApiException.forbidden("not_a_voter");
+  }
+
+  /**
+   * 한 ChallengeWorkout에 대한 내 승인/거부 투표를 반영한다.
+   * 투표권이 없으면 아무것도 하지 않고 false, 반영했으면 true를 반환한다.
+   * 거부 시 즉시 reject, 승인으로 전원 승인이 충족되면 거리 반영을 위임한다.
+   */
+  private boolean applyMyVote(ChallengeWorkout cw, UUID voterId, boolean approved) {
+    IndoorRunApproval myVote = indoorRunApprovalRepository
+        .findByChallengeWorkoutIdAndVoterId(cw.getId(), voterId)
+        .orElse(null);
+    if (myVote == null) return false;
+    if (myVote.getApproved() != null) throw ApiException.badRequest("already_voted");
+
+    myVote.castVote(approved);
+    indoorRunApprovalRepository.save(myVote);
+
+    if (!approved) {
+      cw.reject();
+      challengeWorkoutRepository.save(cw);
+    } else if (indoorApprovalService.isFullyApproved(cw.getId())) {
+      indoorApprovalService.applyApprovedIndoorRun(cw.getId());
+    }
+    return true;
   }
 
   @Transactional(readOnly = true)
@@ -176,10 +184,7 @@ public class WorkoutService {
     long totalDistanceM = agg.getTotalDistanceM();
     long totalDurationSec = agg.getTotalDurationSec();
 
-    Integer avgPaceSecPerKm =
-        totalDistanceM >= 10
-            ? (int) Math.round(totalDurationSec / (totalDistanceM / 1000.0))
-            : null;
+    Integer avgPaceSecPerKm = avgPaceSecPerKm(totalDistanceM, totalDurationSec);
 
     return new WorkoutSummaryResponse(
         totalDistanceM,
@@ -233,6 +238,19 @@ public class WorkoutService {
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("path_json_decode_failed", e);
     }
+  }
+
+  /** 저장된 경로 JSON을 응답용 좌표 목록으로 변환한다(상세·공유 응답 공통). */
+  public List<PathPointDto> toPath(String pathJson) {
+    return parsePath(pathJson).stream()
+        .map(p -> new PathPointDto(p.lat(), p.lng()))
+        .toList();
+  }
+
+  /** 평균 페이스(초/km). {@link #MIN_DISTANCE_FOR_PACE_M} 미만이면 null. */
+  static Integer avgPaceSecPerKm(long distanceM, long durationSec) {
+    if (distanceM < MIN_DISTANCE_FOR_PACE_M) return null;
+    return (int) Math.round(durationSec / (distanceM / 1000.0));
   }
 
   public record PathPoint(double lat, double lng) {}

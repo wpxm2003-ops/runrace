@@ -3,9 +3,10 @@
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
-import { Card } from "@/app/_components/ui/Card";
+import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import {
   deleteWorkout,
+  firstErrorMessage,
   useChallengeWorkoutDetail,
   useWorkoutDetail,
   invalidateWorkoutDetail,
@@ -14,7 +15,7 @@ import {
 import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
-import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
+import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutId } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -121,14 +122,14 @@ export default function WorkoutDetailContent() {
     </>
   );
 
-  const error = deleteError ?? (fetchError ? String(fetchError) : null);
+  const error = firstErrorMessage(deleteError, fetchError);
 
   return (
     <PageLayout title={t.workout_detail_title} actions={pageActions}>
       {error ? <Alert className="mb-4">{error}</Alert> : null}
 
       {isLoading || !detail ? (
-        <Card className="text-sm text-zinc-600">{t.loading}</Card>
+        <LoadingCard />
       ) : (
         <>
           <WorkoutMedia
@@ -145,12 +146,7 @@ export default function WorkoutDetailContent() {
               calories={detail.calories}
               size="lg"
               unit={unit}
-              labels={{
-                time: t.stat_time,
-                distance: t.stat_distance,
-                pace: t.stat_pace,
-                calories: t.stat_calories,
-              }}
+              labels={workoutStatLabels(t)}
             />
           </div>
 

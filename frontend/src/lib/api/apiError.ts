@@ -9,6 +9,17 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * 표시용 에러 메시지 병합. 인자 순서대로 첫 번째 존재하는 에러를 문자열로 반환한다.
+ * (액션 에러를 페치 에러보다 앞에 두면 우선 표시된다.) 모두 없으면 null.
+ */
+export function firstErrorMessage(...errors: unknown[]): string | null {
+  for (const e of errors) {
+    if (e != null) return String(e);
+  }
+  return null;
+}
+
 export function isRetryableApiError(err: unknown): boolean {
   if (err instanceof ApiError) {
     return err.status >= 500;

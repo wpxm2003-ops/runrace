@@ -5,17 +5,15 @@ import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { ChallengeInfiniteList } from "@/app/_components/ChallengeInfiniteList";
 import { useChallengeListInfinite } from "@/lib/api";
 import { redirectToLogin } from "@/lib/auth";
-import { ChallengeListItem } from "@/app/_components/ChallengeListItem";
 import {
   RacePhaseFilter,
   type RacePhaseFilterValue,
 } from "@/app/_components/RacePhaseFilter";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
-import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 
 export default function ChallengesPage() {
   const { user, loading: authLoading } = useAuthUser();
@@ -25,21 +23,12 @@ export default function ChallengesPage() {
 
   const lang = showAllLangs ? undefined : locale;
 
-  const { data: pages, size, setSize, isLoading, isValidating, error } =
-    useChallengeListInfinite(user, authLoading, lang, phaseFilter);
+  const result = useChallengeListInfinite(user, authLoading, lang, phaseFilter);
+  const { setSize, error } = result;
 
   useEffect(() => {
     void setSize(1);
   }, [phaseFilter, lang, setSize]);
-
-  const items = useMemo(
-    () => (pages ? pages.flatMap((p) => p.items) : []),
-    [pages],
-  );
-  const hasNext = pages ? (pages[pages.length - 1]?.hasNext ?? false) : false;
-  const initialLoading = isLoading && !pages;
-
-  const sentinelRef = useInfiniteScroll({ hasNext, isValidating, setSize, size });
 
   const filterLabel: Record<RacePhaseFilterValue, string> = useMemo(
     () => ({
@@ -90,27 +79,12 @@ export default function ChallengesPage() {
             {t.races_show_all_langs}
           </label>
         </div>
-        <div className="mt-3 grid gap-2">
-          {initialLoading ? (
-            <SkeletonLines count={3} />
-          ) : items.length === 0 ? (
-            <div className="text-sm text-zinc-600">{t.races_filter_empty}</div>
-          ) : (
-            <>
-              {items.map((c) => (
-                <ChallengeListItem key={c.id} challenge={c} showJoinedBadge />
-              ))}
-              {hasNext ? (
-                <div
-                  ref={sentinelRef}
-                  className="py-3 text-center text-sm text-zinc-400"
-                >
-                  {t.loading}
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
+        <ChallengeInfiniteList
+          result={result}
+          emptyLabel={t.races_filter_empty}
+          skeletonCount={3}
+          showJoinedBadge
+        />
       </Card>
     </PageLayout>
   );

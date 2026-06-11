@@ -1,12 +1,12 @@
 package com.runrace.backend.auth;
 
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.user.NicknameGenerator;
 import java.time.OffsetDateTime;
 import java.util.Objects;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserProvisioningService {
-  private static final Set<String> SUPPORTED_LANGS = Set.of("ko", "en", "es", "ja", "zh");
+  /** 고유 닉네임 생성 최대 시도 횟수. */
+  private static final int MAX_NICKNAME_ATTEMPTS = 10;
 
   private final AppUserRepository appUserRepository;
 
@@ -49,7 +50,7 @@ public class UserProvisioningService {
       return appUserRepository.save(existing);
     }
 
-    String lang = normalizeLang(langHint);
+    String lang = SupportedLanguages.normalizeOrDefault(langHint);
     AppUser newUser = AppUser.builder()
         .firebaseUid(firebaseUid)
         .email(email)
@@ -62,12 +63,8 @@ public class UserProvisioningService {
     return appUserRepository.save(newUser);
   }
 
-  private static String normalizeLang(String langHint) {
-    return langHint != null && SUPPORTED_LANGS.contains(langHint) ? langHint : "ko";
-  }
-
   private String generateUniqueNickname(String lang) {
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < MAX_NICKNAME_ATTEMPTS; i++) {
       String candidate = NicknameGenerator.generate(lang);
       if (!appUserRepository.existsByNickname(candidate)) {
         return candidate;

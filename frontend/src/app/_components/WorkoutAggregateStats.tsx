@@ -1,5 +1,6 @@
 "use client";
 
+import { StatCard } from "@/app/_components/ui/StatCard";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace } from "@/lib/units";
@@ -13,15 +14,6 @@ type Props = {
   /** true면 총 거리·총 시간 등 전체 요약 라벨 (내정보) */
   totalLabels?: boolean;
 };
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-1 text-lg font-semibold tabular-nums sm:text-xl">{value}</div>
-    </div>
-  );
-}
 
 export function WorkoutAggregateStats({
   stats,

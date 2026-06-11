@@ -43,6 +43,22 @@ export function formatDateTime(iso: string, locale: string): string {
   return `${formatDate(iso, locale)} ${timeHms(new Date(iso))}`;
 }
 
+/** ISO → 24h HH:mm:ss */
+export function formatTimeHms(iso: string): string {
+  return timeHms(new Date(iso));
+}
+
+/** 두 ISO 시각이 같은 로컬 날짜(연·월·일)인지. */
+export function isSameLocalDay(a: string, b: string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
 /** ISO → datetime-local 값(yyyy-MM-ddTHH:mm). */
 export function toDateTimeInputValue(iso: string): string {
   const d = new Date(iso);

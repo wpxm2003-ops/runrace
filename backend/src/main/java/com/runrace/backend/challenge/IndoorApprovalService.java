@@ -1,12 +1,13 @@
 package com.runrace.backend.challenge;
 
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.Distance;
+import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.challenge.dto.PendingApprovalResponse;
 import com.runrace.backend.challenge.dto.RejectedApprovalResponse;
 import com.runrace.backend.workout.WorkoutEvents;
 import com.runrace.backend.workout.WorkoutSession;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,6 @@ public class IndoorApprovalService {
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ChallengeProgressService challengeProgressService;
-  private final ChallengeService challengeService;
   private final ApplicationEventPublisher eventPublisher;
 
   /** 실내러닝 — 레이스별 PENDING ChallengeWorkout + 개별 승인 행 생성. */
@@ -38,22 +38,11 @@ public class IndoorApprovalService {
   public void createPendingIndoorApprovals(UUID userId, WorkoutSession session, int distanceM) {
     if (distanceM <= 0) return;
     OffsetDateTime now = OffsetDateTime.now();
-    List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
-    if (activeMembers.isEmpty()) return;
 
-    // N+1 방지: 관련 챌린지 전체 멤버를 단일 쿼리로 사전 로드
-    List<Long> challengeIds = activeMembers.stream()
-        .map(m -> m.getChallenge().getId()).toList();
-    Map<Long, List<ChallengeMember>> membersByChallenge =
-        challengeMemberRepository.findAllByChallengeIdIn(challengeIds).stream()
-            .collect(Collectors.groupingBy(m -> m.getChallenge().getId()));
-
-    for (ChallengeMember member : activeMembers) {
+    challengeProgressService.forEachActiveChallengeMember(userId, now, (member, allMembers) -> {
       Challenge challenge = member.getChallenge();
-      // 방장 혼자인 레이스는 무효 종료하고 승인 절차(자동승인·푸시)를 만들지 않는다.
-      if (challengeService.endIfSolo(challenge, now)) continue;
       if (challengeWorkoutRepository.existsByChallengeIdAndWorkoutSessionId(
-          challenge.getId(), session.getId())) continue;
+          challenge.getId(), session.getId())) return;
 
       ChallengeWorkout saved = challengeWorkoutRepository.save(ChallengeWorkout.builder()
           .challenge(challenge)
@@ -64,8 +53,6 @@ public class IndoorApprovalService {
           .createdAt(now)
           .build());
 
-      List<ChallengeMember> allMembers =
-          membersByChallenge.getOrDefault(challenge.getId(), List.of());
       List<UUID> voterIds = new ArrayList<>();
       List<IndoorRunApproval> approvals = new ArrayList<>();
       for (ChallengeMember voter : allMembers) {
@@ -89,7 +76,13 @@ public class IndoorApprovalService {
         eventPublisher.publishEvent(new WorkoutEvents.IndoorRunPendingApprovalEvent(
             saved.getId(), challenge.getId(), userId, voterIds, nickname));
       }
-    }
+    });
+  }
+
+  /** 해당 ChallengeWorkout의 모든 투표가 승인 상태인지 — 전원 승인 판정(거리 반영 트리거용). */
+  public boolean isFullyApproved(Long challengeWorkoutId) {
+    return indoorRunApprovalRepository.findAllByChallengeWorkoutId(challengeWorkoutId).stream()
+        .allMatch(a -> Boolean.TRUE.equals(a.getApproved()));
   }
 
   /** 전원 승인 시 호출 — 거리를 레이스 멤버 기록에 반영한다.
@@ -107,8 +100,7 @@ public class IndoorApprovalService {
 
     Challenge challenge = cw.getChallenge();
     UUID userId = cw.getUser().getId();
-    BigDecimal distanceKm = BigDecimal.valueOf(cw.getAppliedDistanceM())
-        .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+    BigDecimal distanceKm = Distance.toKm(cw.getAppliedDistanceM());
     OffsetDateTime now = OffsetDateTime.now();
 
     challengeMemberRepository.findByChallengeIdAndUserId(challenge.getId(), userId)
@@ -125,34 +117,44 @@ public class IndoorApprovalService {
 
     Map<Long, List<IndoorRunApproval>> votesByWorkout = votesByChallengeWorkout(pending);
 
-    return pending.stream().map(cw -> {
-      WorkoutSession ws = cw.getWorkoutSession();
-      List<IndoorRunApproval> votes =
-          votesByWorkout.getOrDefault(cw.getId(), List.of());
-      long approvedCount = votes.stream().filter(v -> Boolean.TRUE.equals(v.getApproved())).count();
-      Boolean myVote = votes.stream()
-          .filter(v -> v.getVoter().getId().equals(viewerUserId))
-          .findFirst()
-          .map(IndoorRunApproval::getApproved)
-          .orElse(null);
-      boolean canVote = votes.stream().anyMatch(v -> v.getVoter().getId().equals(viewerUserId));
-      Boolean myVoteFinal = canVote ? myVote : null;
+    return pending.stream()
+        .map(cw -> toPendingResponse(cw, votesByWorkout.getOrDefault(cw.getId(), List.of()), viewerUserId))
+        .toList();
+  }
 
-      return new PendingApprovalResponse(
-          cw.getId(),
-          ws.getId(),
-          cw.getUser().getNickname(),
-          ws.getDistanceM(),
-          ws.getDurationSec(),
-          ws.getAvgPaceSecPerKm(),
-          ws.getImageUrl(),
-          ws.getStartedAt().toString(),
-          myVoteFinal,
-          canVote,
-          votes.size(),
-          (int) approvedCount
-      );
-    }).toList();
+  private PendingApprovalResponse toPendingResponse(
+      ChallengeWorkout cw, List<IndoorRunApproval> votes, UUID viewerUserId) {
+    WorkoutSession ws = cw.getWorkoutSession();
+    VoteTally tally = VoteTally.of(votes, viewerUserId);
+    return new PendingApprovalResponse(
+        cw.getId(),
+        ws.getId(),
+        cw.getUser().getNickname(),
+        ws.getDistanceM(),
+        ws.getDurationSec(),
+        ws.getAvgPaceSecPerKm(),
+        ws.getImageUrl(),
+        IsoTime.format(ws.getStartedAt()),
+        tally.myVote(),
+        tally.canVote(),
+        tally.total(),
+        tally.approvedCount());
+  }
+
+  /** 한 실내러닝에 대한 투표 집계 — 뷰어 관점(내 투표·투표권 여부) 포함. */
+  private record VoteTally(int total, int approvedCount, Boolean myVote, boolean canVote) {
+    static VoteTally of(List<IndoorRunApproval> votes, UUID viewerUserId) {
+      int approved = (int) votes.stream().filter(v -> Boolean.TRUE.equals(v.getApproved())).count();
+      boolean canVote = votes.stream().anyMatch(v -> v.getVoter().getId().equals(viewerUserId));
+      Boolean myVote = canVote
+          ? votes.stream()
+              .filter(v -> v.getVoter().getId().equals(viewerUserId))
+              .findFirst()
+              .map(IndoorRunApproval::getApproved)
+              .orElse(null)
+          : null;
+      return new VoteTally(votes.size(), approved, myVote, canVote);
+    }
   }
 
   /** 레이스의 거부된 실내러닝 목록. */
@@ -163,28 +165,29 @@ public class IndoorApprovalService {
 
     Map<Long, List<IndoorRunApproval>> votesByWorkout = votesByChallengeWorkout(rejected);
 
-    return rejected.stream().map(cw -> {
-      WorkoutSession ws = cw.getWorkoutSession();
-      List<String> rejectorNicknames =
-          votesByWorkout.getOrDefault(cw.getId(), List.<IndoorRunApproval>of())
-          .stream()
-          .filter(v -> Boolean.FALSE.equals(v.getApproved()))
-          .map(v -> v.getVoter().getNickname())
-          .filter(n -> n != null && !n.isBlank())
-          .distinct()
-          .toList();
+    return rejected.stream()
+        .map(cw -> toRejectedResponse(cw, votesByWorkout.getOrDefault(cw.getId(), List.of())))
+        .toList();
+  }
 
-      return new RejectedApprovalResponse(
-          cw.getId(),
-          ws.getId(),
-          cw.getUser().getNickname(),
-          ws.getDistanceM(),
-          ws.getDurationSec(),
-          ws.getImageUrl(),
-          ws.getStartedAt().toString(),
-          rejectorNicknames
-      );
-    }).toList();
+  private RejectedApprovalResponse toRejectedResponse(ChallengeWorkout cw, List<IndoorRunApproval> votes) {
+    WorkoutSession ws = cw.getWorkoutSession();
+    List<String> rejectorNicknames = votes.stream()
+        .filter(v -> Boolean.FALSE.equals(v.getApproved()))
+        .map(v -> v.getVoter().getNickname())
+        .filter(n -> n != null && !n.isBlank())
+        .distinct()
+        .toList();
+
+    return new RejectedApprovalResponse(
+        cw.getId(),
+        ws.getId(),
+        cw.getUser().getNickname(),
+        ws.getDistanceM(),
+        ws.getDurationSec(),
+        ws.getImageUrl(),
+        IsoTime.format(ws.getStartedAt()),
+        rejectorNicknames);
   }
 
   /** 여러 ChallengeWorkout의 투표를 한 번의 쿼리로 조회해 workoutId별로 묶는다(N+1 방지). */

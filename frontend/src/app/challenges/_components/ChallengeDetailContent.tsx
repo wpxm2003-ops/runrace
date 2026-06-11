@@ -7,15 +7,13 @@ import { Card } from "@/app/_components/ui/Card";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
   deleteChallenge,
+  firstErrorMessage,
   joinChallenge,
   leaveChallenge,
-  invalidateChallengeWorkouts,
   invalidateChallengeLists,
   useChallengeDetail,
-  usePendingApprovals,
-  useRejectedApprovals,
-  voteIndoorRun,
 } from "@/lib/api";
+import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
 import Link from "next/link";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
@@ -34,7 +32,26 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatGoalDistance } from "@/lib/units";
 import { useParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+
+/** 실내러닝 승인 대기·거부 카드 묶음의 공통 껍데기(제목 + 안내 + 카드 목록). */
+function ApprovalSection({
+  heading,
+  notice,
+  children,
+}: {
+  heading: string;
+  notice: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="mt-6">
+      <div className="text-base font-semibold">{heading}</div>
+      <p className="mt-1 text-xs text-zinc-500">{notice}</p>
+      <div className="mt-3 flex flex-col gap-3">{children}</div>
+    </Card>
+  );
+}
 
 export default function ChallengeDetailContent() {
   const { user, loading: authLoading } = useAuthUser();
@@ -45,7 +62,6 @@ export default function ChallengeDetailContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [votingId, setVotingId] = useState<number | null>(null);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
 
   const params = useParams();
@@ -58,20 +74,15 @@ export default function ChallengeDetailContent() {
     mutate,
   } = useChallengeDetail(id, user, authLoading);
 
-  // 승인 대기·거부 목록 — 레이스 참여 중이고 시작된 경우에만 조회(SWR 캐시·중복요청 방지)
-  const approvalsEnabled = !!(detail?.isMember && detail?.hasStarted);
-  const { data: pendingApprovals = [], mutate: mutatePending } =
-    usePendingApprovals(id, user, approvalsEnabled);
-  const { data: rejectedApprovals = [], mutate: mutateRejected } =
-    useRejectedApprovals(id, user, approvalsEnabled);
+  const { pendingApprovals, rejectedApprovals, votingId, onVote } = useIndoorRunApprovals({
+    id,
+    user,
+    detail,
+    mutateDetail: mutate,
+    onError: setActionError,
+  });
 
-  const error = actionError ?? (fetchError ? String(fetchError) : null);
-
-  const myNickname = useMemo(() => {
-    if (!detail?.currentUserId) return null;
-    const nickname = detail.members.find((m) => m.userId === detail.currentUserId)?.nickname;
-    return nickname?.trim() ? nickname : null;
-  }, [detail]);
+  const error = firstErrorMessage(actionError, fetchError);
 
   const onEditClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -138,81 +149,6 @@ export default function ChallengeDetailContent() {
     if (!detail || id == null) return;
     const { shareLink } = await import("@/lib/shareCard");
     return shareLink(`${getAppUrl()}/challenges/${id}`, detail.title);
-  }
-
-  async function refreshApprovalViews() {
-    if (!id || !user) return;
-    await Promise.all([mutatePending(), mutateRejected()]);
-    await mutate();
-    invalidateChallengeWorkouts(id, user.uid);
-  }
-
-  async function onVote(workoutId: number, approved: boolean) {
-    if (!user) return;
-    setVotingId(workoutId);
-    const prevPending = pendingApprovals;
-    const prevRejected = rejectedApprovals;
-
-    // 버튼 클릭 직후 카드 상태를 먼저 반영 (낙관적 업데이트, 재검증은 투표 성공 후)
-    const votedItem = prevPending.find((item) => item.workoutId === workoutId);
-    if (!approved) {
-      mutatePending(
-        (items = []) => items.filter((item) => item.workoutId !== workoutId),
-        { revalidate: false },
-      );
-      const rejectorNickname = myNickname;
-      if (votedItem && rejectorNickname) {
-        mutateRejected(
-          (items = []) => {
-            if (items.some((r) => r.challengeWorkoutId === votedItem.challengeWorkoutId)) return items;
-            return [
-              {
-                challengeWorkoutId: votedItem.challengeWorkoutId,
-                workoutId: votedItem.workoutId,
-                submitterNickname: votedItem.submitterNickname,
-                distanceM: votedItem.distanceM,
-                durationSec: votedItem.durationSec,
-                imageUrl: votedItem.imageUrl,
-                startedAt: votedItem.startedAt,
-                rejectorNicknames: [rejectorNickname],
-              },
-              ...items,
-            ];
-          },
-          { revalidate: false },
-        );
-      }
-    } else {
-      mutatePending(
-        (items = []) =>
-          items
-            .map((item) =>
-              item.workoutId === workoutId
-                ? {
-                    ...item,
-                    myVote: true,
-                    approvedCount: Math.min(item.totalVoters, item.approvedCount + 1),
-                  }
-                : item,
-            )
-            .filter(
-              (item) =>
-                !(item.workoutId === workoutId && item.approvedCount >= item.totalVoters),
-            ),
-        { revalidate: false },
-      );
-    }
-
-    try {
-      await voteIndoorRun(workoutId, approved, user);
-      await refreshApprovalViews();
-    } catch (e) {
-      mutatePending(prevPending, { revalidate: false });
-      mutateRejected(prevRejected, { revalidate: false });
-      setActionError(String(e));
-    } finally {
-      setVotingId(null);
-    }
   }
 
   const pageActions = useMemo(
@@ -297,40 +233,36 @@ export default function ChallengeDetailContent() {
 
           {/* 실내러닝 승인 대기건 */}
           {detail.isMember && detail.hasStarted && pendingApprovals.length > 0 ? (
-            <Card className="mt-6">
-              <div className="text-base font-semibold">{t.pending_approvals_heading}</div>
-              <p className="mt-1 text-xs text-zinc-500">
-                {t.pending_approvals_notice} {t.pending_approvals_reject_notice}
-              </p>
-              <div className="mt-3 flex flex-col gap-3">
-                {pendingApprovals.map((item) => (
-                  <PendingRunCard
-                    key={item.challengeWorkoutId}
-                    item={item}
-                    votingId={votingId}
-                    onVote={onVote}
-                    onExpandImage={setExpandedImageUrl}
-                  />
-                ))}
-              </div>
-            </Card>
+            <ApprovalSection
+              heading={t.pending_approvals_heading}
+              notice={`${t.pending_approvals_notice} ${t.pending_approvals_reject_notice}`}
+            >
+              {pendingApprovals.map((item) => (
+                <PendingRunCard
+                  key={item.challengeWorkoutId}
+                  item={item}
+                  votingId={votingId}
+                  onVote={onVote}
+                  onExpandImage={setExpandedImageUrl}
+                />
+              ))}
+            </ApprovalSection>
           ) : null}
 
           {/* 거부된 실내러닝 */}
           {detail.isMember && detail.hasStarted && rejectedApprovals.length > 0 ? (
-            <Card className="mt-6">
-              <div className="text-base font-semibold">{t.rejected_approvals_heading}</div>
-              <p className="mt-1 text-xs text-zinc-500">{t.rejected_approval_notice}</p>
-              <div className="mt-3 flex flex-col gap-3">
-                {rejectedApprovals.map((item) => (
-                  <RejectedRunCard
-                    key={item.challengeWorkoutId}
-                    item={item}
-                    onExpandImage={setExpandedImageUrl}
-                  />
-                ))}
-              </div>
-            </Card>
+            <ApprovalSection
+              heading={t.rejected_approvals_heading}
+              notice={t.rejected_approval_notice}
+            >
+              {rejectedApprovals.map((item) => (
+                <RejectedRunCard
+                  key={item.challengeWorkoutId}
+                  item={item}
+                  onExpandImage={setExpandedImageUrl}
+                />
+              ))}
+            </ApprovalSection>
           ) : null}
 
           {detail.canJoin || detail.canLeave ? (
@@ -358,10 +290,7 @@ export default function ChallengeDetailContent() {
           ) : null}
 
           <div className="mt-4">
-            <ShareButton
-              onShare={onShare}
-              className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-            />
+            <ShareButton onShare={onShare} variant="secondary" className="h-11 w-full" />
           </div>
         </>
       )}

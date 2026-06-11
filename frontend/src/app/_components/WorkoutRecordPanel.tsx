@@ -14,7 +14,7 @@ import {
 } from "@/lib/api";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
-import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
+import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { getAppUrl } from "@/lib/appUrl";
@@ -118,17 +118,12 @@ export function WorkoutRecordPanel({
         distanceM={detail.distanceM}
         calories={detail.calories}
         unit={unit}
-        labels={{
-          time: t.stat_time,
-          distance: t.stat_distance,
-          pace: t.stat_pace,
-          calories: t.stat_calories,
-        }}
+        labels={workoutStatLabels(t)}
       />
 
       <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
 
-      <ShareButton onShare={onShare} className="h-11 w-full rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50" />
+      <ShareButton onShare={onShare} variant="secondary" className="h-11 w-full" />
 
       <Button
         variant="destructive"

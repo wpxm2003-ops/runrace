@@ -2,11 +2,11 @@ package com.runrace.backend.auth;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.common.ForbiddenTextChars;
+import com.runrace.backend.common.SupportedLanguages;
+import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.config.CacheConfig;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
-import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountService {
   private static final Logger log = LoggerFactory.getLogger(AccountService.class);
   private static final int NICKNAME_MAX_LEN = 20;
-  private static final Set<String> SUPPORTED_LANGS = Set.of("ko", "en", "es", "ja", "zh");
 
   private final AppUserRepository appUserRepository;
   private final CacheManager cacheManager;
@@ -34,13 +33,7 @@ public class AccountService {
 
   @Transactional
   public AppUser updateNickname(UUID userId, String rawNickname) {
-    String trimmed = rawNickname == null ? "" : rawNickname.trim();
-    if (trimmed.isEmpty() || trimmed.length() > NICKNAME_MAX_LEN) {
-      throw ApiException.badRequest("invalid_nickname");
-    }
-    if (ForbiddenTextChars.containsForbidden(trimmed)) {
-      throw ApiException.badRequest("invalid_nickname_chars");
-    }
+    String trimmed = TextValidation.requireCleanText(rawNickname, NICKNAME_MAX_LEN, false, "nickname");
     AppUser user = appUserRepository.getRequired(userId);
     if (!trimmed.equals(user.getNickname()) && appUserRepository.existsByNickname(trimmed)) {
       throw ApiException.badRequest("nickname_taken");
@@ -52,7 +45,7 @@ public class AccountService {
   /** 주력 언어 선호값 변경 — 푸시 알림 언어에 사용된다. */
   @Transactional
   public AppUser updateLanguage(UUID userId, String langCd) {
-    if (langCd == null || !SUPPORTED_LANGS.contains(langCd)) {
+    if (!SupportedLanguages.isSupported(langCd)) {
       throw ApiException.badRequest("invalid_lang_cd");
     }
     AppUser user = appUserRepository.getRequired(userId);

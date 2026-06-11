@@ -21,6 +21,7 @@ public class FriendService {
   private static final SecureRandom RANDOM = new SecureRandom();
   private static final HexFormat HEX = HexFormat.of();
   private static final int INVITE_CODE_BYTES = 16;
+  private static final int NUDGE_MESSAGE_MAX_LEN = 50;
   private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
   private final AppUserRepository appUserRepository;
@@ -51,7 +52,7 @@ public class FriendService {
             .findByInviteCode(code)
             .orElseThrow(() -> ApiException.notFound("invalid_code"));
 
-    validateAcceptable(invite, me);
+    checkAcceptable(invite, me);
 
     AppUser inviter = invite.getInviter();
     linkFriendship(inviter, me);
@@ -66,13 +67,14 @@ public class FriendService {
     return friendshipRepository.findAllByUserId(principal.userId());
   }
 
-  private void validateAcceptable(FriendInvite invite, AppUser accepter) {
+  /** 수락 가능 여부를 확인한다. 만료된 초대는 만료 처리(영속화)한 뒤 거절한다. */
+  private void checkAcceptable(FriendInvite invite, AppUser accepter) {
     if (invite.getStatus() != FriendInviteStatus.PENDING) {
       throw ApiException.conflict("not_pending");
     }
     if (invite.getExpiresAt().isBefore(OffsetDateTime.now())) {
-    invite.expire();
-    friendInviteRepository.save(invite);
+      invite.expire();
+      friendInviteRepository.save(invite);
       throw ApiException.conflict("expired");
     }
     if (invite.getInviter().getId().equals(accepter.getId())) {
@@ -83,7 +85,7 @@ public class FriendService {
   @Transactional
   public void sendNudge(AuthPrincipal principal, String receiverNickname, String message) {
     String trimmed = message == null ? "" : message.trim();
-    if (trimmed.isEmpty() || trimmed.length() > 50) {
+    if (trimmed.isEmpty() || trimmed.length() > NUDGE_MESSAGE_MAX_LEN) {
       throw ApiException.badRequest("invalid_message");
     }
 

@@ -1,5 +1,6 @@
 package com.runrace.backend.challenge;
 
+import com.runrace.backend.common.Distance;
 import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.workout.WorkoutSessionRepository;
 import java.math.BigDecimal;
@@ -8,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -23,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChallengeProgressService {
   private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+  /** 달성률 마일스톤 알림 임계값(%). */
+  private static final int[] MILESTONE_PERCENTS = {50};
 
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
@@ -40,9 +44,25 @@ public class ChallengeProgressService {
   @Transactional
   public void applyWorkoutDistance(UUID userId, long workoutSessionId, int distanceM) {
     if (distanceM <= 0) return;
-    BigDecimal distanceKm = toKm(distanceM);
+    BigDecimal distanceKm = Distance.toKm(distanceM);
     OffsetDateTime now = OffsetDateTime.now();
 
+    forEachActiveChallengeMember(userId, now, (member, allMembers) -> {
+      applyDistanceToMemberWithContext(member, distanceKm, now, allMembers);
+      recordWorkoutLink(member.getChallenge(), workoutSessionId, userId, distanceM, now);
+    });
+  }
+
+  /**
+   * 사용자가 현재 참여 중(진행 중·미완주)인 모든 대결 멤버를 순회하며 {@code body}를 실행한다.
+   * - 관련 대결의 전체 멤버를 단일 쿼리로 사전 로드해 루프 내 N+1을 방지하고, {@code body}에 함께 넘긴다.
+   * - 방장 혼자인 대결은 무효 종료({@link ChallengeService#endIfSolo})하고 건너뛴다.
+   * GPS 운동 반영·실내러닝 승인 생성·헬스데이터 동기화가 공통으로 사용한다.
+   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다.
+   */
+  public void forEachActiveChallengeMember(
+      UUID userId, OffsetDateTime now,
+      BiConsumer<ChallengeMember, List<ChallengeMember>> body) {
     List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
     if (activeMembers.isEmpty()) return;
 
@@ -57,10 +77,7 @@ public class ChallengeProgressService {
       Challenge challenge = member.getChallenge();
       // 방장 혼자인 레이스는 무효 종료하고 거리 반영하지 않는다.
       if (challengeService.endIfSolo(challenge, now)) continue;
-      List<ChallengeMember> allMembers =
-          membersByChallenge.getOrDefault(challenge.getId(), List.of());
-      applyDistanceToMemberWithContext(member, distanceKm, now, allMembers);
-      recordWorkoutLink(challenge, workoutSessionId, userId, distanceM, now);
+      body.accept(member, membersByChallenge.getOrDefault(challenge.getId(), List.of()));
     }
   }
 
@@ -77,9 +94,9 @@ public class ChallengeProgressService {
 
   /**
    * 사전 로드된 챌린지 멤버 목록을 받아 거리를 반영한다.
-   * 다중 챌린지 일괄 처리 경로(applyWorkoutDistance)에서 N+1 방지용으로 사용한다.
+   * {@link #forEachActiveChallengeMember} 경로에서 N+1 방지용으로 사용한다.
    */
-  private void applyDistanceToMemberWithContext(
+  public void applyDistanceToMemberWithContext(
       ChallengeMember member, BigDecimal deltaKm, OffsetDateTime now,
       List<ChallengeMember> allChallengeMembers) {
     Challenge challenge = member.getChallenge();
@@ -147,7 +164,7 @@ public class ChallengeProgressService {
 
       Challenge challenge = link.getChallenge();
       UUID userId = link.getUser().getId();
-      BigDecimal subtractKm = toKm(link.getAppliedDistanceM());
+      BigDecimal subtractKm = Distance.toKm(link.getAppliedDistanceM());
 
       challengeMemberRepository
           .findByChallengeIdAndUserId(challenge.getId(), userId)
@@ -188,7 +205,7 @@ public class ChallengeProgressService {
 
     if (otherIds.isEmpty()) return;
 
-    for (int pct : new int[]{50}) {
+    for (int pct : MILESTONE_PERCENTS) {
       BigDecimal threshold = goal.multiply(BigDecimal.valueOf(pct))
           .divide(HUNDRED, 3, RoundingMode.HALF_UP);
       if (prevKm.compareTo(threshold) < 0 && next.compareTo(threshold) >= 0) {
@@ -235,9 +252,5 @@ public class ChallengeProgressService {
         .createdAt(now)
         .build();
     challengeWorkoutRepository.save(link);
-  }
-
-  private static BigDecimal toKm(int distanceM) {
-    return BigDecimal.valueOf(distanceM).divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
   }
 }

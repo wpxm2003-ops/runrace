@@ -5,7 +5,9 @@ import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
+import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import {
   invalidateAfterNicknameChange,
   useWorkoutSummary,
@@ -19,31 +21,24 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { ChallengeListItem } from "@/app/_components/ChallengeListItem";
+import { ChallengeInfiniteList } from "@/app/_components/ChallengeInfiniteList";
 import {
   RacePhaseFilter,
   type RacePhaseFilterValue,
 } from "@/app/_components/RacePhaseFilter";
-import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 
 /** 내가 참여한 레이스 — 예정·진행중 / 종료 2탭 + 무한스크롤. */
 function MyRacesSection({ user }: { user: User }) {
   const { t } = useLocale();
   const [phase, setPhase] = useState<RacePhaseFilterValue>("active");
-  const { data: pages, size, setSize, isLoading, isValidating, error } =
-    useMyChallengeListInfinite(user, phase);
+  const result = useMyChallengeListInfinite(user, phase);
+  const { setSize, error } = result;
 
   function handlePhaseChange(newPhase: RacePhaseFilterValue) {
     setPhase(newPhase);
     void setSize(1);
   }
-
-  const items = pages ? pages.flatMap((p) => p.items) : [];
-  const hasNext = pages ? (pages[pages.length - 1]?.hasNext ?? false) : false;
-  const initialLoading = isLoading && !pages;
-
-  const sentinelRef = useInfiniteScroll({ hasNext, isValidating, setSize, size });
 
   const labels: Record<RacePhaseFilterValue, string> = {
     active: t.races_filter_active,
@@ -62,24 +57,11 @@ function MyRacesSection({ user }: { user: User }) {
         />
       </div>
       {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
-      <div className="mt-3 grid gap-2">
-        {initialLoading ? (
-          <SkeletonLines count={2} />
-        ) : items.length === 0 ? (
-          <div className="text-sm text-zinc-600">{t.my_races_empty}</div>
-        ) : (
-          <>
-            {items.map((c) => (
-              <ChallengeListItem key={c.id} challenge={c} />
-            ))}
-            {hasNext ? (
-              <div ref={sentinelRef} className="py-3 text-center text-sm text-zinc-400">
-                {t.loading}
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
+      <ChallengeInfiniteList
+        result={result}
+        emptyLabel={t.my_races_empty}
+        skeletonCount={2}
+      />
     </Card>
   );
 }
@@ -215,21 +197,12 @@ function MyPageContent({ user }: { user: User }) {
 
       <Card className="mt-4">
         <div className="text-sm text-zinc-500">{t.my_unit_label}</div>
-        <div className="mt-2 inline-flex rounded-lg border border-zinc-200 p-0.5">
-          {(["km", "mi"] as const).map((u) => (
-            <button
-              key={u}
-              type="button"
-              onClick={() => setUnit(u)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                unit === u
-                  ? "bg-zinc-900 text-white"
-                  : "text-zinc-600 hover:text-zinc-900"
-              }`}
-            >
-              {u === "km" ? t.unit_km : t.unit_mi}
-            </button>
-          ))}
+        <div className="mt-2">
+          <UnitToggle
+            unit={unit}
+            onChange={setUnit}
+            labels={{ km: t.unit_km, mi: t.unit_mi }}
+          />
         </div>
       </Card>
 
@@ -288,7 +261,7 @@ export default function MyPage() {
   if (loading || !user) {
     return (
       <PageLayout title={t.my_title}>
-        <Card className="text-sm text-zinc-600">{t.loading}</Card>
+        <LoadingCard />
       </PageLayout>
     );
   }

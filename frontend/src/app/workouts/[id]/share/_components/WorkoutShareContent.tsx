@@ -4,7 +4,8 @@ import { useParams } from "next/navigation";
 import { useWorkoutShare } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
-import { WorkoutStatGrid } from "@/app/_components/WorkoutStatGrid";
+import { UnitToggle } from "@/app/_components/ui/UnitToggle";
+import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { useMemo } from "react";
@@ -118,20 +119,7 @@ export default function WorkoutShareContent() {
         {/* 페이지 타이틀 + 단위 토글 */}
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-zinc-900">{t.share_page_title}</h1>
-          <div className="inline-flex rounded-lg border border-zinc-200 p-0.5 text-xs">
-            {(["km", "mi"] as const).map((u) => (
-              <button
-                key={u}
-                type="button"
-                onClick={() => setUnit(u)}
-                className={`rounded-md px-2 py-1 font-medium ${
-                  unit === u ? "bg-zinc-900 text-white" : "text-zinc-500"
-                }`}
-              >
-                {u}
-              </button>
-            ))}
-          </div>
+          <UnitToggle unit={unit} onChange={setUnit} size="sm" />
         </div>
 
         {/* 경로/이미지 카드 */}
@@ -162,12 +150,7 @@ export default function WorkoutShareContent() {
           calories={data.calories}
           columns={2}
           unit={unit}
-          labels={{
-            time: t.stat_time,
-            distance: t.stat_distance,
-            pace: t.stat_pace,
-            calories: t.stat_calories,
-          }}
+          labels={workoutStatLabels(t)}
         />
 
         {/* 날짜 카드 — WorkoutRecordPanel의 시간 카드와 동일 */}

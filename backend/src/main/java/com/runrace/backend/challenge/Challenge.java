@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -65,6 +66,11 @@ public class Challenge {
   private String langCd = "ko";
 
   // ── 도메인 메서드 ──────────────────────────────────────────────
+
+  /** 주어진 사용자가 이 대결의 방장(생성자)인지 여부. */
+  public boolean isOwner(UUID userId) {
+    return userId != null && creator.getId().equals(userId);
+  }
 
   /** 방 속성 일괄 수정 (제목·목표·정원·기간). 수정 API 경로에서만 사용한다. */
   public void updateRoom(String title, BigDecimal goalKm, int maxMembers,

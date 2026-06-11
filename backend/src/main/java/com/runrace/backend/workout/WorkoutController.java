@@ -1,11 +1,11 @@
 package com.runrace.backend.workout;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
-import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import com.runrace.backend.workout.dto.WorkoutListItem;
 import com.runrace.backend.workout.dto.WorkoutShareResponse;
@@ -88,8 +88,8 @@ public class WorkoutController {
                 session ->
                     new WorkoutListItem(
                         session.getId(),
-                        session.getStartedAt().toString(),
-                        session.getEndedAt().toString(),
+                        IsoTime.format(session.getStartedAt()),
+                        IsoTime.format(session.getEndedAt()),
                         session.getDurationSec(),
                         session.getDistanceM(),
                         session.getCalories(),
@@ -103,42 +103,16 @@ public class WorkoutController {
   public ResponseEntity<WorkoutDetailResponse> detail(
       AuthPrincipal principal, @PathVariable("id") Long id) {
     WorkoutSession session = workoutService.getForUser(principal.userId(), id);
-    List<PathPointDto> path =
-        workoutService.parsePath(session.getPathJson()).stream()
-            .map(p -> new PathPointDto(p.lat(), p.lng()))
-            .toList();
     return ResponseEntity.ok(
-        new WorkoutDetailResponse(
-            session.getId(),
-            session.getStartedAt().toString(),
-            session.getEndedAt().toString(),
-            session.getDurationSec(),
-            session.getDistanceM(),
-            session.getCalories(),
-            session.getAvgPaceSecPerKm(),
-            path,
-            session.getWorkoutType().name(),
-            session.getImageUrl()));
+        WorkoutDetailResponse.from(session, workoutService.toPath(session.getPathJson())));
   }
 
   /** 공개 공유 페이지 — 인증 불필요. */
   @GetMapping("/{id:" + ID_PATH + "}/share")
   public ResponseEntity<WorkoutShareResponse> share(@PathVariable("id") Long id) {
     WorkoutSession session = workoutService.getForShare(id);
-    List<PathPointDto> path =
-        workoutService.parsePath(session.getPathJson()).stream()
-            .map(p -> new PathPointDto(p.lat(), p.lng()))
-            .toList();
     return ResponseEntity.ok(
-        new WorkoutShareResponse(
-            session.getDurationSec(),
-            session.getDistanceM(),
-            session.getCalories(),
-            session.getAvgPaceSecPerKm(),
-            session.getStartedAt().toString(),
-            path,
-            session.getWorkoutType().name(),
-            session.getImageUrl()));
+        WorkoutShareResponse.from(session, workoutService.toPath(session.getPathJson())));
   }
 
   @DeleteMapping("/{id:" + ID_PATH + "}")
