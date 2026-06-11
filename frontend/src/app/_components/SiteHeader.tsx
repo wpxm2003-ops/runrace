@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import { logout } from "@/lib/auth";
 import { useAuthUser } from "@/lib/useAuthUser";
@@ -15,9 +16,9 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
       <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-6">
-        <a href="/" className="text-lg font-semibold text-zinc-900">
+        <Link href="/" className="text-lg font-semibold text-zinc-900">
           RunRace
-        </a>
+        </Link>
         <div className="flex items-center gap-3 text-sm">
           <select
             value={locale}
