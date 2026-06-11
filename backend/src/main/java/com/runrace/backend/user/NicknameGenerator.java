@@ -80,6 +80,7 @@ public final class NicknameGenerator {
       }
     }
     ThreadLocalRandom rng = ThreadLocalRandom.current();
-    return a[rng.nextInt(a.length)] + b[rng.nextInt(b.length)] + rng.nextInt(1000, 10000);
+    // 5자리 숫자(10000~99999) — 언어당 조합 공간 약 900만으로 충돌 여유 확보
+    return a[rng.nextInt(a.length)] + b[rng.nextInt(b.length)] + rng.nextInt(10000, 100000);
   }
 }
