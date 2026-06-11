@@ -6,8 +6,11 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { LOCALES, type Locale, useLocale } from "@/lib/i18n";
 
 export function SiteHeader() {
-  const { user, loading } = useAuthUser();
+  const { user, loading, hint } = useAuthUser();
   const { locale, t, setLocale } = useLocale();
+
+  // 인증 복원 대기 중이라도 이전 로그인 힌트가 있으면 로그아웃 버튼을 미리 보여준다(스켈레톤 깜빡임 방지).
+  const showLoggedIn = user != null || (loading && hint);
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
@@ -28,9 +31,7 @@ export function SiteHeader() {
               </option>
             ))}
           </select>
-          {loading ? (
-            <Skeleton className="h-4 w-12" />
-          ) : user ? (
+          {showLoggedIn ? (
             <button
               type="button"
               onClick={() => logout()}
@@ -38,6 +39,8 @@ export function SiteHeader() {
             >
               {t.header_logout}
             </button>
+          ) : loading ? (
+            <Skeleton className="h-4 w-12" />
           ) : (
             <a
               href="/login"
