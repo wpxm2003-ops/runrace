@@ -124,3 +124,52 @@ sudo systemctl restart runrace
 | `Access key ID cannot be blank` 기동 실패 | 손으로 `java -jar` 실행해 환경변수 누락 | `sudo systemctl restart runrace` 로 실행 |
 | 웹만 옛 서버로 접속(타임아웃), 앱은 정상 | 브라우저/Service Worker 캐시 | F12 → Application → Clear site data |
 | 재부팅 후 백엔드 안 뜸 | — | `runrace.service`는 enabled라 자동 기동. 안 뜨면 `systemctl status runrace` 확인 |
+
+---
+
+## 사용 도구 및 버전
+
+### 백엔드 (`backend/pom.xml`)
+
+| 도구 | 버전 |
+|------|------|
+| Java | 21 |
+| Spring Boot | 3.4.5 |
+| Spring Web / Data JPA / Validation / Cache | Spring Boot 관리 |
+| Hibernate (JPA) | Spring Boot 관리 |
+| QueryDSL (jakarta) | 5.1.0 |
+| Flyway (PostgreSQL) | Spring Boot 관리 |
+| PostgreSQL JDBC 드라이버 | Spring Boot 관리 |
+| Caffeine (캐시) | Spring Boot 관리 |
+| Firebase Admin SDK | 9.4.3 |
+| AWS SDK for Java — S3 | 2.26.12 |
+| Lombok | Spring Boot 관리 |
+| 빌드 도구 | Maven Wrapper (`mvnw`) |
+
+### 프론트엔드 (`frontend/package.json`)
+
+| 도구 | 버전 |
+|------|------|
+| Next.js | 16.2.7 |
+| React / React DOM | 19.2.4 |
+| TypeScript | ^5 |
+| Tailwind CSS | ^4 |
+| SWR | ^2.4.1 |
+| Leaflet | 1.9.4 |
+| react-leaflet | ^5.0.0 |
+| Firebase (Web SDK) | ^12.14.0 |
+| Capacitor (core/cli/android/ios) | ^8.3.4 |
+| @capacitor-firebase/authentication | ^8.2.0 |
+| @capacitor-firebase/messaging | ^8.3.0 |
+| @capacitor-community/background-geolocation | ^1.2.26 |
+| exifr (EXIF 파싱) | ^7.1.3 |
+| ESLint | ^9 |
+
+### 인프라 (`infra/docker-compose.yml`)
+
+| 도구 | 버전 |
+|------|------|
+| PostgreSQL | 16 |
+| Adminer | 4 |
+| 컨테이너 | Docker Compose |
+| 배포 | EC2 + Nginx + systemd |
