@@ -222,12 +222,26 @@ public class WorkoutService {
     }
   }
 
+  /** 좌표 저장 정밀도(소수 6자리 ≈ 0.11m). GPS 오차(3~5m)보다 충분히 정밀하면서 저장 용량을 줄인다. */
+  private static final double COORD_SCALE = 1_000_000d;
+
   private String toJson(List<PathPoint> path) {
     try {
-      return objectMapper.writeValueAsString(path);
+      return objectMapper.writeValueAsString(roundCoords(path));
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("path_json_encode_failed", e);
     }
+  }
+
+  /** 저장 직전 좌표를 6자리로 반올림한다(거리·페이스는 클라이언트 계산값을 쓰므로 영향 없음). */
+  private static List<PathPoint> roundCoords(List<PathPoint> path) {
+    return path.stream()
+        .map(p -> new PathPoint(roundCoord(p.lat()), roundCoord(p.lng())))
+        .toList();
+  }
+
+  private static double roundCoord(double value) {
+    return Math.round(value * COORD_SCALE) / COORD_SCALE;
   }
 
   public List<PathPoint> parsePath(String pathJson) {
