@@ -4,7 +4,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormFields";
 import { useChallengeForm } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
-import { useChallengeDetail, updateChallenge } from "@/lib/api";
+import { useChallengeDetail, updateChallenge, invalidateChallengeLists } from "@/lib/api";
 import { challengeDetailHref, challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { toDateTimeInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -79,6 +79,7 @@ export default function ChallengeEditContent() {
     setSubmitting(true);
     try {
       await updateChallenge(id, form.getPayload(), user);
+      invalidateChallengeLists();
       nativeNavigate(challengeDetailHref(id));
     } catch (e) {
       form.setFormError(String(e));

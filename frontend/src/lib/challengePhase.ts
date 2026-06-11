@@ -1,5 +1,5 @@
 // 단계 판정은 백엔드 ChallengePhase.java 가 권위 — API 값(challengePhaseFromApi)을 우선 사용하고,
-// 아래 날짜 기반 계산(challengePhaseFromDates)은 API 값이 없을 때의 폴백이다. 규칙 변경 시 양쪽 함께.
+// 아래 날짜 기반 계산(challengePhaseFromDates)은 API 값이 없거나 stale일 때의 폴백이다. 규칙 변경 시 양쪽 함께.
 export type ChallengePhase = "scheduled" | "in_progress" | "ended";
 
 export function challengePhaseFromDates(
@@ -29,12 +29,30 @@ export function challengePhaseFromApi(
   }
 }
 
+/**
+ * 목록 API에서 받은 phase(apiPhase)를 우선 사용하되,
+ * 캐시가 stale해서 시간이 지났음에도 apiPhase가 잘못된 경우(예: 이미 startAt을 지났는데 SCHEDULED)
+ * 날짜 계산 결과로 보정한다.
+ *
+ * 예) 10:14에 페치 → apiPhase=SCHEDULED, startAt=10:16 → 10:16이 지나면 → "in_progress"로 보정
+ */
 export function resolveChallengePhase(
   startAt: string,
   endAt: string | null,
   apiPhase?: string | null,
 ): ChallengePhase {
-  return challengePhaseFromApi(apiPhase) ?? challengePhaseFromDates(startAt, endAt);
+  const fromApi = challengePhaseFromApi(apiPhase);
+  if (fromApi === null) return challengePhaseFromDates(startAt, endAt);
+
+  const fromDates = challengePhaseFromDates(startAt, endAt);
+
+  // apiPhase가 SCHEDULED인데 현재 시간이 이미 startAt을 넘었으면 날짜 계산으로 보정
+  if (fromApi === "scheduled" && fromDates !== "scheduled") return fromDates;
+
+  // apiPhase가 IN_PROGRESS인데 현재 시간이 이미 endAt을 넘었으면 날짜 계산으로 보정
+  if (fromApi === "in_progress" && fromDates === "ended") return fromDates;
+
+  return fromApi;
 }
 
 /** 예정·진행중·종료 상태 뱃지 색상 */
