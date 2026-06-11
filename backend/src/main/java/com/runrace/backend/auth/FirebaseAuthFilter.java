@@ -33,6 +33,8 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
   private static final Pattern CHALLENGE_DETAIL = Pattern.compile("^/api/challenges/[0-9]+$");
   private static final Pattern WORKOUT_SHARE = Pattern.compile("^/api/workouts/[0-9]+/share$");
+  private static final Pattern CHALLENGE_SHARE_PAGE =
+      Pattern.compile("^/api/share/challenges/[0-9]+$");
 
   private final FirebaseUserService firebaseUserService;
 
@@ -47,6 +49,9 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       return true;
     }
     if ("GET".equalsIgnoreCase(request.getMethod()) && WORKOUT_SHARE.matcher(path).matches()) {
+      return true;
+    }
+    if ("GET".equalsIgnoreCase(request.getMethod()) && CHALLENGE_SHARE_PAGE.matcher(path).matches()) {
       return true;
     }
     // 업로드 이미지 서빙은 공개

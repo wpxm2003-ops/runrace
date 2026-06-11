@@ -8,15 +8,16 @@ import { Capacitor } from "@capacitor/core";
 export async function shareLink(
   url: string,
   title: string,
+  text?: string,
 ): Promise<"shared" | "copied"> {
   try {
     if (Capacitor.isNativePlatform()) {
       const { Share } = await import("@capacitor/share");
-      await Share.share({ title, url });
+      await Share.share({ title, text, url, dialogTitle: title });
       return "shared";
     }
     if (navigator.share) {
-      await navigator.share({ title, url });
+      await navigator.share(text ? { title, text, url } : { title, url });
       return "shared";
     }
     await navigator.clipboard.writeText(url);

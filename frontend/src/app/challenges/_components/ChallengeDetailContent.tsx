@@ -178,7 +178,8 @@ export default function ChallengeDetailContent() {
   async function onShare() {
     if (!detail || id == null) return;
     const { shareLink } = await import("@/lib/shareCard");
-    return shareLink(`${getAppUrl()}/challenges/${id}`, detail.title);
+    const text = `🏃 ${formatGoalDistance(detail.goalKm, unit)} · 👥 ${detail.memberCount}명`;
+    return shareLink(`${getAppUrl()}/api/share/challenges/${id}`, detail.title, text);
   }
 
   const pageActions = useMemo(
