@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { useNavProgress } from "@/app/_components/NavProgressProvider";
-import { handleNativeBack, nativeNavigate, registerBack, registerPush } from "@/lib/nativeNav";
+import { handleNativeBack, nativeNavigate, registerBack, registerPush, registerReplace } from "@/lib/nativeNav";
 
 /**
  * Next.js router.push를 전역에 등록해 SPA 전환을 활성화한다.
@@ -20,6 +20,10 @@ export function NativeNavBootstrap() {
     registerPush((path) => {
       beginNavigation(path);
       router.push(path);
+    });
+    registerReplace((path) => {
+      beginNavigation(path);
+      router.replace(path);
     });
     registerBack(() => router.back());
 

@@ -31,6 +31,7 @@ const TAB_ROOTS = new Set(["/", "/challenges", "/workout", "/records", "/my", "/
 /** NativeNavBootstrap이 등록한 Next.js router.push */
 type PushFn = (path: string) => void;
 let _push: PushFn | null = null;
+let _replace: PushFn | null = null;
 let _back: (() => void) | null = null;
 
 /** SPA router.push 시 Android 뒤로가기용 이전 경로 스택 */
@@ -53,6 +54,17 @@ export function registerPush(fn: PushFn) {
     if (!backNavigation && normalizePath(current) !== normalizePath(target)) {
       navStack.push(current);
     }
+    backNavigation = false;
+    fn(path);
+  };
+}
+
+/**
+ * 현재 경로를 새 경로로 "대체"하는 이동을 등록한다(router.replace).
+ * 삭제 후처럼 현재 화면을 히스토리에 남기면 안 되는 경우에 쓴다 — navStack에 현재 경로를 쌓지 않는다.
+ */
+export function registerReplace(fn: PushFn) {
+  _replace = (path: string) => {
     backNavigation = false;
     fn(path);
   };
@@ -130,7 +142,15 @@ export function handleNativeBack(canGoBack: boolean): void {
  * 앱 내 페이지 이동. router.push가 등록된 경우 SPA 전환,
  * 미등록(초기 렌더 등)이면 fallback으로 location.assign.
  */
-export function nativeNavigate(path: string): void {
+export function nativeNavigate(path: string, opts?: { replace?: boolean }): void {
+  if (opts?.replace) {
+    if (_replace) {
+      _replace(path);
+      return;
+    }
+    window.location.replace(nativeHref(path));
+    return;
+  }
   if (_push) {
     _push(path);
     return;

@@ -88,7 +88,7 @@ export default function ChallengeDetailContent() {
     try {
       await deleteChallenge(id, user, `/challenges/${id}`);
       invalidateChallengeLists();
-      nativeNavigate("/challenges");
+      nativeNavigate("/challenges", { replace: true });
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     }
