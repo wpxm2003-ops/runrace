@@ -12,6 +12,7 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
+import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
 import { useCallback, useState } from "react";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
@@ -31,6 +32,7 @@ export default function WorkoutPage() {
   const session = useWorkoutSessionContext();
   const confirm = useConfirm();
   const [celebration, setCelebration] = useState<CelebrationState | null>(null);
+  const [counting, setCounting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   // 저장 실패 시 스냅샷을 보관해 "다시 시도"로 재저장한다(stop이 localStorage를 비우므로 메모리에 보존).
@@ -138,6 +140,14 @@ export default function WorkoutPage() {
 
       <div className="relative min-h-0 flex-1">
         <WorkoutMap path={session.path} position={session.position} follow={session.status === "running"} />
+        {counting ? (
+          <WorkoutCountdown
+            onComplete={() => {
+              setCounting(false);
+              session.start();
+            }}
+          />
+        ) : null}
         {session.vehicleTier === "weak_gps" ? (
           <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-violet-50 px-3 py-2 text-sm text-violet-900 shadow-sm">
             {t.workout_weak_gps}
@@ -189,7 +199,7 @@ export default function WorkoutPage() {
             elapsedLabel={session.elapsedLabel}
             distanceM={session.distanceM}
             paceLabel={session.paceLabel}
-            onStart={session.start}
+            onStart={() => setCounting(true)}
             onPause={session.pause}
             onResume={session.resume}
             onStop={handleStop}

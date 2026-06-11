@@ -62,3 +62,24 @@ body {
   animation-timing-function: ease-in;
   animation-fill-mode: forwards;
 }
+
+@keyframes countdown-pop {
+  0% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 카운트다운 원형 테두리 fill: 2700ms (3 * 900ms) 동안 empty → full */
+@keyframes countdown-ring {
+  from { stroke-dashoffset: 414.69; }
+  to   { stroke-dashoffset: 0; }
+}
