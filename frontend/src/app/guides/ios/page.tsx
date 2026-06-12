@@ -1,0 +1,69 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { PageLayout } from "@/app/_components/PageLayout";
+import { Card } from "@/app/_components/ui/Card";
+import { ShareButton } from "@/app/_components/ShareButton";
+import { getAppUrl } from "@/lib/appUrl";
+import { useLocale } from "@/lib/i18n";
+
+/** "**볼드**" 마커가 들어간 번역문을 <strong>으로 렌더한다. */
+function renderBold(text: string): ReactNode[] {
+  return text.split("**").map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold text-zinc-900">
+        {part}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
+
+function Section({ heading, children }: { heading: string; children: ReactNode }) {
+  return (
+    <Card className="mt-4">
+      <div className="text-base font-semibold">{heading}</div>
+      <div className="mt-2">{children}</div>
+    </Card>
+  );
+}
+
+export default function IosGuidePage() {
+  const { t } = useLocale();
+
+  async function onShare() {
+    const { shareLink } = await import("@/lib/shareCard");
+    return shareLink(`${getAppUrl()}/guides/ios`, t.guide_ios_title);
+  }
+
+  return (
+    <PageLayout title={t.guide_ios_title} actions={<ShareButton onShare={onShare} />}>
+      <Card>
+        <p className="text-sm leading-relaxed text-zinc-700">{t.guide_ios_intro}</p>
+      </Card>
+
+      <Section heading={t.guide_ios_install_heading}>
+        <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-zinc-700">
+          {t.guide_ios_install_steps.map((step, i) => (
+            <li key={i}>{step}</li>
+          ))}
+        </ol>
+      </Section>
+
+      <Section heading={t.guide_ios_run_heading}>
+        <p className="text-sm leading-relaxed text-zinc-700">{t.guide_ios_run_body}</p>
+        <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t.guide_ios_run_temp_note}</p>
+      </Section>
+
+      <Section heading={t.guide_ios_noti_heading}>
+        <p className="text-sm leading-relaxed text-zinc-700">
+          {renderBold(t.guide_ios_noti_body)}
+        </p>
+        <p className="mt-3 text-base font-semibold text-zinc-900">
+          {t.guide_ios_noti_emphasis}
+        </p>
+      </Section>
+    </PageLayout>
+  );
+}

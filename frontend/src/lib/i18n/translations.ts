@@ -305,6 +305,28 @@ export const translations = {
     ios_install_title: "홈 화면에 추가",
     ios_install_desc: "공유 버튼 → '홈 화면에 추가'를 누르면 앱처럼 쓰고 알림도 받을 수 있어요.",
     ios_install_dismiss: "나중에",
+    guide_menu: "이용 가이드",
+    guide_list_title: "이용 가이드",
+    guide_ios_title: "iPhone 이용 가이드",
+    guide_ios_card_desc: "설치 · 사용법",
+    guide_ios_intro:
+      "iPhone 전용 앱은 아직 준비 중이에요. 그 전까지는 조금 불편하시겠지만, 아래 방법으로 웹앱을 홈 화면에 설치해 앱처럼 사용해 주세요. 🙏",
+    guide_ios_install_heading: "홈 화면에 설치하기",
+    guide_ios_install_steps: [
+      "Safari에서 runrace.co.kr로 접속합니다.",
+      "하단 공유 버튼(□↑)을 누릅니다.",
+      "'홈 화면에 추가'를 선택합니다.",
+      "홈 화면의 RunRace 아이콘으로 실행하세요(전체화면).",
+    ],
+    guide_ios_run_heading: "달릴 때 (중요)",
+    guide_ios_run_body:
+      "iPhone 웹앱은 화면을 끄거나 다른 앱으로 가면 GPS 기록이 멈출 수 있어요. 달리는 동안 화면을 켜두고 RunRace를 열어 두세요. 운동 화면의 '화면 잠금'을 켜면 화면은 켜진 채 오터치를 막아줘요(길게 눌러 해제).",
+    guide_ios_run_temp_note:
+      "지금은 정식 앱 출시 전 임시 안내예요. 앱이 나오면 해결될 부분이니 그때까지 양해 부탁드려요. 불편을 드려 죄송합니다. 🙏",
+    guide_ios_noti_heading: "알림 꼭 켜기 🔔",
+    guide_ios_noti_body:
+      "알림을 켜면 **추월·순위 변동** 같은 레이스의 **재미있는 소식**을 푸시로 받아볼 수 있어요. 홈 화면에 설치한 뒤 로그인하면 권한 요청이 떠요.",
+    guide_ios_noti_emphasis: "알림을 꼭 허용해 주세요! 🔔",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `백그라운드 전환으로 약 ${sec}초간 기록이 멈췄을 수 있어요.`
@@ -686,6 +708,28 @@ export const translations = {
     ios_install_title: "Add to Home Screen",
     ios_install_desc: "Tap Share → 'Add to Home Screen' to use it like an app and get notifications.",
     ios_install_dismiss: "Later",
+    guide_menu: "User guide",
+    guide_list_title: "User guide",
+    guide_ios_title: "iPhone guide",
+    guide_ios_card_desc: "Install · usage",
+    guide_ios_intro:
+      "A dedicated iPhone app is still in the works. Until then it may be a little inconvenient, but please install the web app to your Home Screen and use it like an app. 🙏",
+    guide_ios_install_heading: "Install to Home Screen",
+    guide_ios_install_steps: [
+      "Open runrace.co.kr in Safari.",
+      "Tap the Share button (□↑).",
+      "Choose 'Add to Home Screen'.",
+      "Launch from the RunRace icon on your Home Screen (full screen).",
+    ],
+    guide_ios_run_heading: "While running (important)",
+    guide_ios_run_body:
+      "On iPhone web apps, GPS tracking can stop if the screen turns off or you switch apps. Keep the screen on and RunRace open while running. Turn on 'Lock screen' on the workout screen to keep the screen on while blocking accidental touches (hold to unlock).",
+    guide_ios_run_temp_note:
+      "This is a temporary workaround before our native app launches. It'll be resolved once the app is out — thanks for your patience, and sorry for the inconvenience. 🙏",
+    guide_ios_noti_heading: "Turn on notifications 🔔",
+    guide_ios_noti_body:
+      "With notifications on, you'll get **fun race updates** like **overtakes and rank changes** as push. After installing to your Home Screen and signing in, you'll be asked for permission.",
+    guide_ios_noti_emphasis: "Please be sure to allow it! 🔔",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `Tracking may have paused for about ${sec}s while the app was in the background.`
@@ -1067,6 +1111,28 @@ export const translations = {
     ios_install_title: "Añadir a pantalla de inicio",
     ios_install_desc: "Toca Compartir → 'Añadir a pantalla de inicio' para usarla como app y recibir notificaciones.",
     ios_install_dismiss: "Más tarde",
+    guide_menu: "Guía de uso",
+    guide_list_title: "Guía de uso",
+    guide_ios_title: "Guía para iPhone",
+    guide_ios_card_desc: "Instalación · uso",
+    guide_ios_intro:
+      "La app dedicada para iPhone aún está en preparación. Hasta entonces puede ser algo incómodo, pero instala la web app en tu pantalla de inicio y úsala como una app. 🙏",
+    guide_ios_install_heading: "Instalar en pantalla de inicio",
+    guide_ios_install_steps: [
+      "Abre runrace.co.kr en Safari.",
+      "Toca el botón Compartir (□↑).",
+      "Elige 'Añadir a pantalla de inicio'.",
+      "Ábrela desde el icono de RunRace en tu pantalla de inicio (pantalla completa).",
+    ],
+    guide_ios_run_heading: "Al correr (importante)",
+    guide_ios_run_body:
+      "En las web apps de iPhone, el registro GPS puede detenerse si se apaga la pantalla o cambias de app. Mantén la pantalla encendida y RunRace abierto mientras corres. Activa 'Bloquear pantalla' en la pantalla de entrenamiento para mantener la pantalla encendida y evitar toques accidentales (mantén pulsado para desbloquear).",
+    guide_ios_run_temp_note:
+      "Es una solución temporal hasta que lancemos la app nativa. Se resolverá cuando salga la app. Gracias por tu paciencia y perdona las molestias. 🙏",
+    guide_ios_noti_heading: "Activa las notificaciones 🔔",
+    guide_ios_noti_body:
+      "Con las notificaciones activadas recibirás **novedades divertidas de la carrera** como **adelantamientos y cambios de posición** por push. Tras instalarla en la pantalla de inicio e iniciar sesión, se te pedirá permiso.",
+    guide_ios_noti_emphasis: "¡Asegúrate de permitirlas! 🔔",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `El registro pudo pausarse unos ${sec} s mientras la app estaba en segundo plano.`
@@ -1448,6 +1514,28 @@ export const translations = {
     ios_install_title: "ホーム画面に追加",
     ios_install_desc: "共有ボタン →「ホーム画面に追加」でアプリのように使え、通知も受け取れます。",
     ios_install_dismiss: "後で",
+    guide_menu: "利用ガイド",
+    guide_list_title: "利用ガイド",
+    guide_ios_title: "iPhone 利用ガイド",
+    guide_ios_card_desc: "インストール・使い方",
+    guide_ios_intro:
+      "iPhone専用アプリは現在準備中です。それまでは少し不便ですが、Webアプリをホーム画面に追加してアプリのようにご利用ください。🙏",
+    guide_ios_install_heading: "ホーム画面に追加",
+    guide_ios_install_steps: [
+      "Safariでrunrace.co.krにアクセスします。",
+      "下部の共有ボタン(□↑)をタップします。",
+      "「ホーム画面に追加」を選びます。",
+      "ホーム画面のRunRaceアイコンから起動してください（全画面）。",
+    ],
+    guide_ios_run_heading: "走るとき（重要）",
+    guide_ios_run_body:
+      "iPhoneのWebアプリは、画面を消したり他のアプリに切り替えるとGPS記録が止まることがあります。走行中は画面を点けたままRunRaceを開いておいてください。運動画面の「画面ロック」をオンにすると、画面を点けたまま誤タッチを防げます（長押しで解除）。",
+    guide_ios_run_temp_note:
+      "これは正式アプリ公開前の一時的な案内です。アプリが出れば解決しますので、それまでご容赦ください。ご不便をおかけして申し訳ありません。🙏",
+    guide_ios_noti_heading: "通知を必ずオンに 🔔",
+    guide_ios_noti_body:
+      "通知をオンにすると、**追い抜き・順位変動**など、レースの**楽しいお知らせ**をプッシュで受け取れます。ホーム画面に追加してログインすると権限の確認が表示されます。",
+    guide_ios_noti_emphasis: "通知を必ず許可してください！🔔",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `バックグラウンド移行で約${sec}秒間、記録が止まった可能性があります。`
@@ -1829,6 +1917,28 @@ export const translations = {
     ios_install_title: "添加到主屏幕",
     ios_install_desc: "点击分享 →「添加到主屏幕」即可像应用一样使用并接收通知。",
     ios_install_dismiss: "以后再说",
+    guide_menu: "使用指南",
+    guide_list_title: "使用指南",
+    guide_ios_title: "iPhone 使用指南",
+    guide_ios_card_desc: "安装 · 使用",
+    guide_ios_intro:
+      "iPhone 专属应用仍在准备中。在此之前可能会有些不便，请将网页应用添加到主屏幕，像应用一样使用。🙏",
+    guide_ios_install_heading: "添加到主屏幕",
+    guide_ios_install_steps: [
+      "在 Safari 中访问 runrace.co.kr。",
+      "点击底部的分享按钮(□↑)。",
+      "选择「添加到主屏幕」。",
+      "从主屏幕的 RunRace 图标启动（全屏）。",
+    ],
+    guide_ios_run_heading: "跑步时（重要）",
+    guide_ios_run_body:
+      "iPhone 网页应用在熄屏或切换到其他应用时，GPS 记录可能会中断。跑步时请保持屏幕常亮并打开 RunRace。在运动页面开启「锁定屏幕」可在屏幕常亮的同时防止误触（长按解锁）。",
+    guide_ios_run_temp_note:
+      "这是正式应用上线前的临时方案。应用发布后即可解决，在此之前敬请谅解，给您带来不便深表歉意。🙏",
+    guide_ios_noti_heading: "请务必开启通知 🔔",
+    guide_ios_noti_body:
+      "开启通知后，你可以通过推送收到**超越、排名变动**等**有趣的比赛消息**。添加到主屏幕并登录后会请求权限。",
+    guide_ios_noti_emphasis: "请务必允许通知！🔔",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `应用切到后台期间，记录可能中断了约 ${sec} 秒。`
