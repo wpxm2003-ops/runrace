@@ -1,6 +1,7 @@
 import type { User } from "firebase/auth";
 import { firebaseApp } from "./firebase";
 import { registerDeviceToken } from "./api/push";
+import { webPlatform } from "./nativeNav";
 
 /**
  * 웹 푸시 VAPID 공개키 — Firebase 콘솔 > 클라우드 메시징 > 웹 푸시 인증서.
@@ -37,7 +38,7 @@ export async function registerWebPush(user: User): Promise<void> {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: registration,
     });
-    if (token) await registerDeviceToken(user, token, "web");
+    if (token) await registerDeviceToken(user, token, webPlatform());
   } catch {
     // 미지원·권한 거부·설정 미비 — 무시
   }
