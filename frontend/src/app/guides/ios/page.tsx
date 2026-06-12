@@ -20,66 +20,11 @@ function renderBold(text: string): ReactNode[] {
   );
 }
 
-/** iOS 공유 버튼 글리프(상자에서 위로 나가는 화살표). */
-function ShareGlyph() {
+function InstallScreenshot({ src, alt }: { src: string; alt: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="24"
-      height="24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 15V4" />
-      <path d="M8 7l4-4 4 4" />
-      <path d="M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1" />
-    </svg>
-  );
-}
-
-/** '홈 화면에 추가' 글리프(상자 안 +). */
-function AddHomeGlyph() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="24"
-      height="24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="3" y="3" width="18" height="18" rx="4" />
-      <path d="M12 8v8M8 12h8" />
-    </svg>
-  );
-}
-
-function InstallVisual() {
-  const { t } = useLocale();
-  return (
-    <div className="mb-4 flex items-center justify-center gap-4 rounded-xl bg-zinc-50 py-4">
-      <div className="flex flex-col items-center gap-1.5 text-zinc-700">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-300 bg-white">
-          <ShareGlyph />
-        </span>
-        <span className="text-[11px] text-zinc-500">{t.share_btn}</span>
-      </div>
-      <span aria-hidden className="text-lg text-zinc-400">
-        →
-      </span>
-      <div className="flex flex-col items-center gap-1.5 text-zinc-700">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-300 bg-white">
-          <AddHomeGlyph />
-        </span>
-        <span className="text-[11px] text-zinc-500">{t.ios_install_title}</span>
-      </div>
+    <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className="mx-auto block w-full max-w-sm" />
     </div>
   );
 }
@@ -108,15 +53,26 @@ export default function IosGuidePage() {
       </Card>
 
       <Section heading={t.guide_ios_install_heading}>
-        <InstallVisual />
-        <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-zinc-700">
+        <ol className="list-decimal space-y-4 pl-5 text-sm leading-relaxed text-zinc-700">
           {t.guide_ios_install_steps.map((step, i) => (
             <li key={i}>
               {step}
               {i === 0 ? (
-                <div className="mt-1 text-xs text-zinc-500">
-                  {t.guide_ios_install_safari_note}
-                </div>
+                <>
+                  <div className="mt-1 text-xs text-zinc-500">
+                    {t.guide_ios_install_safari_note}
+                  </div>
+                  <InstallScreenshot
+                    src="/guides/ios/share-button.png"
+                    alt={step}
+                  />
+                </>
+              ) : null}
+              {i === 1 ? (
+                <InstallScreenshot
+                  src="/guides/ios/add-to-home.png"
+                  alt={step}
+                />
               ) : null}
             </li>
           ))}
