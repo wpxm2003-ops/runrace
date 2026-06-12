@@ -313,10 +313,9 @@ export const translations = {
       "iPhone 전용 앱은 아직 준비 중이에요. 그 전까지는 조금 불편하시겠지만, 아래 방법으로 웹앱을 홈 화면에 설치해 앱처럼 사용해 주세요. 🙏",
     guide_ios_install_heading: "홈 화면에 설치하기",
     guide_ios_install_steps: [
-      "Safari에서 runrace.co.kr로 접속합니다.",
-      "하단 공유 버튼(□↑)을 누릅니다.",
+      "이 화면(Safari) 하단의 공유 버튼(□↑)을 누르세요. (Safari가 아니면 먼저 Safari에서 runrace.co.kr로 열어주세요.)",
       "'홈 화면에 추가'를 선택합니다.",
-      "홈 화면의 RunRace 아이콘으로 실행하세요(전체화면).",
+      "홈 화면에 생긴 RunRace 아이콘으로 실행하세요(전체화면).",
     ],
     guide_ios_run_heading: "달릴 때 (중요)",
     guide_ios_run_body:
@@ -716,8 +715,7 @@ export const translations = {
       "A dedicated iPhone app is still in the works. Until then it may be a little inconvenient, but please install the web app to your Home Screen and use it like an app. 🙏",
     guide_ios_install_heading: "Install to Home Screen",
     guide_ios_install_steps: [
-      "Open runrace.co.kr in Safari.",
-      "Tap the Share button (□↑).",
+      "Tap the Share button (□↑) at the bottom of this screen in Safari. (If you're not in Safari, open runrace.co.kr in Safari first.)",
       "Choose 'Add to Home Screen'.",
       "Launch from the RunRace icon on your Home Screen (full screen).",
     ],
@@ -1119,8 +1117,7 @@ export const translations = {
       "La app dedicada para iPhone aún está en preparación. Hasta entonces puede ser algo incómodo, pero instala la web app en tu pantalla de inicio y úsala como una app. 🙏",
     guide_ios_install_heading: "Instalar en pantalla de inicio",
     guide_ios_install_steps: [
-      "Abre runrace.co.kr en Safari.",
-      "Toca el botón Compartir (□↑).",
+      "Toca el botón Compartir (□↑) en la parte inferior de esta pantalla en Safari. (Si no estás en Safari, abre primero runrace.co.kr en Safari.)",
       "Elige 'Añadir a pantalla de inicio'.",
       "Ábrela desde el icono de RunRace en tu pantalla de inicio (pantalla completa).",
     ],
@@ -1522,8 +1519,7 @@ export const translations = {
       "iPhone専用アプリは現在準備中です。それまでは少し不便ですが、Webアプリをホーム画面に追加してアプリのようにご利用ください。🙏",
     guide_ios_install_heading: "ホーム画面に追加",
     guide_ios_install_steps: [
-      "Safariでrunrace.co.krにアクセスします。",
-      "下部の共有ボタン(□↑)をタップします。",
+      "Safariのこの画面の下部にある共有ボタン(□↑)をタップします。（Safariでない場合は、まずSafariでrunrace.co.krを開いてください。）",
       "「ホーム画面に追加」を選びます。",
       "ホーム画面のRunRaceアイコンから起動してください（全画面）。",
     ],
@@ -1925,8 +1921,7 @@ export const translations = {
       "iPhone 专属应用仍在准备中。在此之前可能会有些不便，请将网页应用添加到主屏幕，像应用一样使用。🙏",
     guide_ios_install_heading: "添加到主屏幕",
     guide_ios_install_steps: [
-      "在 Safari 中访问 runrace.co.kr。",
-      "点击底部的分享按钮(□↑)。",
+      "在 Safari 中点击本页面底部的分享按钮(□↑)。（若不是 Safari，请先在 Safari 中打开 runrace.co.kr。）",
       "选择「添加到主屏幕」。",
       "从主屏幕的 RunRace 图标启动（全屏）。",
     ],
