@@ -12,7 +12,6 @@ import { LocaleProvider } from "@/lib/i18n";
 import { UnitProvider } from "@/lib/UnitContext";
 import { WorkoutSessionProvider } from "@/lib/WorkoutSessionProvider";
 import { FcmBootstrap } from "./FcmBootstrap";
-import { IosInstallPrompt } from "./IosInstallPrompt";
 import { LanguageSync } from "./LanguageSync";
 import { NavProgressProvider } from "./NavProgressProvider";
 
@@ -35,7 +34,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
         <BottomNav />
-        <IosInstallPrompt />
       </div>
     </NavProgressProvider>
     </ConfirmProvider>
