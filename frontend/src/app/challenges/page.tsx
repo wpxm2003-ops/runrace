@@ -16,14 +16,14 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 
 export default function ChallengesPage() {
-  const { user, loading: authLoading } = useAuthUser();
+  const { user } = useAuthUser();
   const { t, locale } = useLocale();
   const [showAllLangs, setShowAllLangs] = useState(false);
   const [phaseFilter, setPhaseFilter] = useState<RacePhaseFilterValue>("active");
 
   const lang = showAllLangs ? undefined : locale;
 
-  const result = useChallengeListInfinite(user, authLoading, lang, phaseFilter);
+  const result = useChallengeListInfinite(user, lang, phaseFilter);
   const { setSize, error } = result;
 
   useEffect(() => {

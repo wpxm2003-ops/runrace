@@ -46,13 +46,13 @@ const PUBLIC_PAGE_SIZE = 20;
 
 export function useChallengeListInfinite(
   user: User | null | undefined,
-  authLoading: boolean,
   lang: string | undefined,
   phase: string,
 ) {
+  // 공개 목록이라 인증 복원을 기다리지 않고 즉시 fetch한다(익명).
+  // 로그인 복원이 끝나면 user.uid가 키에 반영돼 자동 재검증되며 isOwner/isMember가 채워진다.
   return useSWRInfinite(
     (index, previous) => {
-      if (authLoading) return null;
       if (previous && !previous.hasNext) return null;
       return ["challenges-page", user?.uid ?? null, lang ?? null, phase, index] as const;
     },

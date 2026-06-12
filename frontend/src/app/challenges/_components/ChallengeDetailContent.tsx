@@ -60,7 +60,7 @@ function ApprovalSection({
 }
 
 export default function ChallengeDetailContent() {
-  const { user, loading: authLoading } = useAuthUser();
+  const { user } = useAuthUser();
   const confirm = useConfirm();
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -80,7 +80,7 @@ export default function ChallengeDetailContent() {
     isLoading,
     error: fetchError,
     mutate,
-  } = useChallengeDetail(id, user, authLoading);
+  } = useChallengeDetail(id, user);
 
   const { pendingApprovals, rejectedApprovals, votingId, onVote } = useIndoorRunApprovals({
     id,
