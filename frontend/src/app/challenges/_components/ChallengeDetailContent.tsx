@@ -13,6 +13,7 @@ import {
   invalidateChallengeLists,
   nudgeMember,
   useChallengeDetail,
+  useHeadToHead,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
 import Link from "next/link";
@@ -23,7 +24,10 @@ import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { getAppUrl } from "@/lib/appUrl";
 import { challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
-import { ChallengeLeaderboard } from "@/app/challenges/_components/ChallengeLeaderboard";
+import {
+  ChallengeLeaderboard,
+  type HeadToHeadMap,
+} from "@/app/challenges/_components/ChallengeLeaderboard";
 import { PendingRunCard, RejectedRunCard } from "@/app/challenges/_components/IndoorRunCard";
 import { Button } from "@/app/_components/ui/Button";
 import { ShareButton } from "@/app/_components/ShareButton";
@@ -85,6 +89,21 @@ export default function ChallengeDetailContent() {
     mutateDetail: mutate,
     onError: setActionError,
   });
+
+  // 종료된 레이스 + 참여자일 때만 전적 조회(엔드포인트는 인증 필요, 라이벌만 반환).
+  const { data: headToHeadRows } = useHeadToHead(
+    id,
+    user ?? null,
+    Boolean(detail?.hasEnded && detail?.isMember),
+  );
+  const headToHead = useMemo<HeadToHeadMap | undefined>(() => {
+    if (!headToHeadRows) return undefined;
+    const map: HeadToHeadMap = new Map();
+    for (const r of headToHeadRows) {
+      map.set(r.opponentUserId, { wins: r.wins, losses: r.losses });
+    }
+    return map;
+  }, [headToHeadRows]);
 
   const error = firstErrorMessage(actionError, fetchError);
 
@@ -250,6 +269,7 @@ export default function ChallengeDetailContent() {
             hasStarted={detail.hasStarted}
             hasEnded={detail.hasEnded}
             myUserId={detail.currentUserId}
+            headToHead={headToHead}
             onNudge={
               detail.isMember && detail.hasStarted && !detail.hasEnded ? onNudge : undefined
             }

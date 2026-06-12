@@ -68,4 +68,29 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
     }
     return counts;
   }
+
+  @Override
+  public List<HeadToHeadPair> findHeadToHeadPairs(UUID meId, List<UUID> opponentIds) {
+    if (opponentIds.isEmpty()) {
+      return List.of();
+    }
+    QChallengeMember me = new QChallengeMember("me");
+    QChallengeMember op = new QChallengeMember("op");
+    List<Tuple> rows = query
+        .select(op.user.id, me.finalRank, op.finalRank)
+        .from(me)
+        .join(op).on(op.challenge.id.eq(me.challenge.id))
+        .where(
+            me.user.id.eq(meId),
+            op.user.id.in(opponentIds),
+            me.finalRank.isNotNull(),
+            op.finalRank.isNotNull())
+        .fetch();
+    return rows.stream()
+        .map(r -> new HeadToHeadPair(
+            r.get(op.user.id),
+            r.get(me.finalRank),
+            r.get(op.finalRank)))
+        .toList();
+  }
 }

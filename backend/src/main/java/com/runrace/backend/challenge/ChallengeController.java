@@ -13,6 +13,7 @@ import com.runrace.backend.challenge.dto.PendingApprovalResponse;
 import com.runrace.backend.challenge.dto.RejectedApprovalResponse;
 import com.runrace.backend.challenge.dto.UpdateChallengeRequest;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
+import com.runrace.backend.challenge.dto.HeadToHeadRow;
 import com.runrace.backend.challenge.dto.WinnerRow;
 import com.runrace.backend.workout.WorkoutService;
 import com.runrace.backend.workout.WorkoutSession;
@@ -154,6 +155,13 @@ public class ChallengeController {
     return ResponseEntity.ok(toDetailResponse(detail));
   }
 
+  /** 현재 사용자 기준, 이 레이스의 라이벌 참여자와의 누적 전적(끝난 레이스 전부 합산). */
+  @GetMapping("/{id:" + ID_PATH + "}/head-to-head")
+  public ResponseEntity<List<HeadToHeadRow>> headToHead(
+      AuthPrincipal principal, @PathVariable("id") Long id) {
+    return ResponseEntity.ok(challengeService.headToHead(principal.userId(), id));
+  }
+
   /** 레이스 참여자만 조회 가능한 반영 운동 목록 */
   @GetMapping("/{id:" + ID_PATH + "}/workouts")
   public ResponseEntity<List<ChallengeWorkoutListItem>> listWorkouts(
@@ -214,7 +222,7 @@ public class ChallengeController {
     List<MemberRow> rows =
         detail.members().stream()
             .sorted(memberDisplayOrder(detail.hasStarted()))
-            .map(member -> toMemberRow(member, challenge, goal))
+            .map(member -> toMemberRow(member, challenge, goal, detail.rivalUserIds()))
             .toList();
 
     WinnerRow winner =
@@ -274,13 +282,18 @@ public class ChallengeController {
     };
   }
 
-  private MemberRow toMemberRow(ChallengeMember member, Challenge challenge, BigDecimal goal) {
+  private MemberRow toMemberRow(
+      ChallengeMember member, Challenge challenge, BigDecimal goal, java.util.Set<UUID> rivalUserIds) {
+    UUID memberUserId = member.getUser().getId();
     return new MemberRow(
-        member.getUser().getId(),
+        memberUserId,
         member.getUser().getNickname(),
         member.getTotalKm(),
         goal.subtract(member.getTotalKm()).max(BigDecimal.ZERO),
         challengeService.progressPercent(member, challenge),
-        member.getFinishedAt() != null);
+        member.getFinishedAt() != null,
+        IsoTime.formatOrNull(member.getFinishedAt()),
+        member.getFinalRank(),
+        rivalUserIds.contains(memberUserId));
   }
 }

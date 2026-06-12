@@ -6,6 +6,8 @@ import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
+import com.runrace.backend.challenge.dto.HeadToHeadRow;
+import com.runrace.backend.rival.RivalRepository;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.workout.WorkoutSession;
@@ -15,6 +17,8 @@ import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +48,7 @@ public class ChallengeService {
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final RivalRepository rivalRepository;
 
   @Transactional
   public Challenge createRoom(
@@ -219,6 +224,7 @@ public class ChallengeService {
     challenge.end();
     if (winner != null) challenge.declareWinner(winner);
     challengeRepository.save(challenge);
+    assignFinalRanks(members);
     eventPublisher.publishEvent(new ChallengeEndedEvent(
         challenge.getId(),
         winner != null ? winner.getNickname() : null,
@@ -239,6 +245,10 @@ public class ChallengeService {
     boolean isOwner = challenge.isOwner(userId);
     OffsetDateTime now = OffsetDateTime.now();
 
+    // 로그인 사용자가 등록한 라이벌이 이 방에 있으면 표시(색/라벨)용으로 id 집합을 넘긴다.
+    Set<UUID> rivalUserIds =
+        userId == null ? Set.of() : new HashSet<>(rivalRepository.findRivalUserIds(userId));
+
     return new ChallengeDetailView(
         challenge,
         members,
@@ -248,7 +258,43 @@ public class ChallengeService {
         hasStarted(challenge, now),
         isEnded(challenge, now),
         winner,
-        members.size());
+        members.size(),
+        rivalUserIds);
+  }
+
+  /**
+   * 현재 사용자(meId) 기준, 이 레이스 참여자 중 "내 라이벌"과의 누적 전적.
+   * 라이벌이 아닌 참여자는 결과에 포함하지 않는다(전적은 라이벌에게만 노출).
+   */
+  @Transactional(readOnly = true)
+  public List<HeadToHeadRow> headToHead(UUID meId, Long challengeId) {
+    Set<UUID> rivalIds = new HashSet<>(rivalRepository.findRivalUserIds(meId));
+    if (rivalIds.isEmpty()) {
+      return List.of();
+    }
+    List<UUID> rivalParticipants =
+        challengeMemberRepository.findAllForChallenge(challengeId).stream()
+            .map(m -> m.getUser().getId())
+            .filter(rivalIds::contains)
+            .toList();
+    if (rivalParticipants.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, int[]> agg = new HashMap<>();
+    for (var pair : challengeMemberRepository.findHeadToHeadPairs(meId, rivalParticipants)) {
+      int[] wl = agg.computeIfAbsent(pair.opponentId(), k -> new int[2]);
+      if (pair.myRank() < pair.opRank()) {
+        wl[0]++;
+      } else if (pair.myRank() > pair.opRank()) {
+        wl[1]++;
+      }
+    }
+    return rivalParticipants.stream()
+        .map(uid -> {
+          int[] wl = agg.getOrDefault(uid, new int[] {0, 0});
+          return new HeadToHeadRow(uid, wl[0], wl[1]);
+        })
+        .toList();
   }
 
   @Transactional(readOnly = true)
@@ -349,6 +395,42 @@ public class ChallengeService {
    * - 첫 완주자가 있으면 그 사람.
    * - 완주자 없이 기간이 종료됐으면 누적 거리 최상위 멤버.
    */
+  /**
+   * 레이스 결과 순위: 완주자 우선(완주 시각 빠른 순) → 미완주는 누적 km 내림차순.
+   * 종료 시 final_rank 부여와 화면 표시 순서의 단일 기준.
+   */
+  public static final Comparator<ChallengeMember> RACE_RESULT_ORDER =
+      (m1, m2) -> {
+        boolean f1 = m1.getFinishedAt() != null;
+        boolean f2 = m2.getFinishedAt() != null;
+        if (f1 && f2) return m1.getFinishedAt().compareTo(m2.getFinishedAt());
+        if (f1) return -1;
+        if (f2) return 1;
+        return m2.getTotalKm().compareTo(m1.getTotalKm());
+      };
+
+  /**
+   * 종료 시 확정 순위(final_rank)를 1부터 부여하고 저장한다({@link #RACE_RESULT_ORDER} 기준).
+   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다.
+   */
+  public void assignFinalRanks(List<ChallengeMember> members) {
+    List<ChallengeMember> ordered = members.stream().sorted(RACE_RESULT_ORDER).toList();
+    int rank = 1;
+    for (ChallengeMember m : ordered) {
+      m.assignFinalRank(rank++);
+      challengeMemberRepository.save(m);
+    }
+  }
+
+  /** 확정 순위를 초기화한다(레이스 되돌림 — 운동 삭제로 종료가 풀릴 때). */
+  public void clearFinalRanks(Long challengeId) {
+    List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challengeId);
+    for (ChallengeMember m : members) {
+      m.clearFinalRank();
+      challengeMemberRepository.save(m);
+    }
+  }
+
   /** 누적 거리 내림차순, 동률이면 먼저 완주한 멤버 우선(미완주는 후순위). */
   private static final Comparator<ChallengeMember> BY_DISTANCE_THEN_FINISH =
       Comparator.comparing(ChallengeMember::getTotalKm)
@@ -458,5 +540,6 @@ public class ChallengeService {
       boolean hasStarted,
       boolean hasEnded,
       AppUser winner,
-      int memberCount) {}
+      int memberCount,
+      Set<UUID> rivalUserIds) {}
 }

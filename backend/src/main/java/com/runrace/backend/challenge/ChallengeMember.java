@@ -54,6 +54,10 @@ public class ChallengeMember {
   @Column(name = "joined_at", nullable = false)
   private OffsetDateTime joinedAt;
 
+  /** 레이스 종료 시 확정되는 최종 순위(1=우승). 진행 중·모집 중이면 null. 전적 도출의 기준값. */
+  @Column(name = "final_rank")
+  private Integer finalRank;
+
   @PrePersist
   void onCreate() {
     OffsetDateTime now = OffsetDateTime.now();
@@ -89,5 +93,15 @@ public class ChallengeMember {
   /** 완주 상태를 초기화한다(운동 삭제·되돌림용). */
   public void resetFinished() {
     this.finishedAt = null;
+  }
+
+  /** 종료 시 확정 순위를 기록한다(1=우승). */
+  public void assignFinalRank(int rank) {
+    this.finalRank = rank;
+  }
+
+  /** 확정 순위를 초기화한다(레이스 되돌림용). */
+  public void clearFinalRank() {
+    this.finalRank = null;
   }
 }

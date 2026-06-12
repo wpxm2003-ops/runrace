@@ -33,6 +33,27 @@ export type ChallengeMember = {
   remainingKm: string;
   progressPercent: number | string;
   finished: boolean;
+  /** 완주 시각(ISO). 미완주면 null — 승부 요약 시간 차 계산용. */
+  finishedAt: string | null;
+  /** 종료 시 확정 순위(1=우승). 진행 중이면 null. */
+  finalRank: number | null;
+  /** 로그인 사용자가 등록한 라이벌인지 — 색/라벨 표시용. */
+  isRival: boolean;
+};
+
+/** 현재 사용자 기준, 특정 상대(라이벌)와의 누적 전적. */
+export type HeadToHeadRow = {
+  opponentUserId: string;
+  wins: number;
+  losses: number;
+};
+
+/** 라이벌 목록 한 줄 — 닉네임 + 나 기준 누적 전적. 승률은 프론트에서 계산. */
+export type RivalRow = {
+  rivalUserId: string;
+  nickname: string | null;
+  wins: number;
+  losses: number;
 };
 
 export type ChallengeWinner = {

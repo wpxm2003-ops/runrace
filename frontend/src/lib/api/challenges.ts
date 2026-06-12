@@ -7,6 +7,7 @@ import type {
   ChallengeListPage,
   ChallengeWorkoutListItem,
   CreatedId,
+  HeadToHeadRow,
   PendingApproval,
   RejectedApproval,
   WorkoutDetail,
@@ -48,6 +49,11 @@ export function fetchChallengeDetail(id: number, user?: User | null) {
 /** 내가 만든 진행 중 방 개수 / 상한. */
 export function fetchActiveCount(user: User) {
   return apiFetch<ActiveCount>("/api/challenges/active-count", { user });
+}
+
+/** 종료된 레이스 — 이 방의 라이벌 참여자와 나의 누적 전적. */
+export function fetchHeadToHead(id: number, user: User) {
+  return apiFetch<HeadToHeadRow[]>(`/api/challenges/${id}/head-to-head`, { user });
 }
 
 export function createChallenge(body: ChallengeFormBody, user: User) {

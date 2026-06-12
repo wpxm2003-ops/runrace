@@ -1,0 +1,174 @@
+"use client";
+
+import { useState } from "react";
+import type { User } from "firebase/auth";
+import { PageLayout } from "@/app/_components/PageLayout";
+import { Alert } from "@/app/_components/ui/Alert";
+import { Card } from "@/app/_components/ui/Card";
+import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { addRival, removeRival, invalidateRivals, useRivals } from "@/lib/api";
+import type { RivalRow } from "@/lib/api/types";
+import { stripForbiddenText } from "@/lib/forbiddenTextChars";
+import { handleAuthFailure } from "@/lib/auth";
+import { useRequireAuth } from "@/lib/useRequireAuth";
+import { useLocale } from "@/lib/i18n";
+
+function winRate(wins: number, losses: number): string | null {
+  const games = wins + losses;
+  if (games === 0) return null;
+  const pct = (wins / games) * 100;
+  return Number.isInteger(pct) ? String(pct) : pct.toFixed(0);
+}
+
+function RivalListRow({
+  rival,
+  onRemove,
+  removing,
+}: {
+  rival: RivalRow;
+  onRemove: (id: string) => void;
+  removing: boolean;
+}) {
+  const { t } = useLocale();
+  const rate = winRate(rival.wins, rival.losses);
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-100 p-3">
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium text-zinc-900">
+          {rival.nickname ?? t.no_name}
+        </div>
+        <div className="mt-0.5 text-[11px] text-zinc-500">
+          {t.head_to_head_record(rival.wins, rival.losses)}
+          {rate != null ? ` · ${t.rival_winrate(rate)}` : ""}
+        </div>
+      </div>
+      <button
+        type="button"
+        disabled={removing}
+        onClick={() => onRemove(rival.rivalUserId)}
+        className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+      >
+        {t.rival_remove}
+      </button>
+    </div>
+  );
+}
+
+function RivalsContent({ user }: { user: User }) {
+  const { t } = useLocale();
+  const { data: rivals, isLoading, error } = useRivals(user);
+  const [draft, setDraft] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  function mapAddError(e: unknown): string {
+    const msg = String(e);
+    if (msg.includes("user_not_found")) return t.rival_error_not_found;
+    if (msg.includes("cannot_add_self")) return t.rival_error_self;
+    if (msg.includes("already_rival")) return t.rival_error_already;
+    return t.error_occurred;
+  }
+
+  async function onAdd() {
+    const nickname = draft.trim();
+    if (!nickname || adding) return;
+    setAdding(true);
+    setActionError(null);
+    try {
+      await addRival(nickname, user);
+      invalidateRivals(user.uid);
+      setDraft("");
+    } catch (e) {
+      if (!handleAuthFailure(e, "/rivals")) setActionError(mapAddError(e));
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function onRemove(rivalUserId: string) {
+    setRemovingId(rivalUserId);
+    setActionError(null);
+    try {
+      await removeRival(rivalUserId, user);
+      invalidateRivals(user.uid);
+    } catch (e) {
+      if (!handleAuthFailure(e, "/rivals")) setActionError(String(e));
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  return (
+    <PageLayout title={t.rival_manage}>
+      <Card>
+        <p className="text-sm text-zinc-600">{t.rival_guide}</p>
+      </Card>
+
+      <Card className="mt-4">
+        <div className="text-base font-semibold">{t.rival_add_heading}</div>
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(stripForbiddenText(e.target.value).slice(0, 20))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onAdd();
+            }}
+            placeholder={t.rival_add_placeholder}
+            maxLength={20}
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={adding || !draft.trim()}
+            className="shrink-0 rounded-lg bg-zinc-900 px-4 text-sm text-white disabled:opacity-50"
+          >
+            {adding ? t.rival_adding : t.rival_add_button}
+          </button>
+        </div>
+        {actionError ? <p className="mt-2 text-xs text-red-600">{actionError}</p> : null}
+      </Card>
+
+      <Card className="mt-4">
+        <div className="text-base font-semibold">{t.rival_list_heading}</div>
+        {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
+        <div className="mt-3">
+          {isLoading && !rivals ? (
+            <SkeletonLines count={2} />
+          ) : !rivals || rivals.length === 0 ? (
+            <div className="text-sm text-zinc-600">{t.rival_empty}</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {rivals.map((r) => (
+                <RivalListRow
+                  key={r.rivalUserId}
+                  rival={r}
+                  onRemove={onRemove}
+                  removing={removingId === r.rivalUserId}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+    </PageLayout>
+  );
+}
+
+export default function RivalsPage() {
+  const { user, loading } = useRequireAuth("/rivals");
+  const { t } = useLocale();
+
+  if (loading || !user) {
+    return (
+      <PageLayout title={t.rival_manage}>
+        <LoadingCard />
+      </PageLayout>
+    );
+  }
+
+  return <RivalsContent user={user} />;
+}

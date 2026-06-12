@@ -18,6 +18,7 @@ import { containsForbiddenText, stripForbiddenText } from "@/lib/forbiddenTextCh
 import { updateNickname, deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
+import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -223,6 +224,15 @@ function MyPageContent({ user }: { user: User }) {
           )}
         </div>
       </Card>
+
+      <button
+        type="button"
+        onClick={() => nativeNavigate("/rivals")}
+        className="mt-4 flex w-full items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-left hover:bg-amber-100"
+      >
+        <span className="text-base font-semibold text-amber-900">{t.rival_manage}</span>
+        <span aria-hidden className="text-amber-400">›</span>
+      </button>
 
       <MyRacesSection user={user} />
 

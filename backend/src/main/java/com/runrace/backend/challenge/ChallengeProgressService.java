@@ -129,6 +129,7 @@ public class ChallengeProgressService {
           .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
       if (allOtherFinished) {
         challenge.end();
+        challengeService.assignFinalRanks(allMembers);
         var winner = challenge.getWinner();
         List<UUID> memberIds = allMembers.stream()
             .map(m -> m.getUser().getId()).toList();
@@ -172,6 +173,8 @@ public class ChallengeProgressService {
                 challenge.clearWinner();
               }
               challengeRepository.save(challenge);
+              // 종료가 풀렸으므로 확정 순위(final_rank)도 초기화 — 전적이 잘못 집계되지 않게.
+              challengeService.clearFinalRanks(challenge.getId());
             }
             challengeMemberRepository.save(member);
           });

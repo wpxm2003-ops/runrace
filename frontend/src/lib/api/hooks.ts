@@ -13,9 +13,11 @@ import {
   fetchMyChallengesPage,
   fetchChallengeWorkouts,
   fetchChallengeWorkout,
+  fetchHeadToHead,
   fetchPendingApprovals,
   fetchRejectedApprovals,
 } from "./challenges";
+import { fetchRivals } from "./rivals";
 import { fetchWorkout, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
 import { SWR_ERROR_RETRY } from "./swrConfig";
@@ -148,6 +150,35 @@ export function useChallengeWorkouts(
     () => fetchChallengeWorkouts(challengeId!, user!),
     BASE_CONFIG,
   );
+}
+
+/** 종료된 레이스 — 이 방의 라이벌 참여자와 나의 누적 전적. 종료 + 로그인 시에만 조회. */
+export function useHeadToHead(
+  challengeId: number | null,
+  user: User | null,
+  enabled: boolean,
+) {
+  return useSWR(
+    enabled && challengeId != null && user
+      ? (["challenge", challengeId, "head-to-head", user.uid] as const)
+      : null,
+    () => fetchHeadToHead(challengeId!, user!),
+    BASE_CONFIG,
+  );
+}
+
+// ── 라이벌 ───────────────────────────────────────────────────────────────────
+export function useRivals(user: User | null) {
+  return useSWR(
+    user ? (["rivals", user.uid] as const) : null,
+    () => fetchRivals(user!),
+    BASE_CONFIG,
+  );
+}
+
+/** 라이벌 등록/해제 후 목록 재검증. */
+export function invalidateRivals(userId: string) {
+  void globalMutate(["rivals", userId]);
 }
 
 // ── 실내러닝 승인 (레이스 참여·시작 후에만) ──────────────────────────────────
