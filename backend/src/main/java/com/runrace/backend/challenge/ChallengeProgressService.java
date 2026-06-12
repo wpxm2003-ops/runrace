@@ -56,7 +56,7 @@ public class ChallengeProgressService {
   /**
    * 사용자가 현재 참여 중(진행 중·미완주)인 모든 레이스 멤버를 순회하며 {@code body}를 실행한다.
    * - 관련 레이스의 전체 멤버를 단일 쿼리로 사전 로드해 루프 내 N+1을 방지하고, {@code body}에 함께 넘긴다.
-   * - 방장 혼자인 레이스은 무효 종료({@link ChallengeService#endIfSolo})하고 건너뛴다.
+   * - 방장 혼자인 레이스는 삭제({@link ChallengeService#deleteIfSolo})하고 건너뛴다.
    * GPS 운동 반영·실내러닝 승인 생성·헬스데이터 동기화가 공통으로 사용한다.
    * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다.
    */
@@ -75,8 +75,8 @@ public class ChallengeProgressService {
 
     for (ChallengeMember member : activeMembers) {
       Challenge challenge = member.getChallenge();
-      // 방장 혼자인 레이스는 무효 종료하고 거리 반영하지 않는다.
-      if (challengeService.endIfSolo(challenge, now)) continue;
+      // 방장 혼자인 레이스는 삭제하고 거리 반영하지 않는다.
+      if (challengeService.deleteIfSolo(challenge, now)) continue;
       body.accept(member, membersByChallenge.getOrDefault(challenge.getId(), List.of()));
     }
   }

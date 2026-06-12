@@ -194,20 +194,19 @@ public class ChallengeService {
   }
 
   /**
-   * 시작됐는데 참여자가 1명 이하(방장 혼자)인 레이스를 무효 종료한다(우승자 없음).
-   * 스케줄러 없이 상세·목록 조회나 운동 반영 등 "접근 시점"에 호출되어 종료를 보장한다.
+   * 시작됐는데 참여자가 1명 이하(방장 혼자)인 레이스를 삭제한다.
+   * 스케줄러·운동 반영 등 접근 시점에 호출되어 정리를 보장한다.
    * 시작 전(모집 중)이거나 이미 종료됐거나 2명 이상이면 아무것도 하지 않는다.
-   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다. 종료시켰으면 true.
+   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다. 삭제했으면 true.
    */
-  public boolean endIfSolo(Challenge challenge, OffsetDateTime now) {
+  public boolean deleteIfSolo(Challenge challenge, OffsetDateTime now) {
     if (challenge.isEnded()) return false;
     if (!hasStarted(challenge, now)) return false; // 모집 중(SCHEDULED)은 유지
     if (challengeMemberRepository.countByChallengeId(challenge.getId()) > 1) return false;
-    challenge.end();
-    challenge.clearWinner();
-    challengeRepository.save(challenge);
-    eventPublisher.publishEvent(
-        new ChallengeEndedNoParticipantsEvent(challenge.getId(), challenge.getCreator().getId()));
+    Long challengeId = challenge.getId();
+    UUID creatorId = challenge.getCreator().getId();
+    challengeRepository.delete(challenge);
+    eventPublisher.publishEvent(new ChallengeEndedNoParticipantsEvent(challengeId, creatorId));
     return true;
   }
 
