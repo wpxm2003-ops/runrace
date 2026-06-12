@@ -10,6 +10,12 @@ export type GuideEntry = {
 
 export const GUIDES: GuideEntry[] = [
   {
+    slug: "app",
+    href: "/guides/app",
+    title: (t) => t.guide_app_title,
+    desc: (t) => t.guide_app_card_desc,
+  },
+  {
     slug: "ios",
     href: "/guides/ios",
     title: (t) => t.guide_ios_title,

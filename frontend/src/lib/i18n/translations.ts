@@ -327,6 +327,26 @@ export const translations = {
     guide_ios_noti_body:
       "알림을 켜면 **추월·순위 변동** 같은 레이스의 **재미있는 소식**을 푸시로 받아볼 수 있어요. 홈 화면에 설치한 뒤 로그인하면 권한 요청이 떠요.",
     guide_ios_noti_emphasis: "알림을 꼭 허용해 주세요! 🔔",
+    guide_app_title: "RunRace 이용 가이드",
+    guide_app_card_desc: "이런 걸 할 수 있어요",
+    guide_app_intro:
+      "RunRace는 혼자 뛰는 러닝을 친구와의 '레이스'로 바꿔주는 앱이에요. 기록하고, 겨루고, 약 올리고, 설욕하세요. 🏃",
+    guide_app_s1_h: "🏃 달리기를 기록해요",
+    guide_app_s1_b:
+      "GPS로 야외 러닝을 추적하면 거리·시간·페이스가 자동으로 쌓여요. 야외뿐 아니라 러닝머신으로 뛴 실내 러닝도 함께 관리할 수 있어요!",
+    guide_app_s2_h: "🏁 친구와 레이스해요",
+    guide_app_s2_b:
+      "목표 거리를 정해 방을 만들고 친구를 초대하세요. 하루 만에 끝내는 짧은 대결도, 다이어트 삼아 '먼저 100km 달성하기' 같은 장기 내기도 자유로워요. 먼저 목표에 도달하면 우승, 실시간 리더보드로 순위를 확인해요.",
+    guide_app_s3_h: "⚔️ 라이벌과 겨뤄요",
+    guide_app_s3_b:
+      "마음에 둔 상대를 라이벌로 등록하면 레이스에서 그 상대와의 전적(승·패)이 보여요. 아깝게 진 상대를 다음에 설욕하세요.",
+    guide_app_s4_h: "👊 약 올리고, 알림 받아요",
+    guide_app_s4_b:
+      "같은 레이스 참가자를 '콕 찌르기'로 독려하거나 약 올려요. 추월·순위 변동 같은 소식은 푸시 알림으로 바로 받아봐요.",
+    guide_app_s5_h: "📊 내 기록을 모아봐요",
+    guide_app_s5_b:
+      "달린 기록이 달력과 통계로 쌓여요. 누적 거리·시간·러닝 일수를 한눈에 확인해요.",
+    guide_app_outro: "자, 이제 친구를 불러 첫 레이스를 시작해보세요! 🔥",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `백그라운드 전환으로 약 ${sec}초간 기록이 멈췄을 수 있어요.`
@@ -730,6 +750,26 @@ export const translations = {
     guide_ios_noti_body:
       "With notifications on, you'll get **fun race updates** like **overtakes and rank changes** as push. After installing to your Home Screen and signing in, you'll be asked for permission.",
     guide_ios_noti_emphasis: "Please be sure to allow it! 🔔",
+    guide_app_title: "RunRace guide",
+    guide_app_card_desc: "Here's what you can do",
+    guide_app_intro:
+      "RunRace turns a solo run into a race with friends. Track it, compete, taunt, and get your rematch. 🏃",
+    guide_app_s1_h: "🏃 Record your runs",
+    guide_app_s1_b:
+      "Track outdoor runs by GPS and your distance, time, and pace add up automatically. Not just outdoors — indoor treadmill runs are managed all in one place too!",
+    guide_app_s2_h: "🏁 Race your friends",
+    guide_app_s2_b:
+      "Set a goal distance, create a room, and invite friends. Run a quick one-day duel, or make a long bet like 'first to 100 km' to keep each other on a diet. First to the goal wins — check standings on the live leaderboard.",
+    guide_app_s3_h: "⚔️ Take on your rivals",
+    guide_app_s3_b:
+      "Add someone as a rival to see your head-to-head record in races. Avenge the ones who barely beat you next time.",
+    guide_app_s4_h: "👊 Taunt and get notified",
+    guide_app_s4_b:
+      "Nudge fellow racers to cheer them on or tease them. Get overtakes and rank changes as push notifications.",
+    guide_app_s5_h: "📊 Collect your stats",
+    guide_app_s5_b:
+      "Your runs build up in a calendar and stats. See total distance, time, and run days at a glance.",
+    guide_app_outro: "Now call a friend and start your first race! 🔥",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `Tracking may have paused for about ${sec}s while the app was in the background.`
@@ -1133,6 +1173,26 @@ export const translations = {
     guide_ios_noti_body:
       "Con las notificaciones activadas recibirás **novedades divertidas de la carrera** como **adelantamientos y cambios de posición** por push. Tras instalarla en la pantalla de inicio e iniciar sesión, se te pedirá permiso.",
     guide_ios_noti_emphasis: "¡Asegúrate de permitirlas! 🔔",
+    guide_app_title: "Guía de RunRace",
+    guide_app_card_desc: "Esto es lo que puedes hacer",
+    guide_app_intro:
+      "RunRace convierte tu carrera en solitario en una carrera con amigos. Registra, compite, pica y busca tu revancha. 🏃",
+    guide_app_s1_h: "🏃 Registra tus carreras",
+    guide_app_s1_b:
+      "Registra carreras al aire libre por GPS y la distancia, el tiempo y el ritmo se suman solos. No solo al aire libre: también gestionas tus carreras en cinta en el mismo lugar.",
+    guide_app_s2_h: "🏁 Compite con amigos",
+    guide_app_s2_b:
+      "Fija una distancia objetivo, crea una sala e invita a tus amigos. Haz un duelo rápido de un día, o una apuesta larga como 'el primero en llegar a 100 km' para motivaros a hacer dieta. El primero en llegar gana; mira la clasificación en vivo.",
+    guide_app_s3_h: "⚔️ Enfréntate a tus rivales",
+    guide_app_s3_b:
+      "Añade a alguien como rival para ver tu historial en las carreras. La próxima vez véngate de quien te ganó por poco.",
+    guide_app_s4_h: "👊 Pica y recibe avisos",
+    guide_app_s4_b:
+      "Da un toque a otros corredores para animarlos o picarlos. Recibe adelantamientos y cambios de puesto por notificación.",
+    guide_app_s5_h: "📊 Reúne tus estadísticas",
+    guide_app_s5_b:
+      "Tus carreras se acumulan en un calendario y estadísticas. Mira distancia, tiempo y días corridos de un vistazo.",
+    guide_app_outro: "¡Ahora llama a un amigo y empieza tu primera carrera! 🔥",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `El registro pudo pausarse unos ${sec} s mientras la app estaba en segundo plano.`
@@ -1536,6 +1596,26 @@ export const translations = {
     guide_ios_noti_body:
       "通知をオンにすると、**追い抜き・順位変動**など、レースの**楽しいお知らせ**をプッシュで受け取れます。ホーム画面に追加してログインすると権限の確認が表示されます。",
     guide_ios_noti_emphasis: "通知を必ず許可してください！🔔",
+    guide_app_title: "RunRace 利用ガイド",
+    guide_app_card_desc: "こんなことができます",
+    guide_app_intro:
+      "RunRaceは、ひとりのランを友だちとの「レース」に変えるアプリです。記録して、競って、煽って、リベンジしましょう。🏃",
+    guide_app_s1_h: "🏃 ランを記録",
+    guide_app_s1_b:
+      "GPSで屋外ランを記録すると、距離・時間・ペースが自動でたまります。屋外だけでなく、ランニングマシンで走った室内ランもまとめて管理できます！",
+    guide_app_s2_h: "🏁 友だちとレース",
+    guide_app_s2_b:
+      "目標距離を決めて部屋を作り、友だちを招待。1日で終わる短期対決も、ダイエットがてら『先に100km達成』のような長期の賭けも自由。先に目標に到達したら優勝、リアルタイムの順位表で確認できます。",
+    guide_app_s3_h: "⚔️ ライバルと勝負",
+    guide_app_s3_b:
+      "気になる相手をライバルに登録すると、レースで対戦成績（勝・敗）が見えます。惜しく負けた相手に次はリベンジを。",
+    guide_app_s4_h: "👊 煽って、通知を受け取る",
+    guide_app_s4_b:
+      "同じレースの参加者を「つつく」で応援したり煽ったり。追い抜きや順位変動はプッシュ通知ですぐ届きます。",
+    guide_app_s5_h: "📊 記録をためる",
+    guide_app_s5_b:
+      "走った記録がカレンダーと統計にたまります。累計距離・時間・ラン日数をひと目で確認。",
+    guide_app_outro: "さあ、友だちを誘って最初のレースを始めましょう！🔥",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `バックグラウンド移行で約${sec}秒間、記録が止まった可能性があります。`
@@ -1939,6 +2019,26 @@ export const translations = {
     guide_ios_noti_body:
       "开启通知后，你可以通过推送收到**超越、排名变动**等**有趣的比赛消息**。添加到主屏幕并登录后会请求权限。",
     guide_ios_noti_emphasis: "请务必允许通知！🔔",
+    guide_app_title: "RunRace 使用指南",
+    guide_app_card_desc: "你可以这样玩",
+    guide_app_intro:
+      "RunRace 把一个人的跑步变成和朋友的「比赛」。记录、竞争、调侃，再来一场复仇。🏃",
+    guide_app_s1_h: "🏃 记录跑步",
+    guide_app_s1_b:
+      "用 GPS 记录户外跑，距离、时间、配速自动累计。不仅是户外，跑步机上的室内跑也能一起管理！",
+    guide_app_s2_h: "🏁 和朋友比赛",
+    guide_app_s2_b:
+      "设定目标距离，创建房间并邀请朋友。既能来一场一天结束的短局，也能以减肥为目的玩「先达成 100km」这样的长期赌约。先达成目标者获胜，通过实时排行榜查看名次。",
+    guide_app_s3_h: "⚔️ 挑战劲敌",
+    guide_app_s3_b:
+      "把对手添加为劲敌，就能在比赛中看到与对方的战绩（胜·负）。下次向险胜你的人复仇吧。",
+    guide_app_s4_h: "👊 调侃并接收通知",
+    guide_app_s4_b:
+      "用「戳一戳」为同场跑者加油或调侃。超越、排名变动等消息通过推送即时送达。",
+    guide_app_s5_h: "📊 汇总你的数据",
+    guide_app_s5_b:
+      "跑步记录会汇集成日历和统计。一眼查看累计距离、时间和跑步天数。",
+    guide_app_outro: "现在叫上朋友，开始你的第一场比赛吧！🔥",
     run_gap_notice: (sec: number) =>
       sec < 60
         ? `应用切到后台期间，记录可能中断了约 ${sec} 秒。`
