@@ -259,7 +259,7 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
     <Card className="mt-6">
       <div className="text-lg font-semibold">{heading}</div>
       <div className="mt-4">
-        {hasEnded && myUserId ? (
+        {hasEnded && myUserId && members.length > 1 ? (
           <ResultSummary members={members} myUserId={myUserId} unit={unit} />
         ) : null}
         <div className="flex flex-col gap-3">

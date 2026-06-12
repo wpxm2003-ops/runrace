@@ -224,7 +224,12 @@ public class ChallengeService {
     challenge.end();
     if (winner != null) challenge.declareWinner(winner);
     challengeRepository.save(challenge);
-    assignFinalRanks(members);
+    // 실제로 뛴 사람이 있을 때만 순위를 확정한다.
+    // 아무도 0km이면 순위 미부여 → head-to-head 전적에 반영되지 않는다.
+    boolean anyRan = members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
+    if (anyRan) {
+      assignFinalRanks(members);
+    }
     eventPublisher.publishEvent(new ChallengeEndedEvent(
         challenge.getId(),
         winner != null ? winner.getNickname() : null,
@@ -467,8 +472,13 @@ public class ChallengeService {
         .orElse(null);
   }
 
-  /** 누적 거리(동률 시 완주 시각) 최상위 멤버의 사용자. */
+  /**
+   * 누적 거리(동률 시 완주 시각) 최상위 멤버의 사용자.
+   * 모든 참여자의 거리가 0이면 대결이 성립하지 않으므로 null 반환.
+   */
   private static AppUser topByDistance(List<ChallengeMember> members) {
+    boolean anyRan = members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
+    if (!anyRan) return null;
     return members.stream()
         .max(BY_DISTANCE_THEN_FINISH)
         .map(ChallengeMember::getUser)
