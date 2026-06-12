@@ -298,6 +298,17 @@ export const translations = {
     stat_total_calories: "총 칼로리",
     stat_calories: "칼로리",
     stat_pace: "페이스",
+    run_lock_button: "화면 잠금",
+    run_lock_locked: "화면 잠금됨",
+    run_lock_hold: "길게 눌러 해제",
+    ios_run_notice: "아이폰은 달리는 동안 화면을 켜두고 앱을 유지하세요. 화면을 잠그면 기록이 멈출 수 있어요.",
+    ios_install_title: "홈 화면에 추가",
+    ios_install_desc: "공유 버튼 → '홈 화면에 추가'를 누르면 앱처럼 쓰고 알림도 받을 수 있어요.",
+    ios_install_dismiss: "나중에",
+    run_gap_notice: (sec: number) =>
+      sec < 60
+        ? `백그라운드 전환으로 약 ${sec}초간 기록이 멈췄을 수 있어요.`
+        : `백그라운드 전환으로 약 ${Math.round(sec / 60)}분간 기록이 멈췄을 수 있어요.`,
     stat_total_days: "총 운동일",
     stat_days_unit: "일",
     workout_start: "운동 시작",
@@ -668,6 +679,17 @@ export const translations = {
     stat_total_calories: "Total calories",
     stat_calories: "Calories",
     stat_pace: "Pace",
+    run_lock_button: "Lock screen",
+    run_lock_locked: "Screen locked",
+    run_lock_hold: "Hold to unlock",
+    ios_run_notice: "On iPhone, keep the screen on and the app open while running. Locking the screen can stop tracking.",
+    ios_install_title: "Add to Home Screen",
+    ios_install_desc: "Tap Share → 'Add to Home Screen' to use it like an app and get notifications.",
+    ios_install_dismiss: "Later",
+    run_gap_notice: (sec: number) =>
+      sec < 60
+        ? `Tracking may have paused for about ${sec}s while the app was in the background.`
+        : `Tracking may have paused for about ${Math.round(sec / 60)} min while the app was in the background.`,
     stat_total_days: "Active days",
     stat_days_unit: " days",
     workout_start: "Start",
@@ -1038,6 +1060,17 @@ export const translations = {
     stat_total_calories: "Calorías totales",
     stat_calories: "Calorías",
     stat_pace: "Ritmo",
+    run_lock_button: "Bloquear pantalla",
+    run_lock_locked: "Pantalla bloqueada",
+    run_lock_hold: "Mantén para desbloquear",
+    ios_run_notice: "En iPhone, mantén la pantalla encendida y la app abierta mientras corres. Bloquear la pantalla puede detener el registro.",
+    ios_install_title: "Añadir a pantalla de inicio",
+    ios_install_desc: "Toca Compartir → 'Añadir a pantalla de inicio' para usarla como app y recibir notificaciones.",
+    ios_install_dismiss: "Más tarde",
+    run_gap_notice: (sec: number) =>
+      sec < 60
+        ? `El registro pudo pausarse unos ${sec} s mientras la app estaba en segundo plano.`
+        : `El registro pudo pausarse unos ${Math.round(sec / 60)} min mientras la app estaba en segundo plano.`,
     stat_total_days: "Días activos",
     stat_days_unit: " días",
     workout_start: "Iniciar",
@@ -1408,6 +1441,17 @@ export const translations = {
     stat_total_calories: "合計カロリー",
     stat_calories: "カロリー",
     stat_pace: "ペース",
+    run_lock_button: "画面ロック",
+    run_lock_locked: "画面ロック中",
+    run_lock_hold: "長押しで解除",
+    ios_run_notice: "iPhoneでは走行中は画面を点けたままアプリを開いておいてください。画面をロックすると記録が止まることがあります。",
+    ios_install_title: "ホーム画面に追加",
+    ios_install_desc: "共有ボタン →「ホーム画面に追加」でアプリのように使え、通知も受け取れます。",
+    ios_install_dismiss: "後で",
+    run_gap_notice: (sec: number) =>
+      sec < 60
+        ? `バックグラウンド移行で約${sec}秒間、記録が止まった可能性があります。`
+        : `バックグラウンド移行で約${Math.round(sec / 60)}分間、記録が止まった可能性があります。`,
     stat_total_days: "運動日数",
     stat_days_unit: "日",
     workout_start: "スタート",
@@ -1778,6 +1822,17 @@ export const translations = {
     stat_total_calories: "总卡路里",
     stat_calories: "卡路里",
     stat_pace: "配速",
+    run_lock_button: "锁定屏幕",
+    run_lock_locked: "屏幕已锁定",
+    run_lock_hold: "长按解锁",
+    ios_run_notice: "在 iPhone 上跑步时请保持屏幕常亮并打开应用。锁屏可能会中断记录。",
+    ios_install_title: "添加到主屏幕",
+    ios_install_desc: "点击分享 →「添加到主屏幕」即可像应用一样使用并接收通知。",
+    ios_install_dismiss: "以后再说",
+    run_gap_notice: (sec: number) =>
+      sec < 60
+        ? `应用切到后台期间，记录可能中断了约 ${sec} 秒。`
+        : `应用切到后台期间，记录可能中断了约 ${Math.round(sec / 60)} 分钟。`,
     stat_total_days: "运动天数",
     stat_days_unit: "天",
     workout_start: "开始",

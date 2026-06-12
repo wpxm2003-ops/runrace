@@ -13,7 +13,11 @@ import { useLocale } from "@/lib/i18n";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
 import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
-import { useCallback, useState } from "react";
+import { RunLockOverlay } from "@/app/workout/_components/RunLockOverlay";
+import { useWakeLock } from "@/lib/useWakeLock";
+import { useBackgroundGapDetector } from "@/lib/useBackgroundGapDetector";
+import { isIosWeb } from "@/lib/nativeNav";
+import { useCallback, useEffect, useState } from "react";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
   ssr: false,
@@ -37,6 +41,33 @@ export default function WorkoutPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   // 저장 실패 시 스냅샷을 보관해 "다시 시도"로 재저장한다(stop이 localStorage를 비우므로 메모리에 보존).
   const [pendingSnapshot, setPendingSnapshot] = useState<WorkoutFinishSnapshot | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [showIosNotice, setShowIosNotice] = useState(false);
+
+  const active = session.status !== "idle";
+
+  // 러닝 중 화면이 꺼지지 않게 유지(포그라운드 GPS 유지). 미지원 브라우저는 무시.
+  useWakeLock(session.status === "running");
+
+  // 러닝 중 백그라운드 전환으로 추적이 끊긴 구간 감지(복귀 시 안내).
+  const { gapSec, dismiss: dismissGap } = useBackgroundGapDetector(session.status === "running");
+
+  // 런이 끝나면 잠금 자동 해제.
+  useEffect(() => {
+    if (!active && locked) setLocked(false);
+  }, [active, locked]);
+
+  // iOS 웹/PWA는 백그라운드 GPS 한계가 있어 1회 안내.
+  useEffect(() => {
+    if (isIosWeb() && !localStorage.getItem("ios_run_notice_seen")) {
+      setShowIosNotice(true);
+    }
+  }, []);
+
+  const dismissIosNotice = useCallback(() => {
+    localStorage.setItem("ios_run_notice_seen", "1");
+    setShowIosNotice(false);
+  }, []);
 
   const saveSnapshot = useCallback(
     async (snapshot: WorkoutFinishSnapshot) => {
@@ -122,6 +153,15 @@ export default function WorkoutPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {locked && active ? (
+        <RunLockOverlay
+          elapsedLabel={session.elapsedLabel}
+          distanceM={session.distanceM}
+          paceLabel={session.paceLabel}
+          onUnlock={() => setLocked(false)}
+        />
+      ) : null}
+
       {celebration ? (
         <WorkoutCelebration
           recordId={celebration.recordId}
@@ -182,6 +222,39 @@ export default function WorkoutPage() {
             <div className="mb-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800">
               {t.workout_restored}
             </div>
+          ) : null}
+          {showIosNotice ? (
+            <div className="mb-3 flex items-start justify-between gap-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <span>{t.ios_run_notice}</span>
+              <button
+                type="button"
+                onClick={dismissIosNotice}
+                className="shrink-0 font-medium text-amber-700 underline"
+              >
+                {t.confirm}
+              </button>
+            </div>
+          ) : null}
+          {gapSec != null ? (
+            <div className="mb-3 flex items-start justify-between gap-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <span>{t.run_gap_notice(gapSec)}</span>
+              <button
+                type="button"
+                onClick={dismissGap}
+                className="shrink-0 font-medium text-amber-700 underline"
+              >
+                {t.confirm}
+              </button>
+            </div>
+          ) : null}
+          {active ? (
+            <button
+              type="button"
+              onClick={() => setLocked(true)}
+              className="mb-3 h-11 w-full rounded-xl border border-zinc-300 bg-white text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              🔒 {t.run_lock_button}
+            </button>
           ) : null}
           {saveError ? <Alert className="mb-3">{saveError}</Alert> : null}
           {pendingSnapshot ? (

@@ -33,6 +33,8 @@ const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+// 웹 푸시(FCM 웹)용 — 선택. 있으면 init.json에 포함해 서비스워커가 메시징을 초기화한다.
+const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
 
 if (!apiKey || !authDomain || !projectId || !appId) {
   console.error("Missing Firebase env. Check frontend/.env.local and .env.production");
@@ -42,7 +44,11 @@ if (!apiKey || !authDomain || !projectId || !appId) {
 mkdirSync(outDir, { recursive: true });
 writeFileSync(
   outFile,
-  JSON.stringify({ apiKey, authDomain, projectId, appId }, null, 2) + "\n",
+  JSON.stringify(
+    { apiKey, authDomain, projectId, appId, ...(messagingSenderId ? { messagingSenderId } : {}) },
+    null,
+    2,
+  ) + "\n",
 );
 console.log("Wrote", outFile, "authDomain=", authDomain);
 

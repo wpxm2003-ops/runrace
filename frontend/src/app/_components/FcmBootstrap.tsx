@@ -78,6 +78,15 @@ export function FcmBootstrap() {
     };
   }, []);
 
+  // 웹/iOS PWA: 웹 푸시 토큰 등록 (VAPID 키 미설정 시 내부에서 no-op).
+  // iOS는 홈 화면 설치 + 사용자 제스처가 있어야 실제 동작 — 현재는 비활성 스캐폴딩.
+  useEffect(() => {
+    if (!user || Capacitor.isNativePlatform()) return;
+    void import("@/lib/webPush").then(({ registerWebPush }) => registerWebPush(user as User));
+    // uid에만 의존(상단 네이티브 effect와 동일 규칙)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
+
   // 로그인 후: FCM 토큰 등록 (콜드스타트·백그라운드 복귀 시 Play Services 준비 대기)
   useEffect(() => {
     if (!user || !Capacitor.isNativePlatform()) return;

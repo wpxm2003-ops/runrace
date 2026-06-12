@@ -8,6 +8,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
   // 웹 Firebase Analytics용 — 미설정 시 analytics는 비활성(조용히 무시)
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  // 웹 푸시(FCM 웹)용 — 미설정 시 웹 푸시 비활성(네이티브 푸시엔 영향 없음)
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
 
 export const firebaseApp =

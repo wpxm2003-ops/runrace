@@ -4,6 +4,17 @@ export function isNativeApp(): boolean {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
 }
 
+/** 네이티브 앱이 아닌 iOS 웹/PWA(아이폰·아이패드) 여부 — 백그라운드 GPS 한계 안내·러닝 화면 보호용. */
+export function isIosWeb(): boolean {
+  if (typeof navigator === "undefined" || isNativeApp()) return false;
+  const ua = navigator.userAgent || "";
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    // iPadOS는 데스크톱 Safari로 위장 → 터치 가능한 Mac으로 식별
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 export function nativeHref(path: string): string {
   if (!isNativeApp()) return path;
 
