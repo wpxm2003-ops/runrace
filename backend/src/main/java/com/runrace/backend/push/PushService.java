@@ -6,6 +6,8 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.WebpushConfig;
+import com.google.firebase.messaging.WebpushNotification;
 import com.runrace.backend.user.AppUserRepository;
 import java.util.List;
 import java.util.Locale;
@@ -55,11 +57,7 @@ public class PushService {
     if (FirebaseApp.getApps().isEmpty()) return;
     List<DeviceToken> tokens = deviceTokenRepository.findAllByUserId(userId);
     for (DeviceToken t : tokens) {
-      Message msg =
-          Message.builder()
-              .setToken(t.getFcmToken())
-              .setNotification(Notification.builder().setTitle(title).setBody(body).build())
-              .build();
+      Message msg = buildMessage(t, title, body);
       try {
         FirebaseMessaging.getInstance().send(msg);
       } catch (FirebaseMessagingException e) {
@@ -67,12 +65,40 @@ public class PushService {
         if (isDeadToken(e.getMessagingErrorCode())) {
           deviceTokenRepository.delete(t);
         } else {
-          log.warn("FCM 전송 실패 (userId={}, code={})", userId, e.getMessagingErrorCode());
+          log.warn(
+              "FCM 전송 실패 (userId={}, platform={}, code={})",
+              userId,
+              t.getPlatform(),
+              e.getMessagingErrorCode());
         }
       } catch (Exception e) {
-        log.warn("FCM 전송 중 예외 (userId={})", userId, e);
+        log.warn("FCM 전송 중 예외 (userId={}, platform={})", userId, t.getPlatform(), e);
       }
     }
+  }
+
+  private static Message buildMessage(DeviceToken token, String title, String body) {
+    Message.Builder builder =
+        Message.builder()
+            .setToken(token.getFcmToken())
+            .setNotification(Notification.builder().setTitle(title).setBody(body).build());
+
+    if (isWebPlatform(token.getPlatform())) {
+      builder
+          .putData("title", title)
+          .putData("body", body)
+          .setWebpushConfig(
+              WebpushConfig.builder()
+                  .setNotification(
+                      WebpushNotification.builder().setTitle(title).setBody(body).build())
+                  .putHeader("Urgency", "high")
+                  .build());
+    }
+    return builder.build();
+  }
+
+  private static boolean isWebPlatform(String platform) {
+    return platform != null && platform.startsWith("web");
   }
 
   private static boolean isDeadToken(MessagingErrorCode code) {

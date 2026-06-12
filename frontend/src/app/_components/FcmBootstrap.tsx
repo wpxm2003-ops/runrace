@@ -78,11 +78,20 @@ export function FcmBootstrap() {
     };
   }, []);
 
-  // 웹/iOS PWA: 웹 푸시 토큰 등록 (VAPID 키 미설정 시 내부에서 no-op).
-  // iOS는 홈 화면 설치 + 사용자 제스처가 있어야 실제 동작 — 현재는 비활성 스캐폴딩.
+  // 웹/iOS PWA: 웹 푸시 토큰 등록 (앱 복귀 시 토큰 재동기화).
   useEffect(() => {
     if (!user || Capacitor.isNativePlatform()) return;
-    void import("@/lib/webPush").then(({ registerWebPush }) => registerWebPush(user as User));
+
+    function sync() {
+      void import("@/lib/webPush").then(({ registerWebPush }) => registerWebPush(user as User));
+    }
+
+    sync();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
     // uid에만 의존(상단 네이티브 effect와 동일 규칙)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
