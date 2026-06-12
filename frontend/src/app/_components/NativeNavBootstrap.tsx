@@ -17,9 +17,13 @@ export function NativeNavBootstrap() {
   const { beginNavigation } = useNavProgress();
 
   useEffect(() => {
-    registerPush((path) => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+
+    registerPush((path, opts) => {
       beginNavigation(path);
-      router.push(path);
+      router.push(path, { scroll: opts?.scroll !== false });
     });
     registerReplace((path) => {
       beginNavigation(path);

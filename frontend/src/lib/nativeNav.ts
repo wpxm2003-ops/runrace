@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { pageStateKeyFromPath, savePageState } from "@/lib/pageStateStore";
 
 export function isNativeApp(): boolean {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
@@ -49,7 +50,7 @@ export function nativeHref(path: string): string {
 const TAB_ROOTS = new Set(["/", "/challenges", "/workout", "/records", "/my", "/login"]);
 
 /** NativeNavBootstrap이 등록한 Next.js router.push */
-type PushFn = (path: string) => void;
+type PushFn = (path: string, opts?: { scroll?: boolean }) => void;
 let _push: PushFn | null = null;
 let _replace: PushFn | null = null;
 let _back: (() => void) | null = null;
@@ -71,11 +72,14 @@ export function registerPush(fn: PushFn) {
   _push = (path: string) => {
     const target = path.split("#")[0];
     const current = currentPath();
-    if (!backNavigation && normalizePath(current) !== normalizePath(target)) {
+    const isBack = backNavigation;
+    if (!isBack && normalizePath(current) !== normalizePath(target)) {
+      const key = pageStateKeyFromPath(normalizePath(current));
+      if (key) savePageState(key, { scroll: window.scrollY });
       navStack.push(current);
     }
     backNavigation = false;
-    fn(path);
+    fn(path, { scroll: !isBack });
   };
 }
 

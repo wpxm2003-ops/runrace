@@ -21,14 +21,25 @@ import {
   workoutDateKeys,
   workoutsOnDate,
 } from "@/lib/workoutStats";
+import { savePageState, loadPageState, usePageScrollRestore } from "@/lib/pageStateStore";
+
+const STORE_KEY = "page:records";
 
 export default function RecordsPage() {
   const { user, loading } = useRequireAuth("/records");
   const { t, locale } = useLocale();
   const today = useMemo(() => new Date(), []);
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+
+  // ── 캘린더 상태: 이전 방문 값 복원 ──────────────────────────────────
+  const [viewYear, setViewYear] = useState(() => {
+    return loadPageState(STORE_KEY).viewYear ?? today.getFullYear();
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    return loadPageState(STORE_KEY).viewMonth ?? today.getMonth();
+  });
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(() => {
+    return loadPageState(STORE_KEY).selectedDateKey ?? null;
+  });
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
   const detailSectionRef = useRef<HTMLElement>(null);
 
@@ -36,6 +47,13 @@ export default function RecordsPage() {
     user,
     viewYear,
   );
+
+  usePageScrollRestore(STORE_KEY, yearRecords.length);
+
+  // ── 상태 변경 시 저장 ────────────────────────────────────────────────
+  useEffect(() => {
+    savePageState(STORE_KEY, { viewYear, viewMonth, selectedDateKey });
+  }, [viewYear, viewMonth, selectedDateKey]);
 
   const monthItems = useMemo(
     () => filterWorkoutsByMonth(yearRecords, viewYear, viewMonth),

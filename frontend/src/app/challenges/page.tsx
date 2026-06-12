@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -14,21 +14,57 @@ import {
 } from "@/app/_components/RacePhaseFilter";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
+import { savePageState, loadPageState, usePageScrollRestore } from "@/lib/pageStateStore";
+
+const STORE_KEY = "page:challenges";
+/** 뒤로가기 시 복원할 최대 페이지 수. */
+const MAX_RESTORE_SIZE = 5;
 
 export default function ChallengesPage() {
   const { user } = useAuthUser();
   const { t, locale } = useLocale();
-  const [showAllLangs, setShowAllLangs] = useState(false);
-  const [phaseFilter, setPhaseFilter] = useState<RacePhaseFilterValue>("active");
+
+  // ── 필터 상태: 이전 방문 값 복원 ─────────────────────────────────────
+  const [showAllLangs, setShowAllLangs] = useState(() => {
+    return loadPageState(STORE_KEY).showAllLangs ?? false;
+  });
+  const [phaseFilter, setPhaseFilter] = useState<RacePhaseFilterValue>(() => {
+    const saved = loadPageState(STORE_KEY).phase;
+    return (saved === "active" || saved === "ended") ? saved : "active";
+  });
 
   const lang = showAllLangs ? undefined : locale;
 
   const result = useChallengeListInfinite(user, lang, phaseFilter);
-  const { setSize, error } = result;
+  const { size, setSize, error, data: pages } = result;
+  const itemCount = pages ? pages.flatMap((p) => p.items).length : 0;
 
+  usePageScrollRestore(STORE_KEY, itemCount);
+
+  // ── 페이지 수 복원: 마운트 시 1회 ────────────────────────────────────
+  const sizeRestored = useRef(false);
   useEffect(() => {
+    if (sizeRestored.current) return;
+    sizeRestored.current = true;
+    const saved = Math.min(loadPageState(STORE_KEY).size ?? 1, MAX_RESTORE_SIZE);
+    if (saved > 1) void setSize(saved);
+  }, [setSize]);
+
+  // ── 필터 변경 시 size 리셋 (마운트 시에는 실행하지 않음) ──────────────
+  const filterMounted = useRef(false);
+  useEffect(() => {
+    if (!filterMounted.current) {
+      filterMounted.current = true;
+      return;
+    }
     void setSize(1);
+    savePageState(STORE_KEY, { size: 1 });
   }, [phaseFilter, lang, setSize]);
+
+  // ── 상태 변경 시 저장 ────────────────────────────────────────────────
+  useEffect(() => {
+    savePageState(STORE_KEY, { phase: phaseFilter, size, showAllLangs });
+  }, [phaseFilter, size, showAllLangs]);
 
   const filterLabel: Record<RacePhaseFilterValue, string> = useMemo(
     () => ({
