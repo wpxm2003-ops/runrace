@@ -33,6 +33,16 @@ const BASE_CONFIG = {
   ...SWR_ERROR_RETRY,
 };
 
+/** 레이스 목록·상세·내정보처럼 항상 최신 데이터가 필요한 훅용 설정. */
+const LIVE_CONFIG = {
+  revalidateOnMount: true,
+  revalidateOnFocus: true,
+  keepPreviousData: true,
+  /** 중복 요청 방지 구간을 0으로 → 페이지 진입마다 반드시 새로 fetch */
+  dedupingInterval: 0,
+  ...SWR_ERROR_RETRY,
+};
+
 // ── 레이스 목록 ────────────────────────────────────────────────────────────────
 /**
  * 공개 API이지만 로그인 여부에 따라 isOwner 필드가 달라지므로 userId를 키에 포함한다.
@@ -64,10 +74,10 @@ export function useChallengeListInfinite(
         size: PUBLIC_PAGE_SIZE,
       }),
     {
-      revalidateFirstPage: false,
+      revalidateFirstPage: true,
       revalidateOnFocus: true,
       keepPreviousData: true,
-      dedupingInterval: 3000,
+      dedupingInterval: 0,
       ...SWR_ERROR_RETRY,
     },
   );
@@ -88,10 +98,10 @@ export function useMyChallengeListInfinite(user: User | null, phase: string) {
         size: PUBLIC_PAGE_SIZE,
       }),
     {
-      revalidateFirstPage: false,
+      revalidateFirstPage: true,
       revalidateOnFocus: true,
       keepPreviousData: true,
-      dedupingInterval: 3000,
+      dedupingInterval: 0,
       ...SWR_ERROR_RETRY,
     },
   );
@@ -102,7 +112,7 @@ export function useChallengeDetail(id: number | null, user?: User | null, authLo
   return useSWR(
     authLoading || id == null ? null : (["challenge", id, user?.uid ?? null] as const),
     () => fetchChallengeDetail(id!, user),
-    BASE_CONFIG,
+    LIVE_CONFIG,
   );
 }
 
@@ -289,6 +299,6 @@ export function useMe(user: User | null) {
   return useSWR(
     user ? (["me", user.uid] as const) : null,
     () => fetchMe(user!),
-    BASE_CONFIG,
+    LIVE_CONFIG,
   );
 }
