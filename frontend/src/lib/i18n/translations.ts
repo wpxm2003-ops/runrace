@@ -313,10 +313,11 @@ export const translations = {
       "iPhone 전용 앱은 아직 준비 중이에요. 그 전까지는 조금 불편하시겠지만, 아래 방법으로 웹앱을 홈 화면에 설치해 앱처럼 사용해 주세요. 🙏",
     guide_ios_install_heading: "홈 화면에 설치하기",
     guide_ios_install_steps: [
-      "이 화면(Safari) 하단의 공유 버튼(□↑)을 누르세요. (Safari가 아니면 먼저 Safari에서 runrace.co.kr로 열어주세요.)",
+      "이 화면(Safari) 하단의 공유 버튼을 누르세요.",
       "'홈 화면에 추가'를 선택합니다.",
       "홈 화면에 생긴 RunRace 아이콘으로 실행하세요(전체화면).",
     ],
+    guide_ios_install_safari_note: "Safari가 아니면 먼저 Safari에서 runrace.co.kr로 열어주세요.",
     guide_ios_run_heading: "달릴 때 (중요)",
     guide_ios_run_body:
       "iPhone 웹앱은 화면을 끄거나 다른 앱으로 가면 GPS 기록이 멈출 수 있어요. 달리는 동안 화면을 켜두고 RunRace를 열어 두세요. 운동 화면의 '화면 잠금'을 켜면 화면은 켜진 채 오터치를 막아줘요(길게 눌러 해제).",
@@ -715,10 +716,11 @@ export const translations = {
       "A dedicated iPhone app is still in the works. Until then it may be a little inconvenient, but please install the web app to your Home Screen and use it like an app. 🙏",
     guide_ios_install_heading: "Install to Home Screen",
     guide_ios_install_steps: [
-      "Tap the Share button (□↑) at the bottom of this screen in Safari. (If you're not in Safari, open runrace.co.kr in Safari first.)",
+      "Tap the Share button at the bottom of this screen in Safari.",
       "Choose 'Add to Home Screen'.",
       "Launch from the RunRace icon on your Home Screen (full screen).",
     ],
+    guide_ios_install_safari_note: "If you're not in Safari, open runrace.co.kr in Safari first.",
     guide_ios_run_heading: "While running (important)",
     guide_ios_run_body:
       "On iPhone web apps, GPS tracking can stop if the screen turns off or you switch apps. Keep the screen on and RunRace open while running. Turn on 'Lock screen' on the workout screen to keep the screen on while blocking accidental touches (hold to unlock).",
@@ -1117,10 +1119,11 @@ export const translations = {
       "La app dedicada para iPhone aún está en preparación. Hasta entonces puede ser algo incómodo, pero instala la web app en tu pantalla de inicio y úsala como una app. 🙏",
     guide_ios_install_heading: "Instalar en pantalla de inicio",
     guide_ios_install_steps: [
-      "Toca el botón Compartir (□↑) en la parte inferior de esta pantalla en Safari. (Si no estás en Safari, abre primero runrace.co.kr en Safari.)",
+      "Toca el botón Compartir en la parte inferior de esta pantalla en Safari.",
       "Elige 'Añadir a pantalla de inicio'.",
       "Ábrela desde el icono de RunRace en tu pantalla de inicio (pantalla completa).",
     ],
+    guide_ios_install_safari_note: "Si no estás en Safari, abre primero runrace.co.kr en Safari.",
     guide_ios_run_heading: "Al correr (importante)",
     guide_ios_run_body:
       "En las web apps de iPhone, el registro GPS puede detenerse si se apaga la pantalla o cambias de app. Mantén la pantalla encendida y RunRace abierto mientras corres. Activa 'Bloquear pantalla' en la pantalla de entrenamiento para mantener la pantalla encendida y evitar toques accidentales (mantén pulsado para desbloquear).",
@@ -1519,10 +1522,11 @@ export const translations = {
       "iPhone専用アプリは現在準備中です。それまでは少し不便ですが、Webアプリをホーム画面に追加してアプリのようにご利用ください。🙏",
     guide_ios_install_heading: "ホーム画面に追加",
     guide_ios_install_steps: [
-      "Safariのこの画面の下部にある共有ボタン(□↑)をタップします。（Safariでない場合は、まずSafariでrunrace.co.krを開いてください。）",
+      "Safariのこの画面の下部にある共有ボタンをタップします。",
       "「ホーム画面に追加」を選びます。",
       "ホーム画面のRunRaceアイコンから起動してください（全画面）。",
     ],
+    guide_ios_install_safari_note: "Safariでない場合は、まずSafariでrunrace.co.krを開いてください。",
     guide_ios_run_heading: "走るとき（重要）",
     guide_ios_run_body:
       "iPhoneのWebアプリは、画面を消したり他のアプリに切り替えるとGPS記録が止まることがあります。走行中は画面を点けたままRunRaceを開いておいてください。運動画面の「画面ロック」をオンにすると、画面を点けたまま誤タッチを防げます（長押しで解除）。",
@@ -1921,10 +1925,11 @@ export const translations = {
       "iPhone 专属应用仍在准备中。在此之前可能会有些不便，请将网页应用添加到主屏幕，像应用一样使用。🙏",
     guide_ios_install_heading: "添加到主屏幕",
     guide_ios_install_steps: [
-      "在 Safari 中点击本页面底部的分享按钮(□↑)。（若不是 Safari，请先在 Safari 中打开 runrace.co.kr。）",
+      "在 Safari 中点击本页面底部的分享按钮。",
       "选择「添加到主屏幕」。",
       "从主屏幕的 RunRace 图标启动（全屏）。",
     ],
+    guide_ios_install_safari_note: "若不是 Safari，请先在 Safari 中打开 runrace.co.kr。",
     guide_ios_run_heading: "跑步时（重要）",
     guide_ios_run_body:
       "iPhone 网页应用在熄屏或切换到其他应用时，GPS 记录可能会中断。跑步时请保持屏幕常亮并打开 RunRace。在运动页面开启「锁定屏幕」可在屏幕常亮的同时防止误触（长按解锁）。",
