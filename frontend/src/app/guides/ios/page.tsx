@@ -1,24 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { ShareButton } from "@/app/_components/ShareButton";
+import { GuideNotificationSection } from "@/app/guides/_components/GuideNotificationSection";
 import { getAppUrl } from "@/lib/appUrl";
 import { useLocale } from "@/lib/i18n";
-
-/** "**볼드**" 마커가 들어간 번역문을 <strong>으로 렌더한다. */
-function renderBold(text: string): ReactNode[] {
-  return text.split("**").map((part, i) =>
-    i % 2 === 1 ? (
-      <strong key={i} className="font-semibold text-zinc-900">
-        {part}
-      </strong>
-    ) : (
-      part
-    ),
-  );
-}
 
 function InstallScreenshot({ src, alt }: { src: string; alt: string }) {
   return (
@@ -29,7 +16,7 @@ function InstallScreenshot({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-function Section({ heading, children }: { heading: string; children: ReactNode }) {
+function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
     <Card className="mt-4">
       <div className="text-base font-semibold">{heading}</div>
@@ -84,14 +71,7 @@ export default function IosGuidePage() {
         <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t.guide_ios_run_temp_note}</p>
       </Section>
 
-      <Section heading={t.guide_ios_noti_heading}>
-        <p className="text-sm leading-relaxed text-zinc-700">
-          {renderBold(t.guide_ios_noti_body)}
-        </p>
-        <p className="mt-3 text-base font-semibold text-zinc-900">
-          {t.guide_ios_noti_emphasis}
-        </p>
-      </Section>
+      <GuideNotificationSection />
     </PageLayout>
   );
 }

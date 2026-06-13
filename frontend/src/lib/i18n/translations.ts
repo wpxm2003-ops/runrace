@@ -327,6 +327,14 @@ export const translations = {
     guide_ios_noti_body:
       "알림을 켜면 **추월·순위 변동** 같은 레이스의 **재미있는 소식**을 푸시로 받아볼 수 있어요. 홈 화면에 설치한 뒤 로그인하면 권한 요청이 떠요.",
     guide_ios_noti_emphasis: "알림을 꼭 허용해 주세요! 🔔",
+    guide_noti_enable_btn: "알림 설정 확인하기",
+    guide_noti_enabling: "요청 중…",
+    guide_noti_granted: "알림이 허용됐어요 ✓",
+    guide_noti_denied:
+      "알림이 거부됐어요. 앱을 삭제한 뒤 다시 설치하고 알림을 허용해 주세요.",
+    guide_noti_unsupported: "이 환경에서는 알림을 사용할 수 없어요.",
+    guide_noti_login: "로그인 후 알림을 허용할 수 있어요.",
+    guide_noti_late_hint: "처음에 허용하지 않았다면 아래 버튼으로 다시 시도할 수 있어요.",
     guide_app_title: "RunRace 이용 가이드",
     guide_app_card_desc: "이런 걸 할 수 있어요",
     guide_app_intro:
@@ -342,7 +350,8 @@ export const translations = {
       "마음에 둔 상대를 라이벌로 등록하면 레이스에서 그 상대와의 전적(승·패)이 보여요. 아깝게 진 상대를 다음에 설욕하세요.",
     guide_app_s4_h: "👊 약 올리고, 알림 받아요",
     guide_app_s4_b:
-      "같은 레이스 참가자를 '콕 찌르기'로 독려하거나 약 올려요. 추월·순위 변동 같은 소식은 푸시 알림으로 바로 받아봐요.",
+      "같은 레이스 참가자를 '콕 찌르기'로 독려하거나 약 올려요. **추월·순위 변동** 같은 재미있는 소식은 **푸시 알림**으로 바로 받아봐요.",
+    guide_app_s4_emphasis: "알림을 꼭 허용해 주세요! 🔔",
     guide_app_s5_h: "📊 내 기록을 모아봐요",
     guide_app_s5_b:
       "달린 기록이 달력과 통계로 쌓여요. 누적 거리·시간·러닝 일수를 한눈에 확인해요.",
@@ -750,6 +759,14 @@ export const translations = {
     guide_ios_noti_body:
       "With notifications on, you'll get **fun race updates** like **overtakes and rank changes** as push. After installing to your Home Screen and signing in, you'll be asked for permission.",
     guide_ios_noti_emphasis: "Please be sure to allow it! 🔔",
+    guide_noti_enable_btn: "Check notification settings",
+    guide_noti_enabling: "Requesting…",
+    guide_noti_granted: "Notifications enabled ✓",
+    guide_noti_denied:
+      "Notifications were denied. Delete the app, reinstall it, and allow notifications when prompted.",
+    guide_noti_unsupported: "Notifications aren't available in this environment.",
+    guide_noti_login: "Log in to enable notifications.",
+    guide_noti_late_hint: "Missed the first prompt? Tap the button below to try again.",
     guide_app_title: "RunRace guide",
     guide_app_card_desc: "Here's what you can do",
     guide_app_intro:
@@ -765,7 +782,8 @@ export const translations = {
       "Add someone as a rival to see your head-to-head record in races. Avenge the ones who barely beat you next time.",
     guide_app_s4_h: "👊 Taunt and get notified",
     guide_app_s4_b:
-      "Nudge fellow racers to cheer them on or tease them. Get overtakes and rank changes as push notifications.",
+      "Nudge fellow racers to cheer them on or tease them. Get **overtakes and rank changes** as **push notifications** right away.",
+    guide_app_s4_emphasis: "Please be sure to allow notifications! 🔔",
     guide_app_s5_h: "📊 Collect your stats",
     guide_app_s5_b:
       "Your runs build up in a calendar and stats. See total distance, time, and run days at a glance.",
@@ -1173,6 +1191,14 @@ export const translations = {
     guide_ios_noti_body:
       "Con las notificaciones activadas recibirás **novedades divertidas de la carrera** como **adelantamientos y cambios de posición** por push. Tras instalarla en la pantalla de inicio e iniciar sesión, se te pedirá permiso.",
     guide_ios_noti_emphasis: "¡Asegúrate de permitirlas! 🔔",
+    guide_noti_enable_btn: "Comprobar ajustes de notificaciones",
+    guide_noti_enabling: "Solicitando…",
+    guide_noti_granted: "Notificaciones activadas ✓",
+    guide_noti_denied:
+      "Notificaciones denegadas. Elimina la app, vuelve a instalarla y permite las notificaciones.",
+    guide_noti_unsupported: "Las notificaciones no están disponibles en este entorno.",
+    guide_noti_login: "Inicia sesión para permitir notificaciones.",
+    guide_noti_late_hint: "¿Perdiste el aviso inicial? Pulsa el botón de abajo para intentarlo de nuevo.",
     guide_app_title: "Guía de RunRace",
     guide_app_card_desc: "Esto es lo que puedes hacer",
     guide_app_intro:
@@ -1188,7 +1214,8 @@ export const translations = {
       "Añade a alguien como rival para ver tu historial en las carreras. La próxima vez véngate de quien te ganó por poco.",
     guide_app_s4_h: "👊 Pica y recibe avisos",
     guide_app_s4_b:
-      "Da un toque a otros corredores para animarlos o picarlos. Recibe adelantamientos y cambios de puesto por notificación.",
+      "Da un toque a otros corredores para animarlos o picarlos. Recibe **adelantamientos y cambios de puesto** al instante con **notificaciones push**.",
+    guide_app_s4_emphasis: "¡Asegúrate de permitir las notificaciones! 🔔",
     guide_app_s5_h: "📊 Reúne tus estadísticas",
     guide_app_s5_b:
       "Tus carreras se acumulan en un calendario y estadísticas. Mira distancia, tiempo y días corridos de un vistazo.",
@@ -1596,6 +1623,14 @@ export const translations = {
     guide_ios_noti_body:
       "通知をオンにすると、**追い抜き・順位変動**など、レースの**楽しいお知らせ**をプッシュで受け取れます。ホーム画面に追加してログインすると権限の確認が表示されます。",
     guide_ios_noti_emphasis: "通知を必ず許可してください！🔔",
+    guide_noti_enable_btn: "通知設定を確認する",
+    guide_noti_enabling: "リクエスト中…",
+    guide_noti_granted: "通知が許可されました ✓",
+    guide_noti_denied:
+      "通知が拒否されました。アプリを削除して再インストールし、通知を許可してください。",
+    guide_noti_unsupported: "この環境では通知を利用できません。",
+    guide_noti_login: "ログイン後に通知を許可できます。",
+    guide_noti_late_hint: "最初の案内を見逃した場合は、下のボタンでもう一度試せます。",
     guide_app_title: "RunRace 利用ガイド",
     guide_app_card_desc: "こんなことができます",
     guide_app_intro:
@@ -1611,7 +1646,8 @@ export const translations = {
       "気になる相手をライバルに登録すると、レースで対戦成績（勝・敗）が見えます。惜しく負けた相手に次はリベンジを。",
     guide_app_s4_h: "👊 煽って、通知を受け取る",
     guide_app_s4_b:
-      "同じレースの参加者を「つつく」で応援したり煽ったり。追い抜きや順位変動はプッシュ通知ですぐ届きます。",
+      "同じレースの参加者を「つつく」で応援したり煽ったり。**追い抜き・順位変動** などの楽しい話題を **プッシュ通知** ですぐ受け取れます。",
+    guide_app_s4_emphasis: "通知を必ず許可してください！🔔",
     guide_app_s5_h: "📊 記録をためる",
     guide_app_s5_b:
       "走った記録がカレンダーと統計にたまります。累計距離・時間・ラン日数をひと目で確認。",
@@ -2019,6 +2055,13 @@ export const translations = {
     guide_ios_noti_body:
       "开启通知后，你可以通过推送收到**超越、排名变动**等**有趣的比赛消息**。添加到主屏幕并登录后会请求权限。",
     guide_ios_noti_emphasis: "请务必允许通知！🔔",
+    guide_noti_enable_btn: "查看通知设置",
+    guide_noti_enabling: "请求中…",
+    guide_noti_granted: "已允许通知 ✓",
+    guide_noti_denied: "通知被拒绝。请删除应用后重新安装，并允许通知。",
+    guide_noti_unsupported: "当前环境无法使用通知。",
+    guide_noti_login: "登录后可允许通知。",
+    guide_noti_late_hint: "错过了首次提示？可点击下方按钮重试。",
     guide_app_title: "RunRace 使用指南",
     guide_app_card_desc: "你可以这样玩",
     guide_app_intro:
@@ -2034,7 +2077,8 @@ export const translations = {
       "把对手添加为劲敌，就能在比赛中看到与对方的战绩（胜·负）。下次向险胜你的人复仇吧。",
     guide_app_s4_h: "👊 调侃并接收通知",
     guide_app_s4_b:
-      "用「戳一戳」为同场跑者加油或调侃。超越、排名变动等消息通过推送即时送达。",
+      "用「戳一戳」为同场跑者加油或调侃。**超车·排名变化** 等有趣动态会通过 **推送通知** 立刻送达。",
+    guide_app_s4_emphasis: "请务必允许通知！🔔",
     guide_app_s5_h: "📊 汇总你的数据",
     guide_app_s5_b:
       "跑步记录会汇集成日历和统计。一眼查看累计距离、时间和跑步天数。",

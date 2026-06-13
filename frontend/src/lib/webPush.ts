@@ -27,26 +27,27 @@ function hookForegroundMessaging(messaging: import("firebase/messaging").Messagi
   });
 }
 
+export type PushRegisterResult = "granted" | "denied" | "unsupported";
+
 /**
  * 웹/iOS PWA 푸시 토큰을 발급받아 서버에 등록한다.
  * iOS는 "홈 화면에 추가"된 PWA에서만 동작한다.
  */
-export async function registerWebPush(user: User): Promise<void> {
-  if (!VAPID_KEY) return;
+export async function registerWebPush(user: User): Promise<PushRegisterResult> {
+  if (!VAPID_KEY) return "unsupported";
   if (
     typeof window === "undefined" ||
     !("serviceWorker" in navigator) ||
     !("Notification" in window)
   ) {
-    return;
+    return "unsupported";
   }
   try {
     const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
-    if (!(await isSupported())) return;
-    if (Notification.permission === "denied") return;
-    if (Notification.permission === "default") {
+    if (!(await isSupported())) return "unsupported";
+    if (Notification.permission !== "granted") {
       const perm = await Notification.requestPermission();
-      if (perm !== "granted") return;
+      if (perm !== "granted") return "denied";
     }
 
     const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
@@ -59,12 +60,17 @@ export async function registerWebPush(user: User): Promise<void> {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: registration,
     });
-    if (token) await registerDeviceToken(user, token, webPlatform());
+    if (token) {
+      await registerDeviceToken(user, token, webPlatform());
+      return "granted";
+    }
+    return "denied";
   } catch (e) {
     void reportClientError({
       message: e instanceof Error ? e.message : String(e),
       stack: e instanceof Error ? e.stack : undefined,
       kind: "web_push_register_failed",
     });
+    return "denied";
   }
 }

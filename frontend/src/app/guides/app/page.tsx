@@ -1,10 +1,24 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { ShareButton } from "@/app/_components/ShareButton";
+import { EnableNotificationsButton } from "@/app/guides/_components/EnableNotificationsButton";
 import { getAppUrl } from "@/lib/appUrl";
 import { useLocale } from "@/lib/i18n";
+
+function renderBold(text: string): ReactNode[] {
+  return text.split("**").map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold text-zinc-900">
+        {part}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
 
 export default function AppGuidePage() {
   const { t } = useLocale();
@@ -13,7 +27,6 @@ export default function AppGuidePage() {
     { h: t.guide_app_s1_h, b: t.guide_app_s1_b },
     { h: t.guide_app_s2_h, b: t.guide_app_s2_b },
     { h: t.guide_app_s3_h, b: t.guide_app_s3_b },
-    { h: t.guide_app_s4_h, b: t.guide_app_s4_b },
     { h: t.guide_app_s5_h, b: t.guide_app_s5_b },
   ];
 
@@ -34,6 +47,16 @@ export default function AppGuidePage() {
           <p className="mt-2 text-sm leading-relaxed text-zinc-700">{s.b}</p>
         </Card>
       ))}
+
+      <Card className="mt-4">
+        <div className="text-base font-semibold">{t.guide_app_s4_h}</div>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-700">{renderBold(t.guide_app_s4_b)}</p>
+        <p className="mt-3 text-base font-semibold text-zinc-900">{t.guide_app_s4_emphasis}</p>
+        <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t.guide_noti_late_hint}</p>
+        <div className="mt-4">
+          <EnableNotificationsButton />
+        </div>
+      </Card>
 
       <p className="mt-6 text-center text-sm font-medium text-zinc-700">{t.guide_app_outro}</p>
     </PageLayout>
