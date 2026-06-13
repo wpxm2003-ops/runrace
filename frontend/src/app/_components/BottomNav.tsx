@@ -47,10 +47,22 @@ const ICONS = {
     </svg>
   ),
   fitness: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <circle cx="12" cy="5" r="2" />
-      <path d="M12 7v4l-2 9M12 11l2 9M8 12l-2 2M16 12l2 2" />
-    </svg>
+    <span
+      style={{
+        display: "block",
+        width: 24,
+        height: 24,
+        backgroundColor: "currentColor",
+        WebkitMaskImage: "url(/icons/runner.png)",
+        WebkitMaskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskImage: "url(/icons/runner.png)",
+        maskSize: "contain",
+        maskRepeat: "no-repeat",
+        maskPosition: "center",
+      }}
+    />
   ),
   my: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
