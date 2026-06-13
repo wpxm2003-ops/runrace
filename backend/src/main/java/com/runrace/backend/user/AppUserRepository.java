@@ -10,6 +10,8 @@ public interface AppUserRepository
 
   Optional<AppUser> findByFirebaseUid(String firebaseUid);
 
+  Optional<AppUser> findByEmail(String email);
+
   boolean existsByNickname(String nickname);
 
   Optional<AppUser> findByNickname(String nickname);

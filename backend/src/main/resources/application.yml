@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/${DB_NAME:runrace}
-    username: ${DB_USERNAME:runrace}
-    password: ${DB_PASSWORD:runrace}
+    url: jdbc:postgresql://localhost:5432/${DB_NAME:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
     hikari:
       # 동시 트래픽 대비 커넥션 풀 명시(기본 10). DB max_connections 한도 내에서 설정할 것.
       maximum-pool-size: ${DB_POOL_MAX:20}

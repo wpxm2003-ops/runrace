@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.user.AppUser;
+import com.runrace.backend.user.AppUserRepository;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -37,11 +39,16 @@ public class KakaoAuthService {
   private String restApiKey;
 
   private final UserProvisioningService userProvisioningService;
+  private final AppUserRepository appUserRepository;
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient = HttpClient.newHttpClient();
 
-  public KakaoAuthService(UserProvisioningService userProvisioningService, ObjectMapper objectMapper) {
+  public KakaoAuthService(
+      UserProvisioningService userProvisioningService,
+      AppUserRepository appUserRepository,
+      ObjectMapper objectMapper) {
     this.userProvisioningService = userProvisioningService;
+    this.appUserRepository = appUserRepository;
     this.objectMapper = objectMapper;
   }
 
@@ -61,6 +68,15 @@ public class KakaoAuthService {
     try {
       String accessToken = exchangeCode(code, redirectUri);
       KakaoUser kakaoUser = getUserInfo(accessToken);
+
+      // 동일 이메일로 가입된 계정이 있으면 해당 계정으로 병합 로그인
+      if (kakaoUser.email() != null) {
+        AppUser existing = appUserRepository.findByEmail(kakaoUser.email()).orElse(null);
+        if (existing != null) {
+          log.info("Kakao login merged into existing account [{}] by email", existing.getFirebaseUid());
+          return FirebaseAuth.getInstance().createCustomToken(existing.getFirebaseUid());
+        }
+      }
 
       String firebaseUid = "kakao:" + kakaoUser.id();
       // 카카오는 사실상 한국 사용자 → 닉네임/언어 기본값 ko. 이후 LanguageSync가 lang_cd를 갱신한다.
@@ -110,7 +126,18 @@ public class KakaoAuthService {
     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     JsonNode json = objectMapper.readTree(response.body());
 
-    String id = json.get("id").asText();
+    if (json.has("code") && json.get("code").asInt() < 0) {
+      log.warn("Kakao userinfo error: {} — {}", json.path("code").asText(), json.path("msg").asText());
+      throw ApiException.badRequest("kakao_userinfo_failed");
+    }
+
+    JsonNode idNode = json.get("id");
+    if (idNode == null) {
+      log.warn("Kakao userinfo response missing 'id': {}", response.body());
+      throw ApiException.badRequest("kakao_userinfo_failed");
+    }
+
+    String id = idNode.asText();
     JsonNode account = json.path("kakao_account");
     String email = account.path("email").asText(null);
     JsonNode profile = account.path("profile");
