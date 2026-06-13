@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -68,6 +68,10 @@ export function WorkoutRecordPanel({
   const confirm = useConfirm();
   const { data: detail, error, isLoading } = useWorkoutDetail(workoutId, user);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    setDeleting(false);
+  }, [workoutId]);
 
   async function onShare() {
     const { shareLink } = await import("@/lib/shareCard");

@@ -101,7 +101,6 @@ export default function RecordsPage() {
     if (!selectedDateKey) return;
     const list = workoutsOnDate(monthItems, selectedDateKey);
     if (list.length === 0) {
-      setSelectedDateKey(null);
       setSelectedWorkoutId(null);
       return;
     }
@@ -237,13 +236,10 @@ export default function RecordsPage() {
             ) : null}
             {selectedWorkoutId != null ? (
               <WorkoutRecordPanel
+                key={selectedWorkoutId}
                 workoutId={selectedWorkoutId}
                 user={user}
                 viewYear={viewYear}
-                onDeleted={() => {
-                  setSelectedDateKey(null);
-                  setSelectedWorkoutId(null);
-                }}
               />
             ) : null}
           </>
