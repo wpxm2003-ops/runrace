@@ -311,6 +311,10 @@ export const translations = {
     guide_ios_card_desc: "설치 · 사용법",
     guide_ios_intro:
       "iPhone 전용 앱은 아직 준비 중이에요. 그 전까지는 조금 불편하시겠지만, 아래 방법으로 웹앱을 홈 화면에 설치해 앱처럼 사용해 주세요. 🙏",
+    guide_ios_safari_heading: "먼저 Safari로 열기 🧭",
+    guide_ios_safari_body:
+      "카카오톡·인스타 등 다른 앱 안에서 열면 '홈 화면에 추가'가 안 보일 수 있어요. 아래처럼 공유 메뉴에서 'Safari로 열기'를 눌러 Safari에서 열어주세요.",
+    guide_ios_safari_img_alt: "공유 메뉴에서 Safari로 열기",
     guide_ios_install_heading: "홈 화면에 설치하기",
     guide_ios_install_steps: [
       "이 화면(Safari) 하단의 공유 버튼을 누르세요.",
@@ -743,6 +747,10 @@ export const translations = {
     guide_ios_card_desc: "Install · usage",
     guide_ios_intro:
       "A dedicated iPhone app is still in the works. Until then it may be a little inconvenient, but please install the web app to your Home Screen and use it like an app. 🙏",
+    guide_ios_safari_heading: "Open in Safari first 🧭",
+    guide_ios_safari_body:
+      "If you opened the link inside another app (KakaoTalk, Instagram, etc.), 'Add to Home Screen' may not appear. Tap 'Open in Safari' in the share menu as shown below.",
+    guide_ios_safari_img_alt: "Open in Safari from the share menu",
     guide_ios_install_heading: "Install to Home Screen",
     guide_ios_install_steps: [
       "Tap the Share button at the bottom of this screen in Safari.",
@@ -1175,6 +1183,10 @@ export const translations = {
     guide_ios_card_desc: "Instalación · uso",
     guide_ios_intro:
       "La app dedicada para iPhone aún está en preparación. Hasta entonces puede ser algo incómodo, pero instala la web app en tu pantalla de inicio y úsala como una app. 🙏",
+    guide_ios_safari_heading: "Primero abre en Safari 🧭",
+    guide_ios_safari_body:
+      "Si abriste el enlace dentro de otra app (KakaoTalk, Instagram, etc.), puede que no aparezca 'Añadir a pantalla de inicio'. Toca 'Abrir en Safari' en el menú Compartir como se muestra abajo.",
+    guide_ios_safari_img_alt: "Abrir en Safari desde el menú Compartir",
     guide_ios_install_heading: "Instalar en pantalla de inicio",
     guide_ios_install_steps: [
       "Toca el botón Compartir en la parte inferior de esta pantalla en Safari.",
@@ -1607,6 +1619,10 @@ export const translations = {
     guide_ios_card_desc: "インストール・使い方",
     guide_ios_intro:
       "iPhone専用アプリは現在準備中です。それまでは少し不便ですが、Webアプリをホーム画面に追加してアプリのようにご利用ください。🙏",
+    guide_ios_safari_heading: "まずSafariで開く 🧭",
+    guide_ios_safari_body:
+      "カカオトーク・Instagramなど他のアプリ内で開くと「ホーム画面に追加」が表示されないことがあります。下のように共有メニューから「Safariで開く」をタップしてSafariで開いてください。",
+    guide_ios_safari_img_alt: "共有メニューからSafariで開く",
     guide_ios_install_heading: "ホーム画面に追加",
     guide_ios_install_steps: [
       "Safariのこの画面の下部にある共有ボタンをタップします。",
@@ -2039,6 +2055,10 @@ export const translations = {
     guide_ios_card_desc: "安装 · 使用",
     guide_ios_intro:
       "iPhone 专属应用仍在准备中。在此之前可能会有些不便，请将网页应用添加到主屏幕，像应用一样使用。🙏",
+    guide_ios_safari_heading: "先在 Safari 中打开 🧭",
+    guide_ios_safari_body:
+      "如果在 KakaoTalk、Instagram 等应用内打开，可能看不到「添加到主屏幕」。请像下图一样，在分享菜单中点击「在 Safari 中打开」。",
+    guide_ios_safari_img_alt: "从分享菜单在 Safari 中打开",
     guide_ios_install_heading: "添加到主屏幕",
     guide_ios_install_steps: [
       "在 Safari 中点击本页面底部的分享按钮。",

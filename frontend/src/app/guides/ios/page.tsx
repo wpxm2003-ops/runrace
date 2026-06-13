@@ -39,21 +39,21 @@ export default function IosGuidePage() {
         <p className="text-sm leading-relaxed text-zinc-700">{t.guide_ios_intro}</p>
       </Card>
 
+      <Section heading={t.guide_ios_safari_heading}>
+        <p className="text-sm leading-relaxed text-zinc-700">{t.guide_ios_safari_body}</p>
+        <InstallScreenshot src="/guides/ios/open-in-safari.png" alt={t.guide_ios_safari_img_alt} />
+      </Section>
+
       <Section heading={t.guide_ios_install_heading}>
         <ol className="list-decimal space-y-4 pl-5 text-sm leading-relaxed text-zinc-700">
           {t.guide_ios_install_steps.map((step, i) => (
             <li key={i}>
               {step}
               {i === 0 ? (
-                <>
-                  <div className="mt-1 text-xs text-zinc-500">
-                    {t.guide_ios_install_safari_note}
-                  </div>
-                  <InstallScreenshot
-                    src="/guides/ios/share-button.png"
-                    alt={step}
-                  />
-                </>
+                <InstallScreenshot
+                  src="/guides/ios/share-button.png"
+                  alt={step}
+                />
               ) : null}
               {i === 1 ? (
                 <InstallScreenshot
