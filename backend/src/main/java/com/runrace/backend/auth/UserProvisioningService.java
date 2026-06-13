@@ -8,6 +8,8 @@ import com.runrace.backend.user.NicknameGenerator;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserProvisioningService {
+  private static final Logger log = LoggerFactory.getLogger(UserProvisioningService.class);
   /** 고유 닉네임 생성 최대 시도 횟수. */
   private static final int MAX_NICKNAME_ATTEMPTS = 10;
 
@@ -50,6 +53,16 @@ public class UserProvisioningService {
 
       existing.updateProfile(firebaseUid, email, displayName, provider);
       return appUserRepository.save(existing);
+    }
+
+    // 동일 이메일로 다른 provider 계정이 있으면 해당 계정의 firebaseUid를 새 provider로 업데이트 (계정 병합)
+    if (email != null) {
+      AppUser byEmail = appUserRepository.findByEmail(email).orElse(null);
+      if (byEmail != null) {
+        log.info("Merging account [{}] into existing [{}] by email", firebaseUid, byEmail.getFirebaseUid());
+        byEmail.updateProfile(firebaseUid, email, displayName, provider);
+        return appUserRepository.save(byEmail);
+      }
     }
 
     String lang = SupportedLanguages.normalizeOrDefault(langHint);
