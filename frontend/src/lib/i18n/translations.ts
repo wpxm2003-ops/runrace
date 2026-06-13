@@ -338,7 +338,6 @@ export const translations = {
       "알림이 거부됐어요. 앱을 삭제한 뒤 다시 설치하고 알림을 허용해 주세요.",
     guide_noti_unsupported: "이 환경에서는 알림을 사용할 수 없어요.",
     guide_noti_login: "로그인 후 알림을 허용할 수 있어요.",
-    guide_noti_late_hint: "처음에 허용하지 않았다면 아래 버튼으로 다시 시도할 수 있어요.",
     guide_app_title: "RunRace 이용 가이드",
     guide_app_card_desc: "이런 걸 할 수 있어요",
     guide_app_intro:
@@ -774,7 +773,6 @@ export const translations = {
       "Notifications were denied. Delete the app, reinstall it, and allow notifications when prompted.",
     guide_noti_unsupported: "Notifications aren't available in this environment.",
     guide_noti_login: "Log in to enable notifications.",
-    guide_noti_late_hint: "Missed the first prompt? Tap the button below to try again.",
     guide_app_title: "RunRace guide",
     guide_app_card_desc: "Here's what you can do",
     guide_app_intro:
@@ -1210,7 +1208,6 @@ export const translations = {
       "Notificaciones denegadas. Elimina la app, vuelve a instalarla y permite las notificaciones.",
     guide_noti_unsupported: "Las notificaciones no están disponibles en este entorno.",
     guide_noti_login: "Inicia sesión para permitir notificaciones.",
-    guide_noti_late_hint: "¿Perdiste el aviso inicial? Pulsa el botón de abajo para intentarlo de nuevo.",
     guide_app_title: "Guía de RunRace",
     guide_app_card_desc: "Esto es lo que puedes hacer",
     guide_app_intro:
@@ -1646,7 +1643,6 @@ export const translations = {
       "通知が拒否されました。アプリを削除して再インストールし、通知を許可してください。",
     guide_noti_unsupported: "この環境では通知を利用できません。",
     guide_noti_login: "ログイン後に通知を許可できます。",
-    guide_noti_late_hint: "最初の案内を見逃した場合は、下のボタンでもう一度試せます。",
     guide_app_title: "RunRace 利用ガイド",
     guide_app_card_desc: "こんなことができます",
     guide_app_intro:
@@ -2081,7 +2077,6 @@ export const translations = {
     guide_noti_denied: "通知被拒绝。请删除应用后重新安装，并允许通知。",
     guide_noti_unsupported: "当前环境无法使用通知。",
     guide_noti_login: "登录后可允许通知。",
-    guide_noti_late_hint: "错过了首次提示？可点击下方按钮重试。",
     guide_app_title: "RunRace 使用指南",
     guide_app_card_desc: "你可以这样玩",
     guide_app_intro:

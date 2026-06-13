@@ -30,7 +30,14 @@ const ICONS = {
   ),
   challenge: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M6 4h12v4H6V4Zm0 6h12v10H6V10Zm3 3h6v4H9v-4Z" />
+      <path d="M5 4v16" strokeLinecap="round" />
+      <rect x="6" y="5" width="12" height="9" rx="0.5" />
+      <rect x="6" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+      <rect x="12" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+      <rect x="9" y="8" width="3" height="3" fill="currentColor" stroke="none" />
+      <rect x="15" y="8" width="3" height="3" fill="currentColor" stroke="none" />
+      <rect x="6" y="11" width="3" height="3" fill="currentColor" stroke="none" />
+      <rect x="12" y="11" width="3" height="3" fill="currentColor" stroke="none" />
     </svg>
   ),
   records: (

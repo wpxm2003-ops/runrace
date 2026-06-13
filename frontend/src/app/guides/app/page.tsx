@@ -52,7 +52,6 @@ export default function AppGuidePage() {
         <div className="text-base font-semibold">{t.guide_app_s4_h}</div>
         <p className="mt-2 text-sm leading-relaxed text-zinc-700">{renderBold(t.guide_app_s4_b)}</p>
         <p className="mt-3 text-base font-semibold text-zinc-900">{t.guide_app_s4_emphasis}</p>
-        <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t.guide_noti_late_hint}</p>
         <div className="mt-4">
           <EnableNotificationsButton />
         </div>

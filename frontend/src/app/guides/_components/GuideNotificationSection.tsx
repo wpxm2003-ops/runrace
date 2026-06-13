@@ -28,7 +28,6 @@ export function GuideNotificationSection() {
         {renderBold(t.guide_ios_noti_body)}
       </p>
       <p className="mt-3 text-base font-semibold text-zinc-900">{t.guide_ios_noti_emphasis}</p>
-      <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t.guide_noti_late_hint}</p>
       <div className="mt-4">
         <EnableNotificationsButton />
       </div>
