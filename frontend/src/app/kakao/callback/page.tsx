@@ -5,6 +5,8 @@ import { completeKakaoLogin } from "@/lib/kakaoAuth";
 import { LOGIN_RETURN_KEY, safeReturnPath } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
+import { track, setAnalyticsUser } from "@/lib/analytics";
+import { auth } from "@/lib/firebase";
 
 /**
  * 카카오 OAuth 리다이렉트 콜백 페이지.
@@ -46,7 +48,12 @@ export default function KakaoCallbackPage() {
     sessionStorage.removeItem(LOGIN_RETURN_KEY);
 
     completeKakaoLogin(code)
-      .then(() => nativeNavigate(returnTo || "/"))
+      .then(() => {
+        const uid = auth.currentUser?.uid;
+        if (uid) void setAnalyticsUser(uid);
+        void track("login", { method: "kakao" });
+        nativeNavigate(returnTo || "/");
+      })
       .catch((e) => setError(String(e)));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, isCancelled]);

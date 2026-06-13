@@ -136,16 +136,6 @@ function LoginContent() {
           >
             {busy ? t.login_busy : t.login_google}
           </Button>
-          <button
-            type="button"
-            onClick={() => startKakaoLogin(returnTo)}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191919] hover:bg-[#F5DC00]"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-              <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.748 1.573 5.168 3.953 6.627l-.953 3.554a.25.25 0 0 0 .375.275L9.9 18.986c.693.1 1.4.154 2.1.154 5.523 0 10-3.477 10-7.8S17.523 3 12 3Z" />
-            </svg>
-            {t.login_kakao}
-          </button>
         </div>
       </div>
     </div>
