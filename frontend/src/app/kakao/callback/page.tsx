@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { completeKakaoLogin } from "@/lib/kakaoAuth";
+import {
+  buildNativeKakaoCallbackUrl,
+  completeKakaoLogin,
+  isNativeKakaoOAuthState,
+} from "@/lib/kakaoAuth";
 import { LOGIN_RETURN_KEY, safeReturnPath } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
@@ -10,37 +14,46 @@ import { auth } from "@/lib/firebase";
 
 /**
  * 카카오 OAuth 리다이렉트 콜백 페이지.
- * URL: /kakao/callback?code=...
+ * URL: /kakao/callback?code=...&state=...
  *
- * 카카오가 authorization code를 붙여 여기로 돌아온다.
- * code를 백엔드로 보내 Firebase Custom Token을 받아 로그인을 완료하고,
- * 저장된 returnTo 경로로 이동한다.
+ * 네이티브 앱: state=native:... 이면 인앱 브라우저에서 앱 스킴으로 code를 넘긴다.
+ * 웹: code를 백엔드로 보내 Firebase Custom Token을 받아 로그인을 완료한다.
  */
 export default function KakaoCallbackPage() {
   const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
 
-  const code = useMemo(() => {
+  const searchParams = useMemo(() => {
     if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(window.location.search);
-    // 사용자가 카카오 로그인을 취소한 경우
-    const errParam = params.get("error");
-    if (errParam) return null;
-    return params.get("code");
+    return new URLSearchParams(window.location.search);
   }, []);
 
-  const isCancelled = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).has("error");
-  }, []);
+  const code = searchParams?.get("code") ?? null;
+  const isCancelled = searchParams?.has("error") ?? false;
+  const oauthError = searchParams?.get("error");
 
   useEffect(() => {
+    if (!searchParams) return;
+
+    const state = searchParams.get("state");
+    const nativeBridge = isNativeKakaoOAuthState(state);
+
     if (isCancelled) {
+      if (nativeBridge) {
+        window.location.href = buildNativeKakaoCallbackUrl({ error: oauthError, state });
+        return;
+      }
       nativeNavigate("/login");
       return;
     }
+
     if (!code) {
       setError(t.kakao_callback_error);
+      return;
+    }
+
+    if (nativeBridge) {
+      window.location.href = buildNativeKakaoCallbackUrl({ code, state });
       return;
     }
 
@@ -56,7 +69,7 @@ export default function KakaoCallbackPage() {
       })
       .catch((e) => setError(String(e)));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, isCancelled]);
+  }, [code, isCancelled, searchParams]);
 
   if (error) {
     return (
