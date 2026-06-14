@@ -307,10 +307,11 @@ export const translations = {
     ios_install_dismiss: "나중에",
     guide_menu: "이용 가이드",
     guide_list_title: "이용 가이드",
+    home_guide_card_desc: "iPhone 설치 · 이용 방법",
     guide_ios_title: "iPhone 이용 가이드",
     guide_ios_card_desc: "설치 · 사용법",
     guide_ios_intro:
-      "iPhone 전용 앱은 아직 준비 중이에요. 그 전까지는 조금 불편하시겠지만, 아래 방법으로 웹앱을 홈 화면에 설치해 앱처럼 사용해 주세요. 🙏",
+      "App Store 출시 전에도 iPhone에서 RunRace를 이용할 수 있는 방법을 안내합니다. 정식 iOS 앱은 재정적 사정으로 Android 반응을 살펴본 뒤 출시 여부를 결정할 예정입니다. 불편하시더라도 많이 이용해 주시면 큰 힘이 됩니다. 🙏",
     guide_ios_safari_heading: "먼저 Safari로 열기 🧭",
     guide_ios_safari_body:
       "카카오톡·인스타 등 다른 앱 안에서 열면 '홈 화면에 추가'가 안 보일 수 있어요. 아래처럼 공유 메뉴에서 'Safari로 열기'를 눌러 Safari에서 열어주세요.",
@@ -742,10 +743,11 @@ export const translations = {
     ios_install_dismiss: "Later",
     guide_menu: "User guide",
     guide_list_title: "User guide",
+    home_guide_card_desc: "iPhone setup · how to use",
     guide_ios_title: "iPhone guide",
     guide_ios_card_desc: "Install · usage",
     guide_ios_intro:
-      "A dedicated iPhone app is still in the works. Until then it may be a little inconvenient, but please install the web app to your Home Screen and use it like an app. 🙏",
+      "Here's how to use RunRace on iPhone before the App Store release. A dedicated iOS app is on hold for budget reasons—we'll decide after seeing how Android performs. Thanks for bearing with us, and please spread the word. 🙏",
     guide_ios_safari_heading: "Open in Safari first 🧭",
     guide_ios_safari_body:
       "If you opened the link inside another app (KakaoTalk, Instagram, etc.), 'Add to Home Screen' may not appear. Tap 'Open in Safari' in the share menu as shown below.",
@@ -1177,10 +1179,11 @@ export const translations = {
     ios_install_dismiss: "Más tarde",
     guide_menu: "Guía de uso",
     guide_list_title: "Guía de uso",
+    home_guide_card_desc: "Instalación en iPhone · uso",
     guide_ios_title: "Guía para iPhone",
     guide_ios_card_desc: "Instalación · uso",
     guide_ios_intro:
-      "La app dedicada para iPhone aún está en preparación. Hasta entonces puede ser algo incómodo, pero instala la web app en tu pantalla de inicio y úsala como una app. 🙏",
+      "Así puedes usar RunRace en iPhone antes del lanzamiento en App Store. La app oficial para iOS está en espera por motivos económicos; decidiremos según la respuesta en Android. Gracias por tu paciencia y por usarla mucho. 🙏",
     guide_ios_safari_heading: "Primero abre en Safari 🧭",
     guide_ios_safari_body:
       "Si abriste el enlace dentro de otra app (KakaoTalk, Instagram, etc.), puede que no aparezca 'Añadir a pantalla de inicio'. Toca 'Abrir en Safari' en el menú Compartir como se muestra abajo.",
@@ -1612,10 +1615,11 @@ export const translations = {
     ios_install_dismiss: "後で",
     guide_menu: "利用ガイド",
     guide_list_title: "利用ガイド",
+    home_guide_card_desc: "iPhoneのセットアップ · 使い方",
     guide_ios_title: "iPhone 利用ガイド",
     guide_ios_card_desc: "インストール・使い方",
     guide_ios_intro:
-      "iPhone専用アプリは現在準備中です。それまでは少し不便ですが、Webアプリをホーム画面に追加してアプリのようにご利用ください。🙏",
+      "App Storeリリース前でも、iPhoneでRunRaceを使える方法をご案内します。正式なiOSアプリは経済的な事情により、Androidの反応を見てからリリースを判断する予定です。ご不便をおかけしますが、ぜひたくさんご利用ください。🙏",
     guide_ios_safari_heading: "まずSafariで開く 🧭",
     guide_ios_safari_body:
       "カカオトーク・Instagramなど他のアプリ内で開くと「ホーム画面に追加」が表示されないことがあります。下のように共有メニューから「Safariで開く」をタップしてSafariで開いてください。",
@@ -2047,10 +2051,11 @@ export const translations = {
     ios_install_dismiss: "以后再说",
     guide_menu: "使用指南",
     guide_list_title: "使用指南",
+    home_guide_card_desc: "iPhone 安装 · 使用方法",
     guide_ios_title: "iPhone 使用指南",
     guide_ios_card_desc: "安装 · 使用",
     guide_ios_intro:
-      "iPhone 专属应用仍在准备中。在此之前可能会有些不便，请将网页应用添加到主屏幕，像应用一样使用。🙏",
+      "在 App Store 正式上架前，也可在 iPhone 上使用 RunRace，本页将介绍具体方法。正式 iOS 应用因经费原因暂缓，将根据 Android 端的反响再决定是否上架。不便之处敬请谅解，也欢迎您多多使用。🙏",
     guide_ios_safari_heading: "先在 Safari 中打开 🧭",
     guide_ios_safari_body:
       "如果在 KakaoTalk、Instagram 等应用内打开，可能看不到「添加到主屏幕」。请像下图一样，在分享菜单中点击「在 Safari 中打开」。",

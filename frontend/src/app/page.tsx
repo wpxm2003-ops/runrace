@@ -16,14 +16,9 @@ export default function Home() {
           <div className="text-lg font-semibold">{t.indoor_title}</div>
           <div className="mt-1 text-sm text-zinc-600">{t.indoor_subtitle}</div>
         </Link>
-        {/* 아이폰 유저뿐 아니라 갤럭시 유저가 아이폰 지인에게 공유할 수 있어 전체 노출 */}
-        <Link href="/guides/ios" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-          <div className="text-lg font-semibold">{t.guide_ios_title}</div>
-          <div className="mt-1 text-sm text-zinc-600">{t.guide_ios_card_desc}</div>
-        </Link>
-        <Link href="/guides/app" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-          <div className="text-lg font-semibold">{t.guide_app_title}</div>
-          <div className="mt-1 text-sm text-zinc-600">{t.guide_app_card_desc}</div>
+        <Link href="/guides" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
+          <div className="text-lg font-semibold">{t.guide_list_title}</div>
+          <div className="mt-1 text-sm text-zinc-600">{t.home_guide_card_desc}</div>
         </Link>
       </div>
     </PageLayout>
