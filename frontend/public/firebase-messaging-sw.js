@@ -1,7 +1,8 @@
 /* RunRace 웹 푸시 서비스워커 — iOS PWA/웹 백그라운드 알림 표시.
-   iOS PWA는 Firebase onBackgroundMessage 대신 표준 push 이벤트로 전달되는 경우가 많다. */
-importScripts("https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/12.14.0/firebase-messaging-compat.js");
+   표준 push 이벤트만으로 표시한다(FCM SDK 미초기화):
+   - iOS PWA는 FCM onBackgroundMessage가 아니라 표준 push 이벤트로 전달된다.
+   - FCM SDK까지 초기화하면 push 핸들러가 이중 등록돼 알림이 두 번 뜨거나 충돌한다.
+   백엔드가 웹 플랫폼엔 data.title/body도 함께 실어 보내므로 SDK 없이 파싱 가능. */
 
 function showFromPayload(payload) {
   const n = (payload && payload.notification) || {};
@@ -24,19 +25,6 @@ self.addEventListener("push", (event) => {
   }
   event.waitUntil(showFromPayload(payload));
 });
-
-(async () => {
-  try {
-    const res = await fetch("/firebase/init.json");
-    if (!res.ok) return;
-    const cfg = await res.json();
-    if (!cfg.apiKey || !cfg.messagingSenderId) return;
-    firebase.initializeApp(cfg);
-    firebase.messaging();
-  } catch {
-    // push 이벤트 핸들러만으로도 iOS PWA 알림 표시 가능
-  }
-})();
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();

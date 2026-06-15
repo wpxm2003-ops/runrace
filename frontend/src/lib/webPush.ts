@@ -15,14 +15,23 @@ function hookForegroundMessaging(messaging: import("firebase/messaging").Messagi
   if (foregroundHooked) return;
   foregroundHooked = true;
   void import("firebase/messaging").then(({ onMessage }) => {
-    onMessage(messaging, (payload) => {
+    onMessage(messaging, async (payload) => {
       if (Notification.permission !== "granted") return;
       const n = payload.notification;
-      if (!n) return;
-      new Notification(n.title || "RunRace", {
-        body: n.body || "",
-        data: payload.data,
-      });
+      const data = payload.data ?? {};
+      const title = n?.title || data.title || "RunRace";
+      const body = n?.body || data.body || "";
+      // iOS PWA는 new Notification() 생성자를 지원하지 않는다 → 서비스워커로만 표시.
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.showNotification(title, { body, data });
+      } else if ("Notification" in window) {
+        try {
+          new Notification(title, { body, data });
+        } catch {
+          // iOS 등 생성자 미지원 환경 — SW가 없으면 표시 생략
+        }
+      }
     });
   });
 }
