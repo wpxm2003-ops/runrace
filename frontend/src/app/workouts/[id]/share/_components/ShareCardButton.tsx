@@ -7,9 +7,18 @@ import { pathBounds } from "@/lib/pathBounds";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import type { Translations } from "@/lib/i18n/translations";
-import type { WorkoutShare } from "@/lib/api/types";
 
 type PathPoint = { lat: number; lng: number };
+
+/** 카드 렌더에 필요한 최소 필드 — 운동 상세/공유 응답 모두와 호환. */
+type CardData = {
+  distanceM: number;
+  durationSec: number;
+  calories: number;
+  startedAt: string;
+  workoutType: "GPS" | "INDOOR";
+  path: PathPoint[];
+};
 
 const CARD_W = 1080;
 const CARD_H = 1920;
@@ -70,16 +79,28 @@ const COLOR = {
 const FONT =
   'ui-sans-serif, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
+/** Blob → base64 문자열(데이터 URL 접두어 제거). Capacitor Filesystem 저장용. */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function ShareCardButton({
   data,
   unit,
   locale,
   t,
+  triggerClassName,
 }: {
-  data: WorkoutShare;
+  data: CardData;
   unit: DistanceUnit;
   locale: string;
   t: Translations;
+  triggerClassName?: string;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
@@ -90,67 +111,50 @@ export function ShareCardButton({
   const pace = formatPace(data.distanceM, data.durationSec, unit);
   const date = formatDate(data.startedAt, locale);
 
-  async function renderBlob(): Promise<Blob | null> {
+  async function onSave() {
     const node = cardRef.current;
-    if (!node) return null;
-    const { toBlob } = await import("html-to-image");
-    return toBlob(node, {
-      width: CARD_W,
-      height: CARD_H,
-      pixelRatio: 1,
-      cacheBust: true,
-      backgroundColor: "#0B0C10",
-    });
-  }
-
-  function downloadBlob(blob: Blob) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "runrace.png";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  /** 공유 시트(navigator.share). 미지원이면 이미지 저장으로 폴백. */
-  async function onShare() {
+    if (!node) return;
     setBusy(true);
     setError(null);
     try {
-      const blob = await renderBlob();
+      const { toBlob } = await import("html-to-image");
+      const blob = await toBlob(node, {
+        width: CARD_W,
+        height: CARD_H,
+        pixelRatio: 1,
+        cacheBust: true,
+        backgroundColor: "#0B0C10",
+      });
       if (!blob) throw new Error("no blob");
-      const file = new File([blob], "runrace.png", { type: "image/png" });
-      const canShareFiles =
-        typeof navigator !== "undefined" &&
-        typeof navigator.canShare === "function" &&
-        navigator.canShare({ files: [file] });
-      if (canShareFiles) {
-        await navigator.share({ files: [file] });
+
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        // 네이티브: 캐시에 파일로 쓴 뒤 OS "사진에 저장"으로 연결(갤러리 저장).
+        const base64 = await blobToBase64(blob);
+        const { Filesystem, Directory } = await import("@capacitor/filesystem");
+        const written = await Filesystem.writeFile({
+          path: `runrace-${Date.now()}.png`,
+          data: base64,
+          directory: Directory.Cache,
+        });
+        const { Share } = await import("@capacitor/share");
+        await Share.share({ files: [written.uri] });
       } else {
-        downloadBlob(blob);
+        // 웹: 바로 다운로드(폰/PC에 저장).
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "runrace.png";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
       }
     } catch (e) {
-      // 공유 시트를 닫은 경우(AbortError)는 오류로 취급하지 않는다.
-      if (!(e instanceof DOMException && e.name === "AbortError")) {
+      // 저장 시트를 닫은 경우(AbortError)는 오류로 취급하지 않는다.
+      if ((e as { name?: string })?.name !== "AbortError") {
         setError(t.share_card_error);
       }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  /** 카카오 등에서 공유 파일이 안 받아지는 경우를 위한 직접 저장. */
-  async function onDownload() {
-    setBusy(true);
-    setError(null);
-    try {
-      const blob = await renderBlob();
-      if (!blob) throw new Error("no blob");
-      downloadBlob(blob);
-    } catch {
-      setError(t.share_card_error);
     } finally {
       setBusy(false);
     }
@@ -164,24 +168,20 @@ export function ShareCardButton({
 
   return (
     <>
-      <div className="flex gap-2">
-        <Button className="flex-1 px-4 py-3 text-sm font-medium" onClick={onShare} disabled={busy}>
-          {busy ? t.share_card_busy : t.share_card_share}
-        </Button>
-        <Button
-          className="flex-1 px-4 py-3 text-sm font-medium"
-          onClick={onDownload}
-          disabled={busy}
-        >
-          {t.share_card_download}
-        </Button>
-      </div>
+      <Button
+        variant="secondary"
+        onClick={onSave}
+        disabled={busy}
+        className={triggerClassName ?? "h-11 w-full"}
+      >
+        {busy ? t.share_card_busy : `📸 ${t.share_card_create}`}
+      </Button>
       {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
 
-      {/* 캡처 전용 오프스크린 카드 (1080×1920) */}
+      {/* 캡처 전용 오프스크린 카드 (1080×1920) — fixed라 문서 스크롤에 영향 없음 */}
       <div
         aria-hidden="true"
-        style={{ position: "absolute", left: "-99999px", top: 0, pointerEvents: "none" }}
+        style={{ position: "fixed", left: "-99999px", top: 0, pointerEvents: "none" }}
       >
         <div
           ref={cardRef}

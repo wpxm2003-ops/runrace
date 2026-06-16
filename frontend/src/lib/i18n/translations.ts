@@ -20,10 +20,9 @@ export const translations = {
     share_page_title: "운동 기록 공유",
     share_load_error: "운동 기록을 불러올 수 없어요.",
     share_no_route: "경로 없음",
-    share_card_share: "공유하기",
-    share_card_download: "이미지 저장",
     share_card_busy: "카드 만드는 중...",
     share_card_error: "카드를 만들지 못했어요.",
+    share_card_create: "기록 카드",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "홈",
@@ -460,10 +459,9 @@ export const translations = {
     share_page_title: "Workout Share",
     share_load_error: "Couldn't load this workout.",
     share_no_route: "No route",
-    share_card_share: "Share",
-    share_card_download: "Save image",
     share_card_busy: "Creating card...",
     share_card_error: "Couldn't create the card.",
+    share_card_create: "Story card",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "Home",
@@ -900,10 +898,9 @@ export const translations = {
     share_page_title: "Compartir entreno",
     share_load_error: "No se pudo cargar este entreno.",
     share_no_route: "Sin ruta",
-    share_card_share: "Compartir",
-    share_card_download: "Guardar imagen",
     share_card_busy: "Creando tarjeta...",
     share_card_error: "No se pudo crear la tarjeta.",
+    share_card_create: "Tarjeta",
 
     // ── Cabecera / nav ────────────────────
     nav_home: "Inicio",
@@ -1340,10 +1337,9 @@ export const translations = {
     share_page_title: "運動記録の共有",
     share_load_error: "運動記録を読み込めませんでした。",
     share_no_route: "経路なし",
-    share_card_share: "共有",
-    share_card_download: "画像を保存",
     share_card_busy: "カードを作成中...",
     share_card_error: "カードを作成できませんでした。",
+    share_card_create: "記録カード",
 
     // ── ヘッダー / ナビ ───────────────────
     nav_home: "ホーム",
@@ -1780,10 +1776,9 @@ export const translations = {
     share_page_title: "运动记录分享",
     share_load_error: "无法加载该运动记录。",
     share_no_route: "无路线",
-    share_card_share: "分享",
-    share_card_download: "保存图片",
     share_card_busy: "正在生成卡片...",
     share_card_error: "无法生成卡片。",
+    share_card_create: "记录卡片",
 
     // ── 顶栏 / 导航 ───────────────────────
     nav_home: "首页",

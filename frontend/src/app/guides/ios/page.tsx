@@ -10,7 +10,6 @@ import { useLocale } from "@/lib/i18n";
 function InstallScreenshot({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className="mx-auto block w-full max-w-sm" />
     </div>
   );

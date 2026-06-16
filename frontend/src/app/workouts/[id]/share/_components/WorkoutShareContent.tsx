@@ -6,7 +6,6 @@ import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
-import { ShareCardButton } from "./ShareCardButton";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { useMemo } from "react";
@@ -100,7 +99,7 @@ export default function WorkoutShareContent() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <div className="flex min-h-[50vh] items-center justify-center bg-zinc-50">
         <p className="text-sm text-zinc-500">{t.share_load_error}</p>
       </div>
     );
@@ -108,15 +107,15 @@ export default function WorkoutShareContent() {
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <div className="flex min-h-[50vh] items-center justify-center bg-zinc-50">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50">
-      <main className="mx-auto w-full max-w-sm flex-1 space-y-3 px-4 py-4">
+    <div className="bg-zinc-50">
+      <main className="mx-auto w-full max-w-sm space-y-3 px-4 py-4">
         {/* 페이지 타이틀 + 단위 토글 */}
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-zinc-900">{t.share_page_title}</h1>
@@ -158,9 +157,6 @@ export default function WorkoutShareContent() {
         <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
           <div className="text-sm text-zinc-600">{formatDate(data.startedAt, locale)}</div>
         </div>
-
-        {/* 인스타 스토리용 블랙 기록 카드 저장/공유 */}
-        <ShareCardButton data={data} unit={unit} locale={locale} t={t} />
       </main>
     </div>
   );

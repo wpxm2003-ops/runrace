@@ -94,7 +94,7 @@ export default function KakaoWorkoutMap({ path, position, follow }: WorkoutMapPr
   useEffect(() => {
     if (loading || follow || path.length < 2) return;
     return scheduleFitBounds();
-  }, [boundsKey, follow, loading, scheduleFitBounds]);
+  }, [boundsKey, follow, loading, path.length, scheduleFitBounds]);
 
   // 카드 레이아웃 확정 후에도 전체 경로가 보이도록 재조정
   useEffect(() => {

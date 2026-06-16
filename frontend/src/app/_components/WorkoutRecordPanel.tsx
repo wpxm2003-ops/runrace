@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { ShareButton } from "@/app/_components/ShareButton";
+import { ShareCardButton } from "@/app/workouts/[id]/share/_components/ShareCardButton";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import { Button } from "@/app/_components/ui/Button";
@@ -127,7 +128,16 @@ export function WorkoutRecordPanel({
 
       <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
 
-      <ShareButton onShare={onShare} variant="secondary" className="h-11 w-full" />
+      <div className="flex gap-2">
+        <ShareButton onShare={onShare} variant="secondary" className="h-11 flex-1" />
+        <ShareCardButton
+          data={detail}
+          unit={unit}
+          locale={locale}
+          t={t}
+          triggerClassName="h-11 flex-1"
+        />
+      </div>
 
       <Button
         variant="destructive"
