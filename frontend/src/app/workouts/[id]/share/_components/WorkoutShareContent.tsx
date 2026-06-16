@@ -5,7 +5,9 @@ import { useWorkoutShare } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
-import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
+import { formatDistance, formatPace } from "@/lib/units";
+import { formatDuration } from "@/lib/workoutTrack";
+import Link from "next/link";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { useMemo } from "react";
@@ -46,7 +48,7 @@ function PathSvg({ path, noRouteLabel }: { path: PathPoint[]; noRouteLabel: stri
 
   if (pts.length === 0) {
     return (
-      <div className="flex h-full w-full items-center justify-center text-sm text-zinc-400">
+      <div className="flex h-full w-full items-center justify-center text-sm" style={{ color: "#7E828B" }}>
         {noRouteLabel}
       </div>
     );
@@ -61,28 +63,14 @@ function PathSvg({ path, noRouteLabel }: { path: PathPoint[]; noRouteLabel: stri
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" aria-label="Running route">
-      {/* 경로 */}
-      <path
-        d={d}
-        fill="none"
-        stroke="#16a34a"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.15"
-      />
-      <path
-        d={d}
-        fill="none"
-        stroke="#16a34a"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* 네온 경로 (글로우 레이어) */}
+      <path d={d} fill="none" stroke="#22C55E" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" opacity="0.10" />
+      <path d={d} fill="none" stroke="#34D399" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
+      <path d={d} fill="none" stroke="#4ADE80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {/* 시작점 */}
-      <circle cx={startX} cy={startY} r="5" fill="#16a34a" />
+      <circle cx={startX} cy={startY} r="5" fill="#4ADE80" />
       {/* 종료점 */}
-      <circle cx={endX} cy={endY} r="6" fill="white" stroke="#16a34a" strokeWidth="2" />
+      <circle cx={endX} cy={endY} r="6" fill="#FFFFFF" stroke="#4ADE80" strokeWidth="2" />
     </svg>
   );
 }
@@ -113,6 +101,15 @@ export default function WorkoutShareContent() {
     );
   }
 
+  const [distVal, distUnit] = formatDistance(data.distanceM, unit).split(" ");
+  const time = formatDuration(data.durationSec);
+  const pace = formatPace(data.distanceM, data.durationSec, unit);
+  const stats: [string, string][] = [
+    [t.stat_time, time],
+    [t.stat_pace, pace],
+    [t.stat_calories, `${data.calories}`],
+  ];
+
   return (
     <div className="bg-zinc-50">
       <main className="mx-auto w-full max-w-sm space-y-3 px-4 py-4">
@@ -122,9 +119,27 @@ export default function WorkoutShareContent() {
           <UnitToggle unit={unit} onChange={setUnit} size="sm" />
         </div>
 
-        {/* 경로/이미지 카드 */}
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <div className="h-48 sm:h-64">
+        {/* 블랙 기록 카드 — 저장하는 스토리 카드와 동일 톤 */}
+        <div
+          className="rounded-3xl p-5 shadow-sm"
+          style={{ background: "linear-gradient(180deg, #0B0C10 0%, #17191F 100%)" }}
+        >
+          {/* 거리 히어로 */}
+          <div className="text-xs" style={{ color: "#7E828B" }}>
+            {t.stat_distance}
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-5xl font-semibold leading-none text-white">{distVal}</span>
+            <span className="text-xl font-semibold" style={{ color: "#34D399" }}>
+              {distUnit}
+            </span>
+          </div>
+
+          {/* 경로 / 실내 */}
+          <div
+            className="my-4 h-40 overflow-hidden rounded-2xl"
+            style={{ background: "#121319", border: "1px solid #24262D" }}
+          >
             {data.workoutType === "INDOOR" ? (
               data.imageUrl ? (
                 <img
@@ -133,7 +148,10 @@ export default function WorkoutShareContent() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center bg-zinc-50 text-sm text-zinc-400">
+                <div
+                  className="flex h-full items-center justify-center text-sm"
+                  style={{ color: "#7E828B" }}
+                >
                   🏃 {t.indoor_badge}
                 </div>
               )
@@ -141,22 +159,32 @@ export default function WorkoutShareContent() {
               <PathSvg path={data.path} noRouteLabel={t.share_no_route} />
             )}
           </div>
+
+          {/* 스탯 — 시간 / 페이스 / 칼로리 */}
+          <div className="grid grid-cols-3 pt-3" style={{ borderTop: "1px solid #1F2127" }}>
+            {stats.map(([label, value]) => (
+              <div key={label} className="text-center">
+                <div className="text-xs" style={{ color: "#7E828B" }}>
+                  {label}
+                </div>
+                <div className="mt-1 text-lg font-semibold text-white">{value}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* 스탯 카드 — 운동 상세·기록 패널과 공통 컴포넌트 */}
-        <WorkoutStatGrid
-          durationSec={data.durationSec}
-          distanceM={data.distanceM}
-          calories={data.calories}
-          columns={2}
-          unit={unit}
-          labels={workoutStatLabels(t)}
-        />
-
-        {/* 날짜 카드 — WorkoutRecordPanel의 시간 카드와 동일 */}
+        {/* 날짜 칩 */}
         <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
           <div className="text-sm text-zinc-600">{formatDate(data.startedAt, locale)}</div>
         </div>
+
+        {/* 공유 링크를 본 사람을 유입으로 — 나도 시작하기 CTA */}
+        <Link
+          href="/"
+          className="mt-2 block rounded-2xl bg-zinc-900 px-4 py-4 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
+        >
+          {t.share_cta} →
+        </Link>
       </main>
     </div>
   );

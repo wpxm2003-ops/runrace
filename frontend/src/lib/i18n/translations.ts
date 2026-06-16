@@ -23,6 +23,7 @@ export const translations = {
     share_card_busy: "카드 만드는 중...",
     share_card_error: "카드를 만들지 못했어요.",
     share_card_create: "기록 카드",
+    share_cta: "RunRace에서 나도 기록 시작하기",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "홈",
@@ -462,6 +463,7 @@ export const translations = {
     share_card_busy: "Creating card...",
     share_card_error: "Couldn't create the card.",
     share_card_create: "Story card",
+    share_cta: "Start tracking with RunRace",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "Home",
@@ -901,6 +903,7 @@ export const translations = {
     share_card_busy: "Creando tarjeta...",
     share_card_error: "No se pudo crear la tarjeta.",
     share_card_create: "Tarjeta",
+    share_cta: "Empieza a registrar con RunRace",
 
     // ── Cabecera / nav ────────────────────
     nav_home: "Inicio",
@@ -1340,6 +1343,7 @@ export const translations = {
     share_card_busy: "カードを作成中...",
     share_card_error: "カードを作成できませんでした。",
     share_card_create: "記録カード",
+    share_cta: "RunRaceで記録を始める",
 
     // ── ヘッダー / ナビ ───────────────────
     nav_home: "ホーム",
@@ -1779,6 +1783,7 @@ export const translations = {
     share_card_busy: "正在生成卡片...",
     share_card_error: "无法生成卡片。",
     share_card_create: "记录卡片",
+    share_cta: "用 RunRace 开始记录",
 
     // ── 顶栏 / 导航 ───────────────────────
     nav_home: "首页",
