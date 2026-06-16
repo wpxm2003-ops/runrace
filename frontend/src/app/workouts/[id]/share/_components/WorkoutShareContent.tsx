@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
+import { ShareCardButton } from "./ShareCardButton";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { useMemo } from "react";
@@ -157,6 +158,9 @@ export default function WorkoutShareContent() {
         <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
           <div className="text-sm text-zinc-600">{formatDate(data.startedAt, locale)}</div>
         </div>
+
+        {/* 인스타 스토리용 블랙 기록 카드 저장/공유 */}
+        <ShareCardButton data={data} unit={unit} locale={locale} t={t} />
       </main>
     </div>
   );
