@@ -181,16 +181,16 @@ export default function WorkoutShareContent() {
               </div>
             ))}
           </div>
-        </div>
 
-        {/* 날짜 칩 */}
-        <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-          <div className="text-sm text-zinc-600">{formatDate(data.startedAt, locale)}</div>
+          {/* 날짜 — 카드 하단(저장 스토리 카드와 동일 톤) */}
+          <div className="mt-4 text-xs font-medium text-white">
+            {formatDate(data.startedAt, locale)}
+          </div>
         </div>
 
         {/* 공유 링크를 본 사람을 유입으로 — 나도 시작하기 CTA */}
         <Link
-          href="/"
+          href="/login"
           onClick={() => void track("share_cta_click", { workoutType: data.workoutType })}
           className="mt-2 block rounded-2xl bg-zinc-900 px-4 py-4 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
         >

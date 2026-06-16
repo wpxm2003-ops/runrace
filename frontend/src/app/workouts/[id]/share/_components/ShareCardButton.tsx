@@ -73,7 +73,7 @@ const COLOR = {
   box: "#121319",
   boxBorder: "#24262D",
   divider: "#1F2127",
-  date: "#6B6F77",
+  date: "#FFFFFF",
   footer: "#5C606A",
 };
 
