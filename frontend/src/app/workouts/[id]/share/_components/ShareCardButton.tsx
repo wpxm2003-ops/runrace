@@ -139,7 +139,12 @@ export function ShareCardButton({
           directory: Directory.Cache,
         });
         const { Share } = await import("@capacitor/share");
-        await Share.share({ files: [written.uri] });
+        // 공유 시트 취소는 플랫폼마다 다른 에러를 던지므로 별도 처리 — 카드 생성은 성공한 셈.
+        try {
+          await Share.share({ files: [written.uri] });
+        } catch {
+          return;
+        }
       } else {
         // 웹: 바로 다운로드(폰/PC에 저장).
         const url = URL.createObjectURL(blob);

@@ -15,7 +15,6 @@ import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
 import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
 import { RunLockOverlay } from "@/app/workout/_components/RunLockOverlay";
 import { useWakeLock } from "@/lib/useWakeLock";
-import { useBackgroundGapDetector } from "@/lib/useBackgroundGapDetector";
 import { isIosWeb } from "@/lib/nativeNav";
 import { useCallback, useEffect, useState } from "react";
 
@@ -48,9 +47,6 @@ export default function WorkoutPage() {
 
   // 러닝 중 화면이 꺼지지 않게 유지(포그라운드 GPS 유지). 미지원 브라우저는 무시.
   useWakeLock(session.status === "running");
-
-  // 러닝 중 백그라운드 전환으로 추적이 끊긴 구간 감지(복귀 시 안내).
-  const { gapSec, dismiss: dismissGap } = useBackgroundGapDetector(session.status === "running");
 
   // 런이 끝나면 잠금 자동 해제.
   useEffect(() => {
@@ -218,29 +214,12 @@ export default function WorkoutPage() {
 
       <div className="shrink-0 border-t border-zinc-200 bg-zinc-50 px-3 py-3 sm:px-4 sm:py-4">
         <div className="mx-auto max-w-2xl">
-          {session.isRestored ? (
-            <div className="mb-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800">
-              {t.workout_restored}
-            </div>
-          ) : null}
           {showIosNotice ? (
             <div className="mb-3 flex items-start justify-between gap-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
               <span>{t.ios_run_notice}</span>
               <button
                 type="button"
                 onClick={dismissIosNotice}
-                className="shrink-0 font-medium text-amber-700 underline"
-              >
-                {t.confirm}
-              </button>
-            </div>
-          ) : null}
-          {gapSec != null ? (
-            <div className="mb-3 flex items-start justify-between gap-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <span>{t.run_gap_notice(gapSec)}</span>
-              <button
-                type="button"
-                onClick={dismissGap}
                 className="shrink-0 font-medium text-amber-700 underline"
               >
                 {t.confirm}
