@@ -5,19 +5,23 @@ import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormF
 import { useChallengeForm } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
 import { useChallengeDetail, updateChallenge, invalidateChallengeLists } from "@/lib/api";
-import { challengeDetailHref, challengeEditHref, parseChallengeId } from "@/lib/challengeRoute";
+import { challengeDetailHref, challengeEditHref, parseChallengeIdFromPath } from "@/lib/challengeRoute";
 import { toDateTimeInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { goalInputFromKm } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 export default function ChallengeEditContent() {
-  const params = useParams();
-  const id = useMemo(() => parseChallengeId(String(params?.id ?? "")), [params?.id]);
+  // 단일 템플릿이 모든 id로 서빙되므로 실제 URL에서 id를 읽는다(하이드레이션 안전).
+  const pathname = usePathname();
+  const [id, setId] = useState<number | null>(null);
+  useEffect(() => {
+    setId(parseChallengeIdFromPath(window.location.pathname));
+  }, [pathname]);
   const { user, loading: authLoading } = useRequireAuth(id ? challengeEditHref(id) : undefined);
   const { t } = useLocale();
   const { unit } = useUnit();
@@ -97,7 +101,9 @@ export default function ChallengeEditContent() {
         labels={labels}
         values={form.values}
         startAtMin={form.startAtMin}
+        startAtMax={form.startAtMax}
         endMin={form.endMin}
+        endMax={form.endMax}
         handlers={{
           onTitleChange: form.onTitleChange,
           onGoalKmChange: form.onGoalKmChange,

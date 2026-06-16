@@ -16,14 +16,14 @@ import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeR
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
-import { parseWorkoutId } from "@/lib/workoutRoute";
+import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { useParams, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { getAppUrl } from "@/lib/appUrl";
 
 export default function WorkoutDetailContent() {
@@ -33,9 +33,13 @@ export default function WorkoutDetailContent() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const params = useParams();
+  // 단일 템플릿이 모든 id로 서빙되므로 실제 URL에서 id를 읽는다(하이드레이션 안전).
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const id = useMemo(() => parseWorkoutId(String(params?.id ?? "")), [params?.id]);
+  const [id, setId] = useState<number | null>(null);
+  useEffect(() => {
+    setId(parseWorkoutIdFromPath(window.location.pathname));
+  }, [pathname]);
   const challengeId = useMemo(
     () => parseChallengeIdFromQuery(searchParams.get("challenge")),
     [searchParams],
