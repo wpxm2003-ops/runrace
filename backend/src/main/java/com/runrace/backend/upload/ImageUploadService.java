@@ -44,13 +44,16 @@ public class ImageUploadService {
   public String store(MultipartFile file) {
     String ext = resolveExtension(file.getOriginalFilename());
     String key = "uploads/" + UUID.randomUUID() + ext;
+    // Content-Type은 클라이언트 값을 믿지 않고 검증된 확장자에서 도출한다
+    // (임의 text/html 등이 S3에서 그대로 서빙되는 것을 방지).
+    String contentType = contentTypeForExtension(ext);
 
     try {
       s3.putObject(
           PutObjectRequest.builder()
               .bucket(bucket)
               .key(key)
-              .contentType(file.getContentType() != null ? file.getContentType() : "image/jpeg")
+              .contentType(contentType)
               .build(),
           RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
     } catch (IOException e) {
@@ -88,5 +91,15 @@ public class ImageUploadService {
     if (dot < 0) return ".jpg";
     String ext = originalFilename.substring(dot).toLowerCase();
     return ext.matches("\\.(jpg|jpeg|png|webp|gif)") ? ext : ".jpg";
+  }
+
+  /** 검증된 확장자 → 안전한 이미지 Content-Type. */
+  private static String contentTypeForExtension(String ext) {
+    return switch (ext) {
+      case ".png" -> "image/png";
+      case ".webp" -> "image/webp";
+      case ".gif" -> "image/gif";
+      default -> "image/jpeg";
+    };
   }
 }
