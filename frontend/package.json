@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "cap:sync:android": "node ../scripts/ensure-cap-webdir.mjs && npx cap sync android",
-    "build:deploy": "npm run build && tar -czf out.tar.gz -C out . && scp -i \"C:\\Users\\wpxm2\\Downloads\\runrace_ec2_key_pair.pem\" out.tar.gz ec2-user@15.164.250.88:/tmp/"
+    "build:deploy": "node ../scripts/deploy.mjs"
   },
   "dependencies": {
     "@capacitor-community/background-geolocation": "^1.2.26",
