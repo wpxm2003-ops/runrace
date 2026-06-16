@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
+import { track } from "@/lib/analytics";
 import type { Translations } from "@/lib/i18n/translations";
 
 type PathPoint = { lat: number; lng: number };
@@ -150,6 +151,7 @@ export function ShareCardButton({
         a.remove();
         URL.revokeObjectURL(url);
       }
+      void track("story_card_saved", { workoutType: data.workoutType });
     } catch (e) {
       // 저장 시트를 닫은 경우(AbortError)는 오류로 취급하지 않는다.
       if ((e as { name?: string })?.name !== "AbortError") {

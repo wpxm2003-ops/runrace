@@ -8,9 +8,10 @@ import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { formatDistance, formatPace } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import Link from "next/link";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 type PathPoint = { lat: number; lng: number };
 
@@ -84,6 +85,15 @@ export default function WorkoutShareContent() {
   const { t, locale } = useLocale();
   const { unit, setUnit } = useUnit();
   const { data, error } = useWorkoutShare(Number.isFinite(id) ? id : null);
+
+  // 공유 페이지 조회 — 유입 퍼널 측정(워크아웃당 1회).
+  const viewTrackedRef = useRef(false);
+  useEffect(() => {
+    if (data && !viewTrackedRef.current) {
+      viewTrackedRef.current = true;
+      void track("share_view", { workoutType: data.workoutType });
+    }
+  }, [data]);
 
   if (error) {
     return (
@@ -181,6 +191,7 @@ export default function WorkoutShareContent() {
         {/* 공유 링크를 본 사람을 유입으로 — 나도 시작하기 CTA */}
         <Link
           href="/"
+          onClick={() => void track("share_cta_click", { workoutType: data.workoutType })}
           className="mt-2 block rounded-2xl bg-zinc-900 px-4 py-4 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
         >
           {t.share_cta} →
