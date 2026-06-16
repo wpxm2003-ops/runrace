@@ -506,6 +506,7 @@ public class ChallengeService {
   private static final int TITLE_MAX_BYTES = 50;
   private static final int MAX_GOAL_KM = 1000;
   private static final int MAX_MEMBERS_LIMIT = 50;
+  private static final int MAX_RACE_DURATION_DAYS = 31;
   private void validateRoomInput(
       String title,
       BigDecimal goalKm,
@@ -530,6 +531,9 @@ public class ChallengeService {
     }
     if (!endAt.isAfter(startAt)) {
       throw ApiException.badRequest("invalid_date_range");
+    }
+    if (endAt.isAfter(startAt.plusDays(MAX_RACE_DURATION_DAYS))) {
+      throw ApiException.badRequest("race_duration_too_long");
     }
   }
 

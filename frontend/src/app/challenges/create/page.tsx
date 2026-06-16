@@ -75,7 +75,9 @@ export default function CreateChallengePage() {
         labels={labels}
         values={form.values}
         startAtMin={form.startAtMin}
+        startAtMax={form.startAtMax}
         endMin={form.endMin}
+        endMax={form.endMax}
         handlers={{
           onTitleChange: form.onTitleChange,
           onGoalKmChange: form.onGoalKmChange,

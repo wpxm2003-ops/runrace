@@ -48,7 +48,9 @@ public class WebConfig implements WebMvcConfigurer {
   }
 
   /**
-   * http://15.164.250.88 → http://15.164.250.88:* (80·8081 등) 프론트가 :8081 로 직접 호출해도 허용
+   * 개발용 호스트(localhost·IP 리터럴)에 한해 포트 와일드카드(:*)를 추가한다.
+   * 프론트가 :8081 로 직접 호출하는 개발 편의를 위한 것이며,
+   * 운영 도메인(예: runrace.co.kr)에는 임의 포트를 열지 않는다.
    */
   static List<String> expandOriginPatterns(String allowedOrigins) {
     Set<String> patterns = new LinkedHashSet<>();
@@ -60,7 +62,7 @@ public class WebConfig implements WebMvcConfigurer {
               patterns.add(origin);
               try {
                 URI uri = URI.create(origin);
-                if (uri.getPort() == -1 && uri.getHost() != null) {
+                if (uri.getPort() == -1 && isDevHost(uri.getHost())) {
                   patterns.add(origin + ":*");
                 }
               } catch (IllegalArgumentException ignored) {
@@ -68,5 +70,11 @@ public class WebConfig implements WebMvcConfigurer {
               }
             });
     return List.copyOf(patterns);
+  }
+
+  /** localhost 또는 IPv4 리터럴만 개발 호스트로 간주(운영 도메인 제외). */
+  private static boolean isDevHost(String host) {
+    return host != null
+        && (host.equals("localhost") || host.matches("\\d{1,3}(\\.\\d{1,3}){3}"));
   }
 }

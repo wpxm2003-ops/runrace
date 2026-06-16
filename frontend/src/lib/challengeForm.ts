@@ -32,6 +32,13 @@ export function localDatetimeToIso(local: string): string {
   return new Date(local).toISOString();
 }
 
+/** datetime-local 문자열에 일수를 더한다(음수 가능). 입력칸 min/max 계산용. */
+export function plusDaysLocal(local: string, days: number): string {
+  const d = new Date(local);
+  d.setDate(d.getDate() + days);
+  return formatLocalDateTime(d);
+}
+
 export function defaultEndAtAfterStart(startAtLocal: string): string {
   const d = new Date(startAtLocal);
   d.setHours(d.getHours() + 1);
@@ -141,7 +148,12 @@ export type ChallengeFormValidationMessages = {
   endRequired: string;
   startTooSoon: string;
   endAfterStart: string;
+  durationTooLong: string;
 };
+
+/** 레이스 최대 기간(일) — 백엔드 MAX_RACE_DURATION_DAYS와 일치. */
+export const MAX_RACE_DURATION_DAYS = 31;
+const MAX_RACE_DURATION_MS = MAX_RACE_DURATION_DAYS * 24 * 60 * 60 * 1000;
 
 export type ValidateChallengeFormOptions = {
   /** 수정 시 현재 참여 인원(인원수 하한) */
@@ -190,6 +202,9 @@ export function validateChallengeForm(
   }
   if (endMs <= startMs) {
     return msgs.endAfterStart;
+  }
+  if (endMs - startMs > MAX_RACE_DURATION_MS) {
+    return msgs.durationTooLong;
   }
 
   return null;

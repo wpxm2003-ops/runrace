@@ -3,6 +3,7 @@ package com.runrace.backend.common;
 import com.runrace.backend.observability.ErrorLogService;
 import com.runrace.backend.observability.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.format.DateTimeParseException;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -45,6 +46,12 @@ public class ApiExceptionHandler {
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException e) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error("malformed_request"));
+  }
+
+  /** 잘못된 날짜/시간 형식(클라이언트 입력 파싱 실패)은 400으로(500·에러로그 방지). */
+  @ExceptionHandler(DateTimeParseException.class)
+  public ResponseEntity<ApiError> handleDateParse(DateTimeParseException e) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error("invalid_date_format"));
   }
 
   /**

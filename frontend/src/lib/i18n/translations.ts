@@ -120,6 +120,7 @@ export const translations = {
     create_err_end_required: "종료 일시를 선택하세요.",
     create_err_start_too_soon: "시작 일시는 현재 시각 이후만 설정할 수 있습니다.",
     create_err_end_after_start: "종료 일시는 시작 일시보다 이후여야 합니다.",
+    create_err_duration_too_long: "레이스 기간은 최대 31일까지 가능해요.",
 
     // ── 레이스 상세 ─────────────────────────
     detail_title: "레이스 상세",
@@ -560,6 +561,7 @@ export const translations = {
     create_err_end_required: "Please select an end date and time.",
     create_err_start_too_soon: "Start must be after the current time.",
     create_err_end_after_start: "End must be after the start date and time.",
+    create_err_duration_too_long: "A race can run for up to 31 days.",
 
     // ── 레이스 상세 ─────────────────────────
     detail_title: "Race Details",
@@ -1000,6 +1002,7 @@ export const translations = {
     create_err_end_required: "Elige la fecha de fin.",
     create_err_start_too_soon: "El inicio debe ser posterior a la hora actual.",
     create_err_end_after_start: "El fin debe ser posterior al inicio.",
+    create_err_duration_too_long: "Una carrera puede durar hasta 31 días.",
 
     // ── Detalle de carrera ────────────────
     detail_title: "Detalles",
@@ -1440,6 +1443,7 @@ export const translations = {
     create_err_end_required: "終了日時を選択してください。",
     create_err_start_too_soon: "開始日時は現在時刻より後にしてください。",
     create_err_end_after_start: "終了日時は開始日時より後にしてください。",
+    create_err_duration_too_long: "レース期間は最大31日までです。",
 
     // ── レース詳細 ────────────────────────
     detail_title: "レース詳細",
@@ -1880,6 +1884,7 @@ export const translations = {
     create_err_end_required: "请选择结束时间。",
     create_err_start_too_soon: "开始时间需晚于当前时间。",
     create_err_end_after_start: "结束时间需晚于开始时间。",
+    create_err_duration_too_long: "比赛最长可持续31天。",
 
     // ── 比赛详情 ──────────────────────────
     detail_title: "比赛详情",

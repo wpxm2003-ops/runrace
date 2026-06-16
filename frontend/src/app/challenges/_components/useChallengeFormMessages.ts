@@ -50,6 +50,7 @@ export function useChallengeFormMessages(minMembers = 1) {
       endRequired: t.create_err_end_required,
       startTooSoon: t.create_err_start_too_soon,
       endAfterStart: t.create_err_end_after_start,
+      durationTooLong: t.create_err_duration_too_long,
     }),
     [t, minMembers, unit],
   );
