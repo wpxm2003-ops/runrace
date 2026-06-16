@@ -11,6 +11,7 @@ import com.runrace.backend.challenge.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.IndoorRunApproval;
 import com.runrace.backend.challenge.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
 import com.runrace.backend.workout.dto.PathPointDto;
@@ -33,12 +34,19 @@ public class WorkoutService {
   /** 실내러닝 칼로리 추정 계수(kcal/km). */
   private static final int KCAL_PER_KM = 65;
 
+  // 입력 상한 — 비정상/조작 값 차단 (치팅·메모리 DoS 방지)
+  private static final int MAX_DISTANCE_M = 300_000; // 300km
+  private static final int MAX_DURATION_SEC = 36 * 3600; // 36h
+  private static final int MAX_CALORIES = 100_000;
+  private static final int MAX_PATH_POINTS = 100_000;
+
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
   private final ChallengeProgressService challengeProgressService;
   private final IndoorApprovalService indoorApprovalService;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
+  private final ImageUploadService imageUploadService;
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
 
@@ -53,11 +61,26 @@ public class WorkoutService {
       Integer avgPaceSecPerKm,
       List<PathPoint> path
   ) {
-    if (durationSec < 1) {
-      throw ApiException.badRequest("duration_too_short");
+    if (durationSec < 1 || durationSec > MAX_DURATION_SEC) {
+      throw ApiException.badRequest("duration_invalid");
+    }
+    if (distanceM < 0 || distanceM > MAX_DISTANCE_M) {
+      throw ApiException.badRequest("distance_invalid");
+    }
+    if (calories < 0 || calories > MAX_CALORIES) {
+      throw ApiException.badRequest("calories_invalid");
+    }
+    if (avgPaceSecPerKm != null && avgPaceSecPerKm < 0) {
+      throw ApiException.badRequest("pace_invalid");
     }
     if (path == null || path.isEmpty()) {
       throw ApiException.badRequest("path_empty");
+    }
+    if (path.size() > MAX_PATH_POINTS) {
+      throw ApiException.badRequest("path_too_large");
+    }
+    if (startedAt == null || endedAt == null || !endedAt.isAfter(startedAt)) {
+      throw ApiException.badRequest("time_range_invalid");
     }
 
     AppUser user = appUserRepository.getRequired(principal.userId());
@@ -86,8 +109,12 @@ public class WorkoutService {
       int durationSec,
       String startedAt,
       String imageUrl) {
-    if (durationSec < 1) throw ApiException.badRequest("duration_too_short");
-    if (distanceM <= 0) throw ApiException.badRequest("distance_invalid");
+    if (durationSec < 1 || durationSec > MAX_DURATION_SEC) throw ApiException.badRequest("duration_invalid");
+    if (distanceM <= 0 || distanceM > MAX_DISTANCE_M) throw ApiException.badRequest("distance_invalid");
+    // imageUrl은 우리 S3 버킷에서 발급된 것만 허용 (외부 URL 주입·타인 이미지 삭제 차단)
+    if (imageUrl != null && !imageUrl.isBlank() && !imageUploadService.isStoredUrl(imageUrl)) {
+      throw ApiException.badRequest("invalid_image_url");
+    }
 
     AppUser user = appUserRepository.getRequired(principal.userId());
     OffsetDateTime start = OffsetDateTime.parse(startedAt);

@@ -131,7 +131,12 @@ public class ChallengeService {
     }
 
     AppUser me = appUserRepository.getRequired(principal.userId());
-    challengeMemberRepository.save(newMember(challenge, me));
+    try {
+      challengeMemberRepository.saveAndFlush(newMember(challenge, me));
+    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+      // 동시 중복 참여 — 유니크 제약 위반을 깔끔한 4xx로 변환
+      throw ApiException.conflict("already_member");
+    }
   }
 
   @Transactional

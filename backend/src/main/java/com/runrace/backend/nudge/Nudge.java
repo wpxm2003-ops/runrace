@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -42,4 +43,8 @@ public class Nudge {
 
   @Column(name = "sent_at", nullable = false)
   private OffsetDateTime sentAt;
+
+  /** 발송 KST 날짜 — (sender, receiver, sent_on) 유니크로 하루 1회를 보장한다. */
+  @Column(name = "sent_on", nullable = false)
+  private LocalDate sentOn;
 }

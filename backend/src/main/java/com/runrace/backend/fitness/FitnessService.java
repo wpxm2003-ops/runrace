@@ -31,7 +31,12 @@ public class FitnessService {
 
     BigDecimal previousKm = record.getDistanceKm() == null ? BigDecimal.ZERO : record.getDistanceKm();
     record.updateDistance(distanceKm, OffsetDateTime.now());
-    dailyDistanceRepository.save(record);
+    try {
+      dailyDistanceRepository.saveAndFlush(record);
+    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+      // 동시 최초 삽입 경쟁 — 깔끔한 4xx로 변환(클라가 재시도). (누적 갱신 정합은 배치 B에서 @Version로)
+      throw ApiException.conflict("daily_distance_conflict");
+    }
 
     BigDecimal delta = distanceKm.subtract(previousKm);
     if (delta.signum() != 0) {

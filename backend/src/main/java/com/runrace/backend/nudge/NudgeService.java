@@ -69,12 +69,18 @@ public class NudgeService {
 
     AppUser sender = appUserRepository.getRequired(senderId);
     AppUser receiver = appUserRepository.getRequired(targetUserId);
-    nudgeRepository.save(Nudge.builder()
-        .sender(sender)
-        .receiver(receiver)
-        .message("preset:" + preset)
-        .sentAt(now)
-        .build());
+    try {
+      // exists 체크는 빠른 경로일 뿐 — 동시 요청은 DB 유니크 제약(sender,receiver,sent_on)으로 막는다.
+      nudgeRepository.saveAndFlush(Nudge.builder()
+          .sender(sender)
+          .receiver(receiver)
+          .message("preset:" + preset)
+          .sentAt(now)
+          .sentOn(LocalDate.now(KST))
+          .build());
+    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+      throw ApiException.conflict("nudge_daily_limit");
+    }
 
     // 외부 푸시(FCM)는 DB 트랜잭션 밖에서 — 커밋 후 처리(NudgeNotifications).
     // 본문은 수신자 언어의 프리셋 문구로 렌더링한다.

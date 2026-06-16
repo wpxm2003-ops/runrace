@@ -39,7 +39,12 @@ public class AccountService {
       throw ApiException.badRequest("nickname_taken");
     }
     user.changeNickname(trimmed);
-    return appUserRepository.save(user);
+    try {
+      return appUserRepository.saveAndFlush(user);
+    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+      // 동시 변경으로 유니크 위반 — 깔끔한 4xx로 변환(500/에러로그 방지)
+      throw ApiException.badRequest("nickname_taken");
+    }
   }
 
   /** 주력 언어 선호값 변경 — 푸시 알림 언어에 사용된다. */

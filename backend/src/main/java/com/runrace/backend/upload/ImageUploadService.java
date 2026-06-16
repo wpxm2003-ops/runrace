@@ -26,6 +26,8 @@ public class ImageUploadService {
 
   private final S3Client s3;
   private final String bucket;
+  /** 이 서비스가 발급하는 URL 접두어 — 외부/타인 URL 주입·삭제를 거르는 데 사용. */
+  private final String urlPrefix;
 
   public ImageUploadService(
       @Value("${app.aws.access-key}") String accessKey,
@@ -33,6 +35,7 @@ public class ImageUploadService {
       @Value("${app.aws.region:ap-northeast-2}") String region,
       @Value("${app.aws.s3.bucket}") String bucket) {
     this.bucket = bucket;
+    this.urlPrefix = "https://" + bucket + ".s3." + region + ".amazonaws.com/";
     this.s3 = S3Client.builder()
         .region(Region.of(region))
         .credentialsProvider(StaticCredentialsProvider.create(
@@ -72,8 +75,18 @@ public class ImageUploadService {
    * S3 URL에서 key를 추출해 해당 객체를 삭제한다.
    * URL이 null이거나 파싱 실패 시 조용히 무시한다.
    */
+  /** 이 URL이 우리 S3 버킷에서 발급된 것인지. (외부/타인 URL 저장·삭제 차단용) */
+  public boolean isStoredUrl(String url) {
+    return url != null && url.startsWith(urlPrefix);
+  }
+
   public void delete(String imageUrl) {
     if (imageUrl == null || imageUrl.isBlank()) return;
+    // 우리 버킷 URL이 아니면 삭제하지 않는다 — 타인/외부 객체 삭제 방지(방어선).
+    if (!isStoredUrl(imageUrl)) {
+      log.warn("우리 버킷 URL이 아니어서 삭제 건너뜀: {}", imageUrl);
+      return;
+    }
     try {
       // https://<bucket>.s3.<region>.amazonaws.com/<key>
       java.net.URI uri = java.net.URI.create(imageUrl);

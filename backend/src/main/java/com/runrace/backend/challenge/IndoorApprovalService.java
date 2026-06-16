@@ -110,8 +110,16 @@ public class IndoorApprovalService {
   }
 
   /** 레이스의 승인 대기 중인 실내러닝 목록. */
+  /** 레이스 멤버만 승인 목록을 볼 수 있게 한다(비멤버 데이터 노출 차단). */
+  private void requireMember(Long challengeId, UUID viewerUserId) {
+    if (challengeMemberRepository.findByChallengeIdAndUserId(challengeId, viewerUserId).isEmpty()) {
+      throw ApiException.forbidden("not_a_member");
+    }
+  }
+
   @Transactional(readOnly = true)
   public List<PendingApprovalResponse> getPendingApprovals(Long challengeId, UUID viewerUserId) {
+    requireMember(challengeId, viewerUserId);
     List<ChallengeWorkout> pending = challengeWorkoutRepository
         .findAllByChallengeIdAndApprovalStatus(challengeId, ApprovalStatus.PENDING);
 
@@ -159,7 +167,8 @@ public class IndoorApprovalService {
 
   /** 레이스의 거부된 실내러닝 목록. */
   @Transactional(readOnly = true)
-  public List<RejectedApprovalResponse> getRejectedApprovals(Long challengeId) {
+  public List<RejectedApprovalResponse> getRejectedApprovals(Long challengeId, UUID viewerUserId) {
+    requireMember(challengeId, viewerUserId);
     List<ChallengeWorkout> rejected = challengeWorkoutRepository
         .findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(challengeId, ApprovalStatus.REJECTED);
 

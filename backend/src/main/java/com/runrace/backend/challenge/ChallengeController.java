@@ -190,7 +190,7 @@ public class ChallengeController {
   @GetMapping("/{id:[0-9]+}/rejected-approvals")
   public ResponseEntity<List<RejectedApprovalResponse>> rejectedApprovals(
       AuthPrincipal principal, @PathVariable("id") Long id) {
-    return ResponseEntity.ok(indoorApprovalService.getRejectedApprovals(id));
+    return ResponseEntity.ok(indoorApprovalService.getRejectedApprovals(id, principal.userId()));
   }
 
   private ChallengeListItem toListItem(
