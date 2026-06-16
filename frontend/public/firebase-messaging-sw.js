@@ -4,6 +4,10 @@
    - FCM SDK까지 초기화하면 push 핸들러가 이중 등록돼 알림이 두 번 뜨거나 충돌한다.
    백엔드가 웹 플랫폼엔 data.title/body도 함께 실어 보내므로 SDK 없이 파싱 가능. */
 
+// 새 SW가 곧바로 활성화돼 기존(구버전) SW를 대체하도록 한다.
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
 function showFromPayload(payload) {
   const n = (payload && payload.notification) || {};
   const data = (payload && payload.data) || {};
