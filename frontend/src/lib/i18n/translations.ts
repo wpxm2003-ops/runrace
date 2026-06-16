@@ -125,6 +125,8 @@ export const translations = {
     // ── 레이스 상세 ─────────────────────────
     detail_title: "레이스 상세",
     detail_no_id: "레이스 ID가 없습니다.",
+    detail_not_found: "존재하지 않거나 삭제된 레이스예요.",
+    workout_not_found: "존재하지 않거나 삭제된 운동 기록이에요.",
     detail_link_copied: "링크가 복사되었습니다.",
     detail_menu_label: "메뉴",
     detail_edit: "수정",
@@ -566,6 +568,8 @@ export const translations = {
     // ── 레이스 상세 ─────────────────────────
     detail_title: "Race Details",
     detail_no_id: "Race not found.",
+    detail_not_found: "This race doesn't exist or was deleted.",
+    workout_not_found: "This workout doesn't exist or was deleted.",
     detail_link_copied: "Link copied!",
     detail_menu_label: "Menu",
     detail_edit: "Edit",
@@ -1007,6 +1011,8 @@ export const translations = {
     // ── Detalle de carrera ────────────────
     detail_title: "Detalles",
     detail_no_id: "Carrera no encontrada.",
+    detail_not_found: "Esta carrera no existe o fue eliminada.",
+    workout_not_found: "Este entreno no existe o fue eliminado.",
     detail_link_copied: "¡Enlace copiado!",
     detail_menu_label: "Menú",
     detail_edit: "Editar",
@@ -1448,6 +1454,8 @@ export const translations = {
     // ── レース詳細 ────────────────────────
     detail_title: "レース詳細",
     detail_no_id: "レースが見つかりません。",
+    detail_not_found: "存在しないか削除されたレースです。",
+    workout_not_found: "存在しないか削除された運動記録です。",
     detail_link_copied: "リンクをコピーしました。",
     detail_menu_label: "メニュー",
     detail_edit: "編集",
@@ -1889,6 +1897,8 @@ export const translations = {
     // ── 比赛详情 ──────────────────────────
     detail_title: "比赛详情",
     detail_no_id: "未找到比赛。",
+    detail_not_found: "该比赛不存在或已被删除。",
+    workout_not_found: "该运动记录不存在或已被删除。",
     detail_link_copied: "已复制链接。",
     detail_menu_label: "菜单",
     detail_edit: "编辑",

@@ -20,6 +20,15 @@ export function firstErrorMessage(...errors: unknown[]): string | null {
   return null;
 }
 
+/** 404(존재하지 않음) 에러인지 — 친절한 not-found 문구 표시 판단용. */
+export function isNotFoundError(err: unknown): boolean {
+  if (err instanceof ApiError) return err.status === 404;
+  if (err instanceof Error) {
+    return /^API 404:/.test(err.message) || err.message.includes("_not_found");
+  }
+  return false;
+}
+
 export function isRetryableApiError(err: unknown): boolean {
   if (err instanceof ApiError) {
     return err.status >= 500;

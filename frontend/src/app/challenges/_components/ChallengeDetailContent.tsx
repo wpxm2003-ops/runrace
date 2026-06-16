@@ -8,6 +8,7 @@ import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
   deleteChallenge,
   firstErrorMessage,
+  isNotFoundError,
   joinChallenge,
   leaveChallenge,
   invalidateChallengeLists,
@@ -111,7 +112,12 @@ export default function ChallengeDetailContent() {
     return map;
   }, [headToHeadRows]);
 
-  const error = firstErrorMessage(actionError, fetchError);
+  const fetchErrorMsg = fetchError
+    ? isNotFoundError(fetchError)
+      ? t.detail_not_found
+      : String(fetchError)
+    : null;
+  const error = firstErrorMessage(actionError, fetchErrorMsg);
 
   // 액션 피드백(콕 찌르기·참여/탈퇴 등) 에러는 5초 뒤 자동으로 지운다. 로드 실패(fetchError)는 유지.
   useEffect(() => {

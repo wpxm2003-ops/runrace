@@ -7,6 +7,7 @@ import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import {
   deleteWorkout,
   firstErrorMessage,
+  isNotFoundError,
   useChallengeWorkoutDetail,
   useWorkoutDetail,
   invalidateWorkoutDetail,
@@ -126,7 +127,12 @@ export default function WorkoutDetailContent() {
     </>
   );
 
-  const error = firstErrorMessage(deleteError, fetchError);
+  const fetchErrorMsg = fetchError
+    ? isNotFoundError(fetchError)
+      ? t.workout_not_found
+      : String(fetchError)
+    : null;
+  const error = firstErrorMessage(deleteError, fetchErrorMsg);
 
   return (
     <PageLayout title={t.workout_detail_title} actions={pageActions}>
