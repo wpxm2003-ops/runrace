@@ -1,13 +1,20 @@
-// 프론트 빌드 → 압축 → EC2 업로드까지 한 번에 실행하고 총 소요시간을 출력한다.
-// (build:deploy에서 호출 — cwd는 frontend)
+// 프론트 빌드 → 압축 → EC2 업로드 → 원격 적용(압축 해제 + nginx reload)까지
+// 한 번에 실행하고 총 소요시간을 출력한다. (build:deploy에서 호출 — cwd는 frontend)
 import { execSync } from "node:child_process";
 
 const PEM = "C:\\Users\\wpxm2\\Downloads\\runrace_ec2_key_pair.pem";
+const HOST = "ec2-user@15.164.250.88";
+
+const REMOTE_DEPLOY =
+  "sudo rm -rf /var/www/runrace/* && " +
+  "sudo tar -xzf /tmp/out.tar.gz -C /var/www/runrace && " +
+  "sudo systemctl reload nginx";
 
 const steps = [
   ["빌드", "npm run build"],
   ["압축", "tar -czf out.tar.gz -C out ."],
-  ["업로드", `scp -i "${PEM}" out.tar.gz ec2-user@15.164.250.88:/tmp/`],
+  ["업로드", `scp -i "${PEM}" out.tar.gz ${HOST}:/tmp/`],
+  ["원격 적용", `ssh -i "${PEM}" ${HOST} "${REMOTE_DEPLOY}"`],
 ];
 
 function fmt(ms) {
