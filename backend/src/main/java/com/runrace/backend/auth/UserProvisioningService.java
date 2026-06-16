@@ -45,13 +45,19 @@ public class UserProvisioningService {
     AppUser existing = appUserRepository.findByFirebaseUid(firebaseUid).orElse(null);
 
     if (existing != null) {
+      // 비어 들어온 값으로 기존 값을 덮지 않는다.
+      // (예: 카카오 사용자는 Firebase 커스텀 토큰으로 인증돼 토큰에 name·email 클레임이 없어
+      //  null이 넘어오는데, 이때 기존 이름/이메일을 지우면 안 된다.)
+      String nextName = nonBlankOr(displayName, existing.getDisplayName());
+      String nextEmail = nonBlankOr(email, existing.getEmail());
+
       // 변경이 있을 때만 dirty — 동일 프로필 재방문은 SELECT만으로 끝낸다.
-      boolean changed = !Objects.equals(existing.getEmail(), email)
-          || !Objects.equals(existing.getDisplayName(), displayName)
+      boolean changed = !Objects.equals(existing.getEmail(), nextEmail)
+          || !Objects.equals(existing.getDisplayName(), nextName)
           || !Objects.equals(existing.getProvider(), provider);
       if (!changed) return existing;
 
-      existing.updateProfile(firebaseUid, email, displayName, provider);
+      existing.updateProfile(firebaseUid, nextEmail, nextName, provider);
       return appUserRepository.save(existing);
     }
 
@@ -102,5 +108,10 @@ public class UserProvisioningService {
       }
     }
     throw ApiException.conflict("nickname_unavailable");
+  }
+
+  /** 새 값이 비어있으면(null/blank) 기존 값을 유지한다. */
+  private static String nonBlankOr(String incoming, String current) {
+    return (incoming != null && !incoming.isBlank()) ? incoming : current;
   }
 }
