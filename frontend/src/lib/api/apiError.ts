@@ -29,6 +29,12 @@ export function isNotFoundError(err: unknown): boolean {
   return false;
 }
 
+/** fetch 에러를 표시 문자열로 변환. 404면 친절 메시지, 그 외엔 원문, 없으면 null. */
+export function fetchErrorMessage(err: unknown, notFoundMessage: string): string | null {
+  if (err == null) return null;
+  return isNotFoundError(err) ? notFoundMessage : String(err);
+}
+
 export function isRetryableApiError(err: unknown): boolean {
   if (err instanceof ApiError) {
     return err.status >= 500;

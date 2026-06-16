@@ -1,8 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useWorkoutShare } from "@/lib/api";
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
+import { useRouteId } from "@/lib/useRouteId";
 import { formatDate } from "@/lib/format";
 import { pathBounds } from "@/lib/pathBounds";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
@@ -12,7 +12,7 @@ import Link from "next/link";
 import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 type PathPoint = { lat: number; lng: number };
 
@@ -78,11 +78,7 @@ function PathSvg({ path, noRouteLabel }: { path: PathPoint[]; noRouteLabel: stri
 }
 
 export default function WorkoutShareContent() {
-  const pathname = usePathname();
-  const [id, setId] = useState<number | null>(null);
-  useEffect(() => {
-    setId(parseWorkoutIdFromPath(window.location.pathname));
-  }, [pathname]);
+  const id = useRouteId(parseWorkoutIdFromPath);
 
   // AppShell(Provider) 안이라 앱 전역 언어·단위를 그대로 따른다 — 헤더에서 바꾸면 즉시 반영.
   const { t, locale } = useLocale();

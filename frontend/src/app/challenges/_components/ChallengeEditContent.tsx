@@ -12,16 +12,11 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { goalInputFromKm } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { usePathname } from "next/navigation";
+import { useRouteId } from "@/lib/useRouteId";
 import { useEffect, useRef, useState } from "react";
 
 export default function ChallengeEditContent() {
-  // 단일 템플릿이 모든 id로 서빙되므로 실제 URL에서 id를 읽는다(하이드레이션 안전).
-  const pathname = usePathname();
-  const [id, setId] = useState<number | null>(null);
-  useEffect(() => {
-    setId(parseChallengeIdFromPath(window.location.pathname));
-  }, [pathname]);
+  const id = useRouteId(parseChallengeIdFromPath);
   const { user, loading: authLoading } = useRequireAuth(id ? challengeEditHref(id) : undefined);
   const { t } = useLocale();
   const { unit } = useUnit();

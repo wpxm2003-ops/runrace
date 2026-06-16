@@ -8,7 +8,7 @@ import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
   deleteChallenge,
   firstErrorMessage,
-  isNotFoundError,
+  fetchErrorMessage,
   joinChallenge,
   leaveChallenge,
   invalidateChallengeLists,
@@ -38,7 +38,7 @@ import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatGoalDistance } from "@/lib/units";
-import { usePathname } from "next/navigation";
+import { useRouteId } from "@/lib/useRouteId";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /** 실내러닝 승인 대기·거부 카드 묶음의 공통 껍데기(제목 + 안내 + 카드 목록). */
@@ -73,14 +73,7 @@ export default function ChallengeDetailContent() {
   const [nudgingId, setNudgingId] = useState<string | null>(null);
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
 
-  // 단일 템플릿(challenges/view.html)이 모든 id로 서빙되므로, 라우터 param 대신
-  // 실제 URL에서 id를 읽는다. 빌드/클라 초기 렌더는 null로 일치시켜 하이드레이션 미스매치를 막고,
-  // 마운트 후 useEffect에서 window.location으로 실제 id를 채운다.
-  const pathname = usePathname();
-  const [id, setId] = useState<number | null>(null);
-  useEffect(() => {
-    setId(parseChallengeIdFromPath(window.location.pathname));
-  }, [pathname]);
+  const id = useRouteId(parseChallengeIdFromPath);
 
   const {
     data: detail,
@@ -112,12 +105,7 @@ export default function ChallengeDetailContent() {
     return map;
   }, [headToHeadRows]);
 
-  const fetchErrorMsg = fetchError
-    ? isNotFoundError(fetchError)
-      ? t.detail_not_found
-      : String(fetchError)
-    : null;
-  const error = firstErrorMessage(actionError, fetchErrorMsg);
+  const error = firstErrorMessage(actionError, fetchErrorMessage(fetchError, t.detail_not_found));
 
   // 액션 피드백(콕 찌르기·참여/탈퇴 등) 에러는 5초 뒤 자동으로 지운다. 로드 실패(fetchError)는 유지.
   useEffect(() => {

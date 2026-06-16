@@ -7,7 +7,7 @@ import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import {
   deleteWorkout,
   firstErrorMessage,
-  isNotFoundError,
+  fetchErrorMessage,
   useChallengeWorkoutDetail,
   useWorkoutDetail,
   invalidateWorkoutDetail,
@@ -23,8 +23,9 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useRouteId } from "@/lib/useRouteId";
+import { useMemo, useState } from "react";
 import { getAppUrl } from "@/lib/appUrl";
 
 export default function WorkoutDetailContent() {
@@ -34,13 +35,8 @@ export default function WorkoutDetailContent() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // 단일 템플릿이 모든 id로 서빙되므로 실제 URL에서 id를 읽는다(하이드레이션 안전).
-  const pathname = usePathname();
+  const id = useRouteId(parseWorkoutIdFromPath);
   const searchParams = useSearchParams();
-  const [id, setId] = useState<number | null>(null);
-  useEffect(() => {
-    setId(parseWorkoutIdFromPath(window.location.pathname));
-  }, [pathname]);
   const challengeId = useMemo(
     () => parseChallengeIdFromQuery(searchParams.get("challenge")),
     [searchParams],
@@ -127,12 +123,7 @@ export default function WorkoutDetailContent() {
     </>
   );
 
-  const fetchErrorMsg = fetchError
-    ? isNotFoundError(fetchError)
-      ? t.workout_not_found
-      : String(fetchError)
-    : null;
-  const error = firstErrorMessage(deleteError, fetchErrorMsg);
+  const error = firstErrorMessage(deleteError, fetchErrorMessage(fetchError, t.workout_not_found));
 
   return (
     <PageLayout title={t.workout_detail_title} actions={pageActions}>

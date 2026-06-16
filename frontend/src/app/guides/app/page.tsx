@@ -1,24 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { renderBold } from "@/lib/renderBold";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { EnableNotificationsButton } from "@/app/guides/_components/EnableNotificationsButton";
 import { getAppUrl } from "@/lib/appUrl";
 import { useLocale } from "@/lib/i18n";
-
-function renderBold(text: string): ReactNode[] {
-  return text.split("**").map((part, i) =>
-    i % 2 === 1 ? (
-      <strong key={i} className="font-semibold text-zinc-900">
-        {part}
-      </strong>
-    ) : (
-      part
-    ),
-  );
-}
 
 export default function AppGuidePage() {
   const { t } = useLocale();
