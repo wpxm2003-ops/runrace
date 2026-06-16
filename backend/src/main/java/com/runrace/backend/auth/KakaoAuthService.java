@@ -69,8 +69,8 @@ public class KakaoAuthService {
       String accessToken = exchangeCode(code, redirectUri);
       KakaoUser kakaoUser = getUserInfo(accessToken);
 
-      // 동일 이메일로 가입된 계정이 있으면 해당 계정으로 병합 로그인
-      if (kakaoUser.email() != null) {
+      // 동일 이메일로 가입된 계정이 있으면 해당 계정으로 병합 로그인 (검증된 이메일일 때만 — 탈취 방지)
+      if (kakaoUser.email() != null && kakaoUser.emailVerified()) {
         AppUser existing = appUserRepository.findByEmail(kakaoUser.email()).orElse(null);
         if (existing != null) {
           log.info("Kakao login merged into existing account [{}] by email", existing.getFirebaseUid());
@@ -81,7 +81,7 @@ public class KakaoAuthService {
       String firebaseUid = "kakao:" + kakaoUser.id();
       // 카카오는 사실상 한국 사용자 → 닉네임/언어 기본값 ko. 이후 LanguageSync가 lang_cd를 갱신한다.
       userProvisioningService.upsert(
-          firebaseUid, kakaoUser.email(), kakaoUser.nickname(), "kakao", "ko");
+          firebaseUid, kakaoUser.email(), kakaoUser.nickname(), "kakao", kakaoUser.emailVerified(), "ko");
       return FirebaseAuth.getInstance().createCustomToken(firebaseUid);
     } catch (ApiException e) {
       throw e;
@@ -140,11 +140,12 @@ public class KakaoAuthService {
     String id = idNode.asText();
     JsonNode account = json.path("kakao_account");
     String email = account.path("email").asText(null);
+    boolean emailVerified = account.path("is_email_verified").asBoolean(false);
     JsonNode profile = account.path("profile");
     String nickname = profile.path("nickname").asText(null);
 
-    return new KakaoUser(id, email, nickname);
+    return new KakaoUser(id, email, nickname, emailVerified);
   }
 
-  public record KakaoUser(String id, String email, String nickname) {}
+  public record KakaoUser(String id, String email, String nickname, boolean emailVerified) {}
 }

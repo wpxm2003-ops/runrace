@@ -27,6 +27,7 @@ public class FirebaseUserService {
             token.getEmail(),
             token.getName(),
             extractSignInProvider(token).orElse(null),
+            token.isEmailVerified(),
             langHint);
     return new AuthPrincipal(saved.getId(), saved.getFirebaseUid());
   }

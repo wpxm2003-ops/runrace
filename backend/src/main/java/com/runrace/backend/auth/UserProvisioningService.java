@@ -40,6 +40,7 @@ public class UserProvisioningService {
       String email,
       String displayName,
       String provider,
+      boolean emailVerified,
       String langHint) {
 
     AppUser existing = appUserRepository.findByFirebaseUid(firebaseUid).orElse(null);
@@ -50,23 +51,30 @@ public class UserProvisioningService {
       //  null이 넘어오는데, 이때 기존 이름/이메일을 지우면 안 된다.)
       String nextName = nonBlankOr(displayName, existing.getDisplayName());
       String nextEmail = nonBlankOr(email, existing.getEmail());
+      String nextProvider = resolveProvider(provider, existing.getProvider());
 
       // 변경이 있을 때만 dirty — 동일 프로필 재방문은 SELECT만으로 끝낸다.
       boolean changed = !Objects.equals(existing.getEmail(), nextEmail)
           || !Objects.equals(existing.getDisplayName(), nextName)
-          || !Objects.equals(existing.getProvider(), provider);
+          || !Objects.equals(existing.getProvider(), nextProvider);
       if (!changed) return existing;
 
-      existing.updateProfile(firebaseUid, nextEmail, nextName, provider);
+      existing.updateProfile(firebaseUid, nextEmail, nextName, nextProvider);
       return appUserRepository.save(existing);
     }
 
-    // 동일 이메일로 다른 provider 계정이 있으면 해당 계정의 firebaseUid를 새 provider로 업데이트 (계정 병합)
-    if (email != null) {
+    // 동일 이메일로 다른 provider 계정이 있으면 해당 계정의 firebaseUid를 새 provider로 업데이트 (계정 병합).
+    // 단, 검증된 이메일일 때만 — 미검증 이메일로 남의 계정을 탈취하는 것을 막는다(미검증이면 별도 계정 생성).
+    if (email != null && emailVerified) {
       AppUser byEmail = appUserRepository.findByEmail(email).orElse(null);
       if (byEmail != null) {
         log.info("Merging account [{}] into existing [{}] by email", firebaseUid, byEmail.getFirebaseUid());
-        byEmail.updateProfile(firebaseUid, email, displayName, provider);
+        // 병합 시에도 빈 이름·일반 provider("custom")로 기존 값을 지우지 않는다.
+        byEmail.updateProfile(
+            firebaseUid,
+            email,
+            nonBlankOr(displayName, byEmail.getDisplayName()),
+            resolveProvider(provider, byEmail.getProvider()));
         return appUserRepository.save(byEmail);
       }
     }
@@ -113,5 +121,16 @@ public class UserProvisioningService {
   /** 새 값이 비어있으면(null/blank) 기존 값을 유지한다. */
   private static String nonBlankOr(String incoming, String current) {
     return (incoming != null && !incoming.isBlank()) ? incoming : current;
+  }
+
+  /**
+   * provider를 갱신하되, 들어온 값이 비었거나 일반 래퍼("custom")면 기존 값을 유지한다.
+   * (카카오는 Firebase 커스텀 토큰으로 인증돼 sign_in_provider가 "custom"으로 넘어오므로
+   *  이미 저장된 "kakao"를 덮어쓰지 않게 한다.)
+   */
+  private static String resolveProvider(String incoming, String current) {
+    if (current == null || current.isBlank()) return incoming;
+    if (incoming == null || incoming.isBlank() || "custom".equals(incoming)) return current;
+    return incoming;
   }
 }
