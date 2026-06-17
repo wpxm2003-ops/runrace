@@ -22,10 +22,6 @@ type Props = {
     startAt: string;
     endAt: string;
   };
-  startAtMin: string;
-  startAtMax?: string;
-  endMin: string;
-  endMax?: string;
   handlers: FormHandlers;
   formError?: string | null;
   formHint?: string | null;
@@ -42,10 +38,6 @@ type Props = {
 export function ChallengeFormFields({
   labels,
   values,
-  startAtMin,
-  startAtMax,
-  endMin,
-  endMax,
   handlers,
   formError,
   formHint,
@@ -118,8 +110,6 @@ export function ChallengeFormFields({
               type="datetime-local"
               className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
               value={values.startAt}
-              min={startAtMin}
-              max={startAtMax}
               step={60}
               onChange={(e) => handlers.onStartAtChange(e.target.value)}
               required
@@ -133,8 +123,6 @@ export function ChallengeFormFields({
               type="datetime-local"
               className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
               value={values.endAt}
-              min={endMin}
-              max={endMax}
               step={60}
               onChange={(e) => handlers.onEndAtChange(e.target.value)}
               required

@@ -2,12 +2,10 @@
 
 import {
   MAX_MEMBERS,
-  MAX_RACE_DURATION_DAYS,
   clampGoalKm,
   clampMaxMembers,
   defaultEndAtAfterStart,
   minStartAtLocal,
-  plusDaysLocal,
   sanitizeTitle,
   toChallengeFormPayload,
   validateChallengeForm,
@@ -51,7 +49,6 @@ export function useChallengeForm({
   validateOptions,
   hints,
 }: Options) {
-  const startAtMin = useMemo(() => minStartAtLocal(), []);
   const { unit } = useUnit();
 
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -67,16 +64,6 @@ export function useChallengeForm({
     () => ({ title, goalKm, maxMembers, startAt, endAt }),
     [title, goalKm, maxMembers, startAt, endAt],
   );
-  // 시작·종료일을 서로 최대 31일 범위로 제한한다.
-  // 시작일을 고르면 종료일은 시작+31일까지, 종료일을 고르면 시작일은 종료-31일(또는 지금)부터 ~ 종료일까지.
-  const endMin = startAt || startAtMin;
-  const endMax = startAt ? plusDaysLocal(startAt, MAX_RACE_DURATION_DAYS) : undefined;
-  const startAtMax = endAt || undefined;
-  const startAtMinEff = (() => {
-    if (!endAt) return startAtMin;
-    const back = plusDaysLocal(endAt, -MAX_RACE_DURATION_DAYS);
-    return back > startAtMin ? back : startAtMin; // 같은 포맷이라 문자열 비교=시간순
-  })();
 
   const clearFeedback = useCallback(() => {
     setFormError(null);
@@ -158,10 +145,6 @@ export function useChallengeForm({
   }, [values, unit]);
 
   return {
-    startAtMin: startAtMinEff,
-    startAtMax,
-    endMin,
-    endMax,
     values,
     formError,
     setFormError,
