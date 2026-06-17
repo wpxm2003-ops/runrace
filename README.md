@@ -119,15 +119,23 @@ sudo systemctl restart runrace
 
 앱 + DB 상태를 한 번에 확인:
 
+**Windows (PowerShell)** — `curl`은 `Invoke-WebRequest` 별칭이라 반드시 `curl.exe`를 쓴다:
+
+```powershell
+curl.exe -i https://runrace.co.kr/actuator/health
+```
+
+**macOS / Linux (EC2 포함)**:
+
 ```bash
-curl https://runrace.co.kr/actuator/health
+curl -i https://runrace.co.kr/actuator/health
 ```
 
 - `{"status":"UP"}` → 정상 (DB 연결 포함)
 - `{"status":"DOWN"}` (HTTP 503) → 장애 (DB 끊김 등)
 
 > nginx가 `/actuator/health`만 백엔드(8081)로 프록시한다(`infra/nginx/runrace.conf`). 다른 actuator 엔드포인트·상세 정보는 노출하지 않는다(UP/DOWN만).
-> EC2 안에서는 `curl http://localhost:8081/actuator/health` 로도 확인 가능.
+> EC2 안에서 백엔드 직접 확인: `curl -i http://localhost:8081/actuator/health`
 
 ---
 
