@@ -55,7 +55,7 @@ function ConfirmDialogUi({
       >
         <h2
           id="confirm-dialog-title"
-          className="text-lg font-semibold text-zinc-900"
+          className="text-base font-semibold text-zinc-900"
         >
           {title}
         </h2>

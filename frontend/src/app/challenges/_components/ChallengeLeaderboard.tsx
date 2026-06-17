@@ -257,7 +257,7 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
 
   return (
     <Card className="mt-6">
-      <div className="text-lg font-semibold">{heading}</div>
+      <div className="text-base font-semibold">{heading}</div>
       <div className="mt-4">
         {hasEnded && myUserId && members.length > 1 ? (
           <ResultSummary members={members} myUserId={myUserId} unit={unit} />

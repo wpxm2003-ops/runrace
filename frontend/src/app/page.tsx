@@ -13,11 +13,11 @@ export default function Home() {
       {/* 카드는 한 줄에 하나씩(풀폭) 세로로 쌓는다 */}
       <div className="mt-6 grid gap-3">
         <Link href="/workout/indoor" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-          <div className="text-lg font-semibold">{t.indoor_title}</div>
+          <div className="text-base font-semibold">{t.indoor_title}</div>
           <div className="mt-1 text-sm text-zinc-600">{t.indoor_subtitle}</div>
         </Link>
         <Link href="/guides" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-          <div className="text-lg font-semibold">{t.guide_list_title}</div>
+          <div className="text-base font-semibold">{t.guide_list_title}</div>
           <div className="mt-1 text-sm text-zinc-600">{t.home_guide_card_desc}</div>
         </Link>
       </div>

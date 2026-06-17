@@ -27,7 +27,7 @@ export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) 
 
   return (
     <Card className="mt-6">
-      <div className="text-lg font-semibold">{t.detail_member_workouts_heading}</div>
+      <div className="text-base font-semibold">{t.detail_member_workouts_heading}</div>
       {!isMember || !user ? (
         <p className="mt-3 text-sm text-zinc-500">{t.detail_member_workouts_members_only}</p>
       ) : error ? (

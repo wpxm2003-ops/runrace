@@ -79,7 +79,7 @@ function MyRacesSection({ user }: { user: User }) {
   return (
     <Card className="mt-4">
       <div className="flex flex-col gap-3">
-        <div className="text-lg font-semibold">{t.my_races_heading}</div>
+        <div className="text-base font-semibold">{t.my_races_heading}</div>
         <RacePhaseFilter
           value={phase}
           onChange={handlePhaseChange}
@@ -211,7 +211,7 @@ function MyPageContent({ user }: { user: User }) {
             </div>
           ) : (
             <div className="mt-1 flex items-center gap-2">
-              <span className="text-lg font-medium">
+              <span className="text-base font-medium">
                 {meLoading ? "..." : (me?.nickname ?? t.no_name)}
               </span>
               <button
@@ -238,7 +238,7 @@ function MyPageContent({ user }: { user: User }) {
       </Card>
 
       <Card className="mt-4">
-        <div className="text-lg font-semibold">{t.my_records_all_time}</div>
+        <div className="text-base font-semibold">{t.my_records_all_time}</div>
         {summaryError ? <Alert className="mt-3">{String(summaryError)}</Alert> : null}
         <div className="mt-3">
           {summaryLoading && !summary ? (

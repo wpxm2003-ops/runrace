@@ -101,7 +101,7 @@ function LoginContent() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
       <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">{t.login_headline}</h1>
+        <h1 className="text-xl font-semibold">{t.login_headline}</h1>
         <p className="mt-2 text-sm text-zinc-600">{t.login_desc}</p>
 
         {inApp && (

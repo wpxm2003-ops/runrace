@@ -20,7 +20,7 @@ export function PageLayout({
       className={`mx-auto w-full px-6 py-8 ${maxWidth}${className ? ` ${className}` : ""}`}
     >
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-xl font-semibold">{title}</h1>
         {actions ? (
           <div className="flex shrink-0 items-center gap-2">{actions}</div>
         ) : null}
