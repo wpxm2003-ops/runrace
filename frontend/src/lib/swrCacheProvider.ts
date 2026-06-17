@@ -12,6 +12,8 @@ type CacheEntry = { data: unknown };
  * - data만 저장 (error·isValidating은 저장 안 함 → 복원 후 clean state)
  */
 export function createSwrCacheProvider(): Map<string, CacheEntry> {
+  if (typeof window === "undefined") return new Map();
+
   let map: Map<string, CacheEntry> = new Map();
 
   try {
