@@ -26,19 +26,19 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
       onClick={() => setChallengePreview(c, user)}
       className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="font-medium">{c.title}</div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {showJoinedBadge && c.isMember ? (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
-              {c.phase === "ENDED" ? t.races_joined_done : t.races_joined}
-            </span>
-          ) : null}
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-sm font-medium">{c.title}</div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <ChallengePhaseBadge
             startAt={c.startAt}
             endAt={c.endAt}
             apiPhase={c.phase}
           />
+          {showJoinedBadge && c.isMember ? (
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
+              {c.phase === "ENDED" ? t.races_joined_done : t.races_joined}
+            </span>
+          ) : null}
         </div>
       </div>
       <div className="mt-1 text-sm text-zinc-600">
