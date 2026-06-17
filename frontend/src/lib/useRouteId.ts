@@ -1,19 +1,23 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 /**
  * 단일 템플릿이 모든 id로 서빙되는 동적 라우트에서 실제 URL의 id를 읽는다.
- * - 서버/클라 초기 렌더는 null로 일치 → 하이드레이션 미스매치 방지
- * - 마운트 후(또는 경로 변경 시) window.location.pathname에서 실제 id를 채운다
- * parse는 모듈 레벨 함수(안정적 참조)를 넘긴다.
+ *
+ * useSyncExternalStore를 사용하는 이유:
+ * - 서버/정적 생성 스냅샷 → null (하이드레이션 미스매치 방지)
+ * - 클라이언트 스냅샷 → 렌더 단계에서 즉시 파싱 (useEffect tick 없음)
+ * - 기존 useState+useEffect 방식은 id=null로 첫 렌더 후 paint가 발생한 뒤에야
+ *   effect가 실행되어 SWR fetch가 한 틱 늦게 시작됐다.
  */
 export function useRouteId(parse: (pathname: string) => number | null): number | null {
   const pathname = usePathname();
-  const [id, setId] = useState<number | null>(null);
-  useEffect(() => {
-    setId(parse(window.location.pathname));
-  }, [pathname, parse]);
-  return id;
+
+  return useSyncExternalStore(
+    () => () => {},              // 별도 구독 불필요 — pathname 변경이 리렌더를 유발
+    () => parse(pathname),       // 클라이언트: 렌더 시점에 즉시 파싱
+    () => null,                  // 서버/정적 생성: null
+  );
 }

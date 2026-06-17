@@ -24,6 +24,7 @@ import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { getAppUrl } from "@/lib/appUrl";
 import { challengeEditHref, parseChallengeIdFromPath } from "@/lib/challengeRoute";
+import { getChallengePreview } from "@/lib/challengePreview";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
 import {
   ChallengeLeaderboard,
@@ -85,6 +86,9 @@ export default function ChallengeDetailContent() {
     error: fetchError,
     mutate,
   } = useChallengeDetail(id, user, waitForAuth);
+
+  // 목록에서 막 탭한 레이스라면, 상세 응답 전에 목록 데이터로 헤더를 즉시 그려 체감 속도를 높인다.
+  const preview = detail ? null : getChallengePreview(id);
 
   const { pendingApprovals, rejectedApprovals, votingId, onVote } = useIndoorRunApprovals({
     id,
@@ -236,17 +240,44 @@ export default function ChallengeDetailContent() {
       {error ? <Alert className="mb-4 whitespace-pre-line">{error}</Alert> : null}
 
       {(isLoading || waitForAuth) && !detail ? (
-        // 첫 로드 스켈레톤 (캐시 데이터가 없을 때만 · 인증 복원 대기 포함)
-        <Card>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="mt-3 h-4 w-32" />
-          <Skeleton className="mt-2 h-3 w-40" />
-        </Card>
+        preview ? (
+          // 목록에서 넘어온 미리보기로 헤더를 즉시 표시 + 순위표는 스켈레톤
+          <>
+            <Card>
+              <div className="flex items-center justify-between">
+                <div className="text-base font-semibold">{preview.title}</div>
+                <ChallengePhaseBadge
+                  startAt={preview.startAt}
+                  endAt={preview.endAt}
+                  apiPhase={preview.phase}
+                />
+              </div>
+              <div className="mt-2 text-sm text-zinc-600">
+                {t.races_goal_members(formatGoalDistance(preview.goalKm, unit), preview.memberCount)}
+              </div>
+              <div className="mt-1 text-xs text-zinc-500">
+                {formatDateRange(preview.startAt, preview.endAt, locale)}
+              </div>
+            </Card>
+            <Card className="mt-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="mt-3 h-4 w-full" />
+              <Skeleton className="mt-2 h-4 w-5/6" />
+            </Card>
+          </>
+        ) : (
+          // 첫 로드 스켈레톤 (미리보기도 캐시 데이터도 없을 때 · 인증 복원 대기 포함)
+          <Card>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="mt-3 h-4 w-32" />
+            <Skeleton className="mt-2 h-3 w-40" />
+          </Card>
+        )
       ) : !detail ? null : (
         <>
           <Card>
             <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">{detail.title}</div>
+              <div className="text-base font-semibold">{detail.title}</div>
               <ChallengePhaseBadge
                 startAt={detail.startAt}
                 endAt={detail.endAt}

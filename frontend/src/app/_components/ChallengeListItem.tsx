@@ -2,10 +2,12 @@
 
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { challengeDetailHref } from "@/lib/challengeRoute";
+import { setChallengePreview } from "@/lib/challengePreview";
 import { formatDateRange } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatGoalDistance } from "@/lib/units";
+import { useAuthUser } from "@/lib/useAuthUser";
 import type { ChallengeListItem as ChallengeListItemType } from "@/lib/api/types";
 
 type Props = {
@@ -16,10 +18,12 @@ type Props = {
 export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Props) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
+  const { user } = useAuthUser();
 
   return (
     <a
       href={challengeDetailHref(c.id)}
+      onClick={() => setChallengePreview(c, user)}
       className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
     >
       <div className="flex items-center justify-between gap-2">

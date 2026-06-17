@@ -102,7 +102,7 @@ export default function ChallengesPage() {
 
       <Card>
         <div className="flex flex-col gap-3">
-          <div className="text-lg font-semibold">{t.races_list_heading}</div>
+          <div className="text-base font-semibold">{t.races_list_heading}</div>
           <RacePhaseFilter
             value={phaseFilter}
             onChange={setPhaseFilter}

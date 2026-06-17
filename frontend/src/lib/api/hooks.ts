@@ -123,14 +123,16 @@ export function useChallengeDetail(id: number | null, user?: User | null, authLo
   );
 }
 
-/** 레이스 목록(공개·내 레이스) 무한스크롤 캐시 무효화 — 생성/참여/탈퇴/삭제 후 호출. */
+/**
+ * 레이스 목록(공개·내 레이스) 무한스크롤 캐시 무효화 — 생성/참여/탈퇴/삭제 후 호출.
+ * 데이터를 비우지 않고 백그라운드 재검증만 한다(stale-while-revalidate).
+ * 비우면 뒤로가기로 목록에 돌아왔을 때 캐시가 없어 스켈레톤이 다시 뜬다.
+ */
 export function invalidateChallengeLists() {
   void globalMutate(
     (key) =>
       Array.isArray(key) &&
       (key[0] === "challenges-page" || key[0] === "challenges-mine-page"),
-    undefined,
-    { revalidate: true },
   );
 }
 
