@@ -50,7 +50,19 @@ function syncAuthHint(user: User | null) {
 const AuthContext = createContext<AuthState>({ user: null, loading: true, hint: false });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({ user: null, loading: true, hint: false });
+  const [state, setState] = useState<AuthState>(() => {
+    // Firebase가 이미 메모리에 초기화돼 있으면(앱 재개·SPA 이동 등 WebView 유지 상황)
+    // auth.currentUser를 동기적으로 읽어 authStateReady() 비동기 대기를 건너뛴다.
+    // → waitForAuth=false가 즉시 확정돼 상세 화면이 fetch 완료 즉시 뜬다.
+    if (typeof window !== "undefined") {
+      const current = auth.currentUser;
+      if (current) {
+        syncAuthHint(current);
+        return { user: current, loading: false, hint: false };
+      }
+    }
+    return { user: null, loading: true, hint: false };
+  });
 
   // 페인트 전에 이전 로그인 힌트를 반영 → 인증 복원을 기다리는 동안 로그인 상태를 낙관적으로 표시.
   useIsomorphicLayoutEffect(() => {
