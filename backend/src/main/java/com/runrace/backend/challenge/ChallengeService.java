@@ -224,21 +224,28 @@ public class ChallengeService {
     if (challenge.isEnded()) return false;
     if (challenge.getEndAt() == null || !now.isAfter(challenge.getEndAt())) return false;
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challenge.getId());
-    AppUser winner = resolveWinnerForDisplay(challenge, members);
+    finalizeRace(challenge, members, resolveWinnerForDisplay(challenge, members));
+    return true;
+  }
+
+  /**
+   * 레이스 종료 확정 공통 처리 — 종료 전이 + (실제로 뛴 사람이 있을 때만) 최종 순위 + 종료 이벤트 발행 + 저장.
+   * 우승자는 호출부가 결정해 넘긴다(완주 1등 또는 기간 만료 시 표시용 우승자).
+   * 기간 만료 경로(finalizeIfTimeEnded)와 전원 완주 경로(ChallengeProgressService)가 공통으로 사용한다.
+   */
+  void finalizeRace(Challenge challenge, List<ChallengeMember> members, AppUser winner) {
     challenge.end();
     if (winner != null) challenge.declareWinner(winner);
-    challengeRepository.save(challenge);
-    // 실제로 뛴 사람이 있을 때만 순위를 확정한다.
     // 아무도 0km이면 순위 미부여 → head-to-head 전적에 반영되지 않는다.
     boolean anyRan = members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
     if (anyRan) {
       assignFinalRanks(members);
     }
+    challengeRepository.save(challenge);
     eventPublisher.publishEvent(new ChallengeEndedEvent(
         challenge.getId(),
         winner != null ? winner.getNickname() : null,
         members.stream().map(m -> m.getUser().getId()).toList()));
-    return true;
   }
 
   @Transactional(readOnly = true)

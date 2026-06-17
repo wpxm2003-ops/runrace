@@ -128,15 +128,11 @@ public class ChallengeProgressService {
       boolean allOtherFinished = challengeMemberRepository
           .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
       if (allOtherFinished) {
-        challenge.end();
-        challengeService.assignFinalRanks(allMembers);
-        var winner = challenge.getWinner();
-        List<UUID> memberIds = allMembers.stream()
-            .map(m -> m.getUser().getId()).toList();
-        eventPublisher.publishEvent(new ChallengeEndedEvent(
-            challenge.getId(), winner != null ? winner.getNickname() : null, memberIds));
+        // 전원 완주 → 공통 종료 처리(순위·종료 이벤트·저장). 우승자는 위에서 확정한 1등.
+        challengeService.finalizeRace(challenge, allMembers, challenge.getWinner());
+      } else {
+        challengeRepository.save(challenge);
       }
-      challengeRepository.save(challenge);
     }
   }
 

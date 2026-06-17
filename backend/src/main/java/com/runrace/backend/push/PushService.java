@@ -38,12 +38,6 @@ public class PushService {
     sendToUserTokens(userId, render(titleKey, locale, arg), render(bodyKey, locale, arg));
   }
 
-  /** body가 사용자 입력(콕찌르기 메시지 등)이라 번역 대상이 아닌 경우. title만 현지화한다. */
-  public void sendLocalizedRawBody(UUID userId, String titleKey, String titleArg, String rawBody) {
-    Locale locale = localeOf(userId);
-    sendToUserTokens(userId, render(titleKey, locale, titleArg), rawBody);
-  }
-
   private Locale localeOf(UUID userId) {
     return Locale.forLanguageTag(appUserRepository.findLangCdById(userId).orElse("ko"));
   }
