@@ -67,8 +67,37 @@ let _replace: PushFn | null = null;
 let _back: (() => void) | null = null;
 
 /** SPA router.push 시 Android 뒤로가기용 이전 경로 스택 */
-const navStack: string[] = [];
+const NAV_STACK_KEY = "runrace_nav_stack";
+
+function hydrateNavStack(): string[] {
+  if (typeof window === "undefined" || !Capacitor.isNativePlatform()) return [];
+  try {
+    const raw = sessionStorage.getItem(NAV_STACK_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.every((p) => typeof p === "string")) return arr;
+    }
+  } catch {
+    /* 파싱 실패 시 빈 스택 */
+  }
+  return [];
+}
+
+const navStack: string[] = hydrateNavStack();
 let backNavigation = false;
+
+/**
+ * 뒤로가기 스택을 sessionStorage에 백업한다(네이티브).
+ * WebView 재로드로 메모리 스택이 날아가도 뒤로가기가 SPA 이전 화면으로 복귀하게 한다.
+ */
+export function persistNavStack(): void {
+  if (typeof window === "undefined" || !Capacitor.isNativePlatform()) return;
+  try {
+    sessionStorage.setItem(NAV_STACK_KEY, JSON.stringify(navStack));
+  } catch {
+    /* 무시 — 복원은 best-effort */
+  }
+}
 
 function currentPath(): string {
   return window.location.pathname + window.location.search;
@@ -88,6 +117,7 @@ export function registerPush(fn: PushFn) {
       const key = pageStateKeyFromPath(normalizePath(current));
       if (key) savePageState(key, { scroll: window.scrollY });
       navStack.push(current);
+      persistNavStack();
     }
     backNavigation = false;
     fn(path, { scroll: !isBack });
@@ -139,18 +169,19 @@ export function resolveBackFallback(pathname: string, search: string): string | 
 export function handleNativeBack(canGoBack: boolean): void {
   if (!isNativeApp()) return;
 
+  // 1) 실제 이전 경로(SPA 스택) — 가장 정확. router.push로 같은 문서 안에서 전환해
+  //    SWR 캐시·스크롤 위치를 유지한다.
   const prev = navStack.pop();
   if (prev && _push) {
+    persistNavStack();
     backNavigation = true;
     _push(prev);
     return;
   }
 
-  if (canGoBack && _back) {
-    _back();
-    return;
-  }
-
+  // 2) 스택이 비었어도 레이스/운동 등 알려진 경로는 SPA로 상위 화면에 올린다.
+  //    정적 export + Capacitor에선 router.back()이 문서를 새로 로드해(동적 경로는 파일이 없어 404)
+  //    캐시·스크롤이 날아가고 목록/상세가 매번 스켈레톤부터 다시 조회된다 — 그 폴백을 router.back()보다 먼저 둔다.
   const fallback = resolveBackFallback(
     window.location.pathname,
     window.location.search,
@@ -158,6 +189,12 @@ export function handleNativeBack(canGoBack: boolean): void {
   if (fallback && _push) {
     backNavigation = true;
     _push(fallback);
+    return;
+  }
+
+  // 3) 그 외 일반 경로만 WebView 히스토리 back에 맡긴다.
+  if (canGoBack && _back) {
+    _back();
     return;
   }
 

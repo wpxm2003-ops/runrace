@@ -1,8 +1,11 @@
 import { useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 
 /**
  * SPA 탐색 시 페이지 상태(스크롤·탭·페이지수 등)를 메모리에 보존한다.
- * 전체 새로고침 시 초기화 — 의도적 재방문은 항상 처음부터 시작한다.
+ * 웹: 전체 새로고침 시 초기화 — 의도적 재방문은 항상 처음부터 시작한다.
+ * 네이티브 앱: sessionStorage에 백업해 WebView가 재로드(앱 재개·네이티브 로그인 복귀 등)돼도
+ *   스크롤·탭 위치가 살아남게 한다. 앱을 완전히 종료하면 sessionStorage도 비워져 초기화된다.
  */
 
 export type PageState = {
@@ -15,7 +18,38 @@ export type PageState = {
   selectedDateKey?: string | null;
 };
 
-const store = new Map<string, PageState>();
+const SESSION_KEY = "runrace_page_state";
+
+/** 네이티브 앱에서만 sessionStorage 백업을 사용한다. */
+function persistEnabled(): boolean {
+  return typeof window !== "undefined" && Capacitor.isNativePlatform();
+}
+
+function hydrate(): Map<string, PageState> {
+  if (!persistEnabled()) return new Map();
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw) as Record<string, PageState>;
+      if (obj && typeof obj === "object") return new Map(Object.entries(obj));
+    }
+  } catch {
+    /* 파싱 실패 시 빈 상태로 시작 */
+  }
+  return new Map();
+}
+
+const store = hydrate();
+
+/** 현재 메모리 상태를 sessionStorage에 기록한다(네이티브). 재로드 직전(pagehide 등)에 호출. */
+export function persistPageState(): void {
+  if (!persistEnabled()) return;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(Object.fromEntries(store)));
+  } catch {
+    /* 용량 초과 등은 무시 — 복원은 best-effort */
+  }
+}
 
 export function savePageState(key: string, patch: Partial<PageState>): void {
   store.set(key, { ...store.get(key), ...patch });
