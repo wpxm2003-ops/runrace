@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "cap:sync:android": "node ../scripts/ensure-cap-webdir.mjs && npx cap sync android",
-    "build:deploy": "node ../scripts/deploy.mjs",
+    "frontend:deploy": "node ../scripts/deploy.mjs",
     "backend:deploy": "node ../scripts/deploy-backend.mjs"
   },
   "dependencies": {
