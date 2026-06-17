@@ -4,7 +4,7 @@ import { useWorkoutShare } from "@/lib/api";
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
 import { useRouteId } from "@/lib/useRouteId";
 import { formatDate } from "@/lib/format";
-import { pathBounds } from "@/lib/pathBounds";
+import { RoutePath } from "@/lib/routePath";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { formatDistance, formatPace } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
@@ -13,69 +13,6 @@ import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { useEffect, useRef } from "react";
-
-type PathPoint = { lat: number; lng: number };
-
-function normalizePath(
-  points: PathPoint[],
-  width: number,
-  height: number,
-  padding: number,
-): [number, number][] {
-  if (points.length === 0) return [];
-
-  const { minLat, maxLat, minLng, maxLng } = pathBounds(points);
-
-  const latRange = maxLat - minLat || 1e-6;
-  const lngRange = maxLng - minLng || 1e-6;
-
-  const drawW = width - padding * 2;
-  const drawH = height - padding * 2;
-  const scale = Math.min(drawW / lngRange, drawH / latRange);
-  const offX = (drawW - lngRange * scale) / 2;
-  const offY = (drawH - latRange * scale) / 2;
-
-  return points.map((p) => [
-    padding + offX + (p.lng - minLng) * scale,
-    padding + offY + (maxLat - p.lat) * scale,
-  ]);
-}
-
-function PathSvg({ path, noRouteLabel }: { path: PathPoint[]; noRouteLabel: string }) {
-  const W = 400;
-  const H = 260;
-  const PAD = 24;
-
-  const pts = normalizePath(path, W, H, PAD);
-
-  if (pts.length === 0) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-sm" style={{ color: "#7E828B" }}>
-        {noRouteLabel}
-      </div>
-    );
-  }
-
-  const d = pts
-    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
-    .join(" ");
-
-  const [startX, startY] = pts[0];
-  const [endX, endY] = pts[pts.length - 1];
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" aria-label="Running route">
-      {/* 네온 경로 (글로우 레이어) */}
-      <path d={d} fill="none" stroke="#22C55E" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" opacity="0.10" />
-      <path d={d} fill="none" stroke="#34D399" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
-      <path d={d} fill="none" stroke="#4ADE80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* 시작점 */}
-      <circle cx={startX} cy={startY} r="5" fill="#4ADE80" />
-      {/* 종료점 */}
-      <circle cx={endX} cy={endY} r="6" fill="#FFFFFF" stroke="#4ADE80" strokeWidth="2" />
-    </svg>
-  );
-}
 
 export default function WorkoutShareContent() {
   const id = useRouteId(parseWorkoutIdFromPath);
@@ -165,7 +102,25 @@ export default function WorkoutShareContent() {
                 </div>
               )
             ) : (
-              <PathSvg path={data.path} noRouteLabel={t.share_no_route} />
+              <RoutePath
+                path={data.path}
+                width={400}
+                height={260}
+                padding={24}
+                strokeWidths={[9, 5, 2.5]}
+                startRadius={5}
+                endRadius={6}
+                endStrokeWidth={2}
+                svgProps={{ className: "h-full w-full", "aria-label": "Running route" }}
+                empty={
+                  <div
+                    className="flex h-full w-full items-center justify-center text-sm"
+                    style={{ color: "#7E828B" }}
+                  >
+                    {t.share_no_route}
+                  </div>
+                }
+              />
             )}
           </div>
 

@@ -3,13 +3,11 @@
 import { useRef, useState } from "react";
 import { Button } from "@/app/_components/ui/Button";
 import { formatDate } from "@/lib/format";
-import { pathBounds } from "@/lib/pathBounds";
+import { RoutePath, type PathPoint } from "@/lib/routePath";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import { track } from "@/lib/analytics";
 import type { Translations } from "@/lib/i18n/translations";
-
-type PathPoint = { lat: number; lng: number };
 
 /** 카드 렌더에 필요한 최소 필드 — 운동 상세/공유 응답 모두와 호환. */
 type CardData = {
@@ -23,49 +21,6 @@ type CardData = {
 
 const CARD_W = 1080;
 const CARD_H = 1920;
-
-function normalizePath(
-  points: PathPoint[],
-  width: number,
-  height: number,
-  padding: number,
-): [number, number][] {
-  if (points.length === 0) return [];
-  const { minLat, maxLat, minLng, maxLng } = pathBounds(points);
-  const latRange = maxLat - minLat || 1e-6;
-  const lngRange = maxLng - minLng || 1e-6;
-  const drawW = width - padding * 2;
-  const drawH = height - padding * 2;
-  const scale = Math.min(drawW / lngRange, drawH / latRange);
-  const offX = (drawW - lngRange * scale) / 2;
-  const offY = (drawH - latRange * scale) / 2;
-  return points.map((p) => [
-    padding + offX + (p.lng - minLng) * scale,
-    padding + offY + (maxLat - p.lat) * scale,
-  ]);
-}
-
-/** 카드 안의 네온 경로(글로우 레이어) — 다크 배경 전용 고정 색상. */
-function RouteSvg({ path }: { path: PathPoint[] }) {
-  const W = 880;
-  const H = 600;
-  const pts = normalizePath(path, W, H, 90);
-  if (pts.length === 0) return null;
-  const d = pts
-    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
-    .join(" ");
-  const [sx, sy] = pts[0];
-  const [ex, ey] = pts[pts.length - 1];
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" aria-hidden="true">
-      <path d={d} fill="none" stroke="#22C55E" strokeWidth="40" strokeLinecap="round" strokeLinejoin="round" opacity="0.10" />
-      <path d={d} fill="none" stroke="#34D399" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
-      <path d={d} fill="none" stroke="#4ADE80" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={sx} cy={sy} r="15" fill="#4ADE80" />
-      <circle cx={ex} cy={ey} r="17" fill="#FFFFFF" stroke="#4ADE80" strokeWidth="8" />
-    </svg>
-  );
-}
 
 const COLOR = {
   gray: "#7E828B",
@@ -230,7 +185,17 @@ export function ShareCardButton({
             }}
           >
             {data.workoutType === "GPS" && data.path.length > 0 ? (
-              <RouteSvg path={data.path} />
+              <RoutePath
+                path={data.path}
+                width={880}
+                height={600}
+                padding={90}
+                strokeWidths={[40, 20, 9]}
+                startRadius={15}
+                endRadius={17}
+                endStrokeWidth={8}
+                svgProps={{ width: "100%", height: "100%", "aria-hidden": true }}
+              />
             ) : (
               <div style={{ fontSize: 56, color: COLOR.gray }}>🏃 {t.indoor_badge}</div>
             )}
