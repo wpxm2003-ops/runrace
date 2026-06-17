@@ -2,9 +2,10 @@ package com.runrace.backend.challenge;
 
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 시간 기반 레이스 상태 전환 배치.
@@ -17,19 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 public class ChallengeScheduler {
+  private static final Logger log = LoggerFactory.getLogger(ChallengeScheduler.class);
+
   private final ChallengeRepository challengeRepository;
   private final ChallengeService challengeService;
 
   /** 3분마다 실행. 종료 전환은 급하지 않아 여유 주기로 충분하다. */
   @Scheduled(fixedDelay = 3 * 60 * 1000)
-  @Transactional
   public void sweepRaceLifecycle() {
     OffsetDateTime now = OffsetDateTime.now();
+    // 레이스별 독립 트랜잭션 — 한 건이 실패해도 나머지는 정상 처리되도록 격리한다.
     for (Challenge challenge : challengeRepository.findStartedNotEnded(now)) {
-      if (challengeService.deleteIfSolo(challenge, now)) {
-        continue; // 방장 혼자면 삭제하고 다음으로
+      try {
+        challengeService.processRaceLifecycle(challenge.getId(), now);
+      } catch (Exception e) {
+        log.warn("레이스 생명주기 처리 실패 (challengeId={}) — 건너뜀", challenge.getId(), e);
       }
-      challengeService.finalizeIfTimeEnded(challenge, now); // 기간 만료면 확정
     }
   }
 }

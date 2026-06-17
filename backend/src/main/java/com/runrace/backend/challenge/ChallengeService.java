@@ -220,6 +220,18 @@ public class ChallengeService {
    * 지금까지 읽기 시점에만 계산하던 종료/우승을 실제 DB에 박는다(스케줄러에서 호출).
    * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다. 확정했으면 true.
    */
+  /**
+   * 스케줄러용 — 레이스 1건의 생명주기 전환(혼자 삭제 / 기간 만료 확정)을 독립 트랜잭션으로 처리한다.
+   * 레이스별로 분리해 한 건이 실패해도 배치 전체가 롤백되지 않게 한다.
+   */
+  @Transactional
+  public void processRaceLifecycle(Long challengeId, OffsetDateTime now) {
+    Challenge challenge = challengeRepository.findById(challengeId).orElse(null);
+    if (challenge == null) return; // 그사이 삭제됐으면 건너뜀
+    if (deleteIfSolo(challenge, now)) return;
+    finalizeIfTimeEnded(challenge, now);
+  }
+
   public boolean finalizeIfTimeEnded(Challenge challenge, OffsetDateTime now) {
     if (challenge.isEnded()) return false;
     if (challenge.getEndAt() == null || !now.isAfter(challenge.getEndAt())) return false;
