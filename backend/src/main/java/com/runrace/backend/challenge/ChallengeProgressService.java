@@ -35,6 +35,7 @@ public class ChallengeProgressService {
   private final WorkoutSessionRepository workoutSessionRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final ChallengeService challengeService;
+  private final RaceFinalizationService raceFinalization;
 
   /**
    * 운동 기록 저장 시 호출. 사용자가 현재 참여 중인 진행 레이스의 total_km을 distanceM만큼 증가시킨다.
@@ -129,7 +130,7 @@ public class ChallengeProgressService {
           .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
       if (allOtherFinished) {
         // 전원 완주 → 공통 종료 처리(순위·종료 이벤트·저장). 우승자는 위에서 확정한 1등.
-        challengeService.finalizeRace(challenge, allMembers, challenge.getWinner());
+        raceFinalization.finalizeRace(challenge, allMembers, challenge.getWinner());
       } else {
         challengeRepository.save(challenge);
       }
@@ -170,7 +171,7 @@ public class ChallengeProgressService {
               }
               challengeRepository.save(challenge);
               // 종료가 풀렸으므로 확정 순위(final_rank)도 초기화 — 전적이 잘못 집계되지 않게.
-              challengeService.clearFinalRanks(challenge.getId());
+              raceFinalization.clearFinalRanks(challenge.getId());
             }
             challengeMemberRepository.save(member);
           });

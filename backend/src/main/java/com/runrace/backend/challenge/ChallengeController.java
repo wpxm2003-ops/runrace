@@ -265,7 +265,7 @@ public class ChallengeController {
   /** 시작 전: 참여 순(먼저 참여한 사람이 위). 시작 후: 레이스 결과 순(완주 우선 → 완주 시각 → 누적 km). */
   private static Comparator<ChallengeMember> memberDisplayOrder(boolean hasStarted) {
     return hasStarted
-        ? ChallengeService.RACE_RESULT_ORDER
+        ? RaceFinalizationService.RACE_RESULT_ORDER
         : Comparator.comparing(ChallengeMember::getJoinedAt);
   }
 

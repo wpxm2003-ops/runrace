@@ -16,7 +16,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +47,7 @@ public class ChallengeService {
   private final WorkoutSessionRepository workoutSessionRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final RivalRepository rivalRepository;
+  private final RaceFinalizationService raceFinalization;
 
   @Transactional
   public Challenge createRoom(
@@ -215,62 +215,30 @@ public class ChallengeService {
   }
 
   /**
-   * 기간(endAt)이 지난 레이스를 확정한다: 상태 ENDED + 우승자 영속화.
-   * 지금까지 읽기 시점에만 계산하던 종료/우승을 실제 DB에 박는다(스케줄러에서 호출).
-   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다. 확정했으면 true.
-   */
-  /**
    * 스케줄러용 — 레이스 1건의 생명주기 전환(혼자 삭제 / 기간 만료 확정)을 독립 트랜잭션으로 처리한다.
    * 레이스별로 분리해 한 건이 실패해도 배치 전체가 롤백되지 않게 한다.
+   * 종료 확정·순위·우승자 결정은 {@link RaceFinalizationService}가 담당한다.
    */
   @Transactional
   public void processRaceLifecycle(Long challengeId, OffsetDateTime now) {
     Challenge challenge = challengeRepository.findById(challengeId).orElse(null);
     if (challenge == null) return; // 그사이 삭제됐으면 건너뜀
     if (deleteIfSolo(challenge, now)) return;
-    finalizeIfTimeEnded(challenge, now);
-  }
-
-  public boolean finalizeIfTimeEnded(Challenge challenge, OffsetDateTime now) {
-    if (challenge.isEnded()) return false;
-    if (challenge.getEndAt() == null || !now.isAfter(challenge.getEndAt())) return false;
-    List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challenge.getId());
-    finalizeRace(challenge, members, resolveWinnerForDisplay(challenge, members));
-    return true;
-  }
-
-  /**
-   * 레이스 종료 확정 공통 처리 — 종료 전이 + (실제로 뛴 사람이 있을 때만) 최종 순위 + 종료 이벤트 발행 + 저장.
-   * 우승자는 호출부가 결정해 넘긴다(완주 1등 또는 기간 만료 시 표시용 우승자).
-   * 기간 만료 경로(finalizeIfTimeEnded)와 전원 완주 경로(ChallengeProgressService)가 공통으로 사용한다.
-   */
-  void finalizeRace(Challenge challenge, List<ChallengeMember> members, AppUser winner) {
-    challenge.end();
-    if (winner != null) challenge.declareWinner(winner);
-    // 아무도 0km이면 순위 미부여 → head-to-head 전적에 반영되지 않는다.
-    boolean anyRan = members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
-    if (anyRan) {
-      assignFinalRanks(members);
-    }
-    challengeRepository.save(challenge);
-    eventPublisher.publishEvent(new ChallengeEndedEvent(
-        challenge.getId(),
-        winner != null ? winner.getNickname() : null,
-        members.stream().map(m -> m.getUser().getId()).toList()));
+    raceFinalization.finalizeIfTimeEnded(challenge, now);
   }
 
   @Transactional(readOnly = true)
   public ChallengeDetailView getDetail(Optional<UUID> currentUserId, Long id) {
     Challenge challenge = requireChallenge(id);
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(id);
-    AppUser winner = resolveWinnerForDisplay(challenge, members);
+    OffsetDateTime now = OffsetDateTime.now();
+    AppUser winner = raceFinalization.resolveWinner(challenge, members, now);
 
     UUID userId = currentUserId.orElse(null);
     boolean isMember =
         userId != null
             && challengeMemberRepository.findByChallengeIdAndUserId(id, userId).isPresent();
     boolean isOwner = challenge.isOwner(userId);
-    OffsetDateTime now = OffsetDateTime.now();
 
     // 로그인 사용자가 등록한 라이벌이 이 방에 있으면 표시(색/라벨)용으로 id 집합을 넘긴다.
     Set<UUID> rivalUserIds =
@@ -407,97 +375,6 @@ public class ChallengeService {
       return true;
     }
     return challenge.getEndAt() != null && now.isAfter(challenge.getEndAt());
-  }
-
-  /**
-   * 표시용 승자 계산 — 영속화하지 않는다(읽기 경로 부작용 제거).
-   * - 이미 확정된 승자가 있으면 그대로 사용(완주 시 onMemberProgress가 확정).
-   * - 첫 완주자가 있으면 그 사람.
-   * - 완주자 없이 기간이 종료됐으면 누적 거리 최상위 멤버.
-   */
-  /**
-   * 레이스 결과 순위: 완주자 우선(완주 시각 빠른 순) → 미완주는 누적 km 내림차순.
-   * 종료 시 final_rank 부여와 화면 표시 순서의 단일 기준.
-   */
-  public static final Comparator<ChallengeMember> RACE_RESULT_ORDER =
-      (m1, m2) -> {
-        boolean f1 = m1.getFinishedAt() != null;
-        boolean f2 = m2.getFinishedAt() != null;
-        if (f1 && f2) return m1.getFinishedAt().compareTo(m2.getFinishedAt());
-        if (f1) return -1;
-        if (f2) return 1;
-        return m2.getTotalKm().compareTo(m1.getTotalKm());
-      };
-
-  /**
-   * 종료 시 확정 순위(final_rank)를 1부터 부여하고 저장한다({@link #RACE_RESULT_ORDER} 기준).
-   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다.
-   */
-  public void assignFinalRanks(List<ChallengeMember> members) {
-    List<ChallengeMember> ordered = members.stream().sorted(RACE_RESULT_ORDER).toList();
-    int rank = 1;
-    for (ChallengeMember m : ordered) {
-      m.assignFinalRank(rank++);
-      challengeMemberRepository.save(m);
-    }
-  }
-
-  /** 확정 순위를 초기화한다(레이스 되돌림 — 운동 삭제로 종료가 풀릴 때). */
-  public void clearFinalRanks(Long challengeId) {
-    List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challengeId);
-    for (ChallengeMember m : members) {
-      m.clearFinalRank();
-      challengeMemberRepository.save(m);
-    }
-  }
-
-  /** 누적 거리 내림차순, 동률이면 먼저 완주한 멤버 우선(미완주는 후순위). */
-  private static final Comparator<ChallengeMember> BY_DISTANCE_THEN_FINISH =
-      Comparator.comparing(ChallengeMember::getTotalKm)
-          .thenComparing(
-              m -> m.getFinishedAt() == null ? OffsetDateTime.MAX : m.getFinishedAt(),
-              Comparator.reverseOrder());
-
-  private AppUser resolveWinnerForDisplay(Challenge challenge, List<ChallengeMember> members) {
-    // 참여자가 1명뿐(방장 혼자)인 레이스는 대결이 성립하지 않으므로 우승자 없음.
-    if (members.size() <= 1) {
-      return null;
-    }
-    if (challenge.getWinner() != null) {
-      return challenge.getWinner();
-    }
-
-    AppUser firstFinisher = firstFinisher(members);
-    if (firstFinisher != null) {
-      return firstFinisher;
-    }
-
-    // 완주자 없이 기간이 종료됐으면 누적 거리 최상위 멤버.
-    OffsetDateTime now = OffsetDateTime.now();
-    boolean timeEnded = challenge.getEndAt() != null && now.isAfter(challenge.getEndAt());
-    return timeEnded ? topByDistance(members) : null;
-  }
-
-  /** 가장 먼저 완주한 멤버의 사용자, 완주자가 없으면 null. */
-  private static AppUser firstFinisher(List<ChallengeMember> members) {
-    return members.stream()
-        .filter(m -> m.getFinishedAt() != null)
-        .min(Comparator.comparing(ChallengeMember::getFinishedAt))
-        .map(ChallengeMember::getUser)
-        .orElse(null);
-  }
-
-  /**
-   * 누적 거리(동률 시 완주 시각) 최상위 멤버의 사용자.
-   * 모든 참여자의 거리가 0이면 대결이 성립하지 않으므로 null 반환.
-   */
-  private static AppUser topByDistance(List<ChallengeMember> members) {
-    boolean anyRan = members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
-    if (!anyRan) return null;
-    return members.stream()
-        .max(BY_DISTANCE_THEN_FINISH)
-        .map(ChallengeMember::getUser)
-        .orElse(null);
   }
 
   private Challenge requireChallenge(Long id) {
