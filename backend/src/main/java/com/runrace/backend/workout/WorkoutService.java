@@ -271,7 +271,7 @@ public class WorkoutService {
     return Math.round(value * COORD_SCALE) / COORD_SCALE;
   }
 
-  public List<PathPoint> parsePath(String pathJson) {
+  private List<PathPoint> parsePath(String pathJson) {
     try {
       return objectMapper.readValue(
           pathJson,

@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -322,13 +321,6 @@ public class ChallengeService {
           int[] wl = agg.getOrDefault(uid, new int[] {0, 0});
           return new HeadToHeadRow(uid, wl[0], wl[1]);
         })
-        .toList();
-  }
-
-  @Transactional(readOnly = true)
-  public List<UUID> listMemberUserIds(Long challengeId) {
-    return challengeMemberRepository.findAllForChallenge(challengeId).stream()
-        .map(member -> member.getUser().getId())
         .toList();
   }
 
