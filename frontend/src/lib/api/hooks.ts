@@ -21,6 +21,7 @@ import { fetchRivals } from "./rivals";
 import { fetchWorkout, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
 import { SWR_ERROR_RETRY } from "./swrConfig";
+import { getStoredAuthUid } from "@/lib/accessToken";
 
 const BASE_CONFIG = {
   /** 진입 시 항상 백그라운드 재검증하되, 그동안 캐시된 데이터를 먼저 보여준다. */
@@ -115,9 +116,10 @@ export function useMyChallengeListInfinite(user: User | null, phase: string) {
 }
 
 // ── 레이스 상세 ────────────────────────────────────────────────────────────────
-export function useChallengeDetail(id: number | null, user?: User | null, authLoading = false) {
+export function useChallengeDetail(id: number | null, user?: User | null) {
+  const uid = user?.uid ?? getStoredAuthUid() ?? null;
   return useSWR(
-    authLoading || id == null ? null : (["challenge", id, user?.uid ?? null] as const),
+    id == null ? null : (["challenge", id, uid] as const),
     () => fetchChallengeDetail(id!, user),
     LIVE_CONFIG,
   );

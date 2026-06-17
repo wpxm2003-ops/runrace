@@ -1,6 +1,6 @@
 import { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
-import { getAccessToken, storeAccessToken, clearAccessToken } from "@/lib/accessToken";
+import { getAccessToken, storeAccessToken, clearAccessToken, getStoredAuthUid } from "@/lib/accessToken";
 import { ApiError } from "./apiError";
 
 /** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: 빈 문자열 → Next.js rewrite 프록시(/api/*) 경유 */
@@ -78,8 +78,8 @@ async function refreshAccessToken(user: User): Promise<{ "Content-Type": string;
       cache: "no-store",
     });
     if (res.ok) {
-      const data = await res.json() as { accessToken?: string };
-      if (data.accessToken) storeAccessToken(data.accessToken);
+      const data = await res.json() as { accessToken?: string; firebaseUid?: string };
+      if (data.accessToken && data.firebaseUid) storeAccessToken(data.accessToken, data.firebaseUid);
     }
   } catch {}
   return await authHeaders(user, false);
@@ -109,17 +109,19 @@ export async function publicFetch<T>(
   user?: User | null,
 ): Promise<T> {
   const url = apiUrl(path);
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (user) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  // 저장된 JWT가 있으면 user 객체 없이도 인증 헤더를 즉시 구성한다.
+  // → 콜드 스타트에서 Firebase 초기화 전에도 인증된 fetch 가능.
+  const storedToken = getAccessToken();
+  if (storedToken) {
+    headers.Authorization = `Bearer ${storedToken}`;
+  } else if (user) {
     Object.assign(headers, await authHeaders(user));
   }
 
   const res = await fetch(url, { method: "GET", headers, cache: "no-store" });
-
   await throwIfNotOk(res);
-
   return parseResponse<T>(res);
 }
 

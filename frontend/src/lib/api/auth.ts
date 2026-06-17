@@ -15,8 +15,10 @@ export async function syncBackendLogin(user: User): Promise<void> {
     cache: "no-store",
   });
   if (res.ok) {
-    const data = await res.json() as { accessToken?: string };
-    if (data.accessToken) storeAccessToken(data.accessToken);
+    const data = await res.json() as { accessToken?: string; firebaseUid?: string };
+    if (data.accessToken && data.firebaseUid) {
+      storeAccessToken(data.accessToken, data.firebaseUid);
+    }
   }
 }
 

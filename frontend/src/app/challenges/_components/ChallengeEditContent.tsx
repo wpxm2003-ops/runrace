@@ -37,7 +37,7 @@ export default function ChallengeEditContent() {
     data: detail,
     isLoading,
     error: fetchError,
-  } = useChallengeDetail(id, user, authLoading);
+  } = useChallengeDetail(id, user);
 
   // 상세 데이터가 처음 로드됐을 때 폼 초기화
   useEffect(() => {

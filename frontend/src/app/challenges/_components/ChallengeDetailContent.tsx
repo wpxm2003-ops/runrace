@@ -40,6 +40,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatGoalDistance } from "@/lib/units";
 import { useRouteId } from "@/lib/useRouteId";
+import { getStoredAuthUid } from "@/lib/accessToken";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /** 실내러닝 승인 대기·거부 카드 묶음의 공통 껍데기(제목 + 안내 + 카드 목록). */
@@ -80,7 +81,8 @@ export default function ChallengeDetailContent() {
   // 단, 직전 로그인 기록(hint)이 있으면 인증 완료 전까지 화면 표시를 보류한다.
   // → 익명 응답(버튼 없음)과 인증 응답(버튼 있음)이 순서대로 렌더되는 깜빡임 방지.
   // SPA 진입(목록 탭)에선 이미 auth가 끝나 있으므로 waitForAuth=false → 즉시 표시.
-  const waitForAuth = authLoading && authHint;
+  // storedUid가 있으면 JWT로 즉시 인증 fetch 가능 → auth 완료 기다릴 필요 없음
+  const waitForAuth = authLoading && authHint && !getStoredAuthUid();
 
   const {
     data: detail,
