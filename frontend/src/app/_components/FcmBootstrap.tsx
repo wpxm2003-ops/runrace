@@ -129,13 +129,27 @@ export function FcmBootstrap() {
       if (initialDelayMs > 0) await sleep(initialDelayMs);
       if (cancelled) return;
 
+      // FCM 토큰 취득 — Play Services 오류는 별도 집계
+      let token: string | null = null;
       try {
         const granted = await ensureNotificationPermission();
         if (cancelled || !granted) return;
 
-        const token = await fetchFcmTokenWithRetry();
+        token = await fetchFcmTokenWithRetry();
         if (cancelled || !token || token === registeredRef.current) return;
+      } catch (e) {
+        if (cancelled) return;
+        // Play Services/FCM 초기화 실패 — 빈도·대상 유저 집계용으로 기록
+        void reportClientError({
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+          kind: "fcm_play_services",
+        });
+        return;
+      }
 
+      // 서버 토큰 등록 — 일시적 네트워크 오류는 다음 앱 복귀 시 자동 재시도됨
+      try {
         await registerDeviceToken(user as User, token, Capacitor.getPlatform());
         registeredRef.current = token;
 
@@ -148,14 +162,8 @@ export function FcmBootstrap() {
             registeredRef.current = newToken;
           });
         }
-      } catch (e) {
-        if (cancelled) return;
-        // Play Services/FCM 초기화 실패(저 다이얼로그의 원인) — 빈도·대상 유저 집계용으로 기록
-        void reportClientError({
-          message: e instanceof Error ? e.message : String(e),
-          stack: e instanceof Error ? e.stack : undefined,
-          kind: "fcm_play_services",
-        });
+      } catch {
+        // 네트워크 오류 등 일시적 실패는 무시 — registeredRef가 null로 남으므로 복귀 시 재시도됨
       }
     }
 
