@@ -26,18 +26,21 @@ export function ChallengeInfiniteList({
   emptyLabel,
   skeletonCount = 3,
   showJoinedBadge = false,
+  forceLoading = false,
 }: {
   result: InfiniteResult;
   emptyLabel: string;
   skeletonCount?: number;
   showJoinedBadge?: boolean;
+  /** 인증 복원 대기 등으로 아직 fetch를 시작하지 않은 동안 빈 상태 대신 스켈레톤을 보여준다. */
+  forceLoading?: boolean;
 }) {
   const { t } = useLocale();
   const { data: pages, size, setSize, isLoading, isValidating } = result;
 
   const items = pages ? pages.flatMap((p) => p.items) : [];
   const hasNext = pages ? (pages[pages.length - 1]?.hasNext ?? false) : false;
-  const initialLoading = isLoading && !pages;
+  const initialLoading = (isLoading || forceLoading) && !pages;
 
   const sentinelRef = useInfiniteScroll({ hasNext, isValidating, setSize, size });
 

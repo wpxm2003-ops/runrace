@@ -61,7 +61,7 @@ function ApprovalSection({
 }
 
 export default function ChallengeDetailContent() {
-  const { user } = useAuthUser();
+  const { user, loading: authLoading, hint: authHint } = useAuthUser();
   const confirm = useConfirm();
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -75,12 +75,16 @@ export default function ChallengeDetailContent() {
 
   const id = useRouteId(parseChallengeIdFromPath);
 
+  // 직전 로그인 기록(hint)이 있으면 인증 복원까지 기다렸다가 한 번에 상세를 조회한다.
+  // 익명으로 먼저 받아온 뒤 로그인 정보로 재조회하면 참여/수정 버튼·내 순위 색칠이 1~2초 뒤 깜빡이며 나타난다.
+  const waitForAuth = authLoading && authHint;
+
   const {
     data: detail,
     isLoading,
     error: fetchError,
     mutate,
-  } = useChallengeDetail(id, user);
+  } = useChallengeDetail(id, user, waitForAuth);
 
   const { pendingApprovals, rejectedApprovals, votingId, onVote } = useIndoorRunApprovals({
     id,
@@ -231,8 +235,8 @@ export default function ChallengeDetailContent() {
     >
       {error ? <Alert className="mb-4 whitespace-pre-line">{error}</Alert> : null}
 
-      {isLoading && !detail ? (
-        // 첫 로드 스켈레톤 (캐시 데이터가 없을 때만)
+      {(isLoading || waitForAuth) && !detail ? (
+        // 첫 로드 스켈레톤 (캐시 데이터가 없을 때만 · 인증 복원 대기 포함)
         <Card>
           <Skeleton className="h-6 w-48" />
           <Skeleton className="mt-3 h-4 w-32" />

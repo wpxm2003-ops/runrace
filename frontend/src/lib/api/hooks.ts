@@ -58,11 +58,15 @@ export function useChallengeListInfinite(
   user: User | null | undefined,
   lang: string | undefined,
   phase: string,
+  waitForAuth = false,
 ) {
-  // 공개 목록이라 인증 복원을 기다리지 않고 즉시 fetch한다(익명).
-  // 로그인 복원이 끝나면 user.uid가 키에 반영돼 자동 재검증되며 isOwner/isMember가 채워진다.
+  // 비로그인(익명)이면 인증 복원을 기다리지 않고 즉시 fetch한다.
+  // 직전 로그인 기록이 있는 사용자는 waitForAuth로 인증 복원까지 기다렸다가 단 한 번
+  // user.uid가 채워진 키로 fetch한다 — 익명→로그인 재요청으로 "참여중" 라벨이 깜빡이거나
+  // useSWRInfinite의 size가 리셋(스크롤 복원 깨짐)되는 것을 막는다.
   return useSWRInfinite(
     (index, previous) => {
+      if (waitForAuth) return null;
       if (previous && !previous.hasNext) return null;
       return ["challenges-page", user?.uid ?? null, lang ?? null, phase, index] as const;
     },
@@ -77,6 +81,8 @@ export function useChallengeListInfinite(
       revalidateFirstPage: true,
       revalidateOnFocus: true,
       keepPreviousData: true,
+      // 인증 복원 등으로 키가 바뀌어도 불러온 페이지 수를 유지해 스크롤 복원이 깨지지 않게 한다.
+      persistSize: true,
       dedupingInterval: 0,
       ...SWR_ERROR_RETRY,
     },
@@ -101,6 +107,7 @@ export function useMyChallengeListInfinite(user: User | null, phase: string) {
       revalidateFirstPage: true,
       revalidateOnFocus: true,
       keepPreviousData: true,
+      persistSize: true,
       dedupingInterval: 0,
       ...SWR_ERROR_RETRY,
     },

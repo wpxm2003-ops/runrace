@@ -21,8 +21,12 @@ const STORE_KEY = "page:challenges";
 const MAX_RESTORE_SIZE = 5;
 
 export default function ChallengesPage() {
-  const { user } = useAuthUser();
+  const { user, loading: authLoading, hint: authHint } = useAuthUser();
   const { t, locale } = useLocale();
+
+  // 직전 로그인 기록(hint)이 있으면 인증 복원까지 기다렸다가 user.uid가 채워진 키로 한 번에 fetch한다.
+  // 익명→로그인 재요청으로 "참여중" 라벨이 깜빡이거나 페이지 size가 리셋되어 스크롤 복원이 깨지는 것을 막는다.
+  const waitForAuth = authLoading && authHint;
 
   // ── 필터 상태: 이전 방문 값 복원 ─────────────────────────────────────
   const [showAllLangs, setShowAllLangs] = useState(() => {
@@ -35,7 +39,7 @@ export default function ChallengesPage() {
 
   const lang = showAllLangs ? undefined : locale;
 
-  const result = useChallengeListInfinite(user, lang, phaseFilter);
+  const result = useChallengeListInfinite(user, lang, phaseFilter, waitForAuth);
   const { size, setSize, error, data: pages } = result;
   const itemCount = pages ? pages.flatMap((p) => p.items).length : 0;
 
@@ -120,6 +124,7 @@ export default function ChallengesPage() {
           emptyLabel={t.races_filter_empty}
           skeletonCount={3}
           showJoinedBadge
+          forceLoading={waitForAuth}
         />
       </Card>
     </PageLayout>
