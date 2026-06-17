@@ -117,11 +117,6 @@ export type MeResponse = {
   langCd: string;
 };
 
-// ── 거리 동기화(fitness) ─────────────────────────────────────────
-export type DailyDistanceResult = { prevKm: string; nowKm: string; deltaKm: string };
-
-export type DailyDistanceBody = { date: string; source: string; distanceKm: number };
-
 // ── 운동(workout) ────────────────────────────────────────────────
 export type WorkoutType = "GPS" | "INDOOR";
 

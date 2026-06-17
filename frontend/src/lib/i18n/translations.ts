@@ -155,11 +155,6 @@ export const translations = {
     edit_title: "레이스 수정",
     edit_btn: "저장",
     edit_btn_busy: "수정 중...",
-    fitness_title: "오늘 거리 동기화",
-    fitness_desc: 'MVP에서는 헬스 SDK 연동 전이라, "오늘 합산 거리"를 직접 입력해 업로드하는 형태로 연결해둡니다.',
-    fitness_date: "날짜",
-    fitness_source: "소스",
-    fitness_upload: "업로드",
 
     // ── 내 정보 ───────────────────────────
     my_title: "내정보",
@@ -519,11 +514,6 @@ export const translations = {
     edit_title: "Edit Race",
     edit_btn: "Save changes",
     edit_btn_busy: "Saving...",
-    fitness_title: "Sync Distance",
-    fitness_desc: "Before health SDK integration, enter and upload your total daily distance manually.",
-    fitness_date: "Date",
-    fitness_source: "Source",
-    fitness_upload: "Upload",
 
     // ── 내 정보 ───────────────────────────
     my_title: "Profile",
@@ -883,11 +873,6 @@ export const translations = {
     edit_title: "Editar carrera",
     edit_btn: "Guardar",
     edit_btn_busy: "Guardando...",
-    fitness_title: "Sincronizar distancia",
-    fitness_desc: "Antes de integrar el SDK de salud, introduce y sube tu distancia total del día manualmente.",
-    fitness_date: "Fecha",
-    fitness_source: "Fuente",
-    fitness_upload: "Subir",
 
     // ── Perfil ────────────────────────────
     my_title: "Perfil",
@@ -1247,11 +1232,6 @@ export const translations = {
     edit_title: "レース編集",
     edit_btn: "保存",
     edit_btn_busy: "保存中...",
-    fitness_title: "距離を同期",
-    fitness_desc: "MVPではヘルスSDK連携前のため、「今日の合計距離」を手入力でアップロードする形にしています。",
-    fitness_date: "日付",
-    fitness_source: "ソース",
-    fitness_upload: "アップロード",
 
     // ── マイページ ────────────────────────
     my_title: "マイページ",
@@ -1611,11 +1591,6 @@ export const translations = {
     edit_title: "编辑比赛",
     edit_btn: "保存",
     edit_btn_busy: "保存中...",
-    fitness_title: "同步距离",
-    fitness_desc: "MVP阶段尚未接入健康SDK，因此以手动输入“今日总距离”并上传的方式连接。",
-    fitness_date: "日期",
-    fitness_source: "来源",
-    fitness_upload: "上传",
 
     // ── 我的 ──────────────────────────────
     my_title: "我的",
