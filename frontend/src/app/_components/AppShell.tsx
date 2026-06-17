@@ -15,9 +15,12 @@ import { WorkoutSessionProvider } from "@/lib/WorkoutSessionProvider";
 import { FcmBootstrap } from "./FcmBootstrap";
 import { LanguageSync } from "./LanguageSync";
 import { NavProgressProvider } from "./NavProgressProvider";
+import { SWRConfig } from "swr";
+import { createSwrCacheProvider } from "@/lib/swrCacheProvider";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
+    <SWRConfig value={{ provider: createSwrCacheProvider }}>
     <AuthProvider>
     <LocaleProvider>
     <UnitProvider>
@@ -43,5 +46,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </UnitProvider>
     </LocaleProvider>
     </AuthProvider>
+    </SWRConfig>
   );
 }
