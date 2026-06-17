@@ -62,7 +62,7 @@ function ApprovalSection({
 }
 
 export default function ChallengeDetailContent() {
-  const { user, loading: authLoading } = useAuthUser();
+  const { user, loading: authLoading, hint: authHint } = useAuthUser();
   const confirm = useConfirm();
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -76,10 +76,11 @@ export default function ChallengeDetailContent() {
 
   const id = useRouteId(parseChallengeIdFromPath);
 
-  // auth 복원을 기다리지 않고 즉시 fetch — 익명 응답으로 제목·리더보드·날짜를 바로 표시한다.
-  // 참여/수정 버튼·내 행 하이라이트처럼 인증이 필요한 요소만 actionsReady 이후에 나타낸다.
-  // (인증 완료 후 user.uid가 키에 추가돼 SWR이 재검증하지만 keepPreviousData로 화면이 유지됨)
-  const actionsReady = !authLoading;
+  // fetch는 즉시 시작해 auth와 병렬로 네트워크 응답을 받아 둔다.
+  // 단, 직전 로그인 기록(hint)이 있으면 인증 완료 전까지 화면 표시를 보류한다.
+  // → 익명 응답(버튼 없음)과 인증 응답(버튼 있음)이 순서대로 렌더되는 깜빡임 방지.
+  // SPA 진입(목록 탭)에선 이미 auth가 끝나 있으므로 waitForAuth=false → 즉시 표시.
+  const waitForAuth = authLoading && authHint;
 
   const {
     data: detail,
@@ -213,7 +214,7 @@ export default function ChallengeDetailContent() {
   const pageActions = useMemo(
     () => (
       <>
-        {actionsReady && detail?.showManage ? (
+        {detail?.showManage ? (
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen((v) => !v)}
               className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg leading-none" aria-label={t.detail_menu_label}>
@@ -230,7 +231,7 @@ export default function ChallengeDetailContent() {
         <Link className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</Link>
       </>
     ),
-    [actionsReady, detail?.showManage, menuOpen, id, t, onEditClick, onDelete],
+    [detail?.showManage, menuOpen, id, t, onEditClick, onDelete],
   );
 
   return (
@@ -240,7 +241,7 @@ export default function ChallengeDetailContent() {
     >
       {error ? <Alert className="mb-4 whitespace-pre-line">{error}</Alert> : null}
 
-      {isLoading && !detail ? (
+      {isLoading || waitForAuth || !detail ? (
         preview ? (
           // 목록에서 넘어온 미리보기로 헤더를 즉시 표시 + 순위표는 스켈레톤
           <>
@@ -274,7 +275,7 @@ export default function ChallengeDetailContent() {
             <Skeleton className="mt-2 h-3 w-40" />
           </Card>
         )
-      ) : !detail ? null : (
+      ) : (
         <>
           <Card>
             <div className="flex items-center justify-between">
@@ -309,12 +310,10 @@ export default function ChallengeDetailContent() {
             goalKm={detail.goalKm}
             hasStarted={detail.hasStarted}
             hasEnded={detail.hasEnded}
-            myUserId={actionsReady ? detail.currentUserId : null}
+            myUserId={detail.currentUserId}
             headToHead={headToHead}
             onNudge={
-              actionsReady && detail.isMember && detail.hasStarted && !detail.hasEnded
-                ? onNudge
-                : undefined
+              detail.isMember && detail.hasStarted && !detail.hasEnded ? onNudge : undefined
             }
             nudgingId={nudgingId}
             nudgedIds={nudgedIds}
@@ -331,7 +330,7 @@ export default function ChallengeDetailContent() {
           ) : null}
 
           {/* 실내러닝 승인 대기건 */}
-          {actionsReady && detail.isMember && detail.hasStarted && pendingApprovals.length > 0 ? (
+          {detail.isMember && detail.hasStarted && pendingApprovals.length > 0 ? (
             <ApprovalSection
               heading={t.pending_approvals_heading}
               notice={`${t.pending_approvals_notice} ${t.pending_approvals_reject_notice}`}
@@ -349,7 +348,7 @@ export default function ChallengeDetailContent() {
           ) : null}
 
           {/* 거부된 실내러닝 */}
-          {actionsReady && detail.isMember && detail.hasStarted && rejectedApprovals.length > 0 ? (
+          {detail.isMember && detail.hasStarted && rejectedApprovals.length > 0 ? (
             <ApprovalSection
               heading={t.rejected_approvals_heading}
               notice={t.rejected_approval_notice}
@@ -364,7 +363,7 @@ export default function ChallengeDetailContent() {
             </ApprovalSection>
           ) : null}
 
-          {actionsReady && (detail.canJoin || detail.canLeave) ? (
+          {detail.canJoin || detail.canLeave ? (
             <div className="mt-4">
               {detail.canJoin ? (
                 <Button

@@ -23,7 +23,7 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
   return (
     <a
       href={challengeDetailHref(c.id)}
-      onClick={() => setChallengePreview(c, user)}
+      onPointerDown={() => setChallengePreview(c, user)}
       className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
     >
       <div className="flex items-center justify-between gap-2">
