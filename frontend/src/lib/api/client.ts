@@ -1,5 +1,6 @@
 import { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
+import { getAccessToken, storeAccessToken, clearAccessToken } from "@/lib/accessToken";
 import { ApiError } from "./apiError";
 
 /** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: 빈 문자열 → Next.js rewrite 프록시(/api/*) 경유 */
@@ -47,13 +48,41 @@ export async function publicPost<T>(path: string, body: unknown): Promise<T> {
   return text.trim() ? (JSON.parse(text) as T) : (undefined as T);
 }
 
-/** forceRefresh=true일 때만 securetoken.googleapis.com 갱신 요청 */
+/**
+ * 저장된 자체 JWT를 우선 사용한다. 없거나 forceRefresh이면 Firebase 토큰으로 폴백.
+ * forceRefresh=true는 JWT 만료 후 재발급 경로에서만 사용한다.
+ */
 async function authHeaders(user: User, forceRefresh = false) {
+  if (!forceRefresh) {
+    const stored = getAccessToken();
+    if (stored) {
+      return { "Content-Type": "application/json", Authorization: `Bearer ${stored}` };
+    }
+  }
   const idToken = await user.getIdToken(forceRefresh);
-  return {
+  return { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` };
+}
+
+/** JWT 만료(401) 시 Firebase 토큰으로 새 JWT를 발급받아 저장한다. */
+async function refreshAccessToken(user: User): Promise<{ "Content-Type": string; Authorization: string }> {
+  clearAccessToken();
+  const firebaseToken = await user.getIdToken(true);
+  const firebaseHeaders = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${idToken}`,
+    Authorization: `Bearer ${firebaseToken}`,
   };
+  try {
+    const res = await fetch(apiUrl("/api/auth/login"), {
+      method: "POST",
+      headers: firebaseHeaders,
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json() as { accessToken?: string };
+      if (data.accessToken) storeAccessToken(data.accessToken);
+    }
+  } catch {}
+  return await authHeaders(user, false);
 }
 
 /** 응답이 실패면 본문을 읽어 ApiError를 던진다(401 등 특수 처리가 없는 단순 경로용). */
@@ -121,7 +150,8 @@ export async function apiFetch<T>(
   let res = await fetch(url, { method, headers, body, cache: "no-store" });
 
   if (res.status === 401) {
-    headers = await authHeaders(opts.user, true);
+    // JWT 만료 → Firebase로 새 JWT 발급 후 재시도
+    headers = await refreshAccessToken(opts.user);
     res = await fetch(url, { method, headers, body, cache: "no-store" });
   }
 

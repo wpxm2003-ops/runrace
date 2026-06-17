@@ -1,7 +1,9 @@
 package com.runrace.backend.auth.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.auth.JwtService;
 import com.runrace.backend.auth.dto.LanguageUpdateRequest;
+import com.runrace.backend.auth.dto.LoginResponse;
 import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
 import com.runrace.backend.auth.service.AccountService;
@@ -22,10 +24,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final AccountService accountService;
+  private final JwtService jwtService;
 
   @PostMapping("/auth/login")
-  public ResponseEntity<MeResponse> login(AuthPrincipal principal) {
-    return me(principal);
+  public ResponseEntity<LoginResponse> login(AuthPrincipal principal) {
+    AppUser user = accountService.getUser(principal.userId());
+    String accessToken = jwtService.issue(principal);
+    return ResponseEntity.ok(LoginResponse.from(user, accessToken));
   }
 
   @GetMapping("/me")

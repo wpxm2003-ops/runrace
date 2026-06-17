@@ -38,6 +38,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       Pattern.compile("^/api/share/challenges/[0-9]+$");
 
   private final FirebaseUserService firebaseUserService;
+  private final JwtService jwtService;
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -122,8 +123,15 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             });
   }
 
-  private void authenticate(String idToken, String langHint) throws FirebaseAuthException {
-    FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(idToken);
+  private void authenticate(String token, String langHint) throws FirebaseAuthException {
+    // 자체 JWT이면 로컬 HMAC 검증만으로 즉시 인증 (Firebase 네트워크 호출 없음)
+    var jwtPrincipal = jwtService.verify(token);
+    if (jwtPrincipal.isPresent()) {
+      AuthContext.set(jwtPrincipal.get());
+      return;
+    }
+    // Firebase ID 토큰 폴백 (최초 로그인, 토큰 만료 후 재발급 시)
+    FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(token);
     AuthContext.set(firebaseUserService.upsertAndCreatePrincipal(decoded, langHint));
   }
 

@@ -139,6 +139,34 @@ curl -i https://runrace.co.kr/actuator/health
 
 ---
 
+## EC2 환경변수 관리
+
+백엔드 서비스 파일 위치: `/etc/systemd/system/runrace.service`
+
+### 환경변수 추가 방법
+
+```bash
+sudo nano /etc/systemd/system/runrace.service
+```
+
+`[Service]` 섹션에 아래 형식으로 추가:
+
+```ini
+Environment=변수명=값
+```
+
+nano 저장 후 닫기: `Ctrl+X` → `Y` → `Enter`
+nano 그냥 닫기: `Ctrl+X` → `N`
+
+변경사항 반영:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart runrace
+```
+
+---
+
 ## 트러블슈팅
 
 | 증상 | 원인 | 해결 |

@@ -2,6 +2,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { nativeNavigate } from "./nativeNav";
 import { AUTH_HINT_KEY } from "./AuthProvider";
+import { clearAccessToken } from "./accessToken";
 
 function loginRedirectUrl(returnTo?: string) {
   const ret =
@@ -37,6 +38,7 @@ export function handleAuthFailure(err: unknown, returnTo?: string): boolean {
 export async function logout() {
   if (typeof window !== "undefined") {
     localStorage.removeItem(AUTH_HINT_KEY);
+    clearAccessToken();
   }
   await signOut(auth);
   if (typeof window !== "undefined") {
