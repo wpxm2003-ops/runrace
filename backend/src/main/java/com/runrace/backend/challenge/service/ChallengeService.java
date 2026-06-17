@@ -120,7 +120,7 @@ public class ChallengeService {
   }
 
   /** 내기 텍스트 정리 — 선택값이라 비어있으면 null, 있으면 길이·금칙어 검증 후 트림본 반환. */
-  private static final int STAKE_MAX_CHARS = 100;
+  private static final int STAKE_MAX_CHARS = 30;
 
   private String cleanStake(String raw) {
     if (raw == null || raw.isBlank()) return null;

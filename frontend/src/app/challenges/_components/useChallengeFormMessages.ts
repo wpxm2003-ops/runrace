@@ -33,6 +33,7 @@ export function useChallengeFormMessages(minMembers = 1) {
     () => ({
       noSpecial: t.create_hint_no_special,
       titleMax: t.create_hint_title_max,
+      stakeMax: t.create_hint_stake_max,
       goalMax: t.create_hint_goal_max,
       membersMax: t.create_hint_members_max,
     }),
@@ -53,6 +54,7 @@ export function useChallengeFormMessages(minMembers = 1) {
       startTooSoon: t.create_err_start_too_soon,
       endAfterStart: t.create_err_end_after_start,
       durationTooLong: t.create_err_duration_too_long,
+      stakeSpecial: t.create_err_stake_special,
       stakeTooLong: t.create_err_stake_too_long,
     }),
     [t, minMembers, unit],

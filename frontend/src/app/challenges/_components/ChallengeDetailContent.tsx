@@ -17,7 +17,7 @@ import {
   useHeadToHead,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
-import Link from "next/link";
+import { NavListLink } from "@/app/_components/NavListLink";
 import { track } from "@/lib/analytics";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
@@ -228,7 +228,7 @@ export default function ChallengeDetailContent() {
             ) : null}
           </div>
         ) : null}
-        <Link className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</Link>
+        <NavListLink href="/challenges" label={t.detail_list_link} />
       </>
     ),
     [detail?.showManage, menuOpen, id, t, onEditClick, onDelete],

@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { NavListLink } from "@/app/_components/NavListLink";
 import { Alert } from "@/app/_components/ui/Alert";
 import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormFields";
 import {
@@ -84,11 +84,7 @@ export default function CreateChallengePage() {
   return (
     <PageLayout
       title={t.create_title}
-      actions={
-        <Link className="text-sm text-zinc-600 hover:underline" href="/challenges">
-          {t.create_list_link}
-        </Link>
-      }
+      actions={<NavListLink href="/challenges" label={t.create_list_link} />}
     >
       {activeCount && !canCreate ? (
         <Alert tone="warning" className="mb-4">

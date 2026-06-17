@@ -23,6 +23,7 @@ import { useCallback, useMemo, useState } from "react";
 export type ChallengeFormHints = {
   noSpecial: string;
   titleMax: string;
+  stakeMax: string;
   goalMax: (max: number) => string;
   membersMax: (max: number) => string;
 };
@@ -142,11 +143,18 @@ export function useChallengeForm({
     setFormSuccess(null);
   }, []);
 
-  const onStakeChange = useCallback((raw: string) => {
-    setStake(sanitizeStake(raw));
-    setFormError(null);
-    setFormSuccess(null);
-  }, []);
+  const onStakeChange = useCallback(
+    (raw: string) => {
+      const { value, removedSpecial, truncated } = sanitizeStake(raw);
+      setStake(value);
+      if (removedSpecial) setFormHint(hints.noSpecial);
+      else if (truncated) setFormHint(hints.stakeMax);
+      else setFormHint(null);
+      setFormError(null);
+      setFormSuccess(null);
+    },
+    [hints.noSpecial, hints.stakeMax],
+  );
 
   const validate = useCallback((): string | null => {
     return validateChallengeForm(values, validationMsgs, { ...validateOptions, unit });

@@ -3,6 +3,7 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
+import { STAKE_MAX_CHARS } from "@/lib/challengeForm";
 import { useEffect, useState } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 
@@ -159,6 +160,7 @@ export function ChallengeFormFields({
             value={values.stake}
             onChange={(e) => handlers.onStakeChange(e.target.value)}
             placeholder={labels.stakePlaceholder}
+            maxLength={STAKE_MAX_CHARS}
           />
         ) : null}
 

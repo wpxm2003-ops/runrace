@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createIndoorRun, uploadImage } from "@/lib/api";
@@ -132,14 +131,7 @@ export default function IndoorRunPage() {
   }
 
   return (
-    <PageLayout
-      title={t.indoor_title}
-      actions={
-        <Link className="text-sm text-zinc-600 hover:underline" href="/">
-          {t.nav_home}
-        </Link>
-      }
-    >
+    <PageLayout title={t.indoor_title}>
       {submitError ? <Alert className="mb-4">{submitError}</Alert> : null}
 
       <form onSubmit={onSubmit} className="space-y-5" noValidate>

@@ -66,7 +66,7 @@ public class Challenge {
   private String langCd = "ko";
 
   /** 내기(페널티/보상) 텍스트 — 선택값(null 가능). 강제·정산 없이 화면 표시용. */
-  @Column(name = "stake", length = 100)
+  @Column(name = "stake", length = 30)
   private String stake;
 
   // ── 도메인 메서드 ──────────────────────────────────────────────

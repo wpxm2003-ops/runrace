@@ -106,11 +106,27 @@ export function sanitizeDigits(value: string): string {
 }
 
 /** 내기 텍스트 최대 길이(문자) — 백엔드 STAKE_MAX_CHARS와 일치. */
-export const STAKE_MAX_CHARS = 100;
+export const STAKE_MAX_CHARS = 30;
 
 /** 내기 텍스트: 금지 문자 제거 + 최대 길이 컷(선택값이라 빈 값 허용). */
-export function sanitizeStake(value: string): string {
-  return stripForbiddenText(value).slice(0, STAKE_MAX_CHARS);
+export type SanitizeStakeResult = {
+  value: string;
+  removedSpecial: boolean;
+  truncated: boolean;
+};
+
+export function sanitizeStake(value: string): SanitizeStakeResult {
+  const withoutSpecial = stripForbiddenText(value);
+  const removedSpecial = withoutSpecial.length !== value.length;
+  const valueOut = withoutSpecial.slice(0, STAKE_MAX_CHARS);
+  const truncated = valueOut.length < withoutSpecial.length;
+  return { value: valueOut, removedSpecial, truncated };
+}
+
+export function isStakeAllowed(stake: string): boolean {
+  const s = stake.trim();
+  if (!s) return true;
+  return !containsForbiddenText(s);
 }
 
 export type ClampNumericResult = {
@@ -159,6 +175,7 @@ export type ChallengeFormValidationMessages = {
   startTooSoon: string;
   endAfterStart: string;
   durationTooLong: string;
+  stakeSpecial: string;
   stakeTooLong: string;
 };
 
@@ -218,8 +235,10 @@ export function validateChallengeForm(
     return msgs.durationTooLong;
   }
 
-  if (form.stake.trim().length > STAKE_MAX_CHARS) {
-    return msgs.stakeTooLong;
+  if (form.stake.trim()) {
+    const stake = form.stake.trim();
+    if (!isStakeAllowed(stake)) return msgs.stakeSpecial;
+    if (stake.length > STAKE_MAX_CHARS) return msgs.stakeTooLong;
   }
 
   return null;
