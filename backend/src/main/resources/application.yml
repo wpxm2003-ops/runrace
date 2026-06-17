@@ -39,6 +39,16 @@ logging:
   pattern:
     level: "%5p [req:%X{requestId:-}]"
 
+# 운영 헬스체크 — /actuator/health 만 공개(상세는 숨겨 정보 노출 방지). DB 상태는 자동 포함.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 app:
   aws:
     access-key: ${AWS_ACCESS_KEY:}
