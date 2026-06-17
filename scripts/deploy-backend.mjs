@@ -1,14 +1,23 @@
-// EC2에서 git pull → mvn package → systemd 재시작까지 원격으로 한 번에 실행하고
-// 단계별/총 소요시간을 출력한다. (frontend의 build:deploy와 같은 패턴, 단 빌드는 EC2에서 수행)
+// 로컬 테스트 게이트 → EC2에서 git pull → mvn package → systemd 재시작까지 한 번에 실행하고
+// 단계별/총 소요시간을 출력한다. (EC2 빌드는 -DskipTests 유지: 테스트는 로컬에서만 돌려 EC2 시간을 늘리지 않는다)
 import { execSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PEM = "C:\\Users\\wpxm2\\Downloads\\runrace_ec2_key_pair.pem";
 const HOST = "ec2-user@15.164.250.88";
 const REMOTE_DIR = "/home/ec2-user/runrace";
 
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const BACKEND_DIR = path.join(ROOT, "backend");
+const MVNW = path.join(BACKEND_DIR, "mvnw.cmd");
+
 const ssh = (cmd) => `ssh -i "${PEM}" ${HOST} "${cmd}"`;
 
 const steps = [
+  // 깨진 코드가 EC2까지 가지 않도록 배포 전 로컬에서 테스트(실패 시 배포 중단).
+  // EC2가 아닌 로컬에서 돌려 원격 빌드 시간은 그대로 둔다. -o(오프라인)로 빠르게.
+  ["테스트(로컬)", `"${MVNW}" -o test`, BACKEND_DIR],
   ["코드 받기", ssh(`cd ${REMOTE_DIR} && git pull origin main`)],
   [
     "빌드",
@@ -26,10 +35,10 @@ function fmt(ms) {
 
 const startedAt = Date.now();
 
-for (const [label, cmd] of steps) {
+for (const [label, cmd, cwd] of steps) {
   const stepStart = Date.now();
   console.log(`\n▶ ${label} ...`);
-  execSync(cmd, { stdio: "inherit" });
+  execSync(cmd, { stdio: "inherit", cwd });
   console.log(`✔ ${label} (${fmt(Date.now() - stepStart)})`);
 }
 

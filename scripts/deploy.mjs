@@ -11,6 +11,8 @@ const REMOTE_DEPLOY =
   "sudo systemctl reload nginx";
 
 const steps = [
+  // 깨진 코드가 배포되지 않도록 빌드 전 로컬 테스트 게이트(실패 시 배포 중단)
+  ["테스트", "npm test"],
   ["빌드", "npm run build"],
   ["압축", "tar -czf out.tar.gz -C out ."],
   ["업로드", `scp -i "${PEM}" out.tar.gz ${HOST}:/tmp/`],
