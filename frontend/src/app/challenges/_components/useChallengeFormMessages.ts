@@ -23,6 +23,8 @@ export function useChallengeFormMessages(minMembers = 1) {
       start: t.create_field_start,
       end: t.create_field_end,
       required: t.create_required,
+      stakeToggle: t.create_stake_toggle,
+      stakePlaceholder: t.create_stake_placeholder,
     }),
     [t, unit],
   );
@@ -51,6 +53,7 @@ export function useChallengeFormMessages(minMembers = 1) {
       startTooSoon: t.create_err_start_too_soon,
       endAfterStart: t.create_err_end_after_start,
       durationTooLong: t.create_err_duration_too_long,
+      stakeTooLong: t.create_err_stake_too_long,
     }),
     [t, minMembers, unit],
   );

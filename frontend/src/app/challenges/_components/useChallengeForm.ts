@@ -6,6 +6,8 @@ import {
   clampMaxMembers,
   defaultEndAtAfterStart,
   minStartAtLocal,
+  plusDaysLocal,
+  sanitizeStake,
   sanitizeTitle,
   toChallengeFormPayload,
   validateChallengeForm,
@@ -34,6 +36,8 @@ export type ChallengeFormLabels = {
   start: string;
   end: string;
   required: string;
+  stakeToggle: string;
+  stakePlaceholder: string;
 };
 
 type Options = {
@@ -56,13 +60,14 @@ export function useChallengeForm({
   const [maxMembers, setMaxMembers] = useState(initial?.maxMembers ?? "");
   const [startAt, setStartAt] = useState(initial?.startAt ?? "");
   const [endAt, setEndAt] = useState(initial?.endAt ?? "");
+  const [stake, setStake] = useState(initial?.stake ?? "");
   const [formError, setFormError] = useState<string | null>(null);
   const [formHint, setFormHint] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   const values: ChallengeFormValues = useMemo(
-    () => ({ title, goalKm, maxMembers, startAt, endAt }),
-    [title, goalKm, maxMembers, startAt, endAt],
+    () => ({ title, goalKm, maxMembers, startAt, endAt, stake }),
+    [title, goalKm, maxMembers, startAt, endAt, stake],
   );
 
   const clearFeedback = useCallback(() => {
@@ -77,6 +82,7 @@ export function useChallengeForm({
     setMaxMembers(next.maxMembers ?? "");
     setStartAt(next.startAt ?? "");
     setEndAt(next.endAt ?? "");
+    setStake(next.stake ?? "");
     clearFeedback();
   }, [clearFeedback]);
 
@@ -136,6 +142,12 @@ export function useChallengeForm({
     setFormSuccess(null);
   }, []);
 
+  const onStakeChange = useCallback((raw: string) => {
+    setStake(sanitizeStake(raw));
+    setFormError(null);
+    setFormSuccess(null);
+  }, []);
+
   const validate = useCallback((): string | null => {
     return validateChallengeForm(values, validationMsgs, { ...validateOptions, unit });
   }, [values, validationMsgs, validateOptions, unit]);
@@ -158,18 +170,21 @@ export function useChallengeForm({
     onMaxMembersChange,
     onStartAtChange,
     onEndAtChange,
+    onStakeChange,
     validate,
     getPayload,
   };
 }
 
 export function defaultCreateFormInitial(): ChallengeFormValues {
-  const startAt = minStartAtLocal();
+  // 참가 창 확보 — 시작을 내일로 둬서 '혼자 즉시 시작' 트랩을 막는다.
+  const startAt = plusDaysLocal(minStartAtLocal(), 1);
   return {
     title: "",
     goalKm: "",
     maxMembers: "10",
     startAt,
     endAt: defaultEndAtAfterStart(startAt),
+    stake: "",
   };
 }

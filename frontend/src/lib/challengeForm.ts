@@ -51,6 +51,8 @@ export type ChallengeFormValues = {
   maxMembers: string;
   startAt: string;
   endAt: string;
+  /** 내기(페널티/보상) 텍스트 — 선택값(빈 문자열 가능). */
+  stake: string;
 };
 
 /** 레이스 제목 최대 길이 (UTF-8 바이트) */
@@ -103,6 +105,14 @@ export function sanitizeDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+/** 내기 텍스트 최대 길이(문자) — 백엔드 STAKE_MAX_CHARS와 일치. */
+export const STAKE_MAX_CHARS = 100;
+
+/** 내기 텍스트: 금지 문자 제거 + 최대 길이 컷(선택값이라 빈 값 허용). */
+export function sanitizeStake(value: string): string {
+  return stripForbiddenText(value).slice(0, STAKE_MAX_CHARS);
+}
+
 export type ClampNumericResult = {
   value: string;
   clamped: boolean;
@@ -149,6 +159,7 @@ export type ChallengeFormValidationMessages = {
   startTooSoon: string;
   endAfterStart: string;
   durationTooLong: string;
+  stakeTooLong: string;
 };
 
 /** 레이스 최대 기간(일) — 백엔드 MAX_RACE_DURATION_DAYS와 일치. */
@@ -207,6 +218,10 @@ export function validateChallengeForm(
     return msgs.durationTooLong;
   }
 
+  if (form.stake.trim().length > STAKE_MAX_CHARS) {
+    return msgs.stakeTooLong;
+  }
+
   return null;
 }
 
@@ -216,6 +231,7 @@ export type ChallengeFormPayload = {
   maxMembers: number;
   startAt: string;
   endAt: string;
+  stake: string;
 };
 
 export function toChallengeFormPayload(
@@ -228,5 +244,6 @@ export function toChallengeFormPayload(
     maxMembers: parseInt(form.maxMembers, 10),
     startAt: localDatetimeToIso(form.startAt),
     endAt: localDatetimeToIso(form.endAt),
+    stake: form.stake.trim(),
   };
 }

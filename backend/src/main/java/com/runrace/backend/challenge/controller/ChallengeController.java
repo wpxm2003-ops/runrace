@@ -73,7 +73,8 @@ public class ChallengeController {
             body.maxMembers(),
             OffsetDateTime.parse(body.startAt()),
             OffsetDateTime.parse(body.endAt()),
-            body.langCd());
+            body.langCd(),
+            body.stake());
     return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 
@@ -88,7 +89,8 @@ public class ChallengeController {
             body.goalKm(),
             body.maxMembers(),
             OffsetDateTime.parse(body.startAt()),
-            OffsetDateTime.parse(body.endAt()));
+            OffsetDateTime.parse(body.endAt()),
+            body.stake());
     return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 
@@ -254,6 +256,7 @@ public class ChallengeController {
         challenge.getMaxMembers(),
         IsoTime.format(challenge.getStartAt()),
         IsoTime.formatOrNull(challenge.getEndAt()),
+        challenge.getStake(),
         challenge.getCreator().getId(),
         detail.currentUserId(),
         detail.isMember(),

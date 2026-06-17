@@ -11,6 +11,7 @@ public record ChallengeDetailResponse(
     int maxMembers,
     String startAt,
     String endAt,
+    String stake,
     UUID creatorUserId,
     UUID currentUserId,
     boolean isMember,

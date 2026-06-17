@@ -65,6 +65,10 @@ public class Challenge {
   @Column(name = "lang_cd", nullable = false, length = 5)
   private String langCd = "ko";
 
+  /** 내기(페널티/보상) 텍스트 — 선택값(null 가능). 강제·정산 없이 화면 표시용. */
+  @Column(name = "stake", length = 100)
+  private String stake;
+
   // ── 도메인 메서드 ──────────────────────────────────────────────
 
   /** 주어진 사용자가 이 레이스의 방장(생성자)인지 여부. */
@@ -72,14 +76,15 @@ public class Challenge {
     return userId != null && creator.getId().equals(userId);
   }
 
-  /** 방 속성 일괄 수정 (제목·목표·정원·기간). 수정 API 경로에서만 사용한다. */
+  /** 방 속성 일괄 수정 (제목·목표·정원·기간·내기). 수정 API 경로에서만 사용한다. */
   public void updateRoom(String title, BigDecimal goalKm, int maxMembers,
-                          OffsetDateTime startAt, OffsetDateTime endAt) {
+                          OffsetDateTime startAt, OffsetDateTime endAt, String stake) {
     this.title = title;
     this.goalKm = goalKm;
     this.maxMembers = maxMembers;
     this.startAt = startAt;
     this.endAt = endAt;
+    this.stake = stake;
   }
 
   /**

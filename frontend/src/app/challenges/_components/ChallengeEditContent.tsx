@@ -56,6 +56,7 @@ export default function ChallengeEditContent() {
       maxMembers: String(detail.maxMembers),
       startAt: toDateTimeInputValue(detail.startAt),
       endAt: detail.endAt ? toDateTimeInputValue(detail.endAt) : "",
+      stake: detail.stake ?? "",
     });
   }, [detail, id, unit, form]);
 
@@ -101,6 +102,7 @@ export default function ChallengeEditContent() {
           onMaxMembersChange: form.onMaxMembersChange,
           onStartAtChange: form.onStartAtChange,
           onEndAtChange: form.onEndAtChange,
+          onStakeChange: form.onStakeChange,
         }}
         formError={error}
         formHint={form.formHint}

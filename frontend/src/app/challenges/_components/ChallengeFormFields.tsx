@@ -3,6 +3,7 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
+import { useEffect, useState } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 
 type FormHandlers = {
@@ -11,6 +12,7 @@ type FormHandlers = {
   onMaxMembersChange: (raw: string) => void;
   onStartAtChange: (v: string) => void;
   onEndAtChange: (v: string) => void;
+  onStakeChange: (raw: string) => void;
 };
 
 type Props = {
@@ -21,6 +23,7 @@ type Props = {
     maxMembers: string;
     startAt: string;
     endAt: string;
+    stake: string;
   };
   handlers: FormHandlers;
   formError?: string | null;
@@ -50,6 +53,17 @@ export function ChallengeFormFields({
   onSubmit,
 }: Props) {
   const req = <span className="text-red-500">{labels.required}</span>;
+
+  // 내기(페널티/보상) 입력 노출 토글. 기존 값이 있으면(수정 진입 등) 자동으로 펼친다.
+  const [showStake, setShowStake] = useState(false);
+  useEffect(() => {
+    if (values.stake) setShowStake(true);
+  }, [values.stake]);
+
+  function toggleStake(checked: boolean) {
+    setShowStake(checked);
+    if (!checked) handlers.onStakeChange(""); // 접으면 값도 비운다
+  }
 
   return (
     <>
@@ -129,6 +143,24 @@ export function ChallengeFormFields({
             />
           </div>
         </div>
+
+        <label className="mt-5 flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-zinc-300"
+            checked={showStake}
+            onChange={(e) => toggleStake(e.target.checked)}
+          />
+          {labels.stakeToggle}
+        </label>
+        {showStake ? (
+          <input
+            className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
+            value={values.stake}
+            onChange={(e) => handlers.onStakeChange(e.target.value)}
+            placeholder={labels.stakePlaceholder}
+          />
+        ) : null}
 
         {submitNotice ? (
           <p className="mt-6 text-xs leading-relaxed text-black">{submitNotice}</p>

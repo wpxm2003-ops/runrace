@@ -65,7 +65,8 @@ public class ChallengeService {
       int maxMembers,
       OffsetDateTime startAt,
       OffsetDateTime endAt,
-      String langCd) {
+      String langCd,
+      String stake) {
     validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
 
     AppUser creator = appUserRepository.getRequired(principal.userId());
@@ -84,6 +85,7 @@ public class ChallengeService {
         .maxMembers(maxMembers)
         .startAt(startAt)
         .endAt(endAt)
+        .stake(cleanStake(stake))
         .build();
     Challenge saved = challengeRepository.save(challenge);
 
@@ -100,7 +102,8 @@ public class ChallengeService {
       BigDecimal goalKm,
       int maxMembers,
       OffsetDateTime startAt,
-      OffsetDateTime endAt) {
+      OffsetDateTime endAt,
+      String stake) {
     Challenge challenge = requireChallenge(id);
     ensureOwner(principal, challenge);
     ensureNotStarted(challenge);
@@ -110,8 +113,18 @@ public class ChallengeService {
       throw ApiException.badRequest("max_members_too_small");
     }
 
-    challenge.updateRoom(title.trim(), goalKm.setScale(3, RoundingMode.HALF_UP), maxMembers, startAt, endAt);
+    challenge.updateRoom(
+        title.trim(), goalKm.setScale(3, RoundingMode.HALF_UP), maxMembers, startAt, endAt,
+        cleanStake(stake));
     return challengeRepository.save(challenge);
+  }
+
+  /** 내기 텍스트 정리 — 선택값이라 비어있으면 null, 있으면 길이·금칙어 검증 후 트림본 반환. */
+  private static final int STAKE_MAX_CHARS = 100;
+
+  private String cleanStake(String raw) {
+    if (raw == null || raw.isBlank()) return null;
+    return TextValidation.requireCleanText(raw, STAKE_MAX_CHARS, false, "stake");
   }
 
   @Transactional

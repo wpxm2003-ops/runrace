@@ -68,6 +68,8 @@ export type ChallengeDetail = {
   maxMembers: number;
   startAt: string;
   endAt: string | null;
+  /** 내기(페널티/보상) 텍스트 — 없으면 null. */
+  stake: string | null;
   creatorUserId: string;
   /** 로그인 사용자 UUID. 비로그인이면 null */
   currentUserId: string | null;
@@ -102,6 +104,8 @@ export type ChallengeFormBody = {
   maxMembers: number;
   startAt: string;
   endAt: string;
+  /** 내기(페널티/보상) 텍스트 — 선택값. 빈 문자열이면 백엔드에서 null로 저장. */
+  stake?: string;
   /** 생성 시점 작성자 UI 언어. 생성에만 전송하며 수정 시에는 무시된다(백엔드가 고정값 유지). */
   langCd?: string;
 };

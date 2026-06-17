@@ -102,7 +102,7 @@ describe("validateChallengeForm", () => {
       "goalRequired", "goalRange",
       "membersRequired", "membersRange",
       "startRequired", "endRequired",
-      "startTooSoon", "endAfterStart", "durationTooLong",
+      "startTooSoon", "endAfterStart", "durationTooLong", "stakeTooLong",
     ].map((k) => [k, k]),
   ) as unknown as ChallengeFormValidationMessages;
 
@@ -112,6 +112,7 @@ describe("validateChallengeForm", () => {
     maxMembers: "10",
     startAt: "2999-01-01T00:00",
     endAt: "2999-01-02T00:00",
+    stake: "",
   };
 
   it("정상 폼은 null", () => {
@@ -161,5 +162,13 @@ describe("validateChallengeForm", () => {
       msgs,
     );
     expect(out).toBe("durationTooLong");
+  });
+
+  it("내기 문구 100자 초과면 stakeTooLong", () => {
+    expect(validateChallengeForm({ ...valid, stake: "가".repeat(101) }, msgs)).toBe("stakeTooLong");
+  });
+
+  it("내기 문구 비어있으면 통과", () => {
+    expect(validateChallengeForm({ ...valid, stake: "" }, msgs)).toBeNull();
   });
 });

@@ -261,6 +261,11 @@ export default function ChallengeDetailContent() {
             <div className="mt-1 text-xs text-zinc-500">
               {formatDateRange(detail.startAt, detail.endAt, locale)}
             </div>
+            {detail.stake ? (
+              <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                🎁 {t.detail_stake_label}: {detail.stake}
+              </div>
+            ) : null}
           </Card>
 
           <ChallengeLeaderboard
