@@ -5,7 +5,7 @@ import com.runrace.backend.auth.dto.LanguageUpdateRequest;
 import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
 import com.runrace.backend.auth.service.AccountService;
-import com.runrace.backend.user.AppUser;
+import com.runrace.backend.user.domain.AppUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

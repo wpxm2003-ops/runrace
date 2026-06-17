@@ -1,6 +1,6 @@
 package com.runrace.backend.auth.dto;
 
-import com.runrace.backend.user.AppUser;
+import com.runrace.backend.user.domain.AppUser;
 import java.util.UUID;
 
 public record MeResponse(

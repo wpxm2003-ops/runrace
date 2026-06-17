@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
-import com.runrace.backend.user.AppUser;
+import com.runrace.backend.user.domain.AppUser;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;

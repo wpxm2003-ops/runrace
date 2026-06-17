@@ -3,7 +3,7 @@ package com.runrace.backend.auth.service;
 import com.google.firebase.auth.FirebaseToken;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.config.CacheConfig;
-import com.runrace.backend.user.AppUser;
+import com.runrace.backend.user.domain.AppUser;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;

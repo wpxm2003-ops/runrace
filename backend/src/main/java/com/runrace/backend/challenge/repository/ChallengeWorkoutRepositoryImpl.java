@@ -4,7 +4,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.runrace.backend.challenge.domain.ApprovalStatus;
 import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.domain.QChallengeWorkout;
-import com.runrace.backend.workout.QWorkoutSession;
+import com.runrace.backend.workout.domain.QWorkoutSession;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 

@@ -1,7 +1,7 @@
 package com.runrace.backend.auth.service;
 
-import com.runrace.backend.user.AppUser;
-import com.runrace.backend.user.AppUserRepository;
+import com.runrace.backend.user.domain.AppUser;
+import com.runrace.backend.user.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

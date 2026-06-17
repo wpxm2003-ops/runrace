@@ -1,6 +1,6 @@
 package com.runrace.backend.challenge.domain;
 
-import com.runrace.backend.user.AppUser;
+import com.runrace.backend.user.domain.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

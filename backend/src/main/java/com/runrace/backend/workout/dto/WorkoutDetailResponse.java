@@ -1,7 +1,7 @@
 package com.runrace.backend.workout.dto;
 
 import com.runrace.backend.common.IsoTime;
-import com.runrace.backend.workout.WorkoutSession;
+import com.runrace.backend.workout.domain.WorkoutSession;
 import java.util.List;
 
 public record WorkoutDetailResponse(

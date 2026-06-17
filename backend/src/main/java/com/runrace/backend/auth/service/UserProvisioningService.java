@@ -2,9 +2,9 @@ package com.runrace.backend.auth.service;
 
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.SupportedLanguages;
-import com.runrace.backend.user.AppUser;
-import com.runrace.backend.user.AppUserRepository;
-import com.runrace.backend.user.NicknameGenerator;
+import com.runrace.backend.user.domain.AppUser;
+import com.runrace.backend.user.repository.AppUserRepository;
+import com.runrace.backend.user.service.NicknameGenerator;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;

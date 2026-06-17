@@ -1,6 +1,6 @@
 package com.runrace.backend.common;
 
-import com.runrace.backend.observability.ErrorLogService;
+import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.observability.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.format.DateTimeParseException;
