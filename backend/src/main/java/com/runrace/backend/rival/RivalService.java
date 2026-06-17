@@ -1,6 +1,6 @@
 package com.runrace.backend.rival;
 
-import com.runrace.backend.challenge.ChallengeMemberRepository;
+import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.rival.dto.RivalRow;
 import com.runrace.backend.user.AppUser;

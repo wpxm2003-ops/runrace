@@ -1,7 +1,7 @@
 package com.runrace.backend.share;
 
-import com.runrace.backend.challenge.Challenge;
-import com.runrace.backend.challenge.ChallengeService;
+import com.runrace.backend.challenge.domain.Challenge;
+import com.runrace.backend.challenge.service.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;

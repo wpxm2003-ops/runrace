@@ -1,10 +1,10 @@
 package com.runrace.backend.nudge;
 
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.Challenge;
-import com.runrace.backend.challenge.ChallengeMemberRepository;
-import com.runrace.backend.challenge.ChallengeRepository;
-import com.runrace.backend.challenge.ChallengeService;
+import com.runrace.backend.challenge.domain.Challenge;
+import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
+import com.runrace.backend.challenge.repository.ChallengeRepository;
+import com.runrace.backend.challenge.service.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;

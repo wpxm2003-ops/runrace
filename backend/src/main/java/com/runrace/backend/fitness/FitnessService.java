@@ -1,7 +1,7 @@
 package com.runrace.backend.fitness;
 
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.ChallengeProgressService;
+import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.AppUser;
 import com.runrace.backend.user.AppUserRepository;
