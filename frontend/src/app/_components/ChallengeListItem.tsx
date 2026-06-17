@@ -28,7 +28,7 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
     >
       <div className="flex items-start justify-between gap-2">
         <div className="text-sm font-medium">{c.title}</div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-center gap-1.5">
           <ChallengePhaseBadge
             startAt={c.startAt}
             endAt={c.endAt}
