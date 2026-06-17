@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "cap:sync:android": "node ../scripts/ensure-cap-webdir.mjs && npx cap sync android",
-    "build:deploy": "node ../scripts/deploy.mjs"
+    "build:deploy": "node ../scripts/deploy.mjs",
+    "backend:deploy": "node ../scripts/deploy-backend.mjs"
   },
   "dependencies": {
     "@capacitor-community/background-geolocation": "^1.2.26",
