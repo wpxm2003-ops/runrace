@@ -62,7 +62,7 @@ function ApprovalSection({
 }
 
 export default function ChallengeDetailContent() {
-  const { user, loading: authLoading, hint: authHint } = useAuthUser();
+  const { user, loading: authLoading } = useAuthUser();
   const confirm = useConfirm();
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -76,16 +76,17 @@ export default function ChallengeDetailContent() {
 
   const id = useRouteId(parseChallengeIdFromPath);
 
-  // 직전 로그인 기록(hint)이 있으면 인증 복원까지 기다렸다가 한 번에 상세를 조회한다.
-  // 익명으로 먼저 받아온 뒤 로그인 정보로 재조회하면 참여/수정 버튼·내 순위 색칠이 1~2초 뒤 깜빡이며 나타난다.
-  const waitForAuth = authLoading && authHint;
+  // auth 복원을 기다리지 않고 즉시 fetch — 익명 응답으로 제목·리더보드·날짜를 바로 표시한다.
+  // 참여/수정 버튼·내 행 하이라이트처럼 인증이 필요한 요소만 actionsReady 이후에 나타낸다.
+  // (인증 완료 후 user.uid가 키에 추가돼 SWR이 재검증하지만 keepPreviousData로 화면이 유지됨)
+  const actionsReady = !authLoading;
 
   const {
     data: detail,
     isLoading,
     error: fetchError,
     mutate,
-  } = useChallengeDetail(id, user, waitForAuth);
+  } = useChallengeDetail(id, user);
 
   // 목록에서 막 탭한 레이스라면, 상세 응답 전에 목록 데이터로 헤더를 즉시 그려 체감 속도를 높인다.
   const preview = detail ? null : getChallengePreview(id);
@@ -212,7 +213,7 @@ export default function ChallengeDetailContent() {
   const pageActions = useMemo(
     () => (
       <>
-        {detail?.showManage ? (
+        {actionsReady && detail?.showManage ? (
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen((v) => !v)}
               className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg leading-none" aria-label={t.detail_menu_label}>
@@ -229,7 +230,7 @@ export default function ChallengeDetailContent() {
         <Link className="text-sm text-zinc-600 hover:underline" href="/challenges">{t.detail_list_link}</Link>
       </>
     ),
-    [detail?.showManage, menuOpen, id, t, onEditClick, onDelete],
+    [actionsReady, detail?.showManage, menuOpen, id, t, onEditClick, onDelete],
   );
 
   return (
@@ -239,7 +240,7 @@ export default function ChallengeDetailContent() {
     >
       {error ? <Alert className="mb-4 whitespace-pre-line">{error}</Alert> : null}
 
-      {(isLoading || waitForAuth) && !detail ? (
+      {isLoading && !detail ? (
         preview ? (
           // 목록에서 넘어온 미리보기로 헤더를 즉시 표시 + 순위표는 스켈레톤
           <>
@@ -308,10 +309,12 @@ export default function ChallengeDetailContent() {
             goalKm={detail.goalKm}
             hasStarted={detail.hasStarted}
             hasEnded={detail.hasEnded}
-            myUserId={detail.currentUserId}
+            myUserId={actionsReady ? detail.currentUserId : null}
             headToHead={headToHead}
             onNudge={
-              detail.isMember && detail.hasStarted && !detail.hasEnded ? onNudge : undefined
+              actionsReady && detail.isMember && detail.hasStarted && !detail.hasEnded
+                ? onNudge
+                : undefined
             }
             nudgingId={nudgingId}
             nudgedIds={nudgedIds}
@@ -328,7 +331,7 @@ export default function ChallengeDetailContent() {
           ) : null}
 
           {/* 실내러닝 승인 대기건 */}
-          {detail.isMember && detail.hasStarted && pendingApprovals.length > 0 ? (
+          {actionsReady && detail.isMember && detail.hasStarted && pendingApprovals.length > 0 ? (
             <ApprovalSection
               heading={t.pending_approvals_heading}
               notice={`${t.pending_approvals_notice} ${t.pending_approvals_reject_notice}`}
@@ -346,7 +349,7 @@ export default function ChallengeDetailContent() {
           ) : null}
 
           {/* 거부된 실내러닝 */}
-          {detail.isMember && detail.hasStarted && rejectedApprovals.length > 0 ? (
+          {actionsReady && detail.isMember && detail.hasStarted && rejectedApprovals.length > 0 ? (
             <ApprovalSection
               heading={t.rejected_approvals_heading}
               notice={t.rejected_approval_notice}
@@ -361,7 +364,7 @@ export default function ChallengeDetailContent() {
             </ApprovalSection>
           ) : null}
 
-          {detail.canJoin || detail.canLeave ? (
+          {actionsReady && (detail.canJoin || detail.canLeave) ? (
             <div className="mt-4">
               {detail.canJoin ? (
                 <Button
