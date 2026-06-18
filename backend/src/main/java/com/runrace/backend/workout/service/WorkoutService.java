@@ -251,7 +251,7 @@ public class WorkoutService {
     OffsetDateTime from = current.getStartedAt().minusDays(COMPARISON_LOOKBACK_DAYS);
     List<WorkoutComparisonItem> recent =
         workoutSessionRepository.findRecentForComparison(
-            principal.userId(), current.getWorkoutType(), id, from);
+            principal.userId(), id, from);
 
     int count = recent.size();
     if (count == 0) return WorkoutComparisonResponse.builder().build();
