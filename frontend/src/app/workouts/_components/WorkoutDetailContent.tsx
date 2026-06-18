@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
+import { WorkoutMemoEditor } from "@/app/_components/WorkoutMemoEditor";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
@@ -154,6 +155,16 @@ export default function WorkoutDetailContent() {
           <div className="mt-4">
             <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
           </div>
+
+          {user && !fromChallenge ? (
+            <div className="mt-4">
+              <WorkoutMemoEditor workoutId={id!} initialMemo={detail.memo} user={user} />
+            </div>
+          ) : detail.memo ? (
+            <p className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
+              {detail.memo}
+            </p>
+          ) : null}
         </>
       )}
     </PageLayout>

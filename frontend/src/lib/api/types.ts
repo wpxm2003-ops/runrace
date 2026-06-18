@@ -148,6 +148,7 @@ export type WorkoutSummary = {
 export type WorkoutDetail = WorkoutListItem & {
   path: LatLng[];
   imageUrl: string | null;
+  memo?: string | null;
 };
 
 export type WorkoutCreateBody = {

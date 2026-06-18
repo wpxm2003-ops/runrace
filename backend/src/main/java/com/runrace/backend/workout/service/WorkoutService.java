@@ -237,6 +237,20 @@ public class WorkoutService {
             userId, from, to);
   }
 
+  private static final int MAX_MEMO_LENGTH = 500;
+
+  @Transactional
+  public void updateMemo(AuthPrincipal principal, Long id, String memo) {
+    if (memo != null && memo.length() > MAX_MEMO_LENGTH) {
+      throw ApiException.badRequest("memo_too_long");
+    }
+    WorkoutSession session = workoutSessionRepository
+        .findByIdAndUserId(id, principal.userId())
+        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    session.updateMemo(memo == null || memo.isBlank() ? null : memo.strip());
+    workoutSessionRepository.save(session);
+  }
+
   @Transactional
   public void deleteForUser(AuthPrincipal principal, Long id) {
     WorkoutSession session =

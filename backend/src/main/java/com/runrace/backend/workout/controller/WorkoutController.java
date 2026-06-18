@@ -6,6 +6,7 @@ import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
+import com.runrace.backend.workout.dto.UpdateWorkoutMemoRequest;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import com.runrace.backend.workout.dto.WorkoutListItem;
 import com.runrace.backend.workout.dto.WorkoutShareResponse;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -115,6 +117,15 @@ public class WorkoutController {
     WorkoutSession session = workoutService.getForShare(id);
     return ResponseEntity.ok(
         WorkoutShareResponse.from(session, workoutService.toPath(session.getPathJson())));
+  }
+
+  @PatchMapping("/{id:" + ID_PATH + "}/memo")
+  public ResponseEntity<Void> updateMemo(
+      AuthPrincipal principal,
+      @PathVariable("id") Long id,
+      @RequestBody UpdateWorkoutMemoRequest body) {
+    workoutService.updateMemo(principal, id, body.memo());
+    return ResponseEntity.noContent().build();
   }
 
   @DeleteMapping("/{id:" + ID_PATH + "}")

@@ -68,4 +68,11 @@ public class WorkoutSession {
 
   @Column(name = "image_url")
   private String imageUrl;
+
+  @Column(name = "memo", length = 500)
+  private String memo;
+
+  public void updateMemo(String memo) {
+    this.memo = memo;
+  }
 }

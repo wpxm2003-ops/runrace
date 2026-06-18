@@ -326,6 +326,8 @@ export const translations = {
     celebration_confirm: "확인",
     celebration_auto: (sec: number) => `${sec}초 후 기록 탭으로 이동합니다`,
     celebration_calories: (kcal: number) => `${kcal} kcal 소모 (추정)`,
+    celebration_memo_placeholder: "오늘 컨디션이나 느낌을 남겨보세요 (선택)",
+    celebration_memo_saving: "메모 저장 중...",
 
     // ── 운동 상세 ─────────────────────────
     workout_detail_title: "운동 기록",
@@ -354,6 +356,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `사진 촬영 시각 ${time} — 등록 시 운동 종료 시각으로 기록됩니다.`,
     upload_too_large: "사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.",
+    indoor_field_memo: "메모 (선택)",
     indoor_badge: "실내러닝",
 
     // ── 실내러닝 승인 ──────────────────────
@@ -697,6 +700,8 @@ export const translations = {
     celebration_confirm: "View Record",
     celebration_auto: (sec: number) => `Going to Records in ${sec}s`,
     celebration_calories: (kcal: number) => `~${kcal} kcal burned`,
+    celebration_memo_placeholder: "How did it feel? Any notes? (optional)",
+    celebration_memo_saving: "Saving note...",
 
     // ── 운동 상세 ─────────────────────────
     workout_detail_title: "Workout",
@@ -725,6 +730,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `Photo taken at ${time} — will be recorded as workout end time.`,
     upload_too_large: "The photo is too large. Please choose a different image.",
+    indoor_field_memo: "Notes (optional)",
     indoor_badge: "Indoor",
 
     // ── Indoor run approval ───────────────
@@ -1068,6 +1074,8 @@ export const translations = {
     celebration_confirm: "Ver registro",
     celebration_auto: (sec: number) => `Irás a Historial en ${sec}s`,
     celebration_calories: (kcal: number) => `~${kcal} kcal quemadas`,
+    celebration_memo_placeholder: "¿Cómo te sentiste? Notas opcionales",
+    celebration_memo_saving: "Guardando nota...",
 
     // ── Detalle del entrenamiento ─────────
     workout_detail_title: "Entrenamiento",
@@ -1096,6 +1104,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `Foto tomada a las ${time}: se registrará como hora de fin.`,
     upload_too_large: "La foto es demasiado grande. Elige otra imagen.",
+    indoor_field_memo: "Notas (opcional)",
     indoor_badge: "Indoor",
 
     // ── Aprobación de carrera indoor ──────
@@ -1439,6 +1448,8 @@ export const translations = {
     celebration_confirm: "記録を見る",
     celebration_auto: (sec: number) => `${sec}秒後に記録タブへ移動します`,
     celebration_calories: (kcal: number) => `約${kcal} kcal消費`,
+    celebration_memo_placeholder: "今日の調子や感想をメモしましょう（任意）",
+    celebration_memo_saving: "メモを保存中...",
 
     // ── 運動詳細 ──────────────────────────
     workout_detail_title: "運動記録",
@@ -1467,6 +1478,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `撮影時刻 ${time} — 登録時に運動終了時刻として記録されます。`,
     upload_too_large: "写真の容量が大きすぎます。別の写真を選んでください。",
+    indoor_field_memo: "メモ（任意）",
     indoor_badge: "室内ラン",
 
     // ── 室内ランの承認 ────────────────────
@@ -1809,6 +1821,8 @@ export const translations = {
     celebration_confirm: "查看记录",
     celebration_auto: (sec: number) => `${sec}秒后跳转到记录页`,
     celebration_calories: (kcal: number) => `约消耗${kcal} kcal`,
+    celebration_memo_placeholder: "今天感觉怎么样？记录一下吧（选填）",
+    celebration_memo_saving: "正在保存备注...",
 
     // ── 运动详情 ──────────────────────────
     workout_detail_title: "运动记录",
@@ -1837,6 +1851,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `拍摄时间 ${time} — 登记时将记录为运动结束时间。`,
     upload_too_large: "照片太大。请选择其他照片。",
+    indoor_field_memo: "备注（可选）",
     indoor_badge: "室内跑",
 
     // ── 室内跑步审核 ──────────────────────

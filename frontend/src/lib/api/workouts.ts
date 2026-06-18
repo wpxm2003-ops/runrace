@@ -44,6 +44,11 @@ export function voteIndoorRun(workoutId: number, approved: boolean, user: User) 
   return apiFetch<void>(`/api/workouts/${workoutId}/vote`, { method: "POST", user, body: { approved } });
 }
 
+/** 운동 메모 수정. 빈 문자열 전달 시 삭제. */
+export function updateWorkoutMemo(id: number, memo: string, user: User) {
+  return apiFetch<void>(`/api/workouts/${id}/memo`, { method: "PATCH", user, body: { memo } });
+}
+
 /** 공개 공유 페이지용 운동 데이터 (인증 불필요). */
 export function fetchWorkoutShare(id: number) {
   return publicFetch<WorkoutShare>(`/api/workouts/${id}/share`);

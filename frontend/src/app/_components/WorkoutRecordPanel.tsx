@@ -13,6 +13,7 @@ import {
   invalidateWorkoutLists,
   useWorkoutDetail,
 } from "@/lib/api";
+import { WorkoutMemoEditor } from "@/app/_components/WorkoutMemoEditor";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
@@ -124,6 +125,8 @@ export function WorkoutRecordPanel({
       />
 
       <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
+
+      <WorkoutMemoEditor workoutId={workoutId} initialMemo={detail.memo} user={user} />
 
       <div className="flex gap-2">
         <ShareButton onShare={onShare} variant="secondary" className="h-11 flex-1" />

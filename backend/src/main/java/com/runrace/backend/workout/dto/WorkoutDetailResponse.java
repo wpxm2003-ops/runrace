@@ -14,7 +14,8 @@ public record WorkoutDetailResponse(
     Integer avgPaceSecPerKm,
     List<PathPointDto> path,
     String workoutType,
-    String imageUrl) {
+    String imageUrl,
+    String memo) {
 
   public static WorkoutDetailResponse from(WorkoutSession session, List<PathPointDto> path) {
     return new WorkoutDetailResponse(
@@ -27,6 +28,7 @@ public record WorkoutDetailResponse(
         session.getAvgPaceSecPerKm(),
         path,
         session.getWorkoutType().name(),
-        session.getImageUrl());
+        session.getImageUrl(),
+        session.getMemo());
   }
 }
