@@ -8,7 +8,7 @@ export default function Home() {
   const { t } = useLocale();
 
   return (
-    <PageLayout title="RunRace">
+    <PageLayout>
       <p className="text-zinc-600">{t.home_tagline}</p>
       {/* 카드는 한 줄에 하나씩(풀폭) 세로로 쌓는다 */}
       <div className="mt-6 grid gap-3">
