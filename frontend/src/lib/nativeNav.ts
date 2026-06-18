@@ -192,17 +192,23 @@ export function handleNativeBack(canGoBack: boolean): void {
     return;
   }
 
-  // 3) 그 외 일반 경로만 WebView 히스토리 back에 맡긴다.
+  // 3) 탭 루트에서 navStack이 비었으면 즉시 종료 — canGoBack보다 먼저 확인해야 함.
+  //    SPA push로 뒤로가기를 처리하면 WebView 히스토리에 엔트리가 계속 쌓여
+  //    canGoBack이 탭 루트에서도 항상 true가 되기 때문.
+  if (isTabRoot(window.location.pathname)) {
+    void import("@capacitor/app").then(({ App }) => App.exitApp());
+    return;
+  }
+
+  // 4) 탭 루트가 아닌 일반 경로는 WebView 히스토리 back에 맡긴다.
   if (canGoBack && _back) {
     _back();
     return;
   }
 
-  if (!isTabRoot(window.location.pathname)) {
-    if (_back) {
-      _back();
-      return;
-    }
+  if (_back) {
+    _back();
+    return;
   }
 
   void import("@capacitor/app").then(({ App }) => App.exitApp());
