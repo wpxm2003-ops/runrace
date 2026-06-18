@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.runrace.app",
+      "sha256_cert_fingerprints": [
+        "7A:DD:EC:8C:32:93:31:B0:A3:98:8F:6A:F2:4F:AD:64:48:AE:28:85:27:53:FA:2B:A2:6F:87:4E:8C:A9:1D:44",
+        "55:C3:6F:F7:33:4E:99:23:D9:74:0E:D1:9B:B4:18:78:DE:77:E0:76:77:0B:A0:C7:5A:88:34:3E:65:C5:7E:79"
+      ]
+    }
+  }
+]

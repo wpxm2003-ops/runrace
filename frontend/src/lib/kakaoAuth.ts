@@ -75,14 +75,36 @@ export function isNativeKakaoCallbackUrl(url: string): boolean {
   return url.startsWith(KAKAO_NATIVE_CALLBACK_SCHEME);
 }
 
+/**
+ * App Links로 앱이 직접 가로챈 https 콜백인지 판별.
+ * 카카오톡 간편로그인 시 외부 브라우저로 새던 https 콜백을 앱이 바로 받는다.
+ */
+export function isHttpsKakaoCallbackUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      (u.protocol === "https:" || u.protocol === "http:") &&
+      u.pathname.startsWith("/kakao/callback")
+    );
+  } catch {
+    return false;
+  }
+}
+
 let processingOAuthReturn = false;
 
 /**
- * 네이티브 앱이 com.runrace.app://kakao/callback 으로 복귀했을 때 로그인 완료.
- * appUrlOpen 리스너에서 호출한다.
+ * 네이티브 앱 OAuth 콜백 복귀 시 로그인 완료. appUrlOpen 리스너에서 호출한다.
+ * - com.runrace.app://kakao/callback (인앱 브라우저 → 커스텀 스킴 바운스)
+ * - https://runrace.co.kr/kakao/callback (App Links로 앱이 직접 수신)
  */
 export async function processKakaoOAuthReturn(url: string): Promise<boolean> {
-  if (!Capacitor.isNativePlatform() || !isNativeKakaoCallbackUrl(url)) return false;
+  if (!Capacitor.isNativePlatform()) return false;
+  const isCustom = isNativeKakaoCallbackUrl(url);
+  const isHttps = isHttpsKakaoCallbackUrl(url);
+  // https 콜백은 네이티브 OAuth(state=native:)일 때만 처리 (일반 웹 링크 오작동 방지)
+  if (isHttps && !isNativeKakaoOAuthState(parseOAuthCallback(url).state)) return false;
+  if (!isCustom && !isHttps) return false;
   if (processingOAuthReturn) return true;
   processingOAuthReturn = true;
 
