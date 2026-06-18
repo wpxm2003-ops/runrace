@@ -235,6 +235,7 @@ function MyPageContent({ user }: { user: User }) {
             labels={{ km: t.unit_km, mi: t.unit_mi }}
           />
         </div>
+        <p className="mt-2 text-xs text-zinc-400">{t.my_unit_pace_hint}</p>
       </Card>
 
       <Card className="mt-4">
