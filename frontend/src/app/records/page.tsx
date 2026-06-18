@@ -43,7 +43,7 @@ export default function RecordsPage() {
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const { data: yearRecords = [], isLoading, error } = useWorkoutListByYear(
+  const { data: yearRecords = [], isLoading, error, mutate: mutateYearRecords } = useWorkoutListByYear(
     user,
     viewYear,
   );
@@ -240,7 +240,11 @@ export default function RecordsPage() {
                 workoutId={selectedWorkoutId}
                 user={user}
                 viewYear={viewYear}
-                onDeleted={() => { setSelectedWorkoutId(null); setSelectedDateKey(null); }}
+                onDeleted={() => {
+                  setSelectedWorkoutId(null);
+                  setSelectedDateKey(null);
+                  void mutateYearRecords();
+                }}
               />
             ) : null}
           </>
