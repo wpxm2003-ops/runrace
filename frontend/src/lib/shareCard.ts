@@ -13,11 +13,12 @@ export async function shareLink(
   try {
     if (Capacitor.isNativePlatform()) {
       const { Share } = await import("@capacitor/share");
-      await Share.share({ title, text, url, dialogTitle: title });
+      // title은 공유 시트 제목(dialogTitle)으로만 사용 — 전달 메시지엔 URL만(text 있으면 함께) 넣어 "앱이름 - " 접두어 제거
+      await Share.share({ text, url, dialogTitle: title });
       return "shared";
     }
     if (navigator.share) {
-      await navigator.share(text ? { title, text, url } : { title, url });
+      await navigator.share(text ? { text, url } : { url });
       return "shared";
     }
     await navigator.clipboard.writeText(url);

@@ -155,6 +155,11 @@ export function registerBack(fn: () => void) {
   _back = fn;
 }
 
+/** SPA 라우터(router.push)가 등록됐는지 — 딥링크 콜드 스타트에서 풀페이지 리로드 폴백을 피하기 위해 사용. */
+export function isNativeNavReady(): boolean {
+  return _push != null;
+}
+
 export function isTabRoot(pathname: string): boolean {
   return TAB_ROOTS.has(pathname);
 }
