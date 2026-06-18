@@ -11,6 +11,7 @@ import {
   monthComparison,
 } from "@/lib/workoutStats";
 import { useMemo } from "react";
+import { useNativeBack } from "@/lib/useNativeBack";
 
 type Props = {
   monthItems: WorkoutListItem[];
@@ -45,6 +46,8 @@ export function RecordsStatsPanel({
 }: Props) {
   const { t } = useLocale();
   const { unit } = useUnit();
+
+  useNativeBack(onClose);
 
   const monthName = useMemo(
     () => new Date(viewYear, viewMonth, 1).toLocaleDateString(locale, { month: "long" }),

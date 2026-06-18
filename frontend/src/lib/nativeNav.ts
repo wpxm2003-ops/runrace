@@ -86,6 +86,22 @@ function hydrateNavStack(): string[] {
 const navStack: string[] = hydrateNavStack();
 let backNavigation = false;
 
+/** 모달·바텀시트 등 오버레이가 백버튼을 가로채기 위한 LIFO 스택. */
+const backInterceptors: Array<() => void> = [];
+
+/**
+ * 백버튼 인터셉터를 등록한다. 등록된 동안 하드웨어 백버튼은 SPA 네비게이션 대신
+ * fn을 호출하고 종료된다(한 번 호출 후 자동 제거).
+ * 반환값은 cleanup 함수 — useEffect return으로 사용하면 컴포넌트 언마운트 시 해제된다.
+ */
+export function pushBackInterceptor(fn: () => void): () => void {
+  backInterceptors.push(fn);
+  return () => {
+    const idx = backInterceptors.lastIndexOf(fn);
+    if (idx !== -1) backInterceptors.splice(idx, 1);
+  };
+}
+
 /**
  * 뒤로가기 스택을 sessionStorage에 백업한다(네이티브).
  * WebView 재로드로 메모리 스택이 날아가도 뒤로가기가 SPA 이전 화면으로 복귀하게 한다.
@@ -168,6 +184,12 @@ export function resolveBackFallback(pathname: string, search: string): string | 
 
 export function handleNativeBack(canGoBack: boolean): void {
   if (!isNativeApp()) return;
+
+  // 0) 오버레이 인터셉터(모달·바텀시트 등) — 최상위 것을 꺼내 호출하고 종료.
+  if (backInterceptors.length > 0) {
+    backInterceptors.pop()!();
+    return;
+  }
 
   // 1) 실제 이전 경로(SPA 스택) — 가장 정확. router.push로 같은 문서 안에서 전환해
   //    SWR 캐시·스크롤 위치를 유지한다.
