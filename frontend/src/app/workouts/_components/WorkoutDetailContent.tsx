@@ -76,7 +76,7 @@ export default function WorkoutDetailContent() {
   async function onShare() {
     if (!id) return;
     const { shareLink } = await import("@/lib/shareCard");
-    return shareLink(`${getAppUrl()}/workouts/${id}`, "RunRace");
+    return shareLink(`${getAppUrl()}/workouts/${id}/share`, "RunRace");
   }
 
   async function onDelete() {
