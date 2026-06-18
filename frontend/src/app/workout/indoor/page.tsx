@@ -71,6 +71,8 @@ export default function IndoorRunPage() {
     const distM = metersFromInput(distanceKm, unit);
     if (!distanceKm || isNaN(distM) || distM <= 0) {
       errors.distance = t.indoor_err_distance;
+    } else if (distM > 100_000) {
+      errors.distance = t.indoor_err_distance_max;
     }
 
     const h = parseInt(hours || "0", 10) || 0;
@@ -79,6 +81,8 @@ export default function IndoorRunPage() {
     const durationSec = h * 3600 + m * 60 + s;
     if (durationSec < 1) {
       errors.duration = t.indoor_err_duration;
+    } else if (m > 59 || s > 59 || durationSec > 86_400) {
+      errors.duration = t.indoor_err_duration_range;
     }
 
     if (!imageFile || imagePreparing) {
@@ -196,22 +200,12 @@ export default function IndoorRunPage() {
             <span className="ml-0.5 text-red-500">*</span>
           </label>
           <input
-            type="number"
-            step="0.01"
-            min="0.01"
+            type="text"
+            inputMode="decimal"
             placeholder={t.indoor_field_distance_placeholder}
             value={distanceKm}
-            onKeyDown={(e) => {
-              // 소수점 둘째자리 초과 입력 차단
-              const val = distanceKm;
-              const dot = val.indexOf(".");
-              if (dot !== -1 && val.length - dot > 2 && e.key !== "Backspace" && e.key !== "Delete" && e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Tab") {
-                e.preventDefault();
-              }
-            }}
             onChange={(e) => {
               const val = e.target.value;
-              // 소수점 둘째자리까지만 허용
               if (val === "" || /^\d*\.?\d{0,2}$/.test(val)) {
                 setDistanceKm(val);
               }
@@ -239,6 +233,7 @@ export default function IndoorRunPage() {
               <input
                 type="number"
                 min="0"
+                max="24"
                 placeholder="0"
                 value={hours}
                 onChange={(e) => {
