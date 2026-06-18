@@ -56,45 +56,55 @@ export function WorkoutComparisonCard({
     ? Math.abs(unit === "mi" ? Math.round((rawPaceDelta * METERS_PER_MI) / 1000) : rawPaceDelta)
     : 0;
   const paceFaster = rawPaceDelta < 0;
-  const pacePercent = hasPace && avgPaceSec > 0
-    ? Math.round((Math.abs(rawPaceDelta) / avgPaceSec) * 100)
-    : 0;
+  const pacePercent =
+    hasPace && avgPaceSec > 0 ? Math.round((Math.abs(rawPaceDelta) / avgPaceSec) * 100) : 0;
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">
         {t.comparison_recent_avg}
       </div>
-      <div className="space-y-2.5">
-        <Row
-          label={t.comparison_distance_label}
+
+      {/* 열 헤더 */}
+      <div className="mb-1 grid grid-cols-3 gap-x-3">
+        <span className="text-[10px] text-zinc-400">{t.comparison_avg_col}</span>
+        <span className="text-[10px] font-medium text-zinc-500">{t.comparison_today_col}</span>
+        <span className="text-[10px] text-zinc-400">{t.comparison_summary_col}</span>
+      </div>
+
+      <div className="divide-y divide-zinc-100">
+        <MetricRow
           avg={formatDistance(avgDistanceM, unit)}
           current={formatDistance(currentDistanceM, unit)}
           badge={
-            distDeltaM === 0 ? null : distMore
-              ? { text: t.comparison_dist_more(formatDistance(Math.abs(distDeltaM), unit), distPercent), positive: true }
-              : { text: t.comparison_dist_less(formatDistance(Math.abs(distDeltaM), unit), distPercent), positive: false }
+            distDeltaM === 0
+              ? null
+              : distMore
+                ? { text: t.comparison_dist_more(formatDistance(Math.abs(distDeltaM), unit), distPercent), positive: true }
+                : { text: t.comparison_dist_less(formatDistance(Math.abs(distDeltaM), unit), distPercent), positive: false }
           }
         />
-        <Row
-          label={t.comparison_duration_label}
+        <MetricRow
           avg={fmtDuration(avgDurationSec)}
           current={fmtDuration(currentDurationSec)}
           badge={
-            durDelta === 0 ? null : durMore
-              ? { text: t.comparison_dist_more(fmtDuration(Math.abs(durDelta)), durPercent), positive: true }
-              : { text: t.comparison_dist_less(fmtDuration(Math.abs(durDelta)), durPercent), positive: false }
+            durDelta === 0
+              ? null
+              : durMore
+                ? { text: t.comparison_dist_more(fmtDuration(Math.abs(durDelta)), durPercent), positive: true }
+                : { text: t.comparison_dist_less(fmtDuration(Math.abs(durDelta)), durPercent), positive: false }
           }
         />
         {hasPace ? (
-          <Row
-            label={t.comparison_pace_label}
+          <MetricRow
             avg={formatPace(1000, avgPaceSec!, unit)}
             current={formatPace(1000, currentPaceSec!, unit)}
             badge={
-              rawPaceDelta === 0 ? null : paceFaster
-                ? { text: t.comparison_pace_faster(paceDeltaInUnit, unit, pacePercent), positive: true }
-                : { text: t.comparison_pace_slower(paceDeltaInUnit, unit, pacePercent), positive: false }
+              rawPaceDelta === 0
+                ? null
+                : paceFaster
+                  ? { text: t.comparison_pace_faster(paceDeltaInUnit, unit, pacePercent), positive: true }
+                  : { text: t.comparison_pace_slower(paceDeltaInUnit, unit, pacePercent), positive: false }
             }
           />
         ) : null}
@@ -103,28 +113,28 @@ export function WorkoutComparisonCard({
   );
 }
 
-function Row({
-  label,
+function MetricRow({
   avg,
   current,
   badge,
 }: {
-  label: string;
   avg: string;
   current: string;
   badge: { text: string; positive: boolean } | null;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-      <span className="w-16 shrink-0 text-xs text-zinc-400">{label}</span>
-      <span className="text-zinc-400">{avg}</span>
-      <span className="text-zinc-300">→</span>
-      <span className="font-semibold text-zinc-900">{current}</span>
+    <div className="grid grid-cols-3 items-start gap-x-3 py-2.5">
+      <span className="text-sm text-zinc-400">{avg}</span>
+      <span className="text-sm font-semibold text-zinc-900">{current}</span>
       {badge ? (
-        <span className={`ml-auto text-xs font-medium ${badge.positive ? "text-green-600" : "text-red-500"}`}>
-          {badge.text}
-        </span>
-      ) : null}
+        <div className={`text-xs font-medium leading-snug ${badge.positive ? "text-green-600" : "text-red-500"}`}>
+          {badge.text.split(" · ").map((part, i) => (
+            <div key={i}>{part}</div>
+          ))}
+        </div>
+      ) : (
+        <span />
+      )}
     </div>
   );
 }

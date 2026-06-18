@@ -18,12 +18,9 @@ import {
   filterWorkoutsByMonth,
   formatMonthLabel,
   localDateKey,
-  weeklyComparison,
   workoutDateKeys,
   workoutsOnDate,
 } from "@/lib/workoutStats";
-import { formatDistance } from "@/lib/units";
-import { useUnit } from "@/lib/UnitContext";
 import { savePageState, loadPageState, usePageScrollRestore } from "@/lib/pageStateStore";
 
 const STORE_KEY = "page:records";
@@ -31,7 +28,6 @@ const STORE_KEY = "page:records";
 export default function RecordsPage() {
   const { user, loading } = useRequireAuth("/records");
   const { t, locale } = useLocale();
-  const { unit } = useUnit();
   const today = useMemo(() => new Date(), []);
 
   // ── 캘린더 상태: 이전 방문 값 복원 ──────────────────────────────────
@@ -71,12 +67,7 @@ export default function RecordsPage() {
   );
   const monthSummaryTitle = t.records_month_summary(monthName);
 
-  const weekly = useMemo(
-    () => (viewYear === today.getFullYear() ? weeklyComparison(yearRecords, today) : null),
-    [yearRecords, viewYear, today],
-  );
-
-  const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
+const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
   const calendarCells = useMemo(
     () => buildCalendarCells(viewYear, viewMonth),
     [viewYear, viewMonth],
@@ -164,23 +155,7 @@ export default function RecordsPage() {
         </button>
       </div>
 
-      {weekly && (weekly.thisWeekCount > 0 || weekly.lastWeekDistanceM > 0) ? (
-        <div className="mb-4 flex items-center gap-2 rounded-xl bg-zinc-50 px-4 py-2.5 text-sm">
-          <span className="font-medium text-zinc-700">{t.records_this_week}</span>
-          <span className="font-semibold text-zinc-900">
-            {formatDistance(weekly.thisWeekDistanceM, unit)}
-          </span>
-          {weekly.deltaM !== 0 ? (
-            <span className={`ml-auto text-xs font-medium ${weekly.deltaM > 0 ? "text-green-600" : "text-red-500"}`}>
-              {weekly.deltaM > 0
-                ? t.records_week_up(formatDistance(Math.abs(weekly.deltaM), unit))
-                : t.records_week_down(formatDistance(Math.abs(weekly.deltaM), unit))}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-
-      <section className="mb-4">
+<section className="mb-4">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">
           {monthSummaryTitle}
         </h2>

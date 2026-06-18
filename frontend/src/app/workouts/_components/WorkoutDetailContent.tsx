@@ -17,6 +17,7 @@ import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeR
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutComparisonCard } from "@/app/_components/WorkoutComparisonCard";
 import { WorkoutMemoEditor } from "@/app/_components/WorkoutMemoEditor";
+import { Button } from "@/app/_components/ui/Button";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
@@ -112,16 +113,7 @@ export default function WorkoutDetailContent() {
         >
           {t.challenge_workout_back}
         </a>
-      ) : (
-        <button
-          type="button"
-          disabled={deleting || !detail}
-          onClick={onDelete}
-          className="text-sm text-red-600 hover:text-red-800 hover:underline disabled:opacity-50"
-        >
-          {deleting ? t.workout_deleting_btn : t.workout_delete_btn}
-        </button>
-      )}
+      ) : null}
     </>
   );
 
@@ -159,6 +151,16 @@ export default function WorkoutDetailContent() {
 
           {user && !fromChallenge ? (
             <div className="mt-4">
+              <WorkoutMemoEditor workoutId={id!} initialMemo={detail.memo} user={user} />
+            </div>
+          ) : detail.memo ? (
+            <p className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
+              {detail.memo}
+            </p>
+          ) : null}
+
+          {user && !fromChallenge ? (
+            <div className="mt-4">
               <WorkoutComparisonCard
                 workoutId={id!}
                 currentPaceSec={detail.avgPaceSecPerKm ?? null}
@@ -171,12 +173,15 @@ export default function WorkoutDetailContent() {
 
           {user && !fromChallenge ? (
             <div className="mt-4">
-              <WorkoutMemoEditor workoutId={id!} initialMemo={detail.memo} user={user} />
+              <Button
+                variant="destructive"
+                disabled={deleting || !detail}
+                onClick={onDelete}
+                className="h-11 w-full"
+              >
+                {deleting ? t.workout_deleting_btn : t.workout_delete_btn}
+              </Button>
             </div>
-          ) : detail.memo ? (
-            <p className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
-              {detail.memo}
-            </p>
           ) : null}
         </>
       )}
