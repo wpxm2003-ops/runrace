@@ -1,6 +1,6 @@
 import { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
-import { getAccessToken, storeAccessToken, clearAccessToken, getStoredAuthUid } from "@/lib/accessToken";
+import { getAccessToken, storeAccessToken, clearAccessToken } from "@/lib/accessToken";
 import { ApiError } from "./apiError";
 
 /** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: 빈 문자열 → Next.js rewrite 프록시(/api/*) 경유 */

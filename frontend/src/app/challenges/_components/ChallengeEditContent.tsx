@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 
 export default function ChallengeEditContent() {
   const id = useRouteId(parseChallengeIdFromPath);
-  const { user, loading: authLoading } = useRequireAuth(id ? challengeEditHref(id) : undefined);
+  const { user } = useRequireAuth(id ? challengeEditHref(id) : undefined);
   const { t } = useLocale();
   const { unit } = useUnit();
   const [memberCount, setMemberCount] = useState(1);
