@@ -6,6 +6,7 @@ import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace } from "@/lib/units";
 import {
   computeStreak,
+  longestStreak,
   dayOfWeekDistribution,
   monthBests,
   monthComparison,
@@ -68,6 +69,7 @@ export function RecordsStatsPanel({
   );
 
   const streak = useMemo(() => computeStreak(yearItems, today), [yearItems, today]);
+  const monthLongest = useMemo(() => longestStreak(monthItems), [monthItems]);
 
   const bests = useMemo(() => monthBests(monthItems), [monthItems]);
 
@@ -176,7 +178,7 @@ export function RecordsStatsPanel({
               <div className="rounded-xl bg-zinc-100 px-4 py-3">
                 <p className="text-xs font-medium text-zinc-500">{t.stats_streak_longest}</p>
                 <p className="mt-1 text-3xl font-bold tabular-nums text-zinc-800">
-                  {streak.longest}
+                  {monthLongest}
                   <span className="ml-1 text-sm font-semibold text-zinc-400">일</span>
                 </p>
               </div>

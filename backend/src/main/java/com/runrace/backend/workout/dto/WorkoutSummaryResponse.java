@@ -6,4 +6,5 @@ public record WorkoutSummaryResponse(
     int totalCalories,
     int workoutCount,
     int workoutDayCount,
-    Integer avgPaceSecPerKm) {}
+    Integer avgPaceSecPerKm,
+    int maxStreakDays) {}

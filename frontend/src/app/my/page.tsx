@@ -251,6 +251,7 @@ function MyPageContent({ user }: { user: User }) {
               stats={summary}
               showWorkoutDays
               totalLabels
+              maxStreakDays={summary.maxStreakDays}
             />
           )}
         </div>

@@ -159,6 +159,26 @@ export function monthComparison(
 
 export type StreakResult = { current: number; longest: number };
 
+/** items 범위 내 최장 연속 운동일 — today 없이 순수 최장만 반환. 월별 패널용. */
+export function longestStreak(items: WorkoutListItem[]): number {
+  if (items.length === 0) return 0;
+  const sorted = Array.from(new Set(items.map((w) => localDateKey(w.startedAt)))).sort();
+  if (sorted.length === 0) return 0;
+  let longest = 1;
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const a = new Date(sorted[i - 1] + "T12:00:00");
+    const b = new Date(sorted[i] + "T12:00:00");
+    if (Math.round((b.getTime() - a.getTime()) / 86_400_000) === 1) {
+      streak++;
+      if (streak > longest) longest = streak;
+    } else {
+      streak = 1;
+    }
+  }
+  return longest;
+}
+
 /** 연속 운동일 (today 기준). yearItems만으로 계산 — 전년도 스트릭은 미반영. */
 export function computeStreak(items: WorkoutListItem[], today: Date): StreakResult {
   if (items.length === 0) return { current: 0, longest: 0 };

@@ -59,4 +59,21 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
     long getWorkoutCount();
     long getWorkoutDayCount();
   }
+
+  /**
+   * 사용자 전체 기간 최장 연속 운동일 수 — KST 날짜 기준.
+   * 날짜 차이가 1일씩 이어지는 최대 구간 길이를 반환한다.
+   */
+  @Query(value = """
+      with dated as (
+        select distinct (started_at at time zone 'Asia/Seoul')::date as d
+        from workout_session where user_id = :userId
+      ),
+      grouped as (
+        select d - (row_number() over (order by d))::integer as grp from dated
+      )
+      select coalesce(max(cnt), 0)
+      from (select count(*) cnt from grouped group by grp) s
+      """, nativeQuery = true)
+  int maxStreakDaysForUser(@Param("userId") UUID userId);
 }

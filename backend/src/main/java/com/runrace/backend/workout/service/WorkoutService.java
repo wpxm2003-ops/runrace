@@ -219,13 +219,16 @@ public class WorkoutService {
 
     Integer avgPaceSecPerKm = avgPaceSecPerKm(totalDistanceM, totalDurationSec);
 
+    int maxStreakDays = workoutSessionRepository.maxStreakDaysForUser(userId);
+
     return new WorkoutSummaryResponse(
         totalDistanceM,
         totalDurationSec,
         (int) agg.getTotalCalories(),
         (int) agg.getWorkoutCount(),
         (int) agg.getWorkoutDayCount(),
-        avgPaceSecPerKm);
+        avgPaceSecPerKm,
+        maxStreakDays);
   }
 
   @Transactional(readOnly = true)

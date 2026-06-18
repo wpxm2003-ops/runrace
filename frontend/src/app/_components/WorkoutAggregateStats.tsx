@@ -13,12 +13,15 @@ type Props = {
   showWorkoutDays?: boolean;
   /** true면 총 거리·총 시간 등 전체 요약 라벨 (내정보) */
   totalLabels?: boolean;
+  /** 최장 연속 운동일 — 내정보 전체 요약에서만 표시. */
+  maxStreakDays?: number;
 };
 
 export function WorkoutAggregateStats({
   stats,
   showWorkoutDays = false,
   totalLabels = false,
+  maxStreakDays,
 }: Props) {
   const { t } = useLocale();
   const { unit } = useUnit();
@@ -48,6 +51,9 @@ export function WorkoutAggregateStats({
       label: totalLabels ? t.stat_total_calories : t.stat_calories,
       value: `${stats.totalCalories} kcal`,
     },
+    ...(maxStreakDays != null
+      ? [{ label: t.stat_max_streak, value: `${maxStreakDays}${t.stat_days_unit}` }]
+      : []),
   ];
 
   return (

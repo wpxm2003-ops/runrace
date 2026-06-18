@@ -143,6 +143,7 @@ export type WorkoutSummary = {
   workoutCount: number;
   workoutDayCount: number;
   avgPaceSecPerKm: number | null;
+  maxStreakDays: number;
 };
 
 export type WorkoutDetail = WorkoutListItem & {
