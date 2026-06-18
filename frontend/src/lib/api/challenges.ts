@@ -76,9 +76,12 @@ export function leaveChallenge(id: number, user: User, returnTo?: string) {
   return apiFetch<void>(`/api/challenges/${id}/leave`, { method: "POST", user, returnTo });
 }
 
-/** 레이스 참여자만 — 레이스에 반영된 운동 목록 */
-export function fetchChallengeWorkouts(challengeId: number, user: User) {
-  return apiFetch<ChallengeWorkoutListItem[]>(`/api/challenges/${challengeId}/workouts`, { user });
+/**
+ * 레이스 참여자만 — 레이스에 반영된 운동 목록.
+ * publicFetch는 저장된 JWT를 우선 사용하므로 콜드 스타트(Firebase 초기화 전)에도 인증 fetch가 된다.
+ */
+export function fetchChallengeWorkouts(challengeId: number, user: User | null) {
+  return publicFetch<ChallengeWorkoutListItem[]>(`/api/challenges/${challengeId}/workouts`, user);
 }
 
 /** 레이스 맥락 운동 상세 (참여자만) */

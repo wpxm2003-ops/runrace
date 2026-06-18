@@ -164,11 +164,14 @@ export function useChallengeWorkouts(
   user: User | null,
   enabled: boolean,
 ) {
+  // 저장된 uid로 키를 즉시 확정 → 콜드 스타트에도 영구 캐시 히트(스켈레톤 없음).
+  // 실제 fetch는 저장 JWT를 쓰는 publicFetch라 Firebase user 없이도 동작한다.
+  const uid = user?.uid ?? getStoredAuthUid() ?? null;
   return useSWR(
-    enabled && challengeId != null && user
-      ? (["challenge", challengeId, "workouts", user.uid] as const)
+    enabled && challengeId != null && uid
+      ? (["challenge", challengeId, "workouts", uid] as const)
       : null,
-    () => fetchChallengeWorkouts(challengeId!, user!),
+    () => fetchChallengeWorkouts(challengeId!, user),
     BASE_CONFIG,
   );
 }
