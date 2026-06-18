@@ -240,6 +240,7 @@ export default function RecordsPage() {
                 workoutId={selectedWorkoutId}
                 user={user}
                 viewYear={viewYear}
+                onDeleted={() => setSelectedWorkoutId(null)}
               />
             ) : null}
           </>

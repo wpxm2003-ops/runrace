@@ -26,6 +26,7 @@ type Props = {
   workoutId: number;
   user: User;
   viewYear: number;
+  onDeleted?: () => void;
 };
 
 function StatCardSkeleton() {
@@ -62,6 +63,7 @@ export function WorkoutRecordPanel({
   workoutId,
   user,
   viewYear,
+  onDeleted,
 }: Props) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -92,6 +94,7 @@ export function WorkoutRecordPanel({
       await deleteWorkout(workoutId, user);
       invalidateWorkoutDetail(workoutId, user.uid);
       invalidateWorkoutLists(user.uid, viewYear);
+      onDeleted?.();
     } catch {
       setDeleting(false);
     }
