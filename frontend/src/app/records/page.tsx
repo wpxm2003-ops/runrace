@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 import { WorkoutRecordPanel } from "@/app/_components/WorkoutRecordPanel";
+import { RecordsStatsPanel } from "@/app/records/_components/RecordsStatsPanel";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
@@ -41,11 +42,16 @@ export default function RecordsPage() {
     return loadPageState(STORE_KEY).selectedDateKey ?? null;
   });
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
   const detailSectionRef = useRef<HTMLElement>(null);
 
   const { data: yearRecords = [], isLoading, error, mutate: mutateYearRecords } = useWorkoutListByYear(
     user,
     viewYear,
+  );
+  const { data: prevYearRecords = [] } = useWorkoutListByYear(
+    viewMonth === 0 ? user : null,
+    viewYear - 1,
   );
 
   usePageScrollRestore(STORE_KEY, yearRecords.length);
@@ -130,7 +136,18 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
   }
 
   return (
-    <PageLayout title={t.records_title}>
+    <PageLayout
+      title={t.records_title}
+      actions={
+        <button
+          type="button"
+          onClick={() => setStatsOpen(true)}
+          className="flex h-8 items-center rounded-lg border border-zinc-200 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          {t.stats_btn}
+        </button>
+      }
+    >
       {error ? <Alert className="mb-4">{String(error)}</Alert> : null}
 
       <div className="mb-5 flex min-h-14 items-center justify-between gap-3">
@@ -251,6 +268,18 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
           </>
         )}
       </section>
+      {statsOpen ? (
+        <RecordsStatsPanel
+          monthItems={monthItems}
+          yearItems={yearRecords}
+          prevYearItems={prevYearRecords}
+          viewYear={viewYear}
+          viewMonth={viewMonth}
+          today={today}
+          locale={locale}
+          onClose={() => setStatsOpen(false)}
+        />
+      ) : null}
     </PageLayout>
   );
 }

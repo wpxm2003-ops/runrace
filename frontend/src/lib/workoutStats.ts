@@ -118,6 +118,107 @@ export function weeklyComparison(items: WorkoutListItem[], today: Date): WeeklyC
   };
 }
 
+// ── 통계 패널용 ───────────────────────────────────────────────────────
+
+/** 요일별 운동 횟수 (Mon=0 … Sun=6, ISO 순서). */
+export function dayOfWeekDistribution(items: WorkoutListItem[]): number[] {
+  const counts = new Array(7).fill(0);
+  for (const w of items) {
+    const day = new Date(w.startedAt).getDay(); // 0=Sun
+    counts[day === 0 ? 6 : day - 1]++;
+  }
+  return counts;
+}
+
+export type MonthComparisonResult = {
+  thisDist: number;
+  thisCount: number;
+  prevDist: number;
+  prevCount: number;
+};
+
+/** 이번 달 vs 지난 달. prevYearItems는 1월 비교 시 전년도 데이터. */
+export function monthComparison(
+  yearItems: WorkoutListItem[],
+  prevYearItems: WorkoutListItem[],
+  year: number,
+  month: number,
+): MonthComparisonResult {
+  const thisItems = filterWorkoutsByMonth(yearItems, year, month);
+  const isJan = month === 0;
+  const prevItems = isJan
+    ? filterWorkoutsByMonth(prevYearItems, year - 1, 11)
+    : filterWorkoutsByMonth(yearItems, year, month - 1);
+  return {
+    thisDist: thisItems.reduce((s, w) => s + w.distanceM, 0),
+    thisCount: thisItems.length,
+    prevDist: prevItems.reduce((s, w) => s + w.distanceM, 0),
+    prevCount: prevItems.length,
+  };
+}
+
+export type StreakResult = { current: number; longest: number };
+
+/** 연속 운동일 (today 기준). yearItems만으로 계산 — 전년도 스트릭은 미반영. */
+export function computeStreak(items: WorkoutListItem[], today: Date): StreakResult {
+  if (items.length === 0) return { current: 0, longest: 0 };
+
+  const dateSet = new Set(items.map((w) => localDateKey(w.startedAt)));
+
+  // 오늘 또는 어제부터 역으로 연속일 카운트
+  const todayKey = localDateKey(today.toISOString());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayKey = localDateKey(yesterday.toISOString());
+
+  let current = 0;
+  const startDate = dateSet.has(todayKey) ? new Date(today) : dateSet.has(yesterdayKey) ? yesterday : null;
+  if (startDate) {
+    const check = new Date(startDate);
+    while (dateSet.has(localDateKey(check.toISOString()))) {
+      current++;
+      check.setDate(check.getDate() - 1);
+    }
+  }
+
+  // 전체 기록에서 최장 연속일
+  const sorted = Array.from(dateSet).sort();
+  let longest = 1;
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const a = new Date(sorted[i - 1] + "T12:00:00");
+    const b = new Date(sorted[i] + "T12:00:00");
+    if (Math.round((b.getTime() - a.getTime()) / 86_400_000) === 1) {
+      streak++;
+      if (streak > longest) longest = streak;
+    } else {
+      streak = 1;
+    }
+  }
+  return { current, longest: Math.max(longest, current, sorted.length > 0 ? 1 : 0) };
+}
+
+export type MonthBestsResult = {
+  longestRun: WorkoutListItem | null;
+  fastestPace: WorkoutListItem | null;
+};
+
+/** 이달 최고 기록 — 최장 거리 + 최고 페이스 운동. */
+export function monthBests(items: WorkoutListItem[]): MonthBestsResult {
+  if (items.length === 0) return { longestRun: null, fastestPace: null };
+  let longestRun = items[0];
+  let fastestPace: WorkoutListItem | null = null;
+  for (const w of items) {
+    if (w.distanceM > longestRun.distanceM) longestRun = w;
+    if (w.avgPaceSecPerKm != null) {
+      if (fastestPace == null || w.avgPaceSecPerKm < fastestPace.avgPaceSecPerKm!) {
+        fastestPace = w;
+      }
+    }
+  }
+  return { longestRun, fastestPace };
+}
+
 export type CalendarCell = { day: number | null; dateKey: string | null };
 
 /** 일요일 시작 달력 그리드 */
