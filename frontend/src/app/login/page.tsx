@@ -22,7 +22,8 @@ import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
 import { track, setAnalyticsUser } from "@/lib/analytics";
 import { markLoggedIn } from "@/lib/AuthProvider";
 import { useLocale } from "@/lib/i18n";
-import { startKakaoLogin } from "@/lib/kakaoAuth";
+// 카카오 로그인 버튼은 스토어 심사 통과 전까지 히든 (App Links/kakaoAuth 로직은 유지)
+// import { startKakaoLogin } from "@/lib/kakaoAuth";
 
 function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string {
   const msg = String(e);
@@ -37,7 +38,6 @@ function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [inAppHint, setInAppHint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [kakaoBusy, setKakaoBusy] = useState(false);
   const inApp = isInAppBrowser();
 
   useEffect(() => {
@@ -100,17 +100,6 @@ function LoginContent() {
     }
   }
 
-  async function signInKakao() {
-    setError(null);
-    setKakaoBusy(true);
-    try {
-      await startKakaoLogin(returnTo);
-    } catch (e) {
-      setError(String(e));
-      setKakaoBusy(false);
-    }
-  }
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
       <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-sm">
@@ -142,7 +131,7 @@ function LoginContent() {
           <button
             type="button"
             onClick={signInGoogle}
-            disabled={busy || kakaoBusy || inApp}
+            disabled={busy || inApp}
             className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
@@ -164,17 +153,6 @@ function LoginContent() {
               />
             </svg>
             {busy ? t.login_busy : t.login_google}
-          </button>
-          <button
-            type="button"
-            onClick={signInKakao}
-            disabled={busy || kakaoBusy}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191919] hover:bg-[#F5DC00] disabled:opacity-50"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-              <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.748 1.573 5.168 3.953 6.627l-.953 3.554a.25.25 0 0 0 .375.275L9.9 18.986c.693.1 1.4.154 2.1.154 5.523 0 10-3.477 10-7.8S17.523 3 12 3Z" />
-            </svg>
-            {kakaoBusy ? t.login_busy : t.login_kakao}
           </button>
         </div>
       </div>
