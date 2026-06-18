@@ -36,8 +36,15 @@ public class PushService {
    * @param arg {0}에 치환할 값(닉네임 등). 없으면 null.
    */
   public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg) {
+    sendLocalized(userId, titleKey, bodyKey, arg, null);
+  }
+
+  /**
+   * @param link 알림 탭 시 이동할 앱 내 경로(예: "/challenges/123"). 없으면 null.
+   */
+  public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg, String link) {
     Locale locale = localeOf(userId);
-    sendToUserTokens(userId, render(titleKey, locale, arg), render(bodyKey, locale, arg));
+    sendToUserTokens(userId, render(titleKey, locale, arg), render(bodyKey, locale, arg), link);
   }
 
   private Locale localeOf(UUID userId) {
@@ -50,10 +57,14 @@ public class PushService {
   }
 
   public void sendToUserTokens(UUID userId, String title, String body) {
+    sendToUserTokens(userId, title, body, null);
+  }
+
+  public void sendToUserTokens(UUID userId, String title, String body, String link) {
     if (FirebaseApp.getApps().isEmpty()) return;
     List<DeviceToken> tokens = deviceTokenRepository.findAllByUserId(userId);
     for (DeviceToken t : tokens) {
-      Message msg = buildMessage(t, title, body);
+      Message msg = buildMessage(t, title, body, link);
       try {
         FirebaseMessaging.getInstance().send(msg);
       } catch (FirebaseMessagingException e) {
@@ -73,11 +84,16 @@ public class PushService {
     }
   }
 
-  private static Message buildMessage(DeviceToken token, String title, String body) {
+  private static Message buildMessage(DeviceToken token, String title, String body, String link) {
     Message.Builder builder =
         Message.builder()
             .setToken(token.getFcmToken())
             .setNotification(Notification.builder().setTitle(title).setBody(body).build());
+
+    // 알림 탭 시 이동할 앱 내 경로 — 네이티브/웹 공통 data 페이로드로 전달
+    if (link != null && !link.isBlank()) {
+      builder.putData("link", link);
+    }
 
     if (isWebPlatform(token.getPlatform())) {
       builder

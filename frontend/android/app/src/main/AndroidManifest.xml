@@ -25,12 +25,17 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.runrace.app" android:host="kakao" android:pathPrefix="/callback" />
             </intent-filter>
-            <!-- 카카오 OAuth https 콜백을 앱이 직접 가로채 복귀 (App Links, .well-known/assetlinks.json 검증) -->
+            <!-- App Links (https://runrace.co.kr/...) — 카카오 OAuth 복귀 + 공유 링크를 앱이 직접 가로챔.
+                 .well-known/assetlinks.json으로 검증. 선언한 경로만 앱이 처리(그 외는 브라우저). -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="runrace.co.kr" android:pathPrefix="/kakao/callback" />
+                <data android:scheme="https" android:host="runrace.co.kr" android:pathPrefix="/challenges" />
+                <data android:scheme="https" android:host="runrace.co.kr" android:pathPrefix="/workouts" />
+                <data android:scheme="https" android:host="runrace.co.kr" android:pathPrefix="/guides" />
+                <data android:scheme="https" android:host="runrace.co.kr" android:pathPrefix="/api/share" />
             </intent-filter>
         </activity>
 

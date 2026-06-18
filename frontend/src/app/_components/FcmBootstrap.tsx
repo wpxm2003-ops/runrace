@@ -9,6 +9,7 @@ import { registerDeviceToken } from "@/lib/api/push";
 import { markNativePermissionsReady } from "@/lib/nativePermissions";
 import { reportClientError } from "@/lib/api";
 import { track } from "@/lib/analytics";
+import { nativeNavigate } from "@/lib/nativeNav";
 
 /** 백그라운드 복귀 직후 Play Services 미준비 시 Google Play 팝업이 뜨는 것을 줄이기 위한 대기 */
 const COLD_START_TOKEN_DELAY_MS = 1500;
@@ -176,6 +177,9 @@ export function FcmBootstrap() {
         const data = event.notification?.data as Record<string, unknown> | undefined;
         const type = typeof data?.type === "string" ? data.type : "unknown";
         void track("push_opened", { type });
+        // 푸시에 link(앱 내 경로)가 있으면 해당 위치로 이동
+        const link = typeof data?.link === "string" ? data.link : null;
+        if (link && link.startsWith("/")) nativeNavigate(link);
       });
     });
 

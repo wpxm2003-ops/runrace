@@ -23,9 +23,10 @@ public class WorkoutNotifications {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onIndoorRunPendingApproval(WorkoutEvents.IndoorRunPendingApprovalEvent event) {
     String name = event.submitterNickname() != null ? event.submitterNickname() : "";
+    String link = "/challenges/" + event.challengeId();
     for (java.util.UUID voterId : event.voterUserIds()) {
       pushService.sendLocalized(
-          voterId, "workout.approval_request.title", "workout.approval_request.body", name);
+          voterId, "workout.approval_request.title", "workout.approval_request.body", name, link);
     }
   }
 
