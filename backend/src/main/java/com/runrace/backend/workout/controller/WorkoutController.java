@@ -7,6 +7,7 @@ import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
 import com.runrace.backend.workout.dto.UpdateWorkoutMemoRequest;
+import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import com.runrace.backend.workout.dto.WorkoutListItem;
 import com.runrace.backend.workout.dto.WorkoutShareResponse;
@@ -117,6 +118,12 @@ public class WorkoutController {
     WorkoutSession session = workoutService.getForShare(id);
     return ResponseEntity.ok(
         WorkoutShareResponse.from(session, workoutService.toPath(session.getPathJson())));
+  }
+
+  @GetMapping("/{id:" + ID_PATH + "}/comparison")
+  public ResponseEntity<WorkoutComparisonResponse> comparison(
+      AuthPrincipal principal, @PathVariable("id") Long id) {
+    return ResponseEntity.ok(workoutService.getComparison(principal, id));
   }
 
   @PatchMapping("/{id:" + ID_PATH + "}/memo")

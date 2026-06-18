@@ -4,6 +4,7 @@ import { apiFetch, apiUrl, publicFetch } from "./client";
 import type {
   CreatedId,
   IndoorRunCreateBody,
+  WorkoutComparison,
   WorkoutCreateBody,
   WorkoutDetail,
   WorkoutListItem,
@@ -47,6 +48,11 @@ export function voteIndoorRun(workoutId: number, approved: boolean, user: User) 
 /** 운동 메모 수정. 빈 문자열 전달 시 삭제. */
 export function updateWorkoutMemo(id: number, memo: string, user: User) {
   return apiFetch<void>(`/api/workouts/${id}/memo`, { method: "PATCH", user, body: { memo } });
+}
+
+/** 동일 유형 최근 N개 평균과의 비교 데이터. */
+export function fetchWorkoutComparison(id: number, user: User) {
+  return apiFetch<WorkoutComparison>(`/api/workouts/${id}/comparison`, { user });
 }
 
 /** 공개 공유 페이지용 운동 데이터 (인증 불필요). */

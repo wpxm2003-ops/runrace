@@ -75,6 +75,49 @@ export function workoutDateKeys(items: WorkoutListItem[]): Set<string> {
   return new Set(items.map((w) => localDateKey(w.startedAt)));
 }
 
+export type WeeklyComparison = {
+  thisWeekDistanceM: number;
+  lastWeekDistanceM: number;
+  deltaM: number;
+  thisWeekCount: number;
+};
+
+function getMondayOf(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  return d;
+}
+
+/** 이번 주(월~일)와 지난 주 거리 비교. `items`는 단일 연도 데이터여도 무방. */
+export function weeklyComparison(items: WorkoutListItem[], today: Date): WeeklyComparison {
+  const startOfThisWeek = getMondayOf(today);
+  const startOfLastWeek = new Date(startOfThisWeek);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+  let thisWeekDistanceM = 0;
+  let lastWeekDistanceM = 0;
+  let thisWeekCount = 0;
+
+  for (const w of items) {
+    const d = new Date(w.startedAt);
+    if (d >= startOfThisWeek) {
+      thisWeekDistanceM += w.distanceM;
+      thisWeekCount++;
+    } else if (d >= startOfLastWeek) {
+      lastWeekDistanceM += w.distanceM;
+    }
+  }
+
+  return {
+    thisWeekDistanceM,
+    lastWeekDistanceM,
+    deltaM: thisWeekDistanceM - lastWeekDistanceM,
+    thisWeekCount,
+  };
+}
+
 export type CalendarCell = { day: number | null; dateKey: string | null };
 
 /** 일요일 시작 달력 그리드 */

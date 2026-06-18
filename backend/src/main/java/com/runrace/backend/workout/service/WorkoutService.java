@@ -18,6 +18,7 @@ import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
 import com.runrace.backend.workout.dto.PathPointDto;
+import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.LocalDate;
@@ -235,6 +236,41 @@ public class WorkoutService {
     return workoutSessionRepository
         .findListByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
             userId, from, to);
+  }
+
+  private static final int COMPARISON_LOOKBACK_DAYS = 30;
+
+  /** 동일 유형 최근 30일 기록과의 평균 비교. */
+  @Transactional(readOnly = true)
+  public WorkoutComparisonResponse getComparison(AuthPrincipal principal, Long id) {
+    WorkoutSession current = getForUser(principal.userId(), id);
+    OffsetDateTime from = current.getStartedAt().minusDays(COMPARISON_LOOKBACK_DAYS);
+    List<WorkoutSessionRepository.WorkoutListView> recent =
+        workoutSessionRepository.findRecentForComparison(
+            principal.userId(), current.getWorkoutType(), id, from);
+
+    int count = recent.size();
+    if (count == 0) return WorkoutComparisonResponse.builder().build();
+
+    long totalDist = 0;
+    long totalDur = 0;
+    long paceSum = 0;
+    int paceCount = 0;
+    for (WorkoutSessionRepository.WorkoutListView w : recent) {
+      totalDist += w.getDistanceM();
+      totalDur += w.getDurationSec();
+      if (w.getAvgPaceSecPerKm() != null) {
+        paceSum += w.getAvgPaceSecPerKm();
+        paceCount++;
+      }
+    }
+
+    return WorkoutComparisonResponse.builder()
+        .recentCount(count)
+        .avgDistanceM((int) (totalDist / count))
+        .avgDurationSec((int) (totalDur / count))
+        .avgPaceSec(paceCount > 0 ? (int) (paceSum / paceCount) : null)
+        .build();
   }
 
   private static final int MAX_MEMO_LENGTH = 500;

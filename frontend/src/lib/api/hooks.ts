@@ -18,7 +18,7 @@ import {
   fetchRejectedApprovals,
 } from "./challenges";
 import { fetchRivals } from "./rivals";
-import { fetchWorkout, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
+import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
 import { SWR_ERROR_RETRY } from "./swrConfig";
 import { getStoredAuthUid } from "@/lib/accessToken";
@@ -282,6 +282,16 @@ export function useWorkoutDetail(workoutId: number | null, user: User | null) {
 
 export function invalidateWorkoutDetail(workoutId: number, userId: string) {
   void globalMutate(["workout", workoutId, userId]);
+}
+
+export function useWorkoutComparison(workoutId: number | null, user: User | null) {
+  return useSWR(
+    user && workoutId != null
+      ? (["workout-comparison", workoutId, user.uid] as const)
+      : null,
+    () => fetchWorkoutComparison(workoutId!, user!),
+    { ...BASE_CONFIG, revalidateOnFocus: false },
+  );
 }
 
 /** 레이스 맥락에서 특정 운동 상세 (타인 기록도 포함) */
