@@ -20,6 +20,7 @@ import com.runrace.backend.workout.domain.WorkoutType;
 import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
+import com.runrace.backend.workout.repository.WorkoutComparisonItem;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -245,7 +246,7 @@ public class WorkoutService {
   public WorkoutComparisonResponse getComparison(AuthPrincipal principal, Long id) {
     WorkoutSession current = getForUser(principal.userId(), id);
     OffsetDateTime from = current.getStartedAt().minusDays(COMPARISON_LOOKBACK_DAYS);
-    List<WorkoutSessionRepository.WorkoutListView> recent =
+    List<WorkoutComparisonItem> recent =
         workoutSessionRepository.findRecentForComparison(
             principal.userId(), current.getWorkoutType(), id, from);
 
@@ -256,11 +257,11 @@ public class WorkoutService {
     long totalDur = 0;
     long paceSum = 0;
     int paceCount = 0;
-    for (WorkoutSessionRepository.WorkoutListView w : recent) {
-      totalDist += w.getDistanceM();
-      totalDur += w.getDurationSec();
-      if (w.getAvgPaceSecPerKm() != null) {
-        paceSum += w.getAvgPaceSecPerKm();
+    for (WorkoutComparisonItem w : recent) {
+      totalDist += w.distanceM();
+      totalDur += w.durationSec();
+      if (w.avgPaceSecPerKm() != null) {
+        paceSum += w.avgPaceSecPerKm();
         paceCount++;
       }
     }

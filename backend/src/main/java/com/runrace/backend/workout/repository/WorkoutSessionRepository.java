@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long> {
+public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long>, WorkoutSessionRepositoryCustom {
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
   /**
@@ -22,20 +22,6 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
   List<WorkoutListView> findListByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
       UUID userId, OffsetDateTime from, OffsetDateTime to);
 
-  /** 비교용 — 동일 유형의 최근 1개월(현재 기록 제외). */
-  @Query("""
-      SELECT w FROM WorkoutSession w
-      WHERE w.user.id = :userId
-        AND w.workoutType = :workoutType
-        AND w.id <> :excludeId
-        AND w.startedAt >= :from
-      ORDER BY w.startedAt DESC
-      """)
-  List<WorkoutListView> findRecentForComparison(
-      @Param("userId") UUID userId,
-      @Param("workoutType") WorkoutType workoutType,
-      @Param("excludeId") Long excludeId,
-      @Param("from") OffsetDateTime from);
 
   /** 기록 목록 응답에 필요한 필드만 노출하는 닫힌 프로젝션(path_json 미포함). */
   interface WorkoutListView {
