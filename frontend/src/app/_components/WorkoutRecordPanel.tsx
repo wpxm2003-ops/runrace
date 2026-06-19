@@ -12,6 +12,7 @@ import {
   invalidateWorkoutDetail,
   invalidateWorkoutLists,
   useWorkoutDetail,
+  toDisplayError,
 } from "@/lib/api";
 import { WorkoutMemoEditor } from "@/app/_components/WorkoutMemoEditor";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
@@ -101,7 +102,7 @@ export function WorkoutRecordPanel({
   }
 
   if (error) {
-    return <Alert>{String(error)}</Alert>;
+    return <Alert>{toDisplayError(error)}</Alert>;
   }
 
   if (isLoading || !detail) {

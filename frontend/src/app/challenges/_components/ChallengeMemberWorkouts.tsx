@@ -2,7 +2,7 @@
 
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { useChallengeWorkouts } from "@/lib/api";
+import { useChallengeWorkouts, toDisplayError } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
@@ -32,7 +32,7 @@ export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) 
       {!isMember ? (
         <p className="mt-3 text-sm text-zinc-500">{t.detail_member_workouts_members_only}</p>
       ) : error ? (
-        <p className="mt-3 text-sm text-red-600">{String(error)}</p>
+        <p className="mt-3 text-sm text-red-600">{toDisplayError(error)}</p>
       ) : isLoading ? (
         <div className="mt-3">
           <SkeletonLines count={3} />

@@ -7,7 +7,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { addRival, removeRival, invalidateRivals, useRivals } from "@/lib/api";
+import { addRival, removeRival, invalidateRivals, useRivals, toDisplayError } from "@/lib/api";
 import type { RivalRow } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
@@ -134,7 +134,7 @@ function RivalsContent({ user }: { user: User }) {
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.rival_list_heading}</div>
-        {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
+        {error ? <Alert className="mt-3">{toDisplayError(error)}</Alert> : null}
         <div className="mt-3">
           {isLoading && !rivals ? (
             <SkeletonLines count={2} />

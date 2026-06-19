@@ -4,7 +4,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { ChallengeFormFields } from "@/app/challenges/_components/ChallengeFormFields";
 import { useChallengeForm } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
-import { useChallengeDetail, updateChallenge, invalidateChallengeLists } from "@/lib/api";
+import { useChallengeDetail, updateChallenge, invalidateChallengeLists, toDisplayError } from "@/lib/api";
 import { challengeDetailHref, challengeEditHref, parseChallengeIdFromPath } from "@/lib/challengeRoute";
 import { toDateTimeInputValue } from "@/lib/format";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -66,7 +66,7 @@ export default function ChallengeEditContent() {
   }, [id]);
 
   const loaded = initializedIdRef.current === id && !!detail;
-  const loadError = !id ? t.detail_no_id : (fetchError ? String(fetchError) : null);
+  const loadError = !id ? t.detail_no_id : toDisplayError(fetchError);
 
   async function onSubmit() {
     if (!user || !id || !loaded) return;

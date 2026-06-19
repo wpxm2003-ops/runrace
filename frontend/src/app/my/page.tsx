@@ -13,6 +13,7 @@ import {
   useWorkoutSummary,
   useMe,
   useMyChallengeListInfinite,
+  toDisplayError,
 } from "@/lib/api";
 import { deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
@@ -86,7 +87,7 @@ function MyRacesSection({ user }: { user: User }) {
           ariaLabel={t.races_filter_label}
         />
       </div>
-      {error ? <Alert className="mt-3">{String(error)}</Alert> : null}
+      {error ? <Alert className="mt-3">{toDisplayError(error)}</Alert> : null}
       <ChallengeInfiniteList
         result={result}
         emptyLabel={t.my_races_empty}

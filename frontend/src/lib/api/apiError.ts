@@ -29,10 +29,24 @@ export function isNotFoundError(err: unknown): boolean {
   return false;
 }
 
-/** fetch 에러를 표시 문자열로 변환. 404면 친절 메시지, 그 외엔 원문, 없으면 null. */
+/**
+ * 에러를 사용자에게 보여줄 문자열로 변환. 없으면 null.
+ * 5xx → "서버에 연결할 수 없습니다.", 네트워크 오류 → "네트워크 연결을 확인해 주세요."
+ */
+export function toDisplayError(err: unknown): string | null {
+  if (err == null) return null;
+  if (err instanceof ApiError) {
+    if (err.status >= 500) return "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+    return String(err);
+  }
+  return "네트워크 연결을 확인해 주세요.";
+}
+
+/** fetch 에러를 표시 문자열로 변환. 404면 친절 메시지로 교체. */
 export function fetchErrorMessage(err: unknown, notFoundMessage: string): string | null {
   if (err == null) return null;
-  return isNotFoundError(err) ? notFoundMessage : String(err);
+  if (isNotFoundError(err)) return notFoundMessage;
+  return toDisplayError(err);
 }
 
 export function isRetryableApiError(err: unknown): boolean {

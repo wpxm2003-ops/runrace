@@ -6,7 +6,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { ChallengeInfiniteList } from "@/app/_components/ChallengeInfiniteList";
-import { useChallengeListInfinite } from "@/lib/api";
+import { useChallengeListInfinite, toDisplayError } from "@/lib/api";
 import { redirectToLogin } from "@/lib/auth";
 import {
   RacePhaseFilter,
@@ -98,7 +98,7 @@ export default function ChallengesPage() {
         </Link>
       }
     >
-      {error ? <Alert className="mb-4">{String(error)}</Alert> : null}
+      {error ? <Alert className="mb-4">{toDisplayError(error)}</Alert> : null}
 
       <Card>
         <div className="flex flex-col gap-3">

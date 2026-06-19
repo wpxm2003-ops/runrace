@@ -9,7 +9,7 @@ import { WorkoutCalendar } from "@/app/records/_components/WorkoutCalendar";
 import { Alert } from "@/app/_components/ui/Alert";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { useWorkoutListByYear } from "@/lib/api";
+import { useWorkoutListByYear, toDisplayError } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -147,7 +147,7 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
         </button>
       }
     >
-      {error ? <Alert className="mb-4">{String(error)}</Alert> : null}
+      {error ? <Alert className="mb-4">{toDisplayError(error)}</Alert> : null}
 
       <div className="mb-5 flex min-h-14 items-center justify-between gap-3">
         <button

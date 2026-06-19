@@ -85,11 +85,19 @@ async function refreshAccessToken(user: User): Promise<{ "Content-Type": string;
   return await authHeaders(user, false);
 }
 
+/** HTML 응답(nginx 오류 페이지 등)을 간결한 문자열로 변환한다. */
+function cleanErrorText(status: number, text: string): string {
+  if (text.trimStart().startsWith("<")) {
+    return status >= 500 ? "서버 오류" : `오류 ${status}`;
+  }
+  return text;
+}
+
 /** 응답이 실패면 본문을 읽어 ApiError를 던진다(401 등 특수 처리가 없는 단순 경로용). */
 async function throwIfNotOk(res: Response): Promise<void> {
   if (res.ok) return;
   const text = await res.text().catch(() => "");
-  throw new ApiError(res.status, `API ${res.status}: ${text}`);
+  throw new ApiError(res.status, `API ${res.status}: ${cleanErrorText(res.status, text)}`);
 }
 
 async function parseResponse<T>(res: Response): Promise<T> {
@@ -163,9 +171,9 @@ export async function apiFetch<T>(
       if (redirectOn401) {
         redirectToLogin(opts.returnTo);
       }
-      throw new ApiError(401, `API 401: ${text} (로그인이 필요합니다.)`);
+      throw new ApiError(401, `API 401: ${cleanErrorText(401, text)} (로그인이 필요합니다.)`);
     }
-    throw new ApiError(res.status, `API ${res.status}: ${text}`);
+    throw new ApiError(res.status, `API ${res.status}: ${cleanErrorText(res.status, text)}`);
   }
 
   return parseResponse<T>(res);
