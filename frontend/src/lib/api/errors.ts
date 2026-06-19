@@ -1,6 +1,5 @@
 import { auth } from "@/lib/firebase";
 import { apiUrl } from "./client";
-import { toDisplayError } from "./apiError";
 
 export type ClientErrorReport = {
   message: string;
@@ -55,17 +54,4 @@ export async function reportClientError(report: ClientErrorReport): Promise<void
   } catch {
     // 보고 자체의 실패는 무시한다.
   }
-}
-
-/**
- * action catch 블록용: DB에 원본 에러를 보고하고, 표시용 문자열을 반환한다.
- * setActionError(reportAndDisplay(e)) 형태로 사용.
- */
-export function reportAndDisplay(e: unknown): string {
-  void reportClientError({
-    message: e instanceof Error ? e.message : String(e),
-    stack: e instanceof Error ? (e.stack ?? null) : null,
-    kind: "action",
-  });
-  return toDisplayError(e) ?? String(e);
 }

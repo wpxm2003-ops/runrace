@@ -15,7 +15,6 @@ import {
   nudgeMember,
   useChallengeDetail,
   useHeadToHead,
-  reportAndDisplay,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
 import { NavListLink } from "@/app/_components/NavListLink";
@@ -144,7 +143,7 @@ export default function ChallengeDetailContent() {
       invalidateChallengeLists();
       nativeNavigate("/challenges", { replace: true });
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     }
   }, [user, detail, id, confirm, t]);
 
@@ -158,7 +157,7 @@ export default function ChallengeDetailContent() {
       void track("race_joined", { challengeId: id });
       await mutate();
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     } finally {
       setJoining(false);
     }
@@ -181,7 +180,7 @@ export default function ChallengeDetailContent() {
       invalidateChallengeLists();
       await mutate();
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
+      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(String(e));
     } finally {
       setLeaving(false);
     }

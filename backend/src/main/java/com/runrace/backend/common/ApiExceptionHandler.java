@@ -1,13 +1,10 @@
 package com.runrace.backend.common;
 
-import com.runrace.backend.auth.AuthContext;
-import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.observability.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.format.DateTimeParseException;
 import java.util.NoSuchElementException;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,13 +32,7 @@ public class ApiExceptionHandler {
   public record ApiError(String error, String requestId) {}
 
   @ExceptionHandler(ApiException.class)
-  public ResponseEntity<ApiError> handleApiException(ApiException e, HttpServletRequest request) {
-    UUID userId = AuthContext.getOptional().map(AuthPrincipal::userId).orElse(null);
-    errorLogService.recordApiError(
-        e.code(),
-        request.getMethod() + " " + request.getRequestURI(),
-        userId,
-        RequestIdFilter.current());
+  public ResponseEntity<ApiError> handleApiException(ApiException e) {
     return ResponseEntity.status(e.status()).body(error(e.code()));
   }
 

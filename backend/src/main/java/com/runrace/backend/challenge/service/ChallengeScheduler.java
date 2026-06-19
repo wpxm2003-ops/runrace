@@ -2,7 +2,6 @@ package com.runrace.backend.challenge.service;
 
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
-import com.runrace.backend.observability.service.ErrorLogService;
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -25,7 +24,6 @@ public class ChallengeScheduler {
 
   private final ChallengeRepository challengeRepository;
   private final ChallengeService challengeService;
-  private final ErrorLogService errorLogService;
 
   /** 3분마다 실행. 종료 전환은 급하지 않아 여유 주기로 충분하다. */
   @Scheduled(fixedDelay = 3 * 60 * 1000)
@@ -37,12 +35,6 @@ public class ChallengeScheduler {
         challengeService.processRaceLifecycle(challenge.getId(), now);
       } catch (Exception e) {
         log.warn("레이스 생명주기 처리 실패 (challengeId={}) — 건너뜀", challenge.getId(), e);
-        errorLogService.recordServiceError(
-            "scheduler",
-            e.getClass().getSimpleName(),
-            e.getMessage(),
-            ErrorLogService.stackTraceOf(e),
-            "challengeId=" + challenge.getId());
       }
     }
   }

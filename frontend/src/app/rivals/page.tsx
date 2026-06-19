@@ -7,7 +7,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { addRival, removeRival, invalidateRivals, useRivals, toDisplayError, reportAndDisplay, reportClientError } from "@/lib/api";
+import { addRival, removeRival, invalidateRivals, useRivals, toDisplayError } from "@/lib/api";
 import type { RivalRow } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
@@ -81,10 +81,7 @@ function RivalsContent({ user }: { user: User }) {
       invalidateRivals(user.uid);
       setDraft("");
     } catch (e) {
-      if (!handleAuthFailure(e, "/rivals")) {
-        void reportClientError({ message: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? (e.stack ?? null) : null, kind: "action" });
-        setActionError(mapAddError(e));
-      }
+      if (!handleAuthFailure(e, "/rivals")) setActionError(mapAddError(e));
     } finally {
       setAdding(false);
     }
@@ -97,7 +94,7 @@ function RivalsContent({ user }: { user: User }) {
       await removeRival(rivalUserId, user);
       invalidateRivals(user.uid);
     } catch (e) {
-      if (!handleAuthFailure(e, "/rivals")) setActionError(reportAndDisplay(e));
+      if (!handleAuthFailure(e, "/rivals")) setActionError(String(e));
     } finally {
       setRemovingId(null);
     }
