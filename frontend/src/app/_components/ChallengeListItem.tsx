@@ -9,6 +9,7 @@ import { useUnit } from "@/lib/UnitContext";
 import { formatGoalDistance } from "@/lib/units";
 import { useAuthUser } from "@/lib/useAuthUser";
 import type { ChallengeListItem as ChallengeListItemType } from "@/lib/api/types";
+import { nativeNavigate } from "@/lib/nativeNav";
 
 type Props = {
   challenge: ChallengeListItemType;
@@ -24,6 +25,10 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
     <a
       href={challengeDetailHref(c.id)}
       onPointerDown={() => setChallengePreview(c, user)}
+      onClick={(e) => {
+        e.preventDefault();
+        nativeNavigate(challengeDetailHref(c.id));
+      }}
       className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
     >
       <div className="flex items-center justify-between gap-2">
