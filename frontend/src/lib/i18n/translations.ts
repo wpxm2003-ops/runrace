@@ -194,9 +194,6 @@ export const translations = {
     records_no_workout_day: "이 날짜에는 운동 기록이 없습니다.",
     records_delete_current: "현재 기록 삭제하기",
     records_month_summary: (month: string) => `${month} 요약`,
-    records_this_week: "이번 주",
-    records_week_up: (d: string) => `지난 주보다 +${d} ↑`,
-    records_week_down: (d: string) => `지난 주보다 -${d} ↓`,
     stats_btn: "통계",
     stats_title: (month: string) => `${month} 통계`,
     stats_day_pattern: "요일 패턴",
@@ -216,9 +213,6 @@ export const translations = {
     comparison_tab_prev: "직전 기록",
     comparison_no_prev: "직전 운동 기록이 없습니다.",
     comparison_recent_avg: "최근 1개월 평균 대비",
-    comparison_distance_label: "거리",
-    comparison_duration_label: "시간",
-    comparison_pace_label: "평균페이스",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}초/${unit} · ${pct}% 향상`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}초/${unit} · ${pct}% 감소`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · ${pct}% 증가`,
@@ -394,7 +388,6 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `사진 촬영 시각 ${time} — 등록 시 운동 종료 시각으로 기록됩니다.`,
     upload_too_large: "사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.",
-    indoor_field_memo: "메모 (선택)",
     indoor_badge: "실내러닝",
 
     // ── 실내러닝 승인 ──────────────────────
@@ -606,9 +599,6 @@ export const translations = {
     records_no_workout_day: "No workout on this day.",
     records_delete_current: "Delete this record",
     records_month_summary: (month: string) => `${month} summary`,
-    records_this_week: "This week",
-    records_week_up: (d: string) => `↑ +${d} vs last week`,
-    records_week_down: (d: string) => `↓ -${d} vs last week`,
     stats_btn: "Stats",
     stats_title: (month: string) => `${month} stats`,
     stats_day_pattern: "Day pattern",
@@ -628,9 +618,6 @@ export const translations = {
     comparison_tab_prev: "Previous workout",
     comparison_no_prev: "No previous workout found.",
     comparison_recent_avg: "vs last 1-month avg",
-    comparison_distance_label: "Distance",
-    comparison_duration_label: "Time",
-    comparison_pace_label: "Avg pace",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}s/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}s/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -806,7 +793,6 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `Photo taken at ${time} — will be recorded as workout end time.`,
     upload_too_large: "The photo is too large. Please choose a different image.",
-    indoor_field_memo: "Notes (optional)",
     indoor_badge: "Indoor",
 
     // ── Indoor run approval ───────────────
@@ -1018,9 +1004,6 @@ export const translations = {
     records_no_workout_day: "Sin entrenamientos este día.",
     records_delete_current: "Eliminar este registro",
     records_month_summary: (month: string) => `Resumen de ${month}`,
-    records_this_week: "Esta semana",
-    records_week_up: (d: string) => `↑ +${d} vs semana pasada`,
-    records_week_down: (d: string) => `↓ -${d} vs semana pasada`,
     stats_btn: "Stats",
     stats_title: (month: string) => `Stats de ${month}`,
     stats_day_pattern: "Por día",
@@ -1040,9 +1023,6 @@ export const translations = {
     comparison_tab_prev: "Ejercicio anterior",
     comparison_no_prev: "No hay ejercicio anterior.",
     comparison_recent_avg: "vs promedio último mes",
-    comparison_distance_label: "Distancia",
-    comparison_duration_label: "Tiempo",
-    comparison_pace_label: "Ritmo medio",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}s/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}s/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -1218,7 +1198,6 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `Foto tomada a las ${time}: se registrará como hora de fin.`,
     upload_too_large: "La foto es demasiado grande. Elige otra imagen.",
-    indoor_field_memo: "Notas (opcional)",
     indoor_badge: "Indoor",
 
     // ── Aprobación de carrera indoor ──────
@@ -1430,9 +1409,6 @@ export const translations = {
     records_no_workout_day: "この日の運動記録はありません。",
     records_delete_current: "この記録を削除",
     records_month_summary: (month: string) => `${month}のまとめ`,
-    records_this_week: "今週",
-    records_week_up: (d: string) => `先週比 +${d} ↑`,
-    records_week_down: (d: string) => `先週比 -${d} ↓`,
     stats_btn: "統計",
     stats_title: (month: string) => `${month}の統計`,
     stats_day_pattern: "曜日パターン",
@@ -1452,9 +1428,6 @@ export const translations = {
     comparison_tab_prev: "前回の記録",
     comparison_no_prev: "前回の記録がありません。",
     comparison_recent_avg: "直近1ヶ月の平均と比較",
-    comparison_distance_label: "距離",
-    comparison_duration_label: "時間",
-    comparison_pace_label: "平均ペース",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}秒/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}秒/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -1630,7 +1603,6 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `撮影時刻 ${time} — 登録時に運動終了時刻として記録されます。`,
     upload_too_large: "写真の容量が大きすぎます。別の写真を選んでください。",
-    indoor_field_memo: "メモ（任意）",
     indoor_badge: "室内ラン",
 
     // ── 室内ランの承認 ────────────────────
@@ -1842,9 +1814,6 @@ export const translations = {
     records_no_workout_day: "这一天没有运动记录。",
     records_delete_current: "删除当前记录",
     records_month_summary: (month: string) => `${month}汇总`,
-    records_this_week: "本周",
-    records_week_up: (d: string) => `↑ 比上周多 +${d}`,
-    records_week_down: (d: string) => `↓ 比上周少 -${d}`,
     stats_btn: "统计",
     stats_title: (month: string) => `${month}统计`,
     stats_day_pattern: "星期分布",
@@ -1864,9 +1833,6 @@ export const translations = {
     comparison_tab_prev: "上次记录",
     comparison_no_prev: "暂无上次运动记录。",
     comparison_recent_avg: "与近1个月平均相比",
-    comparison_distance_label: "距离",
-    comparison_duration_label: "时长",
-    comparison_pace_label: "均速",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}秒/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}秒/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -2041,7 +2007,6 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `拍摄时间 ${time} — 登记时将记录为运动结束时间。`,
     upload_too_large: "照片太大。请选择其他照片。",
-    indoor_field_memo: "备注（可选）",
     indoor_badge: "室内跑",
 
     // ── 室内跑步审核 ──────────────────────
