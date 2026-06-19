@@ -18,6 +18,7 @@ import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
 import com.runrace.backend.workout.dto.PathPointDto;
+import com.runrace.backend.workout.dto.PreviousWorkoutDto;
 import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import com.runrace.backend.workout.repository.WorkoutComparisonItem;
@@ -244,17 +245,23 @@ public class WorkoutService {
 
   private static final int COMPARISON_LOOKBACK_DAYS = 30;
 
-  /** 동일 유형 최근 30일 기록과의 평균 비교. */
+  /** 최근 30일 평균 비교 + 직전 기록. */
   @Transactional(readOnly = true)
   public WorkoutComparisonResponse getComparison(AuthPrincipal principal, Long id) {
     WorkoutSession current = getForUser(principal.userId(), id);
     OffsetDateTime from = current.getStartedAt().minusDays(COMPARISON_LOOKBACK_DAYS);
+
     List<WorkoutComparisonItem> recent =
         workoutSessionRepository.findRecentForComparison(
             principal.userId(), id, from);
 
+    PreviousWorkoutDto previous = workoutSessionRepository
+        .findPreviousForComparison(principal.userId(), id, current.getStartedAt())
+        .map(w -> new PreviousWorkoutDto(w.distanceM(), w.durationSec(), w.avgPaceSecPerKm()))
+        .orElse(null);
+
     int count = recent.size();
-    if (count == 0) return WorkoutComparisonResponse.builder().build();
+    if (count == 0) return WorkoutComparisonResponse.builder().previous(previous).build();
 
     long totalDist = 0;
     long totalDur = 0;
@@ -274,6 +281,7 @@ public class WorkoutService {
         .avgDistanceM((int) (totalDist / count))
         .avgDurationSec((int) (totalDur / count))
         .avgPaceSec(paceCount > 0 ? (int) (paceSum / paceCount) : null)
+        .previous(previous)
         .build();
   }
 

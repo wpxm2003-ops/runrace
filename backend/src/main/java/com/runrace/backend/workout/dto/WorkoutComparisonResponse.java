@@ -7,5 +7,6 @@ public record WorkoutComparisonResponse(
     int recentCount,
     Integer avgPaceSec,
     int avgDistanceM,
-    int avgDurationSec
+    int avgDurationSec,
+    PreviousWorkoutDto previous
 ) {}

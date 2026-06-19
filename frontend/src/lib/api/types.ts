@@ -152,12 +152,19 @@ export type WorkoutDetail = WorkoutListItem & {
   memo?: string | null;
 };
 
-/** GET /api/workouts/{id}/comparison — 동일 유형 최근 N개 평균. */
+export type PreviousWorkout = {
+  distanceM: number;
+  durationSec: number;
+  avgPaceSecPerKm: number | null;
+};
+
+/** GET /api/workouts/{id}/comparison — 최근 30일 평균 + 직전 기록. */
 export type WorkoutComparison = {
   recentCount: number;
   avgPaceSec: number | null;
   avgDistanceM: number;
   avgDurationSec: number;
+  previous: PreviousWorkout | null;
 };
 
 export type WorkoutCreateBody = {
