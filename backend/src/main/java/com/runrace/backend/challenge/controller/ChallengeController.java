@@ -119,6 +119,7 @@ public class ChallengeController {
       @RequestParam(name = "phase", required = false, defaultValue = "all") String phase,
       @RequestParam(name = "page", required = false, defaultValue = "0") int page,
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
+    size = Math.min(Math.max(size, 1), 50);
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
     OffsetDateTime now = OffsetDateTime.now();
     Slice<Challenge> slice = challengeService.listPublicPage(lang, phase, page, size);
@@ -142,6 +143,7 @@ public class ChallengeController {
       @RequestParam(name = "phase", required = false, defaultValue = "all") String phase,
       @RequestParam(name = "page", required = false, defaultValue = "0") int page,
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
+    size = Math.min(Math.max(size, 1), 50);
     OffsetDateTime now = OffsetDateTime.now();
     UUID userId = principal.userId();
     Slice<Challenge> slice = challengeService.listMinePage(userId, phase, page, size);
