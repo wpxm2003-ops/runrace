@@ -29,12 +29,34 @@ public class ErrorLogService {
   /** 프론트엔드에서 보고한 에러. */
   public void recordFrontend(
       String message, String stack, String context, UUID userId, String requestId) {
-    persist("frontend", message, stack, context, userId, requestId);
+    persist("frontend", message, stack, context, userId, requestId, null);
   }
 
-  /** 백엔드에서 처리되지 않은 예외. */
+  /** 백엔드에서 처리되지 않은 예외 (500). */
   public void recordBackend(String message, String stack, String context, String requestId) {
-    persist("backend", message, stack, context, null, requestId);
+    persist("backend", message, stack, context, null, requestId, null);
+  }
+
+  /**
+   * ApiException — 도메인/비즈니스 에러. 유저가 어떤 에러 코드를 얼마나 자주 마주치는지 추적한다.
+   *
+   * @param errorCode ApiException.code() (예: "room_full", "already_member")
+   * @param context   "METHOD /path" 형태의 요청 컨텍스트
+   */
+  public void recordApiError(
+      String errorCode, String context, UUID userId, String requestId) {
+    persist("api", errorCode, null, context, userId, requestId, errorCode);
+  }
+
+  /**
+   * 서버 내부 서비스 에러 (push, scheduler, firebase 등).
+   *
+   * @param source    "push" | "scheduler" | "firebase"
+   * @param errorCode FCM 에러코드, Firebase 에러코드 등 (없으면 null)
+   */
+  public void recordServiceError(
+      String source, String errorCode, String message, String stack, String context) {
+    persist(source, message, stack, context, null, null, errorCode);
   }
 
   /** Throwable의 스택트레이스를 문자열로. */
@@ -45,7 +67,8 @@ public class ErrorLogService {
   }
 
   private void persist(
-      String source, String message, String stack, String context, UUID userId, String requestId) {
+      String source, String message, String stack, String context,
+      UUID userId, String requestId, String errorCode) {
     try {
       repository.save(AppErrorLog.builder()
           .source(source)
@@ -54,6 +77,7 @@ public class ErrorLogService {
           .context(truncate(context, MAX_TEXT))
           .userId(userId)
           .requestId(requestId)
+          .errorCode(truncate(errorCode, 100))
           .createdAt(OffsetDateTime.now())
           .build());
     } catch (Exception e) {

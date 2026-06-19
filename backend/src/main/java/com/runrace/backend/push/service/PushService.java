@@ -8,6 +8,7 @@ import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
 import com.google.firebase.messaging.WebpushConfig;
 import com.google.firebase.messaging.WebpushNotification;
+import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.domain.DeviceToken;
 import com.runrace.backend.push.repository.DeviceTokenRepository;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -28,6 +29,7 @@ public class PushService {
   private final DeviceTokenRepository deviceTokenRepository;
   private final AppUserRepository appUserRepository;
   private final MessageSource messageSource;
+  private final ErrorLogService errorLogService;
 
   /**
    * 수신자 언어로 title/body 키를 렌더링해 전송한다. {0} 자리표시자는 직접 치환하므로
@@ -68,18 +70,19 @@ public class PushService {
       try {
         FirebaseMessaging.getInstance().send(msg);
       } catch (FirebaseMessagingException e) {
-        // 더 이상 유효하지 않은 토큰은 제거해 누적·재시도를 막는다. 그 외는 best-effort.
+        String code = e.getMessagingErrorCode() != null ? e.getMessagingErrorCode().name() : "UNKNOWN";
+        String ctx = "userId=" + userId + " platform=" + t.getPlatform();
         if (isDeadToken(e.getMessagingErrorCode())) {
           deviceTokenRepository.delete(t);
         } else {
-          log.warn(
-              "FCM 전송 실패 (userId={}, platform={}, code={})",
-              userId,
-              t.getPlatform(),
-              e.getMessagingErrorCode());
+          log.warn("FCM 전송 실패 (userId={}, platform={}, code={})", userId, t.getPlatform(), code);
+          errorLogService.recordServiceError("push", code, e.getMessage(), null, ctx);
         }
       } catch (Exception e) {
         log.warn("FCM 전송 중 예외 (userId={}, platform={})", userId, t.getPlatform(), e);
+        errorLogService.recordServiceError(
+            "push", e.getClass().getSimpleName(), e.getMessage(),
+            ErrorLogService.stackTraceOf(e), "userId=" + userId + " platform=" + t.getPlatform());
       }
     }
   }

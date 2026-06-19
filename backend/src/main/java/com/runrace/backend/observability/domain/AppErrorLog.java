@@ -44,6 +44,10 @@ public class AppErrorLog {
   @Column(name = "request_id", length = 64)
   private String requestId;
 
+  /** ApiException.code() 등 도메인 에러 식별자. source=api 행에만 채워짐. */
+  @Column(name = "error_code", length = 100)
+  private String errorCode;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 }
