@@ -1,14 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
+import { ImageUploadField, type ImageFieldState } from "@/app/workout/indoor/_components/ImageUploadField";
+import { DurationField } from "@/app/workout/indoor/_components/DurationField";
 import { createIndoorRun, uploadImage } from "@/lib/api";
 import { track } from "@/lib/analytics";
 import { withRetry } from "@/lib/retry";
-import { compressImageForUpload } from "@/lib/compressImage";
-import { readPhotoTakenAt, workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
-import { formatDateTimeMinute } from "@/lib/format";
+import { workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -30,37 +30,10 @@ export default function IndoorRunPage() {
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imagePreparing, setImagePreparing] = useState(false);
-  const [photoTakenAt, setPhotoTakenAt] = useState<Date | null>(null);
+  const [imageState, setImageState] = useState<ImageFieldState>({ file: null, takenAt: null, preparing: false });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFieldErrors((prev) => ({ ...prev, image: undefined }));
-    setImagePreview(URL.createObjectURL(file));
-    setImageFile(null);
-    setPhotoTakenAt(null);
-    setImagePreparing(true);
-    try {
-      const [compressed, takenAt] = await Promise.all([
-        compressImageForUpload(file),
-        readPhotoTakenAt(file),
-      ]);
-      setImageFile(compressed);
-      setPhotoTakenAt(takenAt);
-    } catch {
-      setImageFile(file);
-    } finally {
-      setImagePreparing(false);
-    }
-  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -85,8 +58,8 @@ export default function IndoorRunPage() {
       errors.duration = t.indoor_err_duration_range;
     }
 
-    if (!imageFile || imagePreparing) {
-      errors.image = imagePreparing ? t.indoor_err_image_preparing : t.indoor_err_image;
+    if (!imageState.file || imageState.preparing) {
+      errors.image = imageState.preparing ? t.indoor_err_image_preparing : t.indoor_err_image;
     }
 
     if (Object.keys(errors).length > 0) {
@@ -98,9 +71,9 @@ export default function IndoorRunPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      const imageUrl = await uploadImage(imageFile!, user, { precompressed: true });
-      const startedAt = photoTakenAt
-        ? workoutStartedAtFromPhotoEnd(photoTakenAt, durationSec)
+      const imageUrl = await uploadImage(imageState.file!, user, { precompressed: true });
+      const startedAt = imageState.takenAt
+        ? workoutStartedAtFromPhotoEnd(imageState.takenAt, durationSec)
         : new Date().toISOString();
 
       // 1차 방어: 3초 간격 3회 자동 재시도 (서버 재시작·네트워크 깜빡임 흡수)
@@ -139,59 +112,13 @@ export default function IndoorRunPage() {
       {submitError ? <Alert className="mb-4">{submitError}</Alert> : null}
 
       <form onSubmit={onSubmit} className="space-y-5" noValidate>
-        {/* 이미지 — 선택 시 압축이 시작되므로 맨 위 */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            {t.indoor_field_image}
-            <span className="ml-0.5 text-red-500">*</span>
-          </label>
-          <p className="mt-0.5 text-xs text-zinc-500">{t.indoor_field_image_hint}</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={onFileChange}
-            className="hidden"
-          />
-          {imagePreview ? (
-            <div className="mt-2">
-              <img
-                src={imagePreview}
-                alt="미리보기"
-                className="h-40 w-full rounded-2xl object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-2 text-sm text-zinc-500 hover:underline"
-              >
-                {t.indoor_field_image_change}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`mt-2 flex h-36 w-full items-center justify-center rounded-2xl border border-dashed text-sm ${
-                fieldErrors.image
-                  ? "border-red-400 bg-red-50 text-red-400"
-                  : "border-zinc-300 bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
-              }`}
-            >
-              {t.indoor_field_image_select}
-            </button>
-          )}
-          {imagePreparing ? (
-            <p className="mt-1 text-xs text-zinc-500">{t.indoor_image_preparing}</p>
-          ) : photoTakenAt ? (
-            <p className="mt-1 text-xs text-emerald-700">
-              {t.indoor_photo_time_hint(formatDateTimeMinute(photoTakenAt.toISOString(), locale))}
-            </p>
-          ) : null}
-          {fieldErrors.image ? (
-            <p className="mt-1 text-xs text-red-500">{fieldErrors.image}</p>
-          ) : null}
-        </div>
+        <ImageUploadField
+          error={fieldErrors.image}
+          onChange={(state) => {
+            setImageState(state);
+            if (!state.preparing) setFieldErrors((prev) => ({ ...prev, image: undefined }));
+          }}
+        />
 
         {/* 거리 */}
         <div>
@@ -222,82 +149,25 @@ export default function IndoorRunPage() {
           ) : null}
         </div>
 
-        {/* 운동 시간 */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            {t.indoor_field_duration}
-            <span className="ml-0.5 text-red-500">*</span>
-          </label>
-          <div className="mt-1 flex gap-2">
-            <div className="flex flex-1 items-center gap-1">
-              <input
-                type="number"
-                min="0"
-                max="24"
-                placeholder="0"
-                value={hours}
-                onChange={(e) => {
-                  setHours(e.target.value);
-                  setFieldErrors((prev) => ({ ...prev, duration: undefined }));
-                }}
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${
-                  fieldErrors.duration
-                    ? "border-red-400 bg-red-50"
-                    : "border-zinc-200 bg-white focus:border-zinc-400"
-                }`}
-              />
-              <span className="shrink-0 text-sm text-zinc-500">{t.indoor_field_duration_h}</span>
-            </div>
-            <div className="flex flex-1 items-center gap-1">
-              <input
-                type="number"
-                min="0"
-                max="59"
-                placeholder="0"
-                value={minutes}
-                onChange={(e) => {
-                  setMinutes(e.target.value);
-                  setFieldErrors((prev) => ({ ...prev, duration: undefined }));
-                }}
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${
-                  fieldErrors.duration
-                    ? "border-red-400 bg-red-50"
-                    : "border-zinc-200 bg-white focus:border-zinc-400"
-                }`}
-              />
-              <span className="shrink-0 text-sm text-zinc-500">{t.indoor_field_duration_m}</span>
-            </div>
-            <div className="flex flex-1 items-center gap-1">
-              <input
-                type="number"
-                min="0"
-                max="59"
-                placeholder="0"
-                value={seconds}
-                onChange={(e) => {
-                  setSeconds(e.target.value);
-                  setFieldErrors((prev) => ({ ...prev, duration: undefined }));
-                }}
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${
-                  fieldErrors.duration
-                    ? "border-red-400 bg-red-50"
-                    : "border-zinc-200 bg-white focus:border-zinc-400"
-                }`}
-              />
-              <span className="shrink-0 text-sm text-zinc-500">{t.indoor_field_duration_s}</span>
-            </div>
-          </div>
-          {fieldErrors.duration ? (
-            <p className="mt-1 text-xs text-red-500">{fieldErrors.duration}</p>
-          ) : null}
-        </div>
+        <DurationField
+          hours={hours}
+          minutes={minutes}
+          seconds={seconds}
+          error={fieldErrors.duration}
+          onChange={(field, value) => {
+            if (field === "hours") setHours(value);
+            else if (field === "minutes") setMinutes(value);
+            else setSeconds(value);
+            setFieldErrors((prev) => ({ ...prev, duration: undefined }));
+          }}
+        />
 
         <button
           type="submit"
-          disabled={submitting || imagePreparing || !imageFile}
+          disabled={submitting || imageState.preparing || !imageState.file}
           className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-300"
         >
-          {imagePreparing ? t.indoor_image_preparing : submitting ? t.indoor_submitting : t.indoor_submit}
+          {imageState.preparing ? t.indoor_image_preparing : submitting ? t.indoor_submitting : t.indoor_submit}
         </button>
       </form>
     </PageLayout>

@@ -5,8 +5,8 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 import { WorkoutRecordPanel } from "@/app/_components/WorkoutRecordPanel";
 import { RecordsStatsPanel } from "@/app/records/_components/RecordsStatsPanel";
+import { WorkoutCalendar } from "@/app/records/_components/WorkoutCalendar";
 import { Alert } from "@/app/_components/ui/Alert";
-import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear } from "@/lib/api";
@@ -18,7 +18,6 @@ import {
   buildCalendarCells,
   filterWorkoutsByMonth,
   formatMonthLabel,
-  localDateKey,
   workoutDateKeys,
   workoutsOnDate,
 } from "@/lib/workoutStats";
@@ -183,45 +182,14 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
         )}
       </section>
 
-      <Card>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-500">
-          {weekdays.map((w) => (
-            <div key={w} className="py-1 font-medium">
-              {w}
-            </div>
-          ))}
-        </div>
-        <div className="mt-1 grid grid-cols-7 gap-1">
-          {calendarCells.map((cell, i) => {
-            if (cell.day == null || !cell.dateKey) {
-              return <div key={`empty-${i}`} className="aspect-square" />;
-            }
-            const hasWorkout = activeDateKeys.has(cell.dateKey);
-            const isSelected = selectedDateKey === cell.dateKey;
-            const isToday = cell.dateKey === localDateKey(today.toISOString());
-
-            return (
-              <button
-                key={cell.dateKey}
-                type="button"
-                disabled={!hasWorkout}
-                onClick={() => cell.dateKey && selectDay(cell.dateKey)}
-                className={`aspect-square rounded-lg text-sm tabular-nums transition-colors ${
-                  hasWorkout
-                    ? "font-bold text-zinc-900 hover:bg-zinc-100"
-                    : "font-normal text-zinc-400"
-                } ${
-                  isSelected
-                    ? "bg-zinc-100 font-bold text-zinc-900 ring-2 ring-zinc-900 ring-offset-1"
-                    : ""
-                } ${isToday && !isSelected ? "ring-1 ring-zinc-300" : ""} disabled:cursor-default disabled:opacity-40`}
-              >
-                {cell.day}
-              </button>
-            );
-          })}
-        </div>
-      </Card>
+      <WorkoutCalendar
+        weekdays={weekdays}
+        calendarCells={calendarCells}
+        activeDateKeys={activeDateKeys}
+        selectedDateKey={selectedDateKey}
+        today={today}
+        onSelectDay={selectDay}
+      />
 
       <section ref={detailSectionRef} className="mt-4 scroll-mt-4">
         {!selectedDateKey ? (
