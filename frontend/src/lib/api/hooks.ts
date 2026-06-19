@@ -121,7 +121,12 @@ export function useChallengeDetail(id: number | null, user?: User | null) {
   return useSWR(
     id == null ? null : (["challenge", id, uid] as const),
     () => fetchChallengeDetail(id!, user),
-    LIVE_CONFIG,
+    {
+      ...LIVE_CONFIG,
+      // preload(onPointerDown)로 시작된 in-flight 요청을 재활용할 수 있도록 dedup 허용.
+      // LIVE_CONFIG의 0은 매 진입마다 새 요청을 강제하지만 preload와 충돌한다.
+      dedupingInterval: 3000,
+    },
   );
 }
 

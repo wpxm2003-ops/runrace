@@ -2,6 +2,7 @@ import { preload } from "swr";
 import type { User } from "firebase/auth";
 import { fetchChallengeDetail } from "@/lib/api/challenges";
 import type { ChallengeListItem } from "@/lib/api/types";
+import { getStoredAuthUid } from "@/lib/accessToken";
 
 /**
  * 목록 → 상세 진입 시, 방금 탭한 레이스의 목록 데이터를 잠깐 보관하고
@@ -18,8 +19,10 @@ const previews = new Map<number, ChallengeListItem>();
 export function setChallengePreview(item: ChallengeListItem, user?: User | null): void {
   previews.set(item.id, item);
   // useChallengeDetail의 SWR key와 정확히 일치시켜야 캐시가 연결된다.
+  // user가 아직 null이어도 getStoredAuthUid()로 uid를 확정 — useChallengeDetail과 동일한 로직.
+  const uid = user?.uid ?? getStoredAuthUid() ?? null;
   preload(
-    ["challenge", item.id, user?.uid ?? null],
+    ["challenge", item.id, uid],
     () => fetchChallengeDetail(item.id, user),
   );
 }
