@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const NUMERIC_ID = /^\d+$/;
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   if (pathname === "/challenges/detail") {
