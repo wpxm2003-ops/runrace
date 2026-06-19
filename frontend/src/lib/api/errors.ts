@@ -1,5 +1,6 @@
 import { auth } from "@/lib/firebase";
 import { apiUrl } from "./client";
+import { toDisplayError } from "./apiError";
 
 export type ClientErrorReport = {
   message: string;
@@ -8,6 +9,15 @@ export type ClientErrorReport = {
   kind?: string;
   url?: string;
 };
+
+export function reportAndDisplay(e: unknown): string {
+  void reportClientError({
+    message: e instanceof Error ? e.message : String(e),
+    stack: e instanceof Error ? (e.stack ?? null) : null,
+    kind: "action",
+  });
+  return toDisplayError(e) ?? String(e);
+}
 
 const MAX_MESSAGE = 2_000;
 const MAX_STACK = 8_000;

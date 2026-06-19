@@ -5,6 +5,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.runrace.backend.auth.service.FirebaseUserService;
+import com.runrace.backend.observability.RequestIdFilter;
+import com.runrace.backend.observability.service.ErrorLogService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +41,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
   private final FirebaseUserService firebaseUserService;
   private final JwtService jwtService;
+  private final ErrorLogService errorLogService;
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -82,11 +85,20 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       filterChain.doFilter(request, response);
     } catch (FirebaseAuthException e) {
       log.warn("Firebase token verification failed: {}", e.getMessage());
+      errorLogService.recordServiceError(
+          "firebase",
+          e.getErrorCode() != null ? e.getErrorCode().name() : "UNKNOWN",
+          e.getMessage(), null,
+          request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
       unauthorized(response, "invalid_token");
     } catch (ServletException | IOException e) {
       throw e;
     } catch (Exception e) {
       log.error("Auth filter error on {}", request.getRequestURI(), e);
+      errorLogService.recordServiceError(
+          "firebase", "auth_filter_error", e.getMessage(),
+          ErrorLogService.stackTraceOf(e),
+          request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
       unauthorized(response, "auth_failed");
     } finally {
       AuthContext.clear();

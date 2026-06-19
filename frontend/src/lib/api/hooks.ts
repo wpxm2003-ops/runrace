@@ -6,6 +6,7 @@
 import useSWR, { mutate as globalMutate } from "swr";
 import useSWRInfinite from "swr/infinite";
 import type { User } from "firebase/auth";
+import { reportClientError } from "./errors";
 import {
   fetchChallengesPage,
   fetchChallengeDetail,
@@ -23,6 +24,14 @@ import { fetchMe } from "./auth";
 import { SWR_ERROR_RETRY } from "./swrConfig";
 import { getStoredAuthUid } from "@/lib/accessToken";
 
+const onSwrError = (error: unknown) => {
+  void reportClientError({
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? (error.stack ?? null) : null,
+    kind: "swr",
+  });
+};
+
 const BASE_CONFIG = {
   /** 진입 시 항상 백그라운드 재검증하되, 그동안 캐시된 데이터를 먼저 보여준다. */
   revalidateOnMount: true,
@@ -31,6 +40,7 @@ const BASE_CONFIG = {
   keepPreviousData: true,
   /** 짧은 시간 내 동일 키 재요청 방지(이중 마운트·연속 내비게이션) */
   dedupingInterval: 3000,
+  onError: onSwrError,
   ...SWR_ERROR_RETRY,
 };
 
@@ -41,6 +51,7 @@ const LIVE_CONFIG = {
   keepPreviousData: true,
   /** 중복 요청 방지 구간을 0으로 → 페이지 진입마다 반드시 새로 fetch */
   dedupingInterval: 0,
+  onError: onSwrError,
   ...SWR_ERROR_RETRY,
 };
 

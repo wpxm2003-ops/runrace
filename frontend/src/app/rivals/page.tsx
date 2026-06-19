@@ -7,7 +7,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { addRival, removeRival, invalidateRivals, useRivals, toDisplayError } from "@/lib/api";
+import { addRival, removeRival, invalidateRivals, useRivals, toDisplayError, reportClientError, reportAndDisplay } from "@/lib/api";
 import type { RivalRow } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
@@ -68,7 +68,7 @@ function RivalsContent({ user }: { user: User }) {
     if (msg.includes("user_not_found")) return t.rival_error_not_found;
     if (msg.includes("cannot_add_self")) return t.rival_error_self;
     if (msg.includes("already_rival")) return t.rival_error_already;
-    return t.error_occurred;
+    return toDisplayError(e) ?? t.error_occurred;
   }
 
   async function onAdd() {
@@ -81,6 +81,11 @@ function RivalsContent({ user }: { user: User }) {
       invalidateRivals(user.uid);
       setDraft("");
     } catch (e) {
+      void reportClientError({
+        message: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? (e.stack ?? null) : null,
+        kind: "action",
+      });
       if (!handleAuthFailure(e, "/rivals")) setActionError(mapAddError(e));
     } finally {
       setAdding(false);
@@ -94,7 +99,7 @@ function RivalsContent({ user }: { user: User }) {
       await removeRival(rivalUserId, user);
       invalidateRivals(user.uid);
     } catch (e) {
-      if (!handleAuthFailure(e, "/rivals")) setActionError(String(e));
+      if (!handleAuthFailure(e, "/rivals")) setActionError(reportAndDisplay(e));
     } finally {
       setRemovingId(null);
     }
