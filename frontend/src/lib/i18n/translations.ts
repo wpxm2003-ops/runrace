@@ -224,7 +224,7 @@ export const translations = {
     my_unit_label: "거리 단위",
     unit_km: "킬로미터 (km)",
     unit_mi: "마일 (mi)",
-    my_unit_pace_hint: "단위를 바꾸면 페이스도 함께 변환됩니다. (min/km ↔ min/mi)",
+    my_unit_pace_hint: "단위를 바꾸면 페이스도 함께 변환됩니다.\n(min/km ↔ min/mi)",
     races_show_all_langs: "다른 언어 레이스도 보기",
 
     // ── 개인정보처리방침 ──────────────────
@@ -629,7 +629,7 @@ export const translations = {
     my_unit_label: "Distance unit",
     unit_km: "Kilometers (km)",
     unit_mi: "Miles (mi)",
-    my_unit_pace_hint: "Pace updates automatically when you switch units. (min/km ↔ min/mi)",
+    my_unit_pace_hint: "Pace updates automatically when you switch units.\n(min/km ↔ min/mi)",
     races_show_all_langs: "Show races in all languages",
 
     // ── Privacy Policy ────────────────────
@@ -1034,7 +1034,7 @@ export const translations = {
     my_unit_label: "Unidad de distancia",
     unit_km: "Kilómetros (km)",
     unit_mi: "Millas (mi)",
-    my_unit_pace_hint: "El ritmo se convierte automáticamente al cambiar la unidad. (min/km ↔ min/mi)",
+    my_unit_pace_hint: "El ritmo se convierte automáticamente al cambiar la unidad.\n(min/km ↔ min/mi)",
     races_show_all_langs: "Ver carreras en todos los idiomas",
 
     // ── Política de privacidad ────────────
@@ -1439,7 +1439,7 @@ export const translations = {
     my_unit_label: "距離の単位",
     unit_km: "キロメートル (km)",
     unit_mi: "マイル (mi)",
-    my_unit_pace_hint: "単位を変えるとペースも自動的に換算されます。(min/km ↔ min/mi)",
+    my_unit_pace_hint: "単位を変えるとペースも自動的に換算されます。\n(min/km ↔ min/mi)",
     races_show_all_langs: "他の言語のレースも表示",
 
     // ── プライバシーポリシー ──────────────
@@ -1844,7 +1844,7 @@ export const translations = {
     my_unit_label: "距离单位",
     unit_km: "公里 (km)",
     unit_mi: "英里 (mi)",
-    my_unit_pace_hint: "切换单位时，配速也会自动换算。(min/km ↔ min/mi)",
+    my_unit_pace_hint: "切换单位时，配速也会自动换算。\n(min/km ↔ min/mi)",
     races_show_all_langs: "显示所有语言的比赛",
 
     // ── 隐私政策 ──────────────────────────
