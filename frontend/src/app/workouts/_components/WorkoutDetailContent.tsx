@@ -151,16 +151,6 @@ export default function WorkoutDetailContent() {
 
           {user && !fromChallenge ? (
             <div className="mt-4">
-              <WorkoutMemoEditor workoutId={id!} initialMemo={detail.memo} user={user} />
-            </div>
-          ) : detail.memo ? (
-            <p className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
-              {detail.memo}
-            </p>
-          ) : null}
-
-          {user && !fromChallenge ? (
-            <div className="mt-4">
               <WorkoutComparisonCard
                 workoutId={id!}
                 currentPaceSec={detail.avgPaceSecPerKm ?? null}
@@ -169,6 +159,16 @@ export default function WorkoutDetailContent() {
                 user={user}
               />
             </div>
+          ) : null}
+
+          {user && !fromChallenge ? (
+            <div className="mt-4">
+              <WorkoutMemoEditor workoutId={id!} initialMemo={detail.memo} user={user} />
+            </div>
+          ) : detail.memo ? (
+            <p className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
+              {detail.memo}
+            </p>
           ) : null}
 
           {user && !fromChallenge ? (
