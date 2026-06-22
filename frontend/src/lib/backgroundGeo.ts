@@ -34,7 +34,7 @@ export async function startBackgroundWatch(
         backgroundMessage: notificationMessage,
         requestPermissions: true,
         stale: false,
-        distanceFilter: 0,
+        distanceFilter: 10,
       },
       (position, error) => {
         if (error) {

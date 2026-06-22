@@ -40,7 +40,7 @@ function requestLocationPermission(): Promise<void> {
     navigator.geolocation.getCurrentPosition(
       () => resolve(),
       () => resolve(),
-      { enableHighAccuracy: true, timeout: 120_000, maximumAge: Infinity },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
     );
   });
 }
