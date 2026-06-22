@@ -141,8 +141,11 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
         <button
           type="button"
           onClick={() => setStatsOpen(true)}
-          className="flex h-8 items-center rounded-lg border border-zinc-200 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          className="flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
         >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0">
+            <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           {t.stats_btn}
         </button>
       }
