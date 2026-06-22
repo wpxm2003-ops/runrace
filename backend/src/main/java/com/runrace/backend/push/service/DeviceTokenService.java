@@ -10,8 +10,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 /**
- * 디바이스(FCM) 토큰 등록/갱신. DB 유니크 키는 (user_id, platform, fcm_token)이라
- * 같은 user+platform이라도 기기별 토큰을 여러 개 허용한다(멀티 디바이스).
+ * 디바이스(FCM) 토큰 등록/갱신. DB 유니크 키는 (user_id, platform)으로
+ * 플랫폼당 1개의 토큰만 유지한다. 토큰이 갱신되면 기존 행을 덮어쓴다.
  */
 @Service
 @RequiredArgsConstructor
@@ -22,9 +22,9 @@ public class DeviceTokenService {
   public void upsert(UUID userId, String platform, String fcmToken) {
     OffsetDateTime now = OffsetDateTime.now();
 
-    // 같은 토큰이 다시 들어오면 시각만 갱신(멱등). 앱 실행/복귀마다 재등록돼도 안전.
-    var existing = deviceTokenRepository.findByUserIdAndPlatformAndFcmToken(userId, platform, fcmToken);
+    var existing = deviceTokenRepository.findByUserIdAndPlatform(userId, platform);
     if (existing.isPresent()) {
+      // 기존 행 — 토큰이 같으면 시각만 갱신(멱등), 달라졌으면 새 토큰으로 덮어쓴다.
       DeviceToken t = existing.get();
       t.updateToken(fcmToken, now);
       deviceTokenRepository.save(t);
@@ -40,7 +40,12 @@ public class DeviceTokenService {
               .updatedAt(now)
               .build());
     } catch (DataIntegrityViolationException e) {
-      // 동시 등록 레이스(다른 요청이 같은 토큰을 먼저 삽입) — 이미 등록된 셈이라 무시.
+      // 동시 등록 레이스 — 다른 요청이 먼저 삽입한 경우. 재조회 후 업데이트.
+      deviceTokenRepository.findByUserIdAndPlatform(userId, platform)
+          .ifPresent(t -> {
+            t.updateToken(fcmToken, now);
+            deviceTokenRepository.save(t);
+          });
     }
   }
 }

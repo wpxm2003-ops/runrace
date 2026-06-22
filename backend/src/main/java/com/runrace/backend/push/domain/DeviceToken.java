@@ -22,7 +22,7 @@ import org.hibernate.annotations.UuidGenerator;
 @Table(
     name = "device_token",
     uniqueConstraints =
-        @UniqueConstraint(columnNames = {"user_id", "platform", "fcm_token"}))
+        @UniqueConstraint(columnNames = {"user_id", "platform"}))
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
