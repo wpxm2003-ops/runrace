@@ -1,7 +1,6 @@
 package com.runrace.backend.challenge.repository;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
@@ -65,7 +64,7 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
             lang == null ? null : challenge.langCd.eq(lang),
             phaseFilter(phase, now),
             notSoloEnded(now))
-        .orderBy(phaseBucket(now).asc(), challenge.startAt.asc(), challenge.id.asc())
+        .orderBy(orderBy(phase, now))
         .offset(pageable.getOffset())
         .limit(pageable.getPageSize() + 1L)
         .fetch();
@@ -83,7 +82,7 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
                 .where(member.challenge.eq(challenge), member.user.id.eq(userId))
                 .exists(),
             phaseFilter(phase, now))
-        .orderBy(phaseBucket(now).asc(), challenge.startAt.asc(), challenge.id.asc())
+        .orderBy(orderBy(phase, now))
         .offset(pageable.getOffset())
         .limit(pageable.getPageSize() + 1L)
         .fetch();
@@ -128,11 +127,18 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
     return endedCond(now).and(memberCount.loe(1L)).not();
   }
 
-  /** 정렬 버킷: 예정(0) → 진행중(1) → 종료(2). */
-  private static NumberExpression<Integer> phaseBucket(OffsetDateTime now) {
-    return new CaseBuilder()
-        .when(challenge.isEnded.isFalse().and(challenge.startAt.gt(now))).then(0)
-        .when(challenge.isEnded.isFalse().and(challenge.endAt.isNull().or(challenge.endAt.goe(now)))).then(1)
-        .otherwise(2);
+  /** 탭별 정렬: 종료탭은 종료일 내림차순, 나머지는 시작일 오름차순. */
+  private static com.querydsl.core.types.OrderSpecifier<?>[] orderBy(
+      String phase, OffsetDateTime now) {
+    if ("ended".equals(phase)) {
+      return new com.querydsl.core.types.OrderSpecifier<?>[] {
+          challenge.endAt.desc().nullsLast(),
+          challenge.id.desc()
+      };
+    }
+    return new com.querydsl.core.types.OrderSpecifier<?>[] {
+        challenge.startAt.asc(),
+        challenge.id.asc()
+    };
   }
 }
