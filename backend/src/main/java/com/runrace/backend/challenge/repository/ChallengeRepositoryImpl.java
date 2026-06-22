@@ -1,6 +1,7 @@
 package com.runrace.backend.challenge.repository;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
@@ -127,7 +128,7 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
     return endedCond(now).and(memberCount.loe(1L)).not();
   }
 
-  /** 탭별 정렬: 종료탭은 종료일 내림차순, 나머지는 시작일 오름차순. */
+  /** 탭별 정렬: 종료탭은 종료일 내림차순, active탭은 예정(0)→진행중(1) 후 시작일 오름차순. */
   private static com.querydsl.core.types.OrderSpecifier<?>[] orderBy(
       String phase, OffsetDateTime now) {
     if ("ended".equals(phase)) {
@@ -136,7 +137,11 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
           challenge.id.desc()
       };
     }
+    var bucket = new CaseBuilder()
+        .when(challenge.startAt.gt(now)).then(0)
+        .otherwise(1);
     return new com.querydsl.core.types.OrderSpecifier<?>[] {
+        bucket.asc(),
         challenge.startAt.asc(),
         challenge.id.asc()
     };
