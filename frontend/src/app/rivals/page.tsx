@@ -109,6 +109,7 @@ function RivalsContent({ user }: { user: User }) {
     <PageLayout title={t.rival_manage}>
       <Card>
         <p className="text-sm text-zinc-600">{t.rival_guide}</p>
+        <p className="mt-1 text-xs text-zinc-400">{t.rival_follow_notice}</p>
       </Card>
 
       <Card className="mt-4">
