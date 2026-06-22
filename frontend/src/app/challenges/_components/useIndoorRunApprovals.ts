@@ -44,9 +44,12 @@ export function useIndoorRunApprovals({
 
   async function refreshApprovalViews() {
     if (!id || !user) return;
-    await Promise.all([mutatePending(), mutateRejected()]);
-    await mutateDetail();
-    invalidateChallengeWorkouts(id, user.uid);
+    await Promise.all([
+      mutatePending(),
+      mutateRejected(),
+      mutateDetail(),
+      invalidateChallengeWorkouts(id, user.uid),
+    ]);
   }
 
   async function onVote(workoutId: number, approved: boolean) {

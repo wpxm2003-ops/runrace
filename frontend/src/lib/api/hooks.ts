@@ -3,7 +3,7 @@
  * stale-while-revalidate — 캐시된 데이터를 즉시 보여주고 백그라운드에서 갱신한다.
  * 쓰기(참여/투표/기록 등) 후에는 각 invalidate* 헬퍼로 즉시 재검증한다.
  */
-import useSWR, { mutate as globalMutate } from "swr";
+import useSWR, { mutate as globalMutate, unstable_serialize } from "swr";
 import useSWRInfinite from "swr/infinite";
 import type { User } from "firebase/auth";
 import { reportClientError } from "./errors";
@@ -156,7 +156,7 @@ export function invalidateChallengeLists() {
 
 /** 레이스 참여자 운동기록 목록을 갱신한다 (실내러닝 승인 반영 후). */
 export function invalidateChallengeWorkouts(challengeId: number, userId: string) {
-  void globalMutate(["challenge", challengeId, "workouts", userId]);
+  return globalMutate(unstable_serialize(["challenge", challengeId, "workouts", userId]));
 }
 
 /** 닉네임 변경 후 닉네임이 노출되는 SWR 캐시를 재검증한다. */

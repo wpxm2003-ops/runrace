@@ -4,6 +4,7 @@ import type { PendingApproval, RejectedApproval } from "@/lib/api/types";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { formatDuration } from "@/lib/workoutTrack";
 
 type ImageThumbnailProps = {
   imageUrl: string;
@@ -43,7 +44,7 @@ export function PendingRunCard({ item, votingId, onVote, onExpandImage }: Pendin
             {item.submitterNickname ?? t.no_name}
           </div>
           <div className="mt-0.5 text-xs text-zinc-500">
-            {formatDistance(item.distanceM, unit)} · {t.pending_approval_votes(item.approvedCount, item.totalVoters)}
+            {formatDistance(item.distanceM, unit)} · {formatDuration(item.durationSec)} · {t.pending_approval_votes(item.approvedCount, item.totalVoters)}
           </div>
         </div>
         {item.imageUrl ? (

@@ -3,7 +3,7 @@
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useChallengeWorkouts, toDisplayError } from "@/lib/api";
-import { formatDate } from "@/lib/format";
+import { formatDateTimeMinute } from "@/lib/format";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
@@ -50,7 +50,7 @@ export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) 
                 {w.nickname ?? t.no_name}
               </p>
               <p className="col-start-2 row-start-1 text-right text-xs tabular-nums text-zinc-500">
-                {formatDate(w.startedAt, locale)}
+                {formatDateTimeMinute(w.startedAt, locale)}
               </p>
               <p className="col-start-2 row-start-2 whitespace-nowrap text-right text-xs tabular-nums">
                 <span className="text-zinc-500">{formatDuration(w.durationSec)}</span>
