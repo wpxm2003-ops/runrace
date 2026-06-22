@@ -3,7 +3,7 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
-import { STAKE_MAX_CHARS } from "@/lib/challengeForm";
+import { STAKE_MAX_CHARS, minStartAtLocal } from "@/lib/challengeForm";
 import { useEffect, useState } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 
@@ -125,6 +125,7 @@ export function ChallengeFormFields({
               type="datetime-local"
               className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
               value={values.startAt}
+              min={minStartAtLocal()}
               step={60}
               onChange={(e) => handlers.onStartAtChange(e.target.value)}
               required

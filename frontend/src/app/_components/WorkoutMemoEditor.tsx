@@ -60,6 +60,7 @@ export function WorkoutMemoEditor({ workoutId, initialMemo, user }: Props) {
       <textarea
         autoFocus
         value={draft}
+        maxLength={MEMO_MAX}
         onChange={(e) => setDraft(e.target.value.slice(0, MEMO_MAX))}
         rows={4}
         className="w-full resize-none rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-800 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
