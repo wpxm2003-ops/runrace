@@ -313,7 +313,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
           setGeoError(null);
         },
         (err) => setGeoError(geolocationErrorMessage(err)),
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },
+        { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
       );
     }
 
