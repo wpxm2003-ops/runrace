@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { compressImageForUpload } from "@/lib/compressImage";
 import { readPhotoTakenAt } from "@/lib/imageExif";
 import { formatDateTimeMinute } from "@/lib/format";
@@ -24,9 +24,16 @@ export function ImageUploadField({ error, onChange }: Props) {
   const [preparing, setPreparing] = useState(false);
   const [photoTakenAt, setPhotoTakenAt] = useState<Date | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(URL.createObjectURL(file));
     setPhotoTakenAt(null);
     setPreparing(true);

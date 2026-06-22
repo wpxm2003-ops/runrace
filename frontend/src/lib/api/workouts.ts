@@ -82,6 +82,7 @@ export async function uploadImage(
     const err = await res.text().catch(() => String(res.status));
     throw new Error(err);
   }
-  const data = (await res.json()) as { url: string };
-  return data.url;
+  const data = await res.json();
+  if (typeof data?.url !== "string" || !data.url) throw new Error("upload_invalid_response");
+  return data.url as string;
 }
