@@ -10,6 +10,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear, toDisplayError } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { formatDateTime } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -140,7 +141,7 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
       actions={
         <button
           type="button"
-          onClick={() => setStatsOpen(true)}
+          onClick={() => { setStatsOpen(true); void track("weekly_report_view"); }}
           className="flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0">

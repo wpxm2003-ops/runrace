@@ -89,10 +89,15 @@ export default function WorkoutPage() {
           3,
           3000,
         );
-        void track("workout_recorded", {
-          type: "gps",
-          distanceM: snapshot.distanceM,
-          durationSec: snapshot.durationSec,
+        const distanceKm = snapshot.distanceM / 1000;
+        void track("running_end", {
+          distance_km: Math.round(distanceKm * 100) / 100,
+          duration_sec: snapshot.durationSec,
+          pace: snapshot.avgPaceSecPerKm ?? 0,
+          calories: snapshot.calories ?? 0,
+        });
+        void track("record_saved", {
+          distance_bucket: distanceKm < 1 ? "under_1km" : distanceKm < 3 ? "1_3km" : distanceKm < 5 ? "3_5km" : "over_5km",
         });
         setPendingSnapshot(null);
         setCelebration({ recordId: res.id, snapshot });

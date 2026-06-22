@@ -86,7 +86,11 @@ export default function IndoorRunPage() {
         3,
         3000,
       );
-      void track("workout_recorded", { type: "indoor", distanceM: distM, durationSec });
+      const distanceKm = distM / 1000;
+      void track("record_saved", {
+        distance_bucket: distanceKm < 1 ? "under_1km" : distanceKm < 3 ? "1_3km" : distanceKm < 5 ? "3_5km" : "over_5km",
+        type: "indoor",
+      });
       nativeNavigate(`/workouts/${res.id}`);
     } catch (e) {
       // 2차 방어: 업로드 용량 초과는 전용 안내, 그 외엔 친절 안내(폼 그대로 → 다시 제출이 곧 재시도)

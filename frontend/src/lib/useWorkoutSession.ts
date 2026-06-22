@@ -22,6 +22,7 @@ import { saveWorkout, loadWorkout, clearWorkout } from "./workoutPersistence";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
 import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
+import { track } from "./analytics";
 import { Capacitor } from "@capacitor/core";
 import { waitForNativePermissions } from "./nativePermissions";
 
@@ -339,6 +340,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     lastPosTimeRef.current = null;
     setStatus("running");
     startWatch();
+    void track("running_start");
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -356,6 +358,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     pauseStartedRef.current = Date.now();
     setStatus("paused");
     clearWatch();
+    void track("running_pause");
     if (runStartedRef.current) {
       setElapsedSec(
         computeElapsedSec(

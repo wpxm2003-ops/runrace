@@ -124,8 +124,13 @@ export async function processKakaoOAuthReturn(url: string): Promise<boolean> {
     sessionStorage.removeItem(LOGIN_RETURN_KEY);
 
     await completeKakaoLogin(code);
-    const uid = auth.currentUser?.uid;
-    if (uid) void setAnalyticsUser(uid);
+    const user = auth.currentUser;
+    if (user) {
+      void setAnalyticsUser(user.uid);
+      const created = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+      const lastSignIn = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
+      if (Math.abs(created - lastSignIn) < 10_000) void track("sign_up", { method: "kakao" });
+    }
     void track("login", { method: "kakao" });
     markLoggedIn();
     nativeNavigate(returnTo);

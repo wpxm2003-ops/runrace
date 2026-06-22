@@ -50,6 +50,9 @@ function LoginContent() {
   async function completeBackendLogin(user: Parameters<typeof syncBackendLogin>[0]) {
     await syncBackendLogin(user);
     void setAnalyticsUser(user.uid);
+    const created = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+    const lastSignIn = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
+    if (Math.abs(created - lastSignIn) < 10_000) void track("sign_up", { method: "google" });
     void track("login", { method: "google" });
     nativeNavigate(returnTo);
   }

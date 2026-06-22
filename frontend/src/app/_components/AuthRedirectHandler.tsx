@@ -12,6 +12,7 @@ import {
 } from "@/lib/authLogin";
 import { markLoggedIn } from "@/lib/AuthProvider";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { track, setAnalyticsUser } from "@/lib/analytics";
 
 /**
  * Google redirect 로그인은 /login 이 아닌 URL로 돌아올 수 있어 앱 전역에서 1회 처리
@@ -39,6 +40,11 @@ export function AuthRedirectHandler() {
         sessionStorage.removeItem(LOGIN_PENDING_KEY);
         markLoggedIn();
         await syncBackendLogin(user);
+        void setAnalyticsUser(user.uid);
+        const created = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+        const lastSignIn = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
+        if (Math.abs(created - lastSignIn) < 10_000) void track("sign_up", { method: "google" });
+        void track("login", { method: "google" });
 
         const saved = sessionStorage.getItem(LOGIN_RETURN_KEY);
         sessionStorage.removeItem(LOGIN_RETURN_KEY);
