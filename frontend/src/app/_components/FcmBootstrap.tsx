@@ -79,24 +79,6 @@ export function FcmBootstrap() {
     };
   }, []);
 
-  // 웹/iOS PWA: 웹 푸시 토큰 등록 (앱 복귀 시 토큰 재동기화).
-  useEffect(() => {
-    if (!user || Capacitor.isNativePlatform()) return;
-
-    function sync() {
-      void import("@/lib/webPush").then(({ registerWebPush }) => registerWebPush(user as User));
-    }
-
-    sync();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") sync();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-    // uid에만 의존(상단 네이티브 effect와 동일 규칙)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
-
   // 로그인 후: FCM 토큰 등록 (콜드스타트·백그라운드 복귀 시 Play Services 준비 대기)
   useEffect(() => {
     if (!user || !Capacitor.isNativePlatform()) return;

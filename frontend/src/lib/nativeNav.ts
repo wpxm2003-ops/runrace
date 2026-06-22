@@ -27,14 +27,6 @@ export function isIosPwa(): boolean {
   );
 }
 
-/** 웹 푸시 토큰 등록용 플랫폼 라벨 — 아이폰 PWA 비중 파악·세분화 타겟팅용. */
-export function webPlatform(): "web-ios" | "web-android" | "web" {
-  if (isIosWeb()) return "web-ios";
-  if (typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent || "")) {
-    return "web-android";
-  }
-  return "web";
-}
 
 export function nativeHref(path: string): string {
   if (!isNativeApp()) return path;
