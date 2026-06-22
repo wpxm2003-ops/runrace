@@ -98,7 +98,18 @@ export default function ChallengesPage() {
         </Link>
       }
     >
-      {error ? <Alert className="mb-4">{toDisplayError(error)}</Alert> : null}
+      {error ? (
+        <Alert className="mb-4">
+          {toDisplayError(error)}
+          <button
+            type="button"
+            onClick={() => void result.mutate()}
+            className="ml-2 underline"
+          >
+            {t.retry}
+          </button>
+        </Alert>
+      ) : null}
 
       <Card>
         <div className="flex flex-col gap-3">

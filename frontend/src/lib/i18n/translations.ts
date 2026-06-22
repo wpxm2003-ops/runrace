@@ -385,6 +385,7 @@ export const translations = {
     indoor_err_image: "러닝머신 사진을 첨부해 주세요.",
     indoor_err_image_preparing: "사진을 준비 중입니다. 잠시만 기다려 주세요.",
     indoor_image_preparing: "사진 준비 중...",
+    indoor_image_prepare_error: "사진 처리 중 오류가 발생했습니다. 다시 선택해 주세요.",
     indoor_photo_time_hint: (time: string) =>
       `사진 촬영 시각 ${time} — 등록 시 운동 종료 시각으로 기록됩니다.`,
     upload_too_large: "사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.",
@@ -790,6 +791,7 @@ export const translations = {
     indoor_err_image: "Please attach a photo of the treadmill.",
     indoor_err_image_preparing: "Preparing photo. Please wait.",
     indoor_image_preparing: "Preparing photo...",
+    indoor_image_prepare_error: "An error occurred while processing the photo. Please select again.",
     indoor_photo_time_hint: (time: string) =>
       `Photo taken at ${time} — will be recorded as workout end time.`,
     upload_too_large: "The photo is too large. Please choose a different image.",
@@ -1195,6 +1197,7 @@ export const translations = {
     indoor_err_image: "Adjunta una foto de la cinta.",
     indoor_err_image_preparing: "Preparando la foto. Espera un momento.",
     indoor_image_preparing: "Preparando foto...",
+    indoor_image_prepare_error: "Ocurrió un error al procesar la foto. Por favor, selecciónala de nuevo.",
     indoor_photo_time_hint: (time: string) =>
       `Foto tomada a las ${time}: se registrará como hora de fin.`,
     upload_too_large: "La foto es demasiado grande. Elige otra imagen.",
@@ -1600,6 +1603,7 @@ export const translations = {
     indoor_err_image: "ランニングマシンの写真を添付してください。",
     indoor_err_image_preparing: "写真を準備中です。少々お待ちください。",
     indoor_image_preparing: "写真を準備中...",
+    indoor_image_prepare_error: "写真の処理中にエラーが発生しました。もう一度選択してください。",
     indoor_photo_time_hint: (time: string) =>
       `撮影時刻 ${time} — 登録時に運動終了時刻として記録されます。`,
     upload_too_large: "写真の容量が大きすぎます。別の写真を選んでください。",
@@ -2004,6 +2008,7 @@ export const translations = {
     indoor_err_image: "请附上跑步机的照片。",
     indoor_err_image_preparing: "正在准备照片，请稍候。",
     indoor_image_preparing: "正在准备照片...",
+    indoor_image_prepare_error: "处理照片时出错，请重新选择。",
     indoor_photo_time_hint: (time: string) =>
       `拍摄时间 ${time} — 登记时将记录为运动结束时间。`,
     upload_too_large: "照片太大。请选择其他照片。",

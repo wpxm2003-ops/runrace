@@ -23,6 +23,7 @@ export function ImageUploadField({ error, onChange }: Props) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [photoTakenAt, setPhotoTakenAt] = useState<Date | null>(null);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -36,6 +37,7 @@ export function ImageUploadField({ error, onChange }: Props) {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(URL.createObjectURL(file));
     setPhotoTakenAt(null);
+    setPrepareError(null);
     setPreparing(true);
     onChange({ file: null, takenAt: null, preparing: true });
     try {
@@ -48,6 +50,7 @@ export function ImageUploadField({ error, onChange }: Props) {
       onChange({ file: compressed, takenAt, preparing: false });
     } catch {
       setPreparing(false);
+      setPrepareError(t.indoor_image_prepare_error);
       onChange({ file, takenAt: null, preparing: false });
     }
   }
@@ -96,6 +99,8 @@ export function ImageUploadField({ error, onChange }: Props) {
       )}
       {preparing ? (
         <p className="mt-1 text-xs text-zinc-500">{t.indoor_image_preparing}</p>
+      ) : prepareError ? (
+        <p className="mt-1 text-xs text-red-500">{prepareError}</p>
       ) : photoTakenAt ? (
         <p className="mt-1 text-xs text-emerald-700">
           {t.indoor_photo_time_hint(formatDateTimeMinute(photoTakenAt.toISOString(), locale))}
