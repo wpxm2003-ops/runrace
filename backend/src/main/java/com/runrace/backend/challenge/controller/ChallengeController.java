@@ -162,7 +162,10 @@ public class ChallengeController {
       Optional<AuthPrincipal> principal, @PathVariable("id") Long id) {
     ChallengeService.ChallengeDetailView detail =
         challengeService.getDetail(principal.map(AuthPrincipal::userId), id);
-    return ResponseEntity.ok(toDetailResponse(detail));
+    List<HeadToHeadRow> h2h = principal
+        .map(p -> challengeService.headToHead(p.userId(), id))
+        .orElse(List.of());
+    return ResponseEntity.ok(toDetailResponse(detail, h2h));
   }
 
   /** 현재 사용자 기준, 이 레이스의 라이벌 참여자와의 누적 전적(끝난 레이스 전부 합산). */
@@ -225,7 +228,7 @@ public class ChallengeController {
         memberIds.contains(challenge.getId()));
   }
 
-  private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {
+  private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail, List<HeadToHeadRow> h2h) {
     Challenge challenge = detail.challenge();
     BigDecimal goal = ChallengeService.goalKmAsDecimal(challenge);
 
@@ -270,7 +273,8 @@ public class ChallengeController {
         canLeave,
         detail.memberCount(),
         winner,
-        rows);
+        rows,
+        h2h);
   }
 
   /** 시작 전: 참여 순(먼저 참여한 사람이 위). 시작 후: 레이스 결과 순(완주 우선 → 완주 시각 → 누적 km). */

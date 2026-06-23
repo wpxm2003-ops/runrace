@@ -14,7 +14,6 @@ import {
   invalidateChallengeLists,
   nudgeMember,
   useChallengeDetail,
-  useHeadToHead,
   reportAndDisplay,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
@@ -104,20 +103,14 @@ export default function ChallengeDetailContent() {
     onError: setActionError,
   });
 
-  // 참여자일 때 전적 조회 — 진행중/예정/종료 모두 표시(라이벌만 반환).
-  const { data: headToHeadRows } = useHeadToHead(
-    id,
-    user ?? null,
-    Boolean(detail?.isMember),
-  );
   const headToHead = useMemo<HeadToHeadMap | undefined>(() => {
-    if (!headToHeadRows) return undefined;
+    if (!detail) return undefined;
     const map: HeadToHeadMap = new Map();
-    for (const r of headToHeadRows) {
+    for (const r of detail.headToHead) {
       map.set(r.opponentUserId, { wins: r.wins, losses: r.losses });
     }
     return map;
-  }, [headToHeadRows]);
+  }, [detail]);
 
   const error = firstErrorMessage(actionError, fetchErrorMessage(fetchError, t.detail_not_found));
 

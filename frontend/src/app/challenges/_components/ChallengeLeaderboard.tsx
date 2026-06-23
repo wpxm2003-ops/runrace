@@ -42,6 +42,7 @@ type MemberRowProps = {
   rank: number;
   isMe: boolean;
   showMedal: boolean;
+  showRank: boolean;
   goalKm: number;
   /** 지정 시(종료된 레이스의 라이벌 행) 나와의 누적 전적을 표시한다. */
   record?: { wins: number; losses: number };
@@ -61,6 +62,7 @@ const MemberRow = memo(function MemberRow({
   rank,
   isMe,
   showMedal,
+  showRank,
   goalKm,
   record,
   onNudge,
@@ -89,7 +91,7 @@ const MemberRow = memo(function MemberRow({
     <div className={`rounded-xl p-3 ${rowAccent}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
-          <RankBadge rank={rank} medal={showMedal} />
+          {showRank ? <RankBadge rank={rank} medal={showMedal} /> : null}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className={`truncate text-sm font-medium ${nameColor}`}>
@@ -204,9 +206,12 @@ const ResultSummary = memo(function ResultSummary({
   if (idx < 0) return null;
   const me = members[idx];
   const rank = me.finalRank ?? idx + 1;
+  const anyProgress = members.some((m) => Number(m.totalKm) > 0);
 
   let text: string;
-  if (rank === 1) {
+  if (!anyProgress) {
+    text = t.result_draw;
+  } else if (rank === 1) {
     text = t.result_winner();
   } else {
     const above = members[idx - 1];
@@ -261,20 +266,24 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
           <ResultSummary members={members} myUserId={myUserId} unit={unit} />
         ) : null}
         <div className="flex flex-col gap-3">
-          {members.map((m, idx) => (
+          {members.map((m, idx) => {
+            const anyProgress = members.some((mem) => Number(mem.totalKm) > 0);
+            return (
             <MemberRow
               key={m.userId}
               member={m}
               rank={m.finalRank ?? idx + 1}
               isMe={myUserId != null && m.userId === myUserId}
-              showMedal={m.finished || hasEnded}
+              showRank={hasStarted && (!hasEnded || anyProgress)}
+              showMedal={anyProgress && hasEnded}
               goalKm={goalKm}
               record={m.isRival ? headToHead?.get(m.userId) : undefined}
               onNudge={onNudge}
               nudging={nudgingId === m.userId}
               nudged={nudgedIds?.has(m.userId)}
             />
-          ))}
+            );
+          })}
         </div>
       </div>
     </Card>
