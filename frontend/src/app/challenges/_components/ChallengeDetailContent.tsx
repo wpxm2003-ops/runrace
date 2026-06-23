@@ -106,7 +106,7 @@ export default function ChallengeDetailContent() {
   const headToHead = useMemo<HeadToHeadMap | undefined>(() => {
     if (!detail) return undefined;
     const map: HeadToHeadMap = new Map();
-    for (const r of detail.headToHead) {
+    for (const r of (detail.headToHead ?? [])) {
       map.set(r.opponentUserId, { wins: r.wins, losses: r.losses });
     }
     return map;
