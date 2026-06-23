@@ -22,8 +22,7 @@ import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
 import { track, setAnalyticsUser } from "@/lib/analytics";
 import { markLoggedIn } from "@/lib/AuthProvider";
 import { useLocale } from "@/lib/i18n";
-// 카카오 로그인 버튼은 스토어 심사 통과 전까지 히든 (App Links/kakaoAuth 로직은 유지)
-// import { startKakaoLogin } from "@/lib/kakaoAuth";
+import { startKakaoLogin } from "@/lib/kakaoAuth";
 
 function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string {
   const msg = String(e);
@@ -156,6 +155,17 @@ function LoginContent() {
               />
             </svg>
             {busy ? t.login_busy : t.login_google}
+          </button>
+          <button
+            type="button"
+            onClick={() => startKakaoLogin(returnTo)}
+            disabled={busy || inApp}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191919] shadow-sm hover:brightness-95 disabled:opacity-50"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden fill="currentColor">
+              <path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.543 1.493 4.77 3.75 6.117l-.96 3.573a.25.25 0 0 0 .37.277L9.5 18.13A11.6 11.6 0 0 0 12 18c5.523 0 10-3.477 10-7.5S17.523 3 12 3z" />
+            </svg>
+            {t.login_kakao}
           </button>
         </div>
       </div>
