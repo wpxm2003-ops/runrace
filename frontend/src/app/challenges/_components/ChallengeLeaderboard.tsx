@@ -7,6 +7,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistanceAmount } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
+import { formatDateTimeMinute } from "@/lib/format";
 import type { ChallengeMember } from "@/lib/api/types";
 
 /** userId → 현재 사용자 기준 누적 전적. */
@@ -66,12 +67,12 @@ const MemberRow = memo(function MemberRow({
   nudging,
   nudged,
 }: MemberRowProps) {
-  const { t } = useLocale();
   const { unit } = useUnit();
   const [pickerOpen, setPickerOpen] = useState(false);
   const pct = Math.min(100, Math.max(0, Number(m.progressPercent) || 0));
   const pctLabel = Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
   const isRival = m.isRival && !isMe;
+  const { t, locale } = useLocale();
 
   const rowAccent = isMe
     ? "border border-emerald-200 bg-emerald-50"
@@ -107,6 +108,7 @@ const MemberRow = memo(function MemberRow({
             {m.finished ? (
               <div className="mt-0.5 text-[11px] font-medium text-emerald-600">
                 {t.detail_finished_badge}
+                {m.finishedAt ? ` · ${formatDateTimeMinute(m.finishedAt, locale)}` : ""}
               </div>
             ) : null}
             {record ? (
