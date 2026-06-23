@@ -267,15 +267,15 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
         ) : null}
         <div className="flex flex-col gap-3">
           {members.map((m, idx) => {
-            const anyProgress = members.some((mem) => Number(mem.totalKm) > 0);
+            const hasProgress = Number(m.totalKm) > 0;
             return (
             <MemberRow
               key={m.userId}
               member={m}
               rank={m.finalRank ?? idx + 1}
               isMe={myUserId != null && m.userId === myUserId}
-              showRank={hasStarted && (!hasEnded || anyProgress)}
-              showMedal={anyProgress && hasEnded}
+              showRank={hasStarted && (!hasEnded || hasProgress)}
+              showMedal={hasEnded && hasProgress}
               goalKm={goalKm}
               record={m.isRival ? headToHead?.get(m.userId) : undefined}
               onNudge={onNudge}

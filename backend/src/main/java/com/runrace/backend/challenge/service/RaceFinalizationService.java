@@ -141,7 +141,10 @@ public class RaceFinalizationService {
     List<ChallengeMember> ordered = members.stream().sorted(RACE_RESULT_ORDER).toList();
     int rank = 1;
     for (ChallengeMember m : ordered) {
-      m.assignFinalRank(rank++);
+      if (m.getTotalKm().compareTo(java.math.BigDecimal.ZERO) > 0) {
+        m.assignFinalRank(rank++);
+      }
+      // totalKm == 0 이면 finalRank를 null로 유지 (참여했지만 기록 없음)
     }
     challengeMemberRepository.saveAll(ordered);
   }
