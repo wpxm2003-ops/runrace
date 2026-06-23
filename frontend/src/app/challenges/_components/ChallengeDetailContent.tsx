@@ -201,9 +201,15 @@ export default function ChallengeDetailContent() {
       try {
         await nudgeMember(id, targetUserId, variant, user);
         setNudgedIds((prev) => new Set(prev).add(targetUserId));
+        toast.success(t.nudge_sent);
       } catch (e) {
         const msg = String(e);
-        setActionError(msg.includes("nudge_daily_limit") ? t.nudge_daily_limit : msg);
+        if (msg.includes("nudge_daily_limit")) {
+          setNudgedIds((prev) => new Set(prev).add(targetUserId));
+          toast.error(t.nudge_already_sent);
+        } else {
+          setActionError(msg);
+        }
       } finally {
         setNudgingId(null);
       }

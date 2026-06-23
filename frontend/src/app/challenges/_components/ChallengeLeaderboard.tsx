@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
+import { toast } from "sonner";
 import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -86,7 +87,7 @@ const MemberRow = memo(function MemberRow({
   return (
     <div className={`rounded-xl p-3 ${rowAccent}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-w-0 items-start gap-2.5">
           <RankBadge rank={rank} medal={showMedal} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -115,6 +116,38 @@ const MemberRow = memo(function MemberRow({
                   : t.head_to_head_record(record.wins, record.losses)}
               </div>
             ) : null}
+            {onNudge && !isMe && !m.finished ? (
+              pickerOpen ? (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {t.nudge_presets.map((label, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={nudging}
+                      onClick={() => {
+                        setPickerOpen(false);
+                        onNudge(m.userId, i);
+                      }}
+                      className="rounded-md border border-zinc-200 px-1.5 py-0.5 text-[10px] text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={nudging}
+                  onClick={() => {
+                    if (nudged) { toast.error(t.nudge_already_sent); return; }
+                    setPickerOpen(true);
+                  }}
+                  className="mt-1 rounded-md border border-zinc-200 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  👊 {t.nudge_btn}
+                </button>
+              )
+            ) : null}
           </div>
         </div>
         <div className="shrink-0 text-right tabular-nums">
@@ -132,39 +165,6 @@ const MemberRow = memo(function MemberRow({
           style={{ width: `${pct}%` }}
         />
       </div>
-      {onNudge && !isMe && !m.finished ? (
-        <div className="mt-2 flex flex-col items-end gap-1.5">
-          {nudged ? (
-            <span className="text-xs font-medium text-emerald-600">{t.nudge_sent}</span>
-          ) : pickerOpen ? (
-            <div className="flex flex-wrap justify-end gap-1.5">
-              {t.nudge_presets.map((label, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  disabled={nudging}
-                  onClick={() => {
-                    setPickerOpen(false);
-                    onNudge(m.userId, i);
-                  }}
-                  className="rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={nudging}
-              onClick={() => setPickerOpen(true)}
-              className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
-            >
-              👊 {t.nudge_btn}
-            </button>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 });

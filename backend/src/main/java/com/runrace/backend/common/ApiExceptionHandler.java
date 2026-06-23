@@ -7,6 +7,7 @@ import com.runrace.backend.observability.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.format.DateTimeParseException;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -34,14 +35,19 @@ public class ApiExceptionHandler {
 
   public record ApiError(String error, String requestId) {}
 
+  /** 정상적인 비즈니스 플로우로 예상되는 에러 코드 — app_error_log 수집 제외. */
+  private static final Set<String> EXPECTED_CODES = Set.of("nudge_daily_limit");
+
   @ExceptionHandler(ApiException.class)
   public ResponseEntity<ApiError> handleApiException(ApiException e, HttpServletRequest request) {
-    UUID userId = AuthContext.getOptional().map(AuthPrincipal::userId).orElse(null);
-    errorLogService.recordApiError(
-        e.code(),
-        request.getMethod() + " " + request.getRequestURI(),
-        userId,
-        RequestIdFilter.current());
+    if (!EXPECTED_CODES.contains(e.code())) {
+      UUID userId = AuthContext.getOptional().map(AuthPrincipal::userId).orElse(null);
+      errorLogService.recordApiError(
+          e.code(),
+          request.getMethod() + " " + request.getRequestURI(),
+          userId,
+          RequestIdFilter.current());
+    }
     return ResponseEntity.status(e.status()).body(error(e.code()));
   }
 
