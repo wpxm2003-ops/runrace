@@ -58,7 +58,7 @@ function RivalListRow({
 
 function RivalsContent({ user }: { user: User }) {
   const { t } = useLocale();
-  const { data: rivals, isLoading, error } = useRivals(user);
+  const { data: rivals, isLoading, error, mutate: mutateRivals } = useRivals(user);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -79,7 +79,7 @@ function RivalsContent({ user }: { user: User }) {
     setActionError(null);
     try {
       await addRival(nickname, user);
-      invalidateRivals(user.uid);
+      void mutateRivals();
       setDraft("");
       toast.success(t.toast_rival_added);
     } catch (e) {
@@ -99,7 +99,7 @@ function RivalsContent({ user }: { user: User }) {
     setActionError(null);
     try {
       await removeRival(rivalUserId, user);
-      invalidateRivals(user.uid);
+      void mutateRivals();
       toast.success(t.toast_rival_removed);
     } catch (e) {
       if (!handleAuthFailure(e, "/rivals")) setActionError(reportAndDisplay(e));

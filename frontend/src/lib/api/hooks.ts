@@ -218,7 +218,9 @@ export function useRivals(user: User | null) {
 
 /** 라이벌 등록/해제 후 목록 재검증. */
 export function invalidateRivals(userId: string) {
-  void globalMutate(["rivals", userId]);
+  void globalMutate(
+    (key) => Array.isArray(key) && key[0] === "rivals" && key[1] === userId,
+  );
 }
 
 // ── 실내러닝 승인 (레이스 참여·시작 후에만) ──────────────────────────────────
