@@ -269,7 +269,7 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
               isMe={myUserId != null && m.userId === myUserId}
               showMedal={m.finished || hasEnded}
               goalKm={goalKm}
-              record={hasEnded && m.isRival ? headToHead?.get(m.userId) : undefined}
+              record={m.isRival ? headToHead?.get(m.userId) : undefined}
               onNudge={onNudge}
               nudging={nudgingId === m.userId}
               nudged={nudgedIds?.has(m.userId)}

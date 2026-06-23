@@ -113,25 +113,29 @@ function RivalsContent({ user }: { user: User }) {
       <Card>
         <p className="mb-3 text-xs font-medium text-zinc-400">{t.rival_preview_hint}</p>
         <div className="flex flex-col gap-2">
-          <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-2">
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-500">1</span>
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-semibold text-amber-900">씩씩한여우6720</span>
                     <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">{t.rival_label}</span>
                   </div>
+                  <div className="mt-0.5 text-[11px] font-medium text-amber-700">3승 2패</div>
                 </div>
               </div>
-              <span className="text-sm font-semibold text-zinc-900">32%</span>
+              <div className="shrink-0 text-right">
+                <div className="text-sm font-semibold text-zinc-900">62%</div>
+                <div className="mt-0.5 text-[11px] text-zinc-500">24.80 / 40.00 km</div>
+              </div>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-              <div className="h-full w-[32%] rounded-full bg-zinc-900" />
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+              <div className="h-full w-[62%] rounded-full bg-zinc-900" />
             </div>
           </div>
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-500">2</span>
                 <div className="flex items-center gap-1.5">
@@ -139,10 +143,13 @@ function RivalsContent({ user }: { user: User }) {
                   <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">{t.me_label}</span>
                 </div>
               </div>
-              <span className="text-sm font-semibold text-emerald-700">18%</span>
+              <div className="shrink-0 text-right">
+                <div className="text-sm font-semibold text-emerald-700">45%</div>
+                <div className="mt-0.5 text-[11px] text-emerald-700">18.00 / 40.00 km</div>
+              </div>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-              <div className="h-full w-[18%] rounded-full bg-emerald-600" />
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+              <div className="h-full w-[45%] rounded-full bg-emerald-600" />
             </div>
           </div>
         </div>

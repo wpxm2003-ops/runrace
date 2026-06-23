@@ -104,11 +104,11 @@ export default function ChallengeDetailContent() {
     onError: setActionError,
   });
 
-  // 종료된 레이스 + 참여자일 때만 전적 조회(엔드포인트는 인증 필요, 라이벌만 반환).
+  // 참여자일 때 전적 조회 — 진행중/예정/종료 모두 표시(라이벌만 반환).
   const { data: headToHeadRows } = useHeadToHead(
     id,
     user ?? null,
-    Boolean(detail?.hasEnded && detail?.isMember),
+    Boolean(detail?.isMember),
   );
   const headToHead = useMemo<HeadToHeadMap | undefined>(() => {
     if (!headToHeadRows) return undefined;
