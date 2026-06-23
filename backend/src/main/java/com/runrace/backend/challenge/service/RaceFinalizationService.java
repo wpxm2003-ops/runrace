@@ -142,8 +142,8 @@ public class RaceFinalizationService {
     int rank = 1;
     for (ChallengeMember m : ordered) {
       m.assignFinalRank(rank++);
-      challengeMemberRepository.save(m);
     }
+    challengeMemberRepository.saveAll(ordered);
   }
 
   /** 확정 순위를 초기화한다(레이스 되돌림 — 운동 삭제로 종료가 풀릴 때). */
@@ -151,7 +151,7 @@ public class RaceFinalizationService {
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(challengeId);
     for (ChallengeMember m : members) {
       m.clearFinalRank();
-      challengeMemberRepository.save(m);
     }
+    challengeMemberRepository.saveAll(members);
   }
 }
