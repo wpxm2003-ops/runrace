@@ -15,7 +15,8 @@ public interface ChallengeRepositoryCustom {
 
   long countActiveByCreator(UUID creatorId, OffsetDateTime now);
 
-  List<Challenge> findStartedNotEnded(OffsetDateTime now);
+  /** 스케줄러 전용 — ID만 반환해 메모리 부하 최소화. */
+  List<Long> findStartedNotEndedIds(OffsetDateTime now);
 
   /** 공개 목록 페이지 — phase(all/active/scheduled/in_progress/ended) + 언어(soft) + 1명 종료방 숨김. */
   Slice<Challenge> findPublicPage(String lang, String phase, OffsetDateTime now, Pageable pageable);

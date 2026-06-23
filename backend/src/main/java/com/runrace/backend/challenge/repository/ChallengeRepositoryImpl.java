@@ -49,9 +49,9 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
   }
 
   @Override
-  public List<Challenge> findStartedNotEnded(OffsetDateTime now) {
-    return query.selectFrom(challenge)
-        .join(challenge.creator).fetchJoin()
+  public List<Long> findStartedNotEndedIds(OffsetDateTime now) {
+    return query.select(challenge.id)
+        .from(challenge)
         .where(challenge.isEnded.isFalse(), challenge.startAt.loe(now))
         .fetch();
   }

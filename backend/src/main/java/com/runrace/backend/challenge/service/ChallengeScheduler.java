@@ -1,6 +1,5 @@
 package com.runrace.backend.challenge.service;
 
-import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.observability.service.ErrorLogService;
 import java.time.OffsetDateTime;
@@ -32,14 +31,14 @@ public class ChallengeScheduler {
   public void sweepRaceLifecycle() {
     OffsetDateTime now = OffsetDateTime.now();
     // 레이스별 독립 트랜잭션 — 한 건이 실패해도 나머지는 정상 처리되도록 격리한다.
-    for (Challenge challenge : challengeRepository.findStartedNotEnded(now)) {
+    for (Long challengeId : challengeRepository.findStartedNotEndedIds(now)) {
       try {
-        challengeService.processRaceLifecycle(challenge.getId(), now);
+        challengeService.processRaceLifecycle(challengeId, now);
       } catch (Exception e) {
-        log.warn("레이스 생명주기 처리 실패 (challengeId={}) — 건너뜀", challenge.getId(), e);
+        log.warn("레이스 생명주기 처리 실패 (challengeId={}) — 건너뜀", challengeId, e);
         errorLogService.recordServiceError(
             "scheduler", e.getClass().getSimpleName(), e.getMessage(),
-            ErrorLogService.stackTraceOf(e), "challengeId=" + challenge.getId());
+            ErrorLogService.stackTraceOf(e), "challengeId=" + challengeId);
       }
     }
   }
