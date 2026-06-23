@@ -201,32 +201,28 @@ const ResultSummary = memo(function ResultSummary({
   const idx = members.findIndex((m) => m.userId === myUserId);
   if (idx < 0) return null;
   const me = members[idx];
-  const total = members.length;
   const rank = me.finalRank ?? idx + 1;
 
   let text: string;
   if (rank === 1) {
-    text = t.result_winner(total);
+    text = t.result_winner();
   } else {
     const above = members[idx - 1];
-    if (above) {
-      const aboveName = above.nickname ?? t.no_name;
-      let gap: string;
-      if (me.finishedAt && above.finishedAt) {
-        const sec = Math.abs(
-          Math.round(
-            (new Date(me.finishedAt).getTime() - new Date(above.finishedAt).getTime()) / 1000,
-          ),
-        );
-        gap = formatDuration(sec);
-      } else {
-        const diffKm = Math.max(0, Number(above.totalKm) - Number(me.totalKm));
-        gap = `${formatDistanceAmount(diffKm, unit)} ${unit}`;
-      }
-      text = `${t.result_placement(rank, total)} · ${t.result_chase(aboveName, gap)}`;
+    if (!above) return null;
+    const aboveName = above.nickname ?? t.no_name;
+    let gap: string;
+    if (me.finishedAt && above.finishedAt) {
+      const sec = Math.abs(
+        Math.round(
+          (new Date(me.finishedAt).getTime() - new Date(above.finishedAt).getTime()) / 1000,
+        ),
+      );
+      gap = formatDuration(sec);
     } else {
-      text = t.result_placement(rank, total);
+      const diffKm = Math.max(0, Number(above.totalKm) - Number(me.totalKm));
+      gap = `${formatDistanceAmount(diffKm, unit)} ${unit}`;
     }
+    text = t.result_chase(aboveName, gap);
   }
 
   return (
@@ -259,7 +255,7 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
     <Card className="mt-6">
       <div className="text-base font-semibold">{heading}</div>
       <div className="mt-4">
-        {hasEnded && myUserId && members.length > 1 ? (
+        {hasEnded && myUserId ? (
           <ResultSummary members={members} myUserId={myUserId} unit={unit} />
         ) : null}
         <div className="flex flex-col gap-3">
