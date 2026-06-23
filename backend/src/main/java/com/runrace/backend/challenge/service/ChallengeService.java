@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -289,10 +290,7 @@ public class ChallengeService {
       return List.of();
     }
     List<UUID> rivalParticipants =
-        challengeMemberRepository.findAllForChallenge(challengeId).stream()
-            .map(m -> m.getUser().getId())
-            .filter(rivalIds::contains)
-            .toList();
+        challengeMemberRepository.findParticipantIdsIn(challengeId, new ArrayList<>(rivalIds));
     if (rivalParticipants.isEmpty()) {
       return List.of();
     }

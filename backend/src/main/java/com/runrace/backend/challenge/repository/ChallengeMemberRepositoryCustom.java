@@ -21,6 +21,9 @@ public interface ChallengeMemberRepositoryCustom {
   /** 레이스별 멤버 수 — challengeId → count. 목록 API N+1 방지용. */
   Map<Long, Long> memberCountsByChallengeId(List<Long> ids);
 
+  /** 한 레이스의 참여자 중 candidateIds에 속하는 user_id만 반환 — 엔티티 로드 없이 ID만 조회. */
+  List<UUID> findParticipantIdsIn(Long challengeId, List<UUID> candidateIds);
+
   /**
    * 전적(head-to-head) 원시 쌍 — 끝난 레이스(final_rank 확정)에서 나(meId)와 상대들이
    * 함께 참여한 건마다 (상대 id, 내 순위, 상대 순위)를 반환한다. 승패 집계는 서비스에서.

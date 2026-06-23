@@ -72,6 +72,15 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
   }
 
   @Override
+  public List<UUID> findParticipantIdsIn(Long challengeId, List<UUID> candidateIds) {
+    if (candidateIds.isEmpty()) return List.of();
+    return query.select(member.user.id)
+        .from(member)
+        .where(member.challenge.id.eq(challengeId), member.user.id.in(candidateIds))
+        .fetch();
+  }
+
+  @Override
   public List<HeadToHeadPair> findHeadToHeadPairs(UUID meId, List<UUID> opponentIds) {
     if (opponentIds.isEmpty()) {
       return List.of();
