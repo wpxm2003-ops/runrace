@@ -21,6 +21,9 @@ export const translations = {
     share_card_error: "카드를 만들지 못했어요.",
     share_card_create: "기록 카드",
     share_cta: "RunRace에서 나도 기록 시작하기",
+    appbanner_text: "RunRace 앱에서 더 편하게 이용하세요",
+    appbanner_open: "앱으로 열기",
+    appbanner_close: "닫기",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "홈",
@@ -439,6 +442,9 @@ export const translations = {
     share_card_error: "Couldn't create the card.",
     share_card_create: "Story card",
     share_cta: "Start tracking with RunRace",
+    appbanner_text: "Get a smoother experience in the RunRace app",
+    appbanner_open: "Open in app",
+    appbanner_close: "Close",
 
     // ── 헤더 / 네비 ───────────────────────
     nav_home: "Home",
@@ -857,6 +863,9 @@ export const translations = {
     share_card_error: "No se pudo crear la tarjeta.",
     share_card_create: "Tarjeta",
     share_cta: "Empieza a registrar con RunRace",
+    appbanner_text: "Disfruta una mejor experiencia en la app de RunRace",
+    appbanner_open: "Abrir en la app",
+    appbanner_close: "Cerrar",
 
     // ── Cabecera / nav ────────────────────
     nav_home: "Inicio",
@@ -1275,6 +1284,9 @@ export const translations = {
     share_card_error: "カードを作成できませんでした。",
     share_card_create: "記録カード",
     share_cta: "RunRaceで記録を始める",
+    appbanner_text: "RunRaceアプリでもっと快適に",
+    appbanner_open: "アプリで開く",
+    appbanner_close: "閉じる",
 
     // ── ヘッダー / ナビ ───────────────────
     nav_home: "ホーム",
@@ -1693,6 +1705,9 @@ export const translations = {
     share_card_error: "无法生成卡片。",
     share_card_create: "记录卡片",
     share_cta: "用 RunRace 开始记录",
+    appbanner_text: "在 RunRace 应用中体验更顺畅",
+    appbanner_open: "在应用中打开",
+    appbanner_close: "关闭",
 
     // ── 顶栏 / 导航 ───────────────────────
     nav_home: "首页",
