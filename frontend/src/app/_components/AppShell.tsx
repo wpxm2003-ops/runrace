@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <WorkoutSessionProvider>
     <ConfirmProvider>
     <NavProgressProvider>
-      <Toaster position="top-center" richColors duration={2500} />
+      <Toaster position="bottom-center" offset="calc(4.5rem + env(safe-area-inset-bottom))" richColors duration={2500} />
       <ClientErrorReporter />
       <AuthRedirectHandler />
       <NativeNavBootstrap />
