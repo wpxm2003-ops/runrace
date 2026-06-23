@@ -83,7 +83,6 @@ export type ChallengeDetail = {
   memberCount: number;
   winner: ChallengeWinner | null;
   members: ChallengeMember[];
-  headToHead: HeadToHeadRow[] | null;
 };
 
 export type ChallengeWorkoutListItem = {
