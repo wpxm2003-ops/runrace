@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { AuthRedirectHandler } from "./AuthRedirectHandler";
 import { ClientErrorReporter } from "./ClientErrorReporter";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -32,7 +34,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <WorkoutSessionProvider>
     <ConfirmProvider>
     <NavProgressProvider>
-      <Toaster position="bottom-center" offset="calc(4.5rem + env(safe-area-inset-bottom))" richColors duration={2500} />
+      <Toaster
+        position="bottom-center"
+        richColors
+        duration={2500}
+        style={{ "--offset": "calc(4rem + env(safe-area-inset-bottom) + 12px)" } as React.CSSProperties}
+      />
       <ClientErrorReporter />
       <AuthRedirectHandler />
       <NativeNavBootstrap />
