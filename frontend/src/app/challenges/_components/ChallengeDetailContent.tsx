@@ -43,6 +43,7 @@ import { formatGoalDistance } from "@/lib/units";
 import { useRouteId } from "@/lib/useRouteId";
 import { getStoredAuthUid } from "@/lib/accessToken";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 /** 실내러닝 승인 대기·거부 카드 묶음의 공통 껍데기(제목 + 안내 + 카드 목록). */
 function ApprovalSection({
@@ -142,6 +143,7 @@ export default function ChallengeDetailContent() {
     try {
       await deleteChallenge(id, user, `/challenges/${id}`);
       invalidateChallengeLists();
+      toast.success(t.toast_race_deleted);
       nativeNavigate("/challenges", { replace: true });
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
@@ -156,6 +158,7 @@ export default function ChallengeDetailContent() {
       await joinChallenge(id, user, `/challenges/${id}`);
       invalidateChallengeLists();
       void track("race_joined", { challengeId: id });
+      toast.success(t.toast_race_joined);
       await mutate();
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
@@ -179,6 +182,7 @@ export default function ChallengeDetailContent() {
     try {
       await leaveChallenge(id, user, `/challenges/${id}`);
       invalidateChallengeLists();
+      toast.success(t.toast_race_left);
       await mutate();
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));

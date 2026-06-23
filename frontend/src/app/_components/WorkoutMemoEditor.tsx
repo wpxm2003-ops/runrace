@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateWorkoutMemo, invalidateWorkoutDetail } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
+import { toast } from "sonner";
 import type { User } from "firebase/auth";
 
 const MEMO_MAX = 500;
@@ -29,6 +30,7 @@ export function WorkoutMemoEditor({ workoutId, initialMemo, user }: Props) {
       setSaved(draft);
       invalidateWorkoutDetail(workoutId, user.uid);
       setEditing(false);
+      toast.success(t.toast_memo_saved);
     } finally {
       setSaving(false);
     }

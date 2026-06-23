@@ -26,6 +26,7 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { useRouteId } from "@/lib/useRouteId";
 import { useMemo, useState } from "react";
@@ -94,6 +95,7 @@ export default function WorkoutDetailContent() {
     setDeleteError(null);
     try {
       await deleteWorkout(id, user);
+      toast.success(t.toast_workout_deleted);
       nativeNavigate("/records", { replace: true });
       invalidateWorkoutDetail(id, user.uid);
       invalidateWorkoutLists(user.uid);

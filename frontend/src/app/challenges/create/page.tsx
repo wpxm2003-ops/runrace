@@ -14,6 +14,7 @@ import { minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
 import { RACE_TEMPLATES, type RaceTemplate, type RaceTemplateKey } from "@/lib/raceTemplates";
 import { goalInputFromKm } from "@/lib/units";
 import { track } from "@/lib/analytics";
+import { toast } from "sonner";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -70,8 +71,8 @@ export default function CreateChallengePage() {
       await createChallenge({ ...form.getPayload(), langCd: locale }, user);
       invalidateChallengeLists();
       void track("race_created");
-      form.setFormSuccess(t.create_success);
-      window.setTimeout(() => nativeNavigate("/challenges"), 1200);
+      toast.success(t.create_success);
+      nativeNavigate("/challenges");
     } catch (e) {
       form.setFormError(String(e));
     } finally {
@@ -122,7 +123,6 @@ export default function CreateChallengePage() {
         }}
         formError={error}
         formHint={form.formHint}
-        formSuccess={form.formSuccess}
         submitNotice={t.create_solo_notice}
         submitLabel={t.create_btn}
         submitBusyLabel={t.create_btn_busy}

@@ -13,6 +13,7 @@ import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { toast } from "sonner";
 
 function winRate(wins: number, losses: number): string | null {
   const games = wins + losses;
@@ -80,6 +81,7 @@ function RivalsContent({ user }: { user: User }) {
       await addRival(nickname, user);
       invalidateRivals(user.uid);
       setDraft("");
+      toast.success(t.toast_rival_added);
     } catch (e) {
       void reportClientError({
         message: e instanceof Error ? e.message : String(e),
@@ -98,6 +100,7 @@ function RivalsContent({ user }: { user: User }) {
     try {
       await removeRival(rivalUserId, user);
       invalidateRivals(user.uid);
+      toast.success(t.toast_rival_removed);
     } catch (e) {
       if (!handleAuthFailure(e, "/rivals")) setActionError(reportAndDisplay(e));
     } finally {

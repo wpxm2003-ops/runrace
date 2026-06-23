@@ -6,6 +6,7 @@ import { invalidateAfterNicknameChange } from "@/lib/api";
 import { containsForbiddenText, stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { updateNickname } from "@/lib/api/auth";
 import { useLocale } from "@/lib/i18n";
+import { toast } from "sonner";
 
 type Props = {
   user: User;
@@ -54,6 +55,7 @@ export function NicknameEditor({ user, nickname, loading }: Props) {
       await updateNickname(user, trimmed);
       invalidateAfterNicknameChange(user.uid);
       setEditing(false);
+      toast.success(t.toast_nickname_saved);
     } catch (e) {
       const msg = String(e);
       if (msg.includes("nickname_taken")) {

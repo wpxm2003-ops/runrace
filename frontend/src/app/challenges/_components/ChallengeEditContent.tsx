@@ -12,6 +12,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { goalInputFromKm } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { toast } from "sonner";
 import { useRouteId } from "@/lib/useRouteId";
 import { useEffect, useRef, useState } from "react";
 
@@ -80,6 +81,7 @@ export default function ChallengeEditContent() {
     try {
       await updateChallenge(id, form.getPayload(), user);
       invalidateChallengeLists();
+      toast.success(t.toast_race_updated);
       nativeNavigate(challengeDetailHref(id));
     } catch (e) {
       form.setFormError(String(e));

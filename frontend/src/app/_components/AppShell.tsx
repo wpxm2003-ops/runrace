@@ -19,6 +19,7 @@ import { LanguageSync } from "./LanguageSync";
 import { NavProgressProvider } from "./NavProgressProvider";
 import { SWRConfig } from "swr";
 import { createSwrCacheProvider } from "@/lib/swrCacheProvider";
+import { Toaster } from "sonner";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -31,6 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <WorkoutSessionProvider>
     <ConfirmProvider>
     <NavProgressProvider>
+      <Toaster position="top-center" richColors duration={2500} />
       <ClientErrorReporter />
       <AuthRedirectHandler />
       <NativeNavBootstrap />
