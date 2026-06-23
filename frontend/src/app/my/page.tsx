@@ -153,10 +153,10 @@ function MyPageContent({ user }: { user: User }) {
       <button
         type="button"
         onClick={() => nativeNavigate("/rivals")}
-        className="mt-4 flex w-full items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-left hover:bg-amber-100"
+        className="mt-4 flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left hover:bg-zinc-50"
       >
-        <span className="text-base font-semibold text-amber-900">{t.rival_manage}</span>
-        <span aria-hidden className="text-amber-400">›</span>
+        <span className="text-base font-semibold text-zinc-900">{t.rival_manage}</span>
+        <span aria-hidden className="text-zinc-400">›</span>
       </button>
 
       <MyRacesSection user={user} />
