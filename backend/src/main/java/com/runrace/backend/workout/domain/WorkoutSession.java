@@ -75,4 +75,13 @@ public class WorkoutSession {
   public void updateMemo(String memo) {
     this.memo = memo;
   }
+
+  /**
+   * 탈퇴 익명화 — GPS 경로·이미지(개인 위치정보) 제거. 거리·시간 등 집계는 자산으로 보존한다.
+   * path_json은 NOT NULL이라 null 대신 빈 배열로 비운다.
+   */
+  public void scrubPersonalData() {
+    this.pathJson = "[]";
+    this.imageUrl = null;
+  }
 }

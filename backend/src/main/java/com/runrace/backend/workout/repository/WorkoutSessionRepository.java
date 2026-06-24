@@ -14,6 +14,9 @@ import org.springframework.data.repository.query.Param;
 public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long>, WorkoutSessionRepositoryCustom {
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
+  /** 탈퇴 익명화용 — 사용자 전체 운동 세션(엔티티) 조회. GPS·이미지 제거 + S3 정리에 사용. */
+  List<WorkoutSession> findAllByUserId(UUID userId);
+
   /**
    * 기록 목록용 닫힌 프로젝션 — 대용량 {@code path_json}(GPS 트랙)을 제외한 스칼라 컬럼만 SELECT한다.
    * Spring Data가 프로젝션 게터에 대응하는 컬럼만 조회하므로 DB I/O·네트워크 전송·힙 사용을 줄인다.

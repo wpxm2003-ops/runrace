@@ -366,7 +366,7 @@ public class ChallengeService {
     return new ChallengeWorkoutListItem(
         session.getId(),
         user.getId(),
-        user.getNickname(),
+        user.getDisplayNickname(),
         IsoTime.format(session.getStartedAt()),
         IsoTime.format(session.getEndedAt()),
         session.getDurationSec(),

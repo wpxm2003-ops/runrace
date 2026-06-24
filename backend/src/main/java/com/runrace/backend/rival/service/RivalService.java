@@ -53,7 +53,7 @@ public class RivalService {
     }
     AppUser target =
         appUserRepository
-            .findByNickname(nickname.trim())
+            .findByNicknameAndWithdrawnAtIsNull(nickname.trim())
             .orElseThrow(() -> ApiException.notFound("user_not_found"));
     if (target.getId().equals(meId)) {
       throw ApiException.badRequest("cannot_add_self");

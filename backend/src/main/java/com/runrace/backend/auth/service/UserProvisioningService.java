@@ -95,7 +95,7 @@ public class UserProvisioningService {
       String firebaseUid, String email, String displayName, String provider, String lang) {
     for (int i = 0; i < MAX_NICKNAME_ATTEMPTS; i++) {
       String nickname = NicknameGenerator.generate(lang);
-      if (appUserRepository.existsByNickname(nickname)) continue; // 빠른 회피
+      if (appUserRepository.existsByNicknameAndWithdrawnAtIsNull(nickname)) continue; // 빠른 회피
 
       AppUser candidate = AppUser.builder()
           .firebaseUid(firebaseUid)

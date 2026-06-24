@@ -48,7 +48,7 @@ class RivalServiceTest {
     }
 
     @Test void 존재하지_않는_닉네임이면_user_not_found() {
-      when(appUserRepository.findByNickname("unknown")).thenReturn(Optional.empty());
+      when(appUserRepository.findByNicknameAndWithdrawnAtIsNull("unknown")).thenReturn(Optional.empty());
 
       ApiException ex = assertThrows(ApiException.class,
           () -> service.addRival(meId, "unknown"));
@@ -57,7 +57,7 @@ class RivalServiceTest {
 
     @Test void 본인_등록이면_cannot_add_self() {
       AppUser me = AppUser.builder().id(meId).nickname("me").build();
-      when(appUserRepository.findByNickname("me")).thenReturn(Optional.of(me));
+      when(appUserRepository.findByNicknameAndWithdrawnAtIsNull("me")).thenReturn(Optional.of(me));
 
       ApiException ex = assertThrows(ApiException.class,
           () -> service.addRival(meId, "me"));
@@ -67,7 +67,7 @@ class RivalServiceTest {
     @Test void 이미_등록된_라이벌이면_already_rival() {
       UUID targetId = UUID.randomUUID();
       AppUser target = AppUser.builder().id(targetId).nickname("rival").build();
-      when(appUserRepository.findByNickname("rival")).thenReturn(Optional.of(target));
+      when(appUserRepository.findByNicknameAndWithdrawnAtIsNull("rival")).thenReturn(Optional.of(target));
       when(rivalRepository.existsByUserIdAndRivalUserId(meId, targetId)).thenReturn(true);
 
       ApiException ex = assertThrows(ApiException.class,
@@ -79,7 +79,7 @@ class RivalServiceTest {
       UUID targetId = UUID.randomUUID();
       AppUser me = AppUser.builder().id(meId).nickname("me").build();
       AppUser target = AppUser.builder().id(targetId).nickname("rival").build();
-      when(appUserRepository.findByNickname("rival")).thenReturn(Optional.of(target));
+      when(appUserRepository.findByNicknameAndWithdrawnAtIsNull("rival")).thenReturn(Optional.of(target));
       when(rivalRepository.existsByUserIdAndRivalUserId(meId, targetId)).thenReturn(false);
       when(appUserRepository.getRequired(meId)).thenReturn(me);
 

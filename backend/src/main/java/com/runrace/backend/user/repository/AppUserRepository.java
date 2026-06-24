@@ -17,9 +17,11 @@ public interface AppUserRepository
 
   Optional<AppUser> findByEmail(String email);
 
-  boolean existsByNickname(String nickname);
+  /** 닉네임 중복 체크 — 탈퇴(익명화) 계정은 제외해 원래 닉네임 재사용을 허용한다. */
+  boolean existsByNicknameAndWithdrawnAtIsNull(String nickname);
 
-  Optional<AppUser> findByNickname(String nickname);
+  /** 닉네임으로 활성 회원 조회(라이벌 검색 등) — 탈퇴 계정은 검색에 잡히지 않는다. */
+  Optional<AppUser> findByNicknameAndWithdrawnAtIsNull(String nickname);
 
   /**
    * 가입일(KST)이 {@code signupDate}이면서 아직 운동 기록이 한 건도 없는 사용자 id 목록.

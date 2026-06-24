@@ -49,6 +49,10 @@ public class AppUser {
   @Column(name = "push_enabled", nullable = false)
   private boolean pushEnabled = true;
 
+  /** 탈퇴(익명화) 시각. null=정상 회원. 값이 있으면 개인정보가 제거된 탈퇴 계정. */
+  @Column(name = "withdrawn_at")
+  private OffsetDateTime withdrawnAt;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -75,5 +79,27 @@ public class AppUser {
   /** 푸시 알림 수신 선호 변경(내정보 토글). */
   public void changePushEnabled(boolean pushEnabled) {
     this.pushEnabled = pushEnabled;
+  }
+
+  /** 탈퇴 여부. */
+  public boolean isWithdrawn() {
+    return withdrawnAt != null;
+  }
+
+  /** 화면 표시용 닉네임 — 탈퇴(익명화) 계정은 닉네임이 null이므로 플레이스홀더로 대체한다. */
+  public String getDisplayNickname() {
+    return nickname != null ? nickname : "탈퇴한 러너";
+  }
+
+  /**
+   * 탈퇴 익명화 — 개인정보를 제거하고 탈퇴 시각을 기록한다. 레이스 정합성을 위해 행 자체는 보존한다.
+   * firebase_uid는 NOT NULL·UNIQUE라 null 대신 tombstone 값으로 대체한다(재로그인 불가).
+   */
+  public void withdraw(OffsetDateTime now) {
+    this.email = null;
+    this.displayName = null;
+    this.nickname = null;
+    this.firebaseUid = "withdrawn:" + this.id;
+    this.withdrawnAt = now;
   }
 }

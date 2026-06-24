@@ -1,10 +1,12 @@
 package com.runrace.backend.auth.service;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.runrace.backend.auth.service.AccountWithdrawalTx.WithdrawalCleanup;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.config.CacheConfig;
+import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.util.UUID;
@@ -25,6 +27,8 @@ public class AccountService {
 
   private final AppUserRepository appUserRepository;
   private final CacheManager cacheManager;
+  private final AccountWithdrawalTx accountWithdrawalTx;
+  private final ImageUploadService imageUploadService;
 
   @Transactional(readOnly = true)
   public AppUser getUser(UUID userId) {
@@ -35,7 +39,7 @@ public class AccountService {
   public AppUser updateNickname(UUID userId, String rawNickname) {
     String trimmed = TextValidation.requireCleanText(rawNickname, NICKNAME_MAX_LEN, false, "nickname");
     AppUser user = appUserRepository.getRequired(userId);
-    if (!trimmed.equals(user.getNickname()) && appUserRepository.existsByNickname(trimmed)) {
+    if (!trimmed.equals(user.getNickname()) && appUserRepository.existsByNicknameAndWithdrawnAtIsNull(trimmed)) {
       throw ApiException.badRequest("nickname_taken");
     }
     user.changeNickname(trimmed);
@@ -73,18 +77,26 @@ public class AccountService {
   }
 
   /**
-   * 계정 삭제 — app_user 삭제(연관 데이터 CASCADE) 후 Firebase 계정도 삭제한다.
-   * Firebase 삭제는 외부 호출이므로 DB 트랜잭션 밖에서 수행하며, 실패해도 DB 삭제는 유지한다.
+   * 계정 탈퇴 — 개인정보를 익명화하되 레이스 정합성을 위해 행은 보존한다(하드 삭제 아님).
+   * DB 익명화는 트랜잭션 안에서 원자적으로 처리하고, 외부 I/O(S3·Firebase)는 커밋 이후 best-effort로 수행한다.
    */
   public void deleteAccount(UUID userId) {
-    AppUser user = appUserRepository.getRequired(userId);
-    String firebaseUid = user.getFirebaseUid();
-    appUserRepository.delete(user);
+    WithdrawalCleanup cleanup = accountWithdrawalTx.anonymize(userId);
+    String firebaseUid = cleanup.firebaseUid();
 
-    // 캐시된 인증 주체 즉시 무효화 — 삭제된 계정이 TTL 동안 통과하지 못하게 한다.
+    // 캐시된 인증 주체 즉시 무효화 — 탈퇴 계정이 TTL 동안 통과하지 못하게 한다.
     Cache cache = cacheManager.getCache(CacheConfig.AUTH_PRINCIPALS);
     if (cache != null) {
       cache.evict(firebaseUid);
+    }
+
+    // 운동 이미지 S3 정리 — 실패해도 익명화는 유지(best-effort).
+    for (String url : cleanup.imageUrls()) {
+      try {
+        imageUploadService.delete(url);
+      } catch (Exception e) {
+        log.warn("탈퇴 이미지 S3 삭제 실패 (url={}): {}", url, e.getMessage());
+      }
     }
 
     try {
