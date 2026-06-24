@@ -5,6 +5,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace } from "@/lib/units";
 import {
+  aggregateWorkouts,
   computeStreak,
   longestStreak,
   dayOfWeekDistribution,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/workoutStats";
 import { useMemo } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
+import { MonthlyRecapCard } from "@/app/records/_components/MonthlyRecapCard";
 
 type Props = {
   monthItems: WorkoutListItem[];
@@ -72,6 +74,16 @@ export function RecordsStatsPanel({
   const monthLongest = useMemo(() => longestStreak(monthItems), [monthItems]);
 
   const bests = useMemo(() => monthBests(monthItems), [monthItems]);
+  const monthAgg = useMemo(() => aggregateWorkouts(monthItems), [monthItems]);
+  const activeDays = useMemo(
+    () => Array.from(new Set(monthItems.map((w) => new Date(w.startedAt).getDate()))),
+    [monthItems],
+  );
+  // 결산 카드 캘린더용 — 일요일 시작 7개 요일 라벨(2023-01-01=일요일)
+  const recapWeekdays = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
+    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)));
+  }, [locale]);
 
   const isoWeekdays = useMemo(() => {
     const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
@@ -93,16 +105,33 @@ export function RecordsStatsPanel({
         {/* 핸들 + 헤더 */}
         <div className="sticky top-0 z-10 rounded-t-3xl bg-zinc-50 px-5 pb-3 pt-3">
           <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-300" />
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-zinc-900">{t.stats_title(monthName)}</h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-sm text-zinc-500 hover:bg-zinc-300"
-              aria-label="닫기"
-            >
-              ✕
-            </button>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="min-w-0 truncate text-lg font-bold text-zinc-900">{t.stats_title(monthName)}</h2>
+            <div className="flex shrink-0 items-center gap-2">
+              {monthAgg.workoutCount > 0 ? (
+                <MonthlyRecapCard
+                  monthName={monthName}
+                  year={viewYear}
+                  month={viewMonth}
+                  activeDays={activeDays}
+                  weekdayLabels={recapWeekdays}
+                  distanceM={monthAgg.totalDistanceM}
+                  runCount={monthAgg.workoutCount}
+                  durationSec={monthAgg.totalDurationSec}
+                  longestStreak={monthLongest}
+                  unit={unit}
+                  t={t}
+                />
+              ) : null}
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-sm text-zinc-500 hover:bg-zinc-300"
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
 
