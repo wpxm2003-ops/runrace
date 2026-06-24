@@ -329,7 +329,7 @@ public class WorkoutService {
   /** 저장 직전 좌표를 6자리로 반올림한다(거리·페이스는 클라이언트 계산값을 쓰므로 영향 없음). */
   private static List<PathPoint> roundCoords(List<PathPoint> path) {
     return path.stream()
-        .map(p -> new PathPoint(roundCoord(p.lat()), roundCoord(p.lng())))
+        .map(p -> new PathPoint(roundCoord(p.lat()), roundCoord(p.lng()), p.t()))
         .toList();
   }
 
@@ -350,7 +350,7 @@ public class WorkoutService {
   /** 저장된 경로 JSON을 응답용 좌표 목록으로 변환한다(상세·공유 응답 공통). */
   public List<PathPointDto> toPath(String pathJson) {
     return parsePath(pathJson).stream()
-        .map(p -> new PathPointDto(p.lat(), p.lng()))
+        .map(p -> new PathPointDto(p.lat(), p.lng(), p.t()))
         .toList();
   }
 
@@ -360,5 +360,5 @@ public class WorkoutService {
     return (int) Math.round(durationSec / (distanceM / 1000.0));
   }
 
-  public record PathPoint(double lat, double lng) {}
+  public record PathPoint(double lat, double lng, Long t) {}
 }

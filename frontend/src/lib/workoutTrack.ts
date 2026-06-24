@@ -1,4 +1,5 @@
-export type LatLng = { lat: number; lng: number };
+/** lat/lng에 러닝 시작 후 경과 ms(t)를 함께 저장한다. 구형 기록은 t가 없을 수 있다. */
+export type LatLng = { lat: number; lng: number; t?: number };
 
 export type WorkoutStatus = "idle" | "running" | "paused";
 
@@ -408,6 +409,60 @@ export function geolocationBlockedReason(): string | null {
     return "GPS는 HTTPS(보안 접속)에서만 사용할 수 있습니다. http://IP 주소로는 브라우저가 위치를 막습니다. 도메인에 SSL을 붙이거나 localhost에서 테스트해 주세요.";
   }
   return null;
+}
+
+export type KmSplit = {
+  km: number;
+  distanceM: number;
+  paceSec: number;
+  /** 이전 구간 대비 페이스 차(초). 양수 = 느려짐, 음수 = 빨라짐. 첫 구간은 null. */
+  paceChange: number | null;
+};
+
+/**
+ * 경로 포인트에서 km 구간별 페이스를 계산한다.
+ * t(경과 ms)가 없는 구형 기록은 빈 배열을 반환한다.
+ * 마지막 미완 구간은 100m 이상일 때만 포함한다.
+ */
+export function computeKmSplits(path: LatLng[]): KmSplit[] {
+  const pts = path.filter((p) => p.t != null);
+  if (pts.length < 2) return [];
+
+  const splits: KmSplit[] = [];
+  let kmIndex = 1;
+  let kmStartM = 0;
+  let tStart = pts[0].t!;
+  let cumM = 0;
+
+  for (let i = 1; i < pts.length; i++) {
+    const seg = haversineMeters(pts[i - 1], pts[i]);
+    const tPrev = pts[i - 1].t!;
+    const tCurr = pts[i].t!;
+    const prevCumM = cumM;
+    cumM += seg;
+
+    while (cumM >= kmIndex * 1000) {
+      const targetM = kmIndex * 1000;
+      const frac = seg > 0 ? (targetM - prevCumM) / seg : 1;
+      const tAtKm = tPrev + frac * (tCurr - tPrev);
+      const paceSec = (tAtKm - tStart) / 1000;
+      const prev = splits[splits.length - 1] ?? null;
+      splits.push({ km: kmIndex, distanceM: 1000, paceSec, paceChange: prev ? paceSec - prev.paceSec : null });
+      kmStartM = targetM;
+      tStart = tAtKm;
+      kmIndex++;
+    }
+  }
+
+  const lastM = cumM - kmStartM;
+  if (lastM >= 100 && splits.length > 0) {
+    const tEnd = pts[pts.length - 1].t!;
+    const paceSec = lastM > 0 ? ((tEnd - tStart) / 1000) / (lastM / 1000) : 0;
+    const prev = splits[splits.length - 1];
+    splits.push({ km: kmIndex, distanceM: Math.round(lastM), paceSec, paceChange: paceSec - prev.paceSec });
+  }
+
+  return splits;
 }
 
 export function geolocationErrorMessage(err: GeolocationPositionError): string {

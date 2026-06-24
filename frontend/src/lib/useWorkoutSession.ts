@@ -169,6 +169,10 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       const now = Date.now();
       const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
       const speedMps = peekSpeedMps(coords, point, now);
+      const elapsedMs =
+        runStartedRef.current != null
+          ? now - runStartedRef.current - pausedAccumRef.current
+          : undefined;
 
       const accuracyRecent = pushAccuracySample(
         vehicleStateRef.current.accuracyRecent,
@@ -196,17 +200,18 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       if (vehicle.blockPathPoints) return;
 
       const reanchor = vehicle.reanchorNextPoint;
+      const pointWithT: LatLng = elapsedMs != null ? { ...point, t: elapsedMs } : point;
 
       setPath((prev) => {
         const last = prev[prev.length - 1] ?? null;
-        if (!reanchor && last && !shouldAppendPoint(last, point)) return prev;
+        if (!reanchor && last && !shouldAppendPoint(last, pointWithT)) return prev;
 
         const increment =
           vehicle.blockDistance || reanchor || !last
             ? 0
-            : haversineMeters(last, point);
+            : haversineMeters(last, pointWithT);
         distanceAccumRef.current += increment;
-        const next = [...prev, point];
+        const next = [...prev, pointWithT];
         setDistanceM(distanceAccumRef.current);
         return next;
       });

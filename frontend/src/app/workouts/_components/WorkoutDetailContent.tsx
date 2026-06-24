@@ -22,6 +22,7 @@ import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
+import { KmSplitSection } from "./KmSplitSection";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -150,6 +151,17 @@ export default function WorkoutDetailContent() {
           <div className="mt-4">
             <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
           </div>
+
+          {detail && detail.path.length > 0 ? (
+            <div className="mt-4">
+              <KmSplitSection
+                path={detail.path}
+                distanceM={detail.distanceM}
+                workoutType={detail.workoutType}
+                t={t}
+              />
+            </div>
+          ) : null}
 
           {user && !fromChallenge ? (
             <div className="mt-4">
