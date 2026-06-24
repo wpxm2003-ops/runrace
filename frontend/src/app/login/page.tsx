@@ -23,6 +23,7 @@ import { track, setAnalyticsUser } from "@/lib/analytics";
 import { markLoggedIn } from "@/lib/AuthProvider";
 import { useLocale } from "@/lib/i18n";
 import { startKakaoLogin } from "@/lib/kakaoAuth";
+import { useAuthUser } from "@/lib/useAuthUser";
 
 function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string {
   const msg = String(e);
@@ -38,6 +39,14 @@ function LoginContent() {
   const [inAppHint, setInAppHint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inApp = isInAppBrowser();
+  const { user } = useAuthUser();
+
+  useEffect(() => {
+    if (user) {
+      nativeNavigate("/my", { replace: true });
+      return;
+    }
+  }, [user]);
 
   useEffect(() => {
     if (sessionStorage.getItem(OAUTH_REDIRECT_FAILED_KEY)) {

@@ -77,7 +77,7 @@ export function SiteHeader() {
             >
               {t.header_logout}
             </button>
-          ) : loading ? (
+          ) : loading && hint ? (
             <Skeleton className="h-4 w-12" />
           ) : (
             <a

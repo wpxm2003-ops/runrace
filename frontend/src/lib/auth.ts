@@ -15,7 +15,7 @@ function loginRedirectUrl(returnTo?: string) {
 
 export function redirectToLogin(returnTo?: string) {
   if (typeof window === "undefined") return;
-  nativeNavigate(loginRedirectUrl(returnTo));
+  nativeNavigate(loginRedirectUrl(returnTo), { replace: true });
 }
 
 export function isAuthError(err: unknown): boolean {

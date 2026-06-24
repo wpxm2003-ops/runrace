@@ -11,27 +11,30 @@ import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 
 function HomeStats() {
-  const { user } = useAuthUser();
+  const { user, loading: authLoading, hint } = useAuthUser();
   const { unit } = useUnit();
   const today = useMemo(() => new Date(), []);
-  const { data: yearRecords = [] } = useWorkoutListByYear(user ?? null, today.getFullYear());
+  const { data: yearRecords, isLoading: dataLoading } = useWorkoutListByYear(user ?? null, today.getFullYear());
 
   const monthStats = useMemo(
-    () => aggregateWorkouts(filterWorkoutsByMonth(yearRecords, today.getFullYear(), today.getMonth())),
+    () => aggregateWorkouts(filterWorkoutsByMonth(yearRecords ?? [], today.getFullYear(), today.getMonth())),
     [yearRecords, today],
   );
-  const streak = useMemo(() => computeStreak(yearRecords, today), [yearRecords, today]);
+  const streak = useMemo(() => computeStreak(yearRecords ?? [], today), [yearRecords, today]);
 
-  if (!user) return null;
+  if (!user && !hint) return null;
 
-  const isEmpty = yearRecords.length === 0;
+  const isLoading = authLoading || dataLoading;
+  const isEmpty = !isLoading && (yearRecords ?? []).length === 0;
 
   return (
     <div className="mb-6">
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <p className="text-xs text-zinc-500">이번 달</p>
-          {isEmpty ? (
+          {isLoading ? (
+            <div className="mt-2 h-7 w-20 animate-pulse rounded-lg bg-zinc-100" />
+          ) : isEmpty ? (
             <p className="mt-2 text-sm text-zinc-400">아직 기록이 없어요</p>
           ) : (
             <>
@@ -44,7 +47,9 @@ function HomeStats() {
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <p className="text-xs text-zinc-500">연속 운동</p>
-          {isEmpty ? (
+          {isLoading ? (
+            <div className="mt-2 h-7 w-16 animate-pulse rounded-lg bg-zinc-100" />
+          ) : isEmpty ? (
             <p className="mt-2 text-sm text-zinc-400">우리 같이 만들어 가볼까요?</p>
           ) : (
             <>
