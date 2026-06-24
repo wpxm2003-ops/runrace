@@ -117,7 +117,7 @@ class WorkoutServiceTest {
 
     @Test void duration_0이면_duration_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(1), 0, 1000, 100, null, java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0))));
+          () -> service.create(p, T, T.plusSeconds(1), 0, 1000, 100, null, java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null))));
       assertEquals("duration_invalid", ex.code());
     }
 
@@ -136,7 +136,7 @@ class WorkoutServiceTest {
     @Test void 종료가_시작보다_이전이면_time_range_invalid() {
       ApiException ex = assertThrows(ApiException.class,
           () -> service.create(p, T, T.minusSeconds(1), 300, 1000, 100, null,
-              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0))));
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null))));
       assertEquals("time_range_invalid", ex.code());
     }
   }
