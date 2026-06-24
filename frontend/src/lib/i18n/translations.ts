@@ -1,4 +1,4 @@
-export type Locale = "ko" | "en" | "es" | "ja" | "zh";
+﻿export type Locale = "ko" | "en" | "es" | "ja" | "zh";
 
 export const translations = {
   ko: {
@@ -2042,7 +2042,7 @@ export const translations = {
     privacy_s5_title: "5. 位置信息使用",
     privacy_s5_body: "使用运动记录功能时会收集GPS位置信息。位置信息仅用于记录运动路线并保存在服务器上。若不允许位置权限，将无法使用路线记录功能。",
     privacy_s6_title: "6. 删除账号",
-    privacy_s6_body: “可随时通过「我的」→删除账号进行注销。注销时个人信息、GPS 轨迹和照片将被删除，该账号将无法再登录。您可以使用新账号重新注册并继续使用本应用。为保持比赛一致性，部分记录将以匿名形式保留。”,
+    privacy_s6_body: "可随时通过「我的」→删除账号进行注销。注销时个人信息、GPS 轨迹和照片将被删除，该账号将无法再登录。您可以使用新账号重新注册并继续使用本应用。为保持比赛一致性，部分记录将以匿名形式保留。",
     privacy_s7_title: "7. 联系我们",
     privacy_s7_body: "如有隐私相关问题，请通过以下邮箱联系我们。",
     my_records_empty: "还没有保存的运动记录。",
