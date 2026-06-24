@@ -66,8 +66,7 @@ export default function Home() {
 
   return (
     <PageLayout>
-      <p className="text-zinc-600">{t.home_tagline}</p>
-      <div className="mt-6">
+      <div className="mt-2">
         <HomeStats />
         <div className="grid gap-3">
           <Link href="/workout/indoor" className="rounded-2xl bg-zinc-900 p-5 shadow-sm hover:bg-zinc-800">
