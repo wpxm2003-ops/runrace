@@ -10,7 +10,9 @@ import com.google.firebase.messaging.WebpushConfig;
 import com.google.firebase.messaging.WebpushNotification;
 import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.domain.DeviceToken;
+import com.runrace.backend.push.domain.SystemPushHistory;
 import com.runrace.backend.push.repository.DeviceTokenRepository;
+import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +30,7 @@ public class PushService {
 
   private final DeviceTokenRepository deviceTokenRepository;
   private final AppUserRepository appUserRepository;
+  private final SystemPushHistoryRepository systemPushHistoryRepository;
   private final MessageSource messageSource;
   private final ErrorLogService errorLogService;
 
@@ -45,8 +48,22 @@ public class PushService {
    * @param link 알림 탭 시 이동할 앱 내 경로(예: "/challenges/123"). 없으면 null.
    */
   public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg, String link) {
+    sendLocalized(userId, titleKey, bodyKey, arg, link, null);
+  }
+
+  /**
+   * @param pushType 발송 유형 식별자(예: "streak_risk"). null이면 이력 미저장.
+   */
+  public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg, String link, String pushType) {
+    if (FirebaseApp.getApps().isEmpty()) return;
+    if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return;
     Locale locale = localeOf(userId);
-    sendToUserTokens(userId, render(titleKey, locale, arg), render(bodyKey, locale, arg), link);
+    String title = render(titleKey, locale, arg);
+    String body = render(bodyKey, locale, arg);
+    sendToUserTokens(userId, title, body, link);
+    if (pushType != null) {
+      systemPushHistoryRepository.save(SystemPushHistory.of(userId, pushType, title, body));
+    }
   }
 
   private Locale localeOf(UUID userId) {

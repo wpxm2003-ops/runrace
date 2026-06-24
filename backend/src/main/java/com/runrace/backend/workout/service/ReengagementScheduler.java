@@ -1,14 +1,17 @@
 package com.runrace.backend.workout.service;
 
 import com.runrace.backend.observability.service.ErrorLogService;
+import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.push.service.PushService;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository.ReengageCandidate;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository.UserLastWorkoutDate;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -39,8 +42,17 @@ public class ReengagementScheduler {
   /** 스트릭 위험 알림을 보낼 최소 연속일(짧은 연속은 알림 가치가 낮아 제외). */
   private static final int MIN_STREAK_FOR_RISK = 5;
 
+  private static final String TYPE_INACTIVE3    = "inactive3";
+  private static final String TYPE_INACTIVE7    = "inactive7";
+  private static final String TYPE_ONBOARDING   = "onboarding";
+  private static final String TYPE_STREAK_RISK  = "streak_risk";
+  /** 주간 발송 횟수 제한 대상 타입(스트릭 위험은 긴급성이 달라 제외). */
+  private static final List<String> WEEKLY_LIMIT_TYPES = List.of(TYPE_INACTIVE3, TYPE_INACTIVE7, TYPE_ONBOARDING);
+  private static final int WEEKLY_PUSH_LIMIT = 2;
+
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
+  private final SystemPushHistoryRepository systemPushHistoryRepository;
   private final PushService pushService;
   private final ErrorLogService errorLogService;
 
@@ -48,27 +60,35 @@ public class ReengagementScheduler {
   @Scheduled(cron = "0 0 17 * * *", zone = "Asia/Seoul")
   public void sendInactivityPushes() {
     LocalDate today = LocalDate.now(KST);
+    OffsetDateTime weekStart = today.minusDays(7).atStartOfDay(KST).toOffsetDateTime();
 
     // 기존 운동자: 3·7일째 복귀 유도. 8일 이상 휴면 유저는 후보에서 제외.
     for (UserLastWorkoutDate c : workoutSessionRepository.findActiveUserLastDates(today.minusDays(7))) {
       forEachSafely(c.getUserId(), () -> {
+        if (weeklyLimitReached(c.getUserId(), weekStart)) return;
         long daysSince = ChronoUnit.DAYS.between(c.getLastDate(), today);
         if (daysSince == 3) {
           pushService.sendLocalized(
-              c.getUserId(), "reengage.inactive.title", "reengage.inactive3.body", null, LINK_INDOOR);
+              c.getUserId(), "reengage.inactive.title", "reengage.inactive3.body", null, LINK_INDOOR, TYPE_INACTIVE3);
         } else if (daysSince == 7) {
           pushService.sendLocalized(
-              c.getUserId(), "reengage.inactive.title", "reengage.inactive7.body", null, LINK_INDOOR);
+              c.getUserId(), "reengage.inactive.title", "reengage.inactive7.body", null, LINK_INDOOR, TYPE_INACTIVE7);
         }
       });
     }
 
     // 신규 가입자: 가입 3일째까지 운동 0건이면 첫 러닝 유도(1회).
     for (UUID userId : appUserRepository.findInactiveSignups(today.minusDays(3))) {
-      forEachSafely(userId, () ->
-          pushService.sendLocalized(
-              userId, "reengage.onboarding.title", "reengage.onboarding.body", null, LINK_INDOOR));
+      forEachSafely(userId, () -> {
+        if (weeklyLimitReached(userId, weekStart)) return;
+        pushService.sendLocalized(
+            userId, "reengage.onboarding.title", "reengage.onboarding.body", null, LINK_INDOOR, TYPE_ONBOARDING);
+      });
     }
+  }
+
+  private boolean weeklyLimitReached(UUID userId, OffsetDateTime weekStart) {
+    return systemPushHistoryRepository.countByUserAndTypes(userId, WEEKLY_LIMIT_TYPES, weekStart) >= WEEKLY_PUSH_LIMIT;
   }
 
   /** 스트릭 위험 — 매일 20:00 (Asia/Seoul). 잠들기 전 마지막 유도. */
@@ -82,7 +102,7 @@ public class ReengagementScheduler {
         if (daysSince == 1 && c.getCurrentStreak() >= MIN_STREAK_FOR_RISK) {
           pushService.sendLocalized(
               c.getUserId(), "reengage.streak_risk.title", "reengage.streak_risk.body",
-              String.valueOf(c.getCurrentStreak()), LINK_INDOOR);
+              String.valueOf(c.getCurrentStreak()), LINK_INDOOR, TYPE_STREAK_RISK);
         }
       });
     }
