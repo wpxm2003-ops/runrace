@@ -47,6 +47,20 @@ public class AccountService {
     }
   }
 
+  /** 푸시 알림 수신 선호 조회. */
+  @Transactional(readOnly = true)
+  public boolean isPushEnabled(UUID userId) {
+    return appUserRepository.findPushEnabledById(userId).orElse(true);
+  }
+
+  /** 푸시 알림 수신 선호 변경(내정보 토글). */
+  @Transactional
+  public void updatePushEnabled(UUID userId, boolean enabled) {
+    AppUser user = appUserRepository.getRequired(userId);
+    user.changePushEnabled(enabled);
+    appUserRepository.save(user);
+  }
+
   /** 주력 언어 선호값 변경 — 푸시 알림 언어에 사용된다. */
   @Transactional
   public AppUser updateLanguage(UUID userId, String langCd) {

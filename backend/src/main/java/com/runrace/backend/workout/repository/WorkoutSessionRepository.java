@@ -2,6 +2,7 @@ package com.runrace.backend.workout.repository;
 
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +59,63 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
     long getTotalCalories();
     long getWorkoutCount();
     long getWorkoutDayCount();
+  }
+
+  /**
+   * 재참여 푸시 후보 — 마지막 운동일(KST)이 {@code minDate} 이후인 사용자별
+   * (마지막 운동일, 그 날에서 거슬러 올라간 현재 연속 운동일 수)를 반환한다.
+   * 별도 상태 저장 없이 "마지막 운동일로부터 N일째"로 발송 주기를 자연 제한하기 위한 입력.
+   */
+  @Query(value = """
+      with dated as (
+        select user_id, (started_at at time zone 'Asia/Seoul')::date as d
+        from workout_session
+        group by user_id, (started_at at time zone 'Asia/Seoul')::date
+      ),
+      grp as (
+        select user_id, d,
+               d - (row_number() over (partition by user_id order by d))::int as g
+        from dated
+      ),
+      last_per_user as (
+        select user_id, max(d) as last_d from dated group by user_id
+      )
+      select l.user_id as "userId",
+             l.last_d   as "lastDate",
+             (select count(*) from grp g
+                where g.user_id = l.user_id
+                  and g.g = (select g2.g from grp g2
+                              where g2.user_id = l.user_id and g2.d = l.last_d)
+             )::int as "currentStreak"
+      from last_per_user l
+      where l.last_d >= :minDate
+      """, nativeQuery = true)
+  List<ReengageCandidate> findReengageCandidates(@Param("minDate") LocalDate minDate);
+
+  /** {@link #findReengageCandidates} 결과 투영. */
+  interface ReengageCandidate {
+    UUID getUserId();
+    LocalDate getLastDate();
+    int getCurrentStreak();
+  }
+
+  /**
+   * 휴식 복귀 푸시 후보 — 마지막 운동일(KST)이 {@code minDate} 이후인 사용자별 (마지막 운동일)만 반환한다.
+   * 연속일 계산이 불필요한 경로용 경량 쿼리(상관 서브쿼리 없음).
+   */
+  @Query(value = """
+      select user_id as "userId",
+             max((started_at at time zone 'Asia/Seoul')::date) as "lastDate"
+      from workout_session
+      group by user_id
+      having max((started_at at time zone 'Asia/Seoul')::date) >= :minDate
+      """, nativeQuery = true)
+  List<UserLastWorkoutDate> findActiveUserLastDates(@Param("minDate") LocalDate minDate);
+
+  /** {@link #findActiveUserLastDates} 결과 투영. */
+  interface UserLastWorkoutDate {
+    UUID getUserId();
+    LocalDate getLastDate();
   }
 
   /**

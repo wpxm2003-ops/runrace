@@ -9,6 +9,7 @@ import { useWorkoutListByYear } from "@/lib/api";
 import { aggregateWorkouts, filterWorkoutsByMonth, computeStreak } from "@/lib/workoutStats";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
+import { WelcomeOnboarding } from "@/app/_components/WelcomeOnboarding";
 
 function HomeStats() {
   const { user, loading: authLoading, hint } = useAuthUser();
@@ -71,6 +72,7 @@ export default function Home() {
 
   return (
     <PageLayout>
+      <WelcomeOnboarding />
       <div className="mt-2">
         <HomeStats />
         <div className="grid gap-3">

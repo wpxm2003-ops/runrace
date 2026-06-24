@@ -44,6 +44,11 @@ public class AppUser {
   @Column(name = "lang_cd", nullable = false, length = 5)
   private String langCd = "ko";
 
+  /** 푸시 알림 수신 선호. 기본 true. 끄면 모든 푸시(이벤트·리텐션)를 보내지 않는다. */
+  @Builder.Default
+  @Column(name = "push_enabled", nullable = false)
+  private boolean pushEnabled = true;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -65,5 +70,10 @@ public class AppUser {
   /** 언어 선호값 변경. */
   public void changeLangCd(String langCd) {
     this.langCd = langCd;
+  }
+
+  /** 푸시 알림 수신 선호 변경(내정보 토글). */
+  public void changePushEnabled(boolean pushEnabled) {
+    this.pushEnabled = pushEnabled;
   }
 }

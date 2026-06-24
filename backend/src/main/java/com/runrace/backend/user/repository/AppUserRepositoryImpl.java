@@ -21,4 +21,13 @@ public class AppUserRepositoryImpl implements AppUserRepositoryCustom {
             .where(appUser.id.eq(id))
             .fetchOne());
   }
+
+  @Override
+  public Optional<Boolean> findPushEnabledById(UUID id) {
+    return Optional.ofNullable(
+        query.select(appUser.pushEnabled)
+            .from(appUser)
+            .where(appUser.id.eq(id))
+            .fetchOne());
+  }
 }

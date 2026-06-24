@@ -6,6 +6,8 @@ import com.runrace.backend.auth.dto.LanguageUpdateRequest;
 import com.runrace.backend.auth.dto.LoginResponse;
 import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
+import com.runrace.backend.auth.dto.NotificationSettingRequest;
+import com.runrace.backend.auth.dto.NotificationSettingResponse;
 import com.runrace.backend.auth.service.AccountService;
 import com.runrace.backend.user.domain.AppUser;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,6 +54,18 @@ public class AuthController {
       AuthPrincipal principal, @RequestBody LanguageUpdateRequest body) {
     AppUser user = accountService.updateLanguage(principal.userId(), body.langCd());
     return ResponseEntity.ok(MeResponse.from(user));
+  }
+
+  @GetMapping("/me/notification-setting")
+  public NotificationSettingResponse getNotificationSetting(AuthPrincipal principal) {
+    return new NotificationSettingResponse(accountService.isPushEnabled(principal.userId()));
+  }
+
+  @PutMapping("/me/notification-setting")
+  public ResponseEntity<Void> setNotificationSetting(
+      AuthPrincipal principal, @RequestBody NotificationSettingRequest body) {
+    accountService.updatePushEnabled(principal.userId(), body.enabled());
+    return ResponseEntity.ok().build();
   }
 
   @DeleteMapping("/me")

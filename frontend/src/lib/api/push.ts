@@ -8,3 +8,15 @@ export function registerDeviceToken(user: User, fcmToken: string, platform: stri
     body: { fcmToken, platform },
   });
 }
+
+export function fetchNotificationSetting(user: User): Promise<{ enabled: boolean }> {
+  return apiFetch("/api/me/notification-setting", { user });
+}
+
+export function setNotificationSetting(user: User, enabled: boolean): Promise<void> {
+  return apiFetch("/api/me/notification-setting", {
+    method: "PUT",
+    user,
+    body: { enabled },
+  });
+}

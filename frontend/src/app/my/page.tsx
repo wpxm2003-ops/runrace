@@ -13,8 +13,11 @@ import {
   useWorkoutSummary,
   useMe,
   useMyChallengeListInfinite,
+  useNotificationSetting,
+  setNotificationSetting,
   toDisplayError,
 } from "@/lib/api";
+import { toast } from "sonner";
 import { deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
@@ -97,6 +100,57 @@ function MyRacesSection({ user }: { user: User }) {
   );
 }
 
+/** 푸시 알림 수신 토글 — device_token.use_yn을 갱신한다. */
+function NotificationToggle({ user }: { user: User }) {
+  const { t } = useLocale();
+  const { data, isLoading, mutate } = useNotificationSetting(user);
+  const [saving, setSaving] = useState(false);
+  const enabled = data?.enabled ?? true;
+
+  async function onToggle() {
+    if (isLoading || saving) return;
+    const next = !enabled;
+    setSaving(true);
+    void mutate({ enabled: next }, { revalidate: false }); // 낙관적 업데이트
+    try {
+      await setNotificationSetting(user, next);
+    } catch {
+      void mutate(); // 실패 시 서버 값으로 되돌림
+      toast.error(t.error_occurred);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="mt-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-zinc-900">{t.my_notification_label}</div>
+          <p className="mt-0.5 text-xs text-zinc-500">{t.my_notification_desc}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label={t.my_notification_label}
+          disabled={isLoading || saving}
+          onClick={onToggle}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+            enabled ? "bg-zinc-900" : "bg-zinc-300"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+              enabled ? "left-[1.375rem]" : "left-0.5"
+            }`}
+          />
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 /** 인증 확정 후에만 마운트 → SWR 훅이 로딩 단계에서 중복 기동되지 않음 */
 function MyPageContent({ user }: { user: User }) {
   const { t } = useLocale();
@@ -130,6 +184,8 @@ function MyPageContent({ user }: { user: User }) {
         </div>
         <p className="mt-2 whitespace-pre-line text-xs text-zinc-400">{t.my_unit_pace_hint}</p>
       </Card>
+
+      <NotificationToggle user={user} />
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.my_records_all_time}</div>

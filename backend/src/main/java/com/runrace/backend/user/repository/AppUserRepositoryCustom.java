@@ -8,4 +8,7 @@ public interface AppUserRepositoryCustom {
 
   /** 푸시 발신 시 수신자 언어만 가볍게 조회한다(엔티티 전체 로드 회피). */
   Optional<String> findLangCdById(UUID id);
+
+  /** 푸시 발신 게이트 — 수신자의 알림 수신 선호만 가볍게 조회한다(없으면 empty). */
+  Optional<Boolean> findPushEnabledById(UUID id);
 }

@@ -44,8 +44,6 @@ export default function AppGuidePage() {
           <EnableNotificationsButton />
         </div>
       </Card>
-
-      <p className="mt-6 text-center text-sm font-medium text-zinc-700">{t.guide_app_outro}</p>
     </PageLayout>
   );
 }

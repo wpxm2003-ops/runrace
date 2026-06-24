@@ -21,6 +21,7 @@ import {
 import { fetchRivals } from "./rivals";
 import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
+import { fetchNotificationSetting } from "./push";
 import { SWR_ERROR_RETRY } from "./swrConfig";
 import { getStoredAuthUid } from "@/lib/accessToken";
 
@@ -342,5 +343,14 @@ export function useMe(user: User | null) {
     user ? (["me", user.uid] as const) : null,
     () => fetchMe(user!),
     LIVE_CONFIG,
+  );
+}
+
+/** 푸시 알림 수신 설정 — 내정보 토글용 */
+export function useNotificationSetting(user: User | null) {
+  return useSWR(
+    user ? (["notification-setting", user.uid] as const) : null,
+    () => fetchNotificationSetting(user!),
+    { ...BASE_CONFIG, revalidateOnFocus: false },
   );
 }

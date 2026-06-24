@@ -64,6 +64,8 @@ public class PushService {
 
   public void sendToUserTokens(UUID userId, String title, String body, String link) {
     if (FirebaseApp.getApps().isEmpty()) return;
+    // 알림을 끈 사용자에게는 모든 푸시(이벤트·리텐션)를 보내지 않는다.
+    if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return;
     List<DeviceToken> tokens = deviceTokenRepository.findAllByUserId(userId);
     for (DeviceToken t : tokens) {
       Message msg = buildMessage(t, title, body, link);
