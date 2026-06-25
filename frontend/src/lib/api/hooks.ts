@@ -6,6 +6,7 @@
 import useSWR, { mutate as globalMutate, unstable_serialize } from "swr";
 import useSWRInfinite from "swr/infinite";
 import type { User } from "firebase/auth";
+import type { WorkoutDetail } from "./types";
 import { reportClientError } from "./errors";
 import {
   fetchChallengesPage,
@@ -316,6 +317,19 @@ export function useWorkoutDetail(workoutId: number | null, user: User | null) {
 
 export function invalidateWorkoutDetail(workoutId: number, userId: string) {
   void globalMutate(["workout", workoutId, userId]);
+}
+
+/**
+ * 운동 상세 캐시의 사진(imageUrl)을 즉시 확정 갱신한다.
+ * PATCH 성공 직후 호출하므로 우리가 쓴 값이 진실 — 재검증으로 덮어쓰지 않는다
+ * (GET 응답이 느리거나 일시적으로 옛 값을 줄 때 UI가 되돌아가는 것 방지).
+ */
+export function patchWorkoutDetailImage(workoutId: number, userId: string, imageUrl: string | null) {
+  void globalMutate(
+    ["workout", workoutId, userId],
+    (cur?: WorkoutDetail) => (cur ? { ...cur, imageUrl } : cur),
+    { revalidate: false },
+  );
 }
 
 export function useWorkoutComparison(workoutId: number | null, user: User | null) {

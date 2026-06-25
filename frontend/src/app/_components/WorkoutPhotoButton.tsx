@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/Button";
-import { updateWorkoutImage, uploadImage, invalidateWorkoutDetail } from "@/lib/api";
+import { updateWorkoutImage, uploadImage, patchWorkoutDetailImage } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
 
@@ -46,11 +46,12 @@ export function WorkoutPhotoButton({
     const file = e.target.files?.[0];
     e.target.value = ""; // 같은 파일 재선택 허용
     if (!file) return;
+    setViewerOpen(false); // 교체 시 뷰어 닫고 메인 버튼에 진행 표시
     setBusy(true);
     try {
       const url = await uploadImage(file, user);
       await updateWorkoutImage(workoutId, url, user);
-      invalidateWorkoutDetail(workoutId, user.uid);
+      patchWorkoutDetailImage(workoutId, user.uid, url);
       toast.success(t.photo_saved);
     } catch (err) {
       toast.error(String(err).includes("upload_too_large") ? t.upload_too_large : t.error_occurred);
@@ -64,7 +65,7 @@ export function WorkoutPhotoButton({
     setBusy(true);
     try {
       await updateWorkoutImage(workoutId, null, user);
-      invalidateWorkoutDetail(workoutId, user.uid);
+      patchWorkoutDetailImage(workoutId, user.uid, null);
       setViewerOpen(false);
       toast.success(t.photo_deleted);
     } catch {
@@ -89,7 +90,7 @@ export function WorkoutPhotoButton({
         onClick={onTrigger}
         className={className}
       >
-        {imageUrl ? `🖼️ ${t.photo_view_btn}` : `📷 ${t.photo_save_btn}`}
+        {busy ? t.photo_busy : imageUrl ? `🖼️ ${t.photo_view_btn}` : `📷 ${t.photo_save_btn}`}
       </Button>
 
       {viewerOpen && imageUrl ? (
