@@ -31,7 +31,7 @@ public class PersonalBest {
   @Column(nullable = false)
   private int bestPaceSec;
 
-  @Column(nullable = false)
+  @Column(name = "distance_m", nullable = false)
   private int distanceM;
 
   @Column(nullable = false)
