@@ -82,6 +82,11 @@ public class WorkoutSession {
     this.memo = memo;
   }
 
+  /** 운동 사진을 설정·교체·삭제(null이면 삭제)한다. */
+  public void updateImage(String imageUrl) {
+    this.imageUrl = imageUrl;
+  }
+
   /** 러닝의 신발 귀속을 설정·해제한다(null이면 해제). */
   public void assignShoe(Shoe shoe) {
     this.shoe = shoe;

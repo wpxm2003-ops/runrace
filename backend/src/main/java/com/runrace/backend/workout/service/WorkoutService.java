@@ -311,6 +311,26 @@ public class WorkoutService {
     workoutSessionRepository.save(session);
   }
 
+  /** 운동 사진 설정·교체·삭제. imageUrl이 null/blank면 삭제. 교체로 떨어진 기존 이미지는 커밋 후 정리. */
+  @Transactional
+  public void updateImage(AuthPrincipal principal, Long id, String imageUrl) {
+    String normalized = imageUrl == null || imageUrl.isBlank() ? null : imageUrl.strip();
+    // 우리 S3 버킷에서 발급된 URL만 허용 (외부 URL 주입·타인 이미지 삭제 차단)
+    if (normalized != null && !imageUploadService.isStoredUrl(normalized)) {
+      throw ApiException.badRequest("invalid_image_url");
+    }
+    WorkoutSession session = workoutSessionRepository
+        .findByIdAndUserId(id, principal.userId())
+        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    String previous = session.getImageUrl();
+    session.updateImage(normalized);
+    workoutSessionRepository.save(session);
+    // 교체·삭제로 떨어져 나간 기존 이미지는 커밋 후 S3에서 정리
+    if (previous != null && !previous.isBlank() && !previous.equals(normalized)) {
+      eventPublisher.publishEvent(new WorkoutEvents.WorkoutImageDeletedEvent(previous));
+    }
+  }
+
   @Transactional
   public void deleteForUser(AuthPrincipal principal, Long id) {
     WorkoutSession session =

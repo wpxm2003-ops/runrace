@@ -8,6 +8,7 @@ import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
 import com.runrace.backend.workout.service.PersonalBestService;
+import com.runrace.backend.workout.dto.UpdateWorkoutImageRequest;
 import com.runrace.backend.workout.dto.UpdateWorkoutMemoRequest;
 import com.runrace.backend.workout.dto.UpdateWorkoutShoeRequest;
 import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
@@ -140,6 +141,16 @@ public class WorkoutController {
       @PathVariable("id") Long id,
       @RequestBody UpdateWorkoutMemoRequest body) {
     workoutService.updateMemo(principal, id, body.memo());
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 운동 사진 설정·교체·삭제 — imageUrl이 null/blank면 삭제. */
+  @PatchMapping("/{id:" + ID_PATH + "}/image")
+  public ResponseEntity<Void> updateImage(
+      AuthPrincipal principal,
+      @PathVariable("id") Long id,
+      @RequestBody UpdateWorkoutImageRequest body) {
+    workoutService.updateImage(principal, id, body.imageUrl());
     return ResponseEntity.noContent().build();
   }
 
