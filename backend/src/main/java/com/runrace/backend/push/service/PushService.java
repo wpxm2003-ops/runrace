@@ -60,8 +60,9 @@ public class PushService {
     Locale locale = localeOf(userId);
     String title = render(titleKey, locale, arg);
     String body = render(bodyKey, locale, arg);
-    sendToUserTokens(userId, title, body, link);
-    if (pushType != null) {
+    int sent = sendToUserTokens(userId, title, body, link);
+    // 토큰이 없어 실제로 한 건도 접수되지 않았으면 이력을 남기지 않는다.
+    if (pushType != null && sent > 0) {
       systemPushHistoryRepository.save(SystemPushHistory.of(userId, pushType, title, body));
     }
   }
@@ -78,8 +79,9 @@ public class PushService {
     Locale locale = localeOf(userId);
     String title = render(titleKey, locale, arg0);
     String body = render2(bodyKey, locale, arg0, arg1);
-    sendToUserTokens(userId, title, body, link);
-    if (pushType != null) {
+    int sent = sendToUserTokens(userId, title, body, link);
+    // 토큰이 없어 실제로 한 건도 접수되지 않았으면 이력을 남기지 않는다.
+    if (pushType != null && sent > 0) {
       systemPushHistoryRepository.save(SystemPushHistory.of(userId, pushType, title, body));
     }
   }
@@ -96,19 +98,22 @@ public class PushService {
     return msg;
   }
 
-  public void sendToUserTokens(UUID userId, String title, String body) {
-    sendToUserTokens(userId, title, body, null);
+  public int sendToUserTokens(UUID userId, String title, String body) {
+    return sendToUserTokens(userId, title, body, null);
   }
 
-  public void sendToUserTokens(UUID userId, String title, String body, String link) {
-    if (FirebaseApp.getApps().isEmpty()) return;
+  /** @return FCM 접수에 성공한 토큰 수(실제 전송된 건수). 0이면 전송 대상 없음. */
+  public int sendToUserTokens(UUID userId, String title, String body, String link) {
+    if (FirebaseApp.getApps().isEmpty()) return 0;
     // 알림을 끈 사용자에게는 모든 푸시(이벤트·리텐션)를 보내지 않는다.
-    if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return;
+    if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return 0;
     List<DeviceToken> tokens = deviceTokenRepository.findAllByUserId(userId);
+    int sent = 0;
     for (DeviceToken t : tokens) {
       Message msg = buildMessage(t, title, body, link);
       try {
         FirebaseMessaging.getInstance().send(msg);
+        sent++;
       } catch (FirebaseMessagingException e) {
         // 더 이상 유효하지 않은 토큰은 제거해 누적·재시도를 막는다. 그 외는 best-effort.
         String code = e.getMessagingErrorCode() != null ? e.getMessagingErrorCode().name() : "UNKNOWN";
@@ -125,6 +130,7 @@ public class PushService {
             ErrorLogService.stackTraceOf(e), "userId=" + userId + " platform=" + t.getPlatform());
       }
     }
+    return sent;
   }
 
   private static Message buildMessage(DeviceToken token, String title, String body, String link) {

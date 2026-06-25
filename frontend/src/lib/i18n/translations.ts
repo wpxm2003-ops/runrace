@@ -479,7 +479,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `사진 촬영 시각 ${time} — 등록 시 운동 종료 시각으로 기록됩니다.`,
     upload_too_large: "사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.",
-    photo_save_btn: "사진으로 남기기",
+    photo_save_btn: "사진 등록",
     photo_busy: "사진 등록중...",
     photo_view_btn: "사진 보기",
     photo_saved: "사진을 저장했어요",
