@@ -18,10 +18,18 @@ export type ConfirmOptions = {
   destructive?: boolean;
 };
 
-type ConfirmState = ConfirmOptions & { open: true };
+/** 단일 버튼 안내(알림) — 컨펌 모달 UI를 재사용하되 취소 버튼이 없다. */
+export type AlertOptions = {
+  title?: string;
+  message: string;
+  confirmLabel?: string;
+};
+
+type DialogState = ConfirmOptions & { open: true; alertMode: boolean };
 
 type ConfirmContextValue = {
   confirm: (options: ConfirmOptions) => Promise<boolean>;
+  alert: (options: AlertOptions) => Promise<void>;
 };
 
 const ConfirmContext = createContext<ConfirmContextValue | null>(null);
@@ -31,7 +39,7 @@ function ConfirmDialogUi({
   onConfirm,
   onCancel,
 }: {
-  state: ConfirmState;
+  state: DialogState;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -66,13 +74,15 @@ function ConfirmDialogUi({
           {state.message}
         </p>
         <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-11 flex-1 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            {cancelLabel}
-          </button>
+          {state.alertMode ? null : (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="h-11 flex-1 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}
@@ -91,7 +101,7 @@ function ConfirmDialogUi({
 }
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<ConfirmState | null>(null);
+  const [state, setState] = useState<DialogState | null>(null);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
 
   const close = useCallback((result: boolean) => {
@@ -103,7 +113,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const confirm = useCallback((options: ConfirmOptions) => {
     return new Promise<boolean>((resolve) => {
       resolveRef.current = resolve;
-      setState({ ...options, open: true });
+      setState({ ...options, open: true, alertMode: false });
+    });
+  }, []);
+
+  const alert = useCallback((options: AlertOptions) => {
+    return new Promise<void>((resolve) => {
+      resolveRef.current = () => resolve();
+      setState({ ...options, open: true, alertMode: true });
     });
   }, []);
 
@@ -117,13 +134,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   }, [state, close]);
 
   return (
-    <ConfirmContext.Provider value={{ confirm }}>
+    <ConfirmContext.Provider value={{ confirm, alert }}>
       {children}
       {state ? (
         <ConfirmDialogUi
           state={state}
           onConfirm={() => close(true)}
-          onCancel={() => close(false)}
+          onCancel={() => close(state.alertMode ? true : false)}
         />
       ) : null}
     </ConfirmContext.Provider>
@@ -136,4 +153,12 @@ export function useConfirm() {
     throw new Error("useConfirm must be used within ConfirmProvider");
   }
   return ctx.confirm;
+}
+
+export function useAlert() {
+  const ctx = useContext(ConfirmContext);
+  if (!ctx) {
+    throw new Error("useAlert must be used within ConfirmProvider");
+  }
+  return ctx.alert;
 }

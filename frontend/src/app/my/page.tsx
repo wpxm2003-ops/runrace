@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
-import { useConfirm } from "@/app/_components/ConfirmProvider";
+import { useConfirm, useAlert } from "@/app/_components/ConfirmProvider";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
@@ -103,7 +103,7 @@ function MyRacesSection({ user }: { user: User }) {
 /** 푸시 알림 수신 토글 — app_user.push_enabled를 갱신한다. */
 function NotificationToggle({ user }: { user: User }) {
   const { t } = useLocale();
-  const confirm = useConfirm();
+  const alert = useAlert();
   const { data, isLoading, mutate } = useNotificationSetting(user);
   const [saving, setSaving] = useState(false);
   // 디바이스 토큰이 없으면(앱 푸시 미동의) 토글 불가 — 항상 OFF로 보이게 한다.
@@ -114,7 +114,7 @@ function NotificationToggle({ user }: { user: User }) {
     if (isLoading || saving) return;
     // 토큰이 없으면 상태를 바꾸지 않고 안내만 띄운다(클릭해도 OFF 유지).
     if (!hasToken) {
-      void confirm({
+      void alert({
         title: t.my_notification_label,
         message: t.push_no_token_message,
         confirmLabel: t.confirm,
