@@ -14,6 +14,14 @@ import org.springframework.data.repository.query.Param;
 public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long>, WorkoutSessionRepositoryCustom {
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
+  /** 상세 응답용 — 신발(LAZY)을 함께 로드해 트랜잭션 밖에서도 귀속 신발을 노출한다. */
+  @Query("select w from WorkoutSession w left join fetch w.shoe where w.id = :id and w.user.id = :userId")
+  Optional<WorkoutSession> findDetailByIdAndUserId(@Param("id") Long id, @Param("userId") UUID userId);
+
+  /** 레이스 맥락 상세용 — 신발 함께 로드(소유자 확인은 호출 측에서 수행). */
+  @Query("select w from WorkoutSession w left join fetch w.shoe where w.id = :id")
+  Optional<WorkoutSession> findDetailById(@Param("id") Long id);
+
   /** 탈퇴 익명화용 — 사용자 전체 운동 세션(엔티티) 조회. GPS·이미지 제거 + S3 정리에 사용. */
   List<WorkoutSession> findAllByUserId(UUID userId);
 
@@ -137,4 +145,20 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
       from (select count(*) cnt from grouped group by grp) s
       """, nativeQuery = true)
   int maxStreakDaysForUser(@Param("userId") UUID userId);
+
+  /** 특정 신발의 누적 거리(m) — 교체 알림 임계 판정 + 신발장 표시용. */
+  @Query("select coalesce(sum(w.distanceM), 0) from WorkoutSession w where w.shoe.id = :shoeId")
+  long sumDistanceByShoeId(@Param("shoeId") Long shoeId);
+
+  /** 사용자의 신발별 누적 거리 — 신발장 목록 1회 조회용. */
+  @Query("select w.shoe.id as shoeId, coalesce(sum(w.distanceM), 0) as totalDistanceM "
+      + "from WorkoutSession w where w.user.id = :userId and w.shoe.id is not null "
+      + "group by w.shoe.id")
+  List<ShoeMileageView> sumDistanceByShoeForUser(@Param("userId") UUID userId);
+
+  /** {@link #sumDistanceByShoeForUser} 결과 투영. */
+  interface ShoeMileageView {
+    Long getShoeId();
+    long getTotalDistanceM();
+  }
 }

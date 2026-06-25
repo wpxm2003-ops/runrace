@@ -187,6 +187,24 @@ function MyPageContent({ user }: { user: User }) {
 
       <NotificationToggle user={user} />
 
+      <button
+        type="button"
+        onClick={() => nativeNavigate("/shoes")}
+        className="mt-4 flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left hover:bg-zinc-50"
+      >
+        <span className="text-base font-semibold text-zinc-900">{t.shoe_manage}</span>
+        <span aria-hidden className="text-zinc-400">›</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => nativeNavigate("/rivals")}
+        className="mt-4 flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left hover:bg-zinc-50"
+      >
+        <span className="text-base font-semibold text-zinc-900">{t.rival_manage}</span>
+        <span aria-hidden className="text-zinc-400">›</span>
+      </button>
+
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.my_records_all_time}</div>
         {summaryError ? <Alert className="mt-3">{String(summaryError)}</Alert> : null}
@@ -205,15 +223,6 @@ function MyPageContent({ user }: { user: User }) {
           )}
         </div>
       </Card>
-
-      <button
-        type="button"
-        onClick={() => nativeNavigate("/rivals")}
-        className="mt-4 flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left hover:bg-zinc-50"
-      >
-        <span className="text-base font-semibold text-zinc-900">{t.rival_manage}</span>
-        <span aria-hidden className="text-zinc-400">›</span>
-      </button>
 
       <MyRacesSection user={user} />
 

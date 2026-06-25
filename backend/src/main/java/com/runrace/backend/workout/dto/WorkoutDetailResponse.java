@@ -15,9 +15,12 @@ public record WorkoutDetailResponse(
     List<PathPointDto> path,
     String workoutType,
     String imageUrl,
-    String memo) {
+    String memo,
+    Long shoeId,
+    String shoeName) {
 
   public static WorkoutDetailResponse from(WorkoutSession session, List<PathPointDto> path) {
+    var shoe = session.getShoe();
     return new WorkoutDetailResponse(
         session.getId(),
         IsoTime.format(session.getStartedAt()),
@@ -29,6 +32,8 @@ public record WorkoutDetailResponse(
         path,
         session.getWorkoutType().name(),
         session.getImageUrl(),
-        session.getMemo());
+        session.getMemo(),
+        shoe != null ? shoe.getId() : null,
+        shoe != null ? shoe.displayName() : null);
   }
 }

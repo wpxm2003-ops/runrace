@@ -1,5 +1,6 @@
 package com.runrace.backend.workout.domain;
 
+import com.runrace.backend.shoe.domain.Shoe;
 import com.runrace.backend.user.domain.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -72,8 +73,18 @@ public class WorkoutSession {
   @Column(name = "memo", length = 500)
   private String memo;
 
+  /** 이 러닝을 신은 신발(귀속). 신발 삭제 시 FK가 null로 풀린다. */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "shoe_id")
+  private Shoe shoe;
+
   public void updateMemo(String memo) {
     this.memo = memo;
+  }
+
+  /** 러닝의 신발 귀속을 설정·해제한다(null이면 해제). */
+  public void assignShoe(Shoe shoe) {
+    this.shoe = shoe;
   }
 
   /**

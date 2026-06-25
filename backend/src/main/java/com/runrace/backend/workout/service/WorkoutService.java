@@ -12,6 +12,7 @@ import com.runrace.backend.challenge.domain.IndoorRunApproval;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.event.WorkoutEvents;
+import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -54,6 +55,7 @@ public class WorkoutService {
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ImageUploadService imageUploadService;
+  private final ShoeService shoeService;
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
 
@@ -106,6 +108,9 @@ public class WorkoutService {
     // 현재 참여 중인 진행 레이스에 운동 거리 반영
     challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
 
+    // 활성 신발 귀속 + 교체 목표 도달 시 알림 이벤트 발행
+    shoeService.attributeActiveShoe(principal.userId(), saved);
+
     // 라이벌 도발 푸시 — AFTER_COMMIT 리스너가 처리
     eventPublisher.publishEvent(new WorkoutEvents.WorkoutSavedEvent(
         principal.userId(), user.getNickname(), distanceM));
@@ -149,6 +154,9 @@ public class WorkoutService {
         .build());
 
     indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
+
+    // 실내러닝도 활성 신발에 귀속(신발 마모는 승인 여부와 무관)
+    shoeService.attributeActiveShoe(principal.userId(), saved);
     return saved;
   }
 
@@ -196,7 +204,7 @@ public class WorkoutService {
   @Transactional(readOnly = true)
   public WorkoutSession getForUser(UUID userId, Long id) {
     return workoutSessionRepository
-        .findByIdAndUserId(id, userId)
+        .findDetailByIdAndUserId(id, userId)
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
   }
 

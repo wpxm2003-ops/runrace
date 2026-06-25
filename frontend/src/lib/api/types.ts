@@ -56,6 +56,28 @@ export type RivalRow = {
   losses: number;
 };
 
+// ── 신발장(shoe) ──────────────────────────────────────────────────
+/** 신발 한 줄 — 누적 거리(totalDistanceM, m) 포함. 활성 신발로 이후 러닝이 자동 귀속된다. */
+export type ShoeRow = {
+  id: number;
+  brand: string;
+  model: string;
+  nickname: string | null;
+  /** 교체 권장 목표 거리(m). null이면 알림 없음. */
+  targetDistanceM: number | null;
+  active: boolean;
+  totalDistanceM: number;
+};
+
+/** 신발 등록/수정 요청. active는 등록 시에만 반영(수정은 활성화 전용 API). */
+export type ShoeFormBody = {
+  brand: string;
+  model: string;
+  nickname?: string | null;
+  targetDistanceM?: number | null;
+  active?: boolean;
+};
+
 export type ChallengeWinner = {
   userId: string;
   nickname: string | null;
@@ -150,6 +172,9 @@ export type WorkoutDetail = WorkoutListItem & {
   path: LatLng[];
   imageUrl: string | null;
   memo?: string | null;
+  /** 이 러닝에 귀속된 신발. 없으면 null. */
+  shoeId?: number | null;
+  shoeName?: string | null;
 };
 
 export type PreviousWorkout = {

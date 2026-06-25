@@ -33,4 +33,10 @@ public final class WorkoutEvents {
    * AFTER_COMMIT 리스너에서 처리하여 트랜잭션 내 네트워크 I/O(커넥션 점유)를 방지한다.
    */
   public record WorkoutImageDeletedEvent(String imageUrl) {}
+
+  /**
+   * 활성 신발 누적 거리가 교체 목표에 도달 — 소유자에게 교체 권장 푸시 발송용.
+   * 신발당 1회만 발송한다(system_push_history로 중복 차단).
+   */
+  public record ShoeReplacementDueEvent(UUID userId, long shoeId, String shoeName, String totalKm) {}
 }

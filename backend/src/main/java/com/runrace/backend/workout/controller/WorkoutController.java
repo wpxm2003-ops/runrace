@@ -2,12 +2,14 @@ package com.runrace.backend.workout.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
 import com.runrace.backend.workout.service.PersonalBestService;
 import com.runrace.backend.workout.dto.UpdateWorkoutMemoRequest;
+import com.runrace.backend.workout.dto.UpdateWorkoutShoeRequest;
 import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
 import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import com.runrace.backend.workout.dto.WorkoutListItem;
@@ -37,6 +39,7 @@ public class WorkoutController {
 
   private final WorkoutService workoutService;
   private final PersonalBestService personalBestService;
+  private final ShoeService shoeService;
 
   @PostMapping
   public ResponseEntity<CreateWorkoutResponse> create(
@@ -137,6 +140,16 @@ public class WorkoutController {
       @PathVariable("id") Long id,
       @RequestBody UpdateWorkoutMemoRequest body) {
     workoutService.updateMemo(principal, id, body.memo());
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 러닝의 신발 귀속 변경 — shoeId가 null이면 해제. */
+  @PatchMapping("/{id:" + ID_PATH + "}/shoe")
+  public ResponseEntity<Void> updateShoe(
+      AuthPrincipal principal,
+      @PathVariable("id") Long id,
+      @RequestBody UpdateWorkoutShoeRequest body) {
+    shoeService.reassignWorkoutShoe(principal.userId(), id, body.shoeId());
     return ResponseEntity.noContent().build();
   }
 

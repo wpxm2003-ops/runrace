@@ -49,7 +49,7 @@ class WorkoutServiceTest {
     // WorkoutService를 직접 new 하면 의존성이 null이지만,
     // 검증 예외는 의존성 접근 전에 던져지므로 NullPointerException 없이 실행된다.
     private final WorkoutService service =
-        new WorkoutService(null, null, null, null, null, null, null, null, null);
+        new WorkoutService(null, null, null, null, null, null, null, null, null, null);
 
     private final AuthPrincipal p = new AuthPrincipal(UUID.randomUUID(), "uid");
 
@@ -82,7 +82,7 @@ class WorkoutServiceTest {
 
   @Nested class UpdateMemoValidation {
     private final WorkoutService service =
-        new WorkoutService(null, null, null, null, null, null, null, null, null);
+        new WorkoutService(null, null, null, null, null, null, null, null, null, null);
 
     private final AuthPrincipal p = new AuthPrincipal(UUID.randomUUID(), "uid");
 
@@ -110,7 +110,7 @@ class WorkoutServiceTest {
 
   @Nested class CreateValidation {
     private final WorkoutService service =
-        new WorkoutService(null, null, null, null, null, null, null, null, null);
+        new WorkoutService(null, null, null, null, null, null, null, null, null, null);
 
     private final AuthPrincipal p = new AuthPrincipal(UUID.randomUUID(), "uid");
     private final java.time.OffsetDateTime T = java.time.OffsetDateTime.parse("2026-01-01T00:00:00Z");

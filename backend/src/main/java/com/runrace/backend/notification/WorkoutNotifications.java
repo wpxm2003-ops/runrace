@@ -68,6 +68,18 @@ public class WorkoutNotifications {
   }
 
   /**
+   * 활성 신발이 교체 목표 거리에 도달하면 소유자에게 교체 권장 푸시를 보낸다.
+   * 같은 신발에 대해서는 1회만 발송한다.
+   */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onShoeReplacementDue(WorkoutEvents.ShoeReplacementDueEvent event) {
+    String pushType = "shoe_replace:" + event.shoeId();
+    if (systemPushHistoryRepository.existsByUserIdAndPushType(event.userId(), pushType)) return;
+    pushService.sendLocalized(event.userId(), "shoe.replace.title", "shoe.replace.body",
+        event.shoeName(), event.totalKm(), "/shoes", pushType);
+  }
+
+  /**
    * 운동 삭제 후 S3 이미지 정리.
    * DB 커밋 이후 처리하여 트랜잭션 내 네트워크 I/O를 방지한다.
    */

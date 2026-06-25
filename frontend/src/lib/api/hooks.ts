@@ -19,6 +19,7 @@ import {
   fetchRejectedApprovals,
 } from "./challenges";
 import { fetchRivals } from "./rivals";
+import { fetchShoes } from "./shoes";
 import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
 import { fetchMe } from "./auth";
 import { fetchNotificationSetting } from "./push";
@@ -221,6 +222,22 @@ export function useRivals(user: User | null) {
 export function invalidateRivals(userId: string) {
   void globalMutate(
     (key) => Array.isArray(key) && key[0] === "rivals" && key[1] === userId,
+  );
+}
+
+// ── 신발장 ───────────────────────────────────────────────────────────────────
+export function useShoes(user: User | null) {
+  return useSWR(
+    user ? (["shoes", user.uid] as const) : null,
+    () => fetchShoes(user!),
+    BASE_CONFIG,
+  );
+}
+
+/** 신발 등록/수정/삭제/활성화 후 목록 재검증. */
+export function invalidateShoes(userId: string) {
+  void globalMutate(
+    (key) => Array.isArray(key) && key[0] === "shoes" && key[1] === userId,
   );
 }
 

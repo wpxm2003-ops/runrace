@@ -7,6 +7,7 @@ export * from "./auth";
 export * from "./errors";
 export * from "./challenges";
 export * from "./rivals";
+export * from "./shoes";
 export * from "./nudge";
 export * from "./workouts";
 export * from "./hooks";

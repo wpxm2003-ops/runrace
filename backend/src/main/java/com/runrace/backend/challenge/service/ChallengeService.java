@@ -350,7 +350,7 @@ public class ChallengeService {
       throw ApiException.notFound("workout_not_found");
     }
     return workoutSessionRepository
-        .findById(workoutSessionId)
+        .findDetailById(workoutSessionId)
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
   }
 
