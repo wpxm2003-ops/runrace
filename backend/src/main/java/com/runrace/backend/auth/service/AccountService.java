@@ -6,6 +6,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.config.CacheConfig;
+import com.runrace.backend.push.repository.DeviceTokenRepository;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -29,6 +30,7 @@ public class AccountService {
   private final CacheManager cacheManager;
   private final AccountWithdrawalTx accountWithdrawalTx;
   private final ImageUploadService imageUploadService;
+  private final DeviceTokenRepository deviceTokenRepository;
 
   @Transactional(readOnly = true)
   public AppUser getUser(UUID userId) {
@@ -55,6 +57,12 @@ public class AccountService {
   @Transactional(readOnly = true)
   public boolean isPushEnabled(UUID userId) {
     return appUserRepository.findPushEnabledById(userId).orElse(true);
+  }
+
+  /** 푸시 수신 가능한 단말(디바이스 토큰)이 등록돼 있는지 — 없으면 토글 자체가 불가. */
+  @Transactional(readOnly = true)
+  public boolean hasDeviceToken(UUID userId) {
+    return deviceTokenRepository.existsByUserId(userId);
   }
 
   /** 푸시 알림 수신 선호 변경(내정보 토글). */

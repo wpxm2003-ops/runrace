@@ -12,6 +12,9 @@ import org.springframework.data.repository.query.Param;
 public interface DeviceTokenRepository extends JpaRepository<DeviceToken, UUID> {
   List<DeviceToken> findAllByUserId(UUID userId);
 
+  /** 푸시 수신 가능한 단말(디바이스 토큰)이 등록돼 있는지 — 알림 토글 가능 여부 판정용. */
+  boolean existsByUserId(UUID userId);
+
   /** DB 유니크 키(user_id, platform)와 동일한 기준으로 조회 — 멱등 upsert용. */
   Optional<DeviceToken> findByUserIdAndPlatform(UUID userId, String platform);
 

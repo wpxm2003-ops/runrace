@@ -9,7 +9,9 @@ export function registerDeviceToken(user: User, fcmToken: string, platform: stri
   });
 }
 
-export function fetchNotificationSetting(user: User): Promise<{ enabled: boolean }> {
+export function fetchNotificationSetting(
+  user: User,
+): Promise<{ enabled: boolean; hasToken: boolean }> {
   return apiFetch("/api/me/notification-setting", { user });
 }
 

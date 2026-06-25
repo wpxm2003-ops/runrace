@@ -100,18 +100,30 @@ function MyRacesSection({ user }: { user: User }) {
   );
 }
 
-/** 푸시 알림 수신 토글 — device_token.use_yn을 갱신한다. */
+/** 푸시 알림 수신 토글 — app_user.push_enabled를 갱신한다. */
 function NotificationToggle({ user }: { user: User }) {
   const { t } = useLocale();
+  const confirm = useConfirm();
   const { data, isLoading, mutate } = useNotificationSetting(user);
   const [saving, setSaving] = useState(false);
-  const enabled = data?.enabled ?? true;
+  // 디바이스 토큰이 없으면(앱 푸시 미동의) 토글 불가 — 항상 OFF로 보이게 한다.
+  const hasToken = data?.hasToken ?? false;
+  const enabled = hasToken ? (data?.enabled ?? false) : false;
 
   async function onToggle() {
     if (isLoading || saving) return;
+    // 토큰이 없으면 상태를 바꾸지 않고 안내만 띄운다(클릭해도 OFF 유지).
+    if (!hasToken) {
+      void confirm({
+        title: t.my_notification_label,
+        message: t.push_no_token_message,
+        confirmLabel: t.confirm,
+      });
+      return;
+    }
     const next = !enabled;
     setSaving(true);
-    void mutate({ enabled: next }, { revalidate: false }); // 낙관적 업데이트
+    void mutate({ enabled: next, hasToken }, { revalidate: false }); // 낙관적 업데이트
     try {
       await setNotificationSetting(user, next);
     } catch {

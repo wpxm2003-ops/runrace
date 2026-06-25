@@ -58,7 +58,9 @@ public class AuthController {
 
   @GetMapping("/me/notification-setting")
   public NotificationSettingResponse getNotificationSetting(AuthPrincipal principal) {
-    return new NotificationSettingResponse(accountService.isPushEnabled(principal.userId()));
+    return new NotificationSettingResponse(
+        accountService.isPushEnabled(principal.userId()),
+        accountService.hasDeviceToken(principal.userId()));
   }
 
   @PutMapping("/me/notification-setting")
