@@ -135,6 +135,7 @@ export function WorkoutRecordPanel({
       <div className="flex gap-2">
         <ShareButton onShare={onShare} variant="secondary" className="h-11 flex-1" />
         <WorkoutPhotoButton
+          key={workoutId}
           workoutId={workoutId}
           imageUrl={detail.imageUrl ?? null}
           user={user}
