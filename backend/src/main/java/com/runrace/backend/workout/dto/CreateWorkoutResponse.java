@@ -1,3 +1,3 @@
 package com.runrace.backend.workout.dto;
 
-public record CreateWorkoutResponse(Long id) {}
+public record CreateWorkoutResponse(Long id, PersonalBestResult personalBest) {}

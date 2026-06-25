@@ -1,6 +1,7 @@
 package com.runrace.backend.workout.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public record CreateWorkoutRequest(
     String startedAt,
@@ -9,4 +10,5 @@ public record CreateWorkoutRequest(
     int distanceM,
     int calories,
     Integer avgPaceSecPerKm,
-    List<PathPointDto> path) {}
+    List<PathPointDto> path,
+    Map<String, Integer> bestSegments) {}

@@ -6,6 +6,7 @@ import { formatDistance, formatPace } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nativeNavigate } from "@/lib/nativeNav";
+import type { PersonalBest } from "@/lib/api/types";
 
 const CONFETTI_COLORS = ["#f59e0b", "#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899"] as const;
 const AUTO_NAVIGATE_SEC = 15;
@@ -15,15 +16,30 @@ type WorkoutCelebrationProps = {
   durationSec: number;
   distanceM: number;
   calories: number;
+  personalBest?: PersonalBest | null;
   saving?: boolean;
   onConfirm: () => void;
 };
+
+function formatPaceSec(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}'${String(s).padStart(2, "0")}"`;
+}
+
+function pbDaysLabel(days: number, t: ReturnType<typeof useLocale>["t"]): string {
+  if (days < 1) return "";
+  if (days < 30) return t.pb_days_since(Math.round(days));
+  if (days < 365) return t.pb_months_since(Math.round(days / 30));
+  return t.pb_years_since(Math.round(days / 365));
+}
 
 export function WorkoutCelebration({
   recordId,
   durationSec,
   distanceM,
   calories,
+  personalBest = null,
   saving = false,
   onConfirm,
 }: WorkoutCelebrationProps) {
@@ -109,6 +125,29 @@ export function WorkoutCelebration({
           </div>
         </div>
         <p className="mt-2 text-xs text-zinc-500">{t.celebration_calories(calories)}</p>
+
+        {personalBest && (() => {
+          const distLabels: Record<string, string> = { "5k": t.pb_5k, "10k": t.pb_10k, half: t.pb_half, marathon: t.pb_marathon };
+          const distLabel = distLabels[personalBest.distanceKey] ?? personalBest.distanceKey;
+          const faster = personalBest.previousPaceSec - personalBest.newPaceSec;
+          const daysLabel = pbDaysLabel(personalBest.daysSincePrevious, t);
+          return (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-amber-800">
+                🏅 {distLabel} {t.pb_new_record}
+              </p>
+              <div className="mt-1 flex items-center gap-2 text-sm">
+                <span className="font-mono text-zinc-400 line-through">{formatPaceSec(personalBest.previousPaceSec)}</span>
+                <span className="text-zinc-400">→</span>
+                <span className="font-mono font-semibold text-amber-700">{formatPaceSec(personalBest.newPaceSec)}</span>
+                <span className="text-xs text-amber-600">({t.pb_seconds_faster(faster)})</span>
+              </div>
+              {daysLabel ? (
+                <p className="mt-0.5 text-xs text-amber-500">{daysLabel}</p>
+              ) : null}
+            </div>
+          );
+        })()}
 
         {saving ? (
           <p className="mt-4 text-sm text-zinc-600">{t.celebration_saving}</p>

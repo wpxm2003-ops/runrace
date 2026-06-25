@@ -12,6 +12,8 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
+import { computeBestSegments } from "@/lib/workoutTrack";
+import type { PersonalBest } from "@/lib/api/types";
 import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
 import { RunLockOverlay } from "@/app/workout/_components/RunLockOverlay";
 import { useWakeLock } from "@/lib/useWakeLock";
@@ -27,7 +29,7 @@ const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"),
   ),
 });
 
-type CelebrationState = { recordId: number; snapshot: WorkoutFinishSnapshot };
+type CelebrationState = { recordId: number; snapshot: WorkoutFinishSnapshot; personalBest: PersonalBest | null };
 
 export default function WorkoutPage() {
   const { user, loading } = useRequireAuth("/workout");
@@ -72,6 +74,7 @@ export default function WorkoutPage() {
       setSaving(true);
       try {
         // 1차 방어: 3초 간격 3회 자동 재시도 (서버 재시작·네트워크 깜빡임 흡수)
+        const bestSegments = computeBestSegments(snapshot.path);
         const res = await withRetry(
           () =>
             createWorkout(
@@ -83,6 +86,7 @@ export default function WorkoutPage() {
                 calories: snapshot.calories,
                 avgPaceSecPerKm: snapshot.avgPaceSecPerKm,
                 path: snapshot.path,
+                bestSegments,
               },
               user,
             ),
@@ -100,7 +104,7 @@ export default function WorkoutPage() {
           distance_bucket: distanceKm < 1 ? "under_1km" : distanceKm < 3 ? "1_3km" : distanceKm < 5 ? "3_5km" : "over_5km",
         });
         setPendingSnapshot(null);
-        setCelebration({ recordId: res.id, snapshot });
+        setCelebration({ recordId: res.id, snapshot, personalBest: res.personalBest ?? null });
       } catch {
         // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
         setSaveError(t.workout_save_failed);
@@ -169,6 +173,7 @@ export default function WorkoutPage() {
           durationSec={celebration.snapshot.durationSec}
           distanceM={celebration.snapshot.distanceM}
           calories={celebration.snapshot.calories}
+          personalBest={celebration.personalBest}
           saving={saving}
           onConfirm={() => {}}
         />

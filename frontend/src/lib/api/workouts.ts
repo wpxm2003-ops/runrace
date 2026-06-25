@@ -2,6 +2,7 @@ import type { User } from "firebase/auth";
 import { compressImageForUpload } from "@/lib/compressImage";
 import { apiFetch, apiUrl, publicFetch } from "./client";
 import type {
+  CreateWorkoutResponse,
   CreatedId,
   IndoorRunCreateBody,
   WorkoutComparison,
@@ -27,7 +28,7 @@ export function fetchWorkout(id: number, user: User) {
 }
 
 export function createWorkout(body: WorkoutCreateBody, user: User) {
-  return apiFetch<CreatedId>("/api/workouts", { method: "POST", user, body });
+  return apiFetch<CreateWorkoutResponse>("/api/workouts", { method: "POST", user, body });
 }
 
 /** 정적 export 환경에서 DELETE가 막히는 경우가 있어 POST .../delete 를 사용한다. */

@@ -465,6 +465,59 @@ export function computeKmSplits(path: LatLng[]): KmSplit[] {
   return splits;
 }
 
+const PB_TARGETS = [
+  { key: "5k", m: 5_000 },
+  { key: "10k", m: 10_000 },
+  { key: "half", m: 21_097 },
+  { key: "marathon", m: 42_195 },
+] as const;
+
+/**
+ * 경로에서 각 목표 거리(5k/10k/하프/마라톤)의 최고 구간 페이스(초/km)를 반환한다.
+ * 슬라이딩 윈도우 O(n) 알고리즘. t 없는 구형 경로는 빈 객체 반환.
+ * 서버에 전송해 PB 판정에 사용한다.
+ */
+export function computeBestSegments(path: LatLng[]): Record<string, number> {
+  const pts = path.filter((p) => p.t != null);
+  if (pts.length < 2) return {};
+
+  const cumDist: number[] = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cumDist.push(cumDist[i - 1] + haversineMeters(pts[i - 1], pts[i]));
+  }
+  const totalDist = cumDist[pts.length - 1];
+
+  const result: Record<string, number> = {};
+
+  for (const { key, m: targetM } of PB_TARGETS) {
+    if (totalDist < targetM) continue;
+
+    let bestPaceSec = Infinity;
+    let j = 1;
+
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (j <= i) j = i + 1;
+      while (j < pts.length && cumDist[j] - cumDist[i] < targetM) j++;
+      if (j >= pts.length) break;
+
+      const segStart = cumDist[j - 1] - cumDist[i];
+      const segLen = cumDist[j] - cumDist[j - 1];
+      const frac = segLen > 0 ? (targetM - segStart) / segLen : 1;
+      const tAtTarget = pts[j - 1].t! + frac * (pts[j].t! - pts[j - 1].t!);
+
+      const elapsedSec = (tAtTarget - pts[i].t!) / 1000;
+      if (elapsedSec > 0) {
+        const paceSec = elapsedSec / (targetM / 1000);
+        if (paceSec < bestPaceSec) bestPaceSec = paceSec;
+      }
+    }
+
+    if (bestPaceSec !== Infinity) result[key] = Math.round(bestPaceSec);
+  }
+
+  return result;
+}
+
 export function geolocationErrorMessage(err: GeolocationPositionError): string {
   const blocked = geolocationBlockedReason();
   if (blocked) return blocked;

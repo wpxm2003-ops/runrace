@@ -175,6 +175,7 @@ export type WorkoutCreateBody = {
   calories: number;
   avgPaceSecPerKm: number | null;
   path: LatLng[];
+  bestSegments: Record<string, number>;
 };
 
 export type IndoorRunCreateBody = {
@@ -212,8 +213,20 @@ export type RejectedApproval = {
   rejectorNicknames: string[];
 };
 
-/** 단일 식별자만 돌려주는 생성 응답(레이스/운동 공용). */
+/** 단일 식별자만 돌려주는 생성 응답(레이스 공용). */
 export type CreatedId = { id: number };
+
+export type PersonalBest = {
+  distanceKey: string;
+  previousPaceSec: number;
+  newPaceSec: number;
+  daysSincePrevious: number;
+};
+
+export type CreateWorkoutResponse = {
+  id: number;
+  personalBest: PersonalBest | null;
+};
 
 /** 공개 공유 페이지용 운동 데이터 (인증 불필요). */
 export type WorkoutShare = {
