@@ -1,15 +1,12 @@
 package com.runrace.backend.challenge.service;
 
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.domain.ApprovalStatus;
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
-import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
@@ -18,7 +15,6 @@ import com.runrace.backend.event.ChallengeEndedNoParticipantsEvent;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
-import com.runrace.backend.workout.domain.WorkoutSession;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -325,30 +321,14 @@ public class ChallengeService {
     return challenge.getGoalKm();
   }
 
-  /** 레이스 반영 운동 목록 — 전체 공개(비참여자·비로그인도 조회 가능, GPS 경로 미포함). */
+  /**
+   * 레이스 반영 운동 목록 — 전체 공개(비참여자·비로그인도 조회 가능).
+   * 스칼라 projection이라 GPS 경로(path_json)를 로딩하지 않는다.
+   */
   @Transactional(readOnly = true)
   public List<ChallengeWorkoutListItem> listWorkouts(Long challengeId) {
     requireChallenge(challengeId); // 존재 검증(없으면 404)
-    return challengeWorkoutRepository
-        .findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(challengeId, ApprovalStatus.APPROVED)
-        .stream()
-        .map(this::toChallengeWorkoutListItem)
-        .toList();
-  }
-
-
-  private ChallengeWorkoutListItem toChallengeWorkoutListItem(ChallengeWorkout link) {
-    WorkoutSession session = link.getWorkoutSession();
-    AppUser user = session.getUser();
-    return new ChallengeWorkoutListItem(
-        session.getId(),
-        user.getId(),
-        user.getDisplayNickname(),
-        IsoTime.format(session.getStartedAt()),
-        IsoTime.format(session.getEndedAt()),
-        session.getDurationSec(),
-        session.getDistanceM(),
-        link.getAppliedDistanceM());
+    return challengeWorkoutRepository.findApprovedWorkoutListItems(challengeId);
   }
 
   public BigDecimal progressPercent(ChallengeMember member, Challenge challenge) {
