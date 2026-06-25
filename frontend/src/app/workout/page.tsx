@@ -172,7 +172,6 @@ export default function WorkoutPage() {
           recordId={celebration.recordId}
           durationSec={celebration.snapshot.durationSec}
           distanceM={celebration.snapshot.distanceM}
-          calories={celebration.snapshot.calories}
           personalBest={celebration.personalBest}
           saving={saving}
           onConfirm={() => {}}

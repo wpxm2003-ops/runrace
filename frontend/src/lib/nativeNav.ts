@@ -16,18 +16,6 @@ export function isIosWeb(): boolean {
   );
 }
 
-/** iOS 홈 화면에 추가된 PWA(standalone) 여부 */
-export function isIosPwa(): boolean {
-  if (!isIosWeb() || typeof window === "undefined") return false;
-  const nav = navigator as Navigator & { standalone?: boolean };
-  return (
-    nav.standalone === true ||
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: fullscreen)").matches
-  );
-}
-
-
 export function nativeHref(path: string): string {
   if (!isNativeApp()) return path;
 

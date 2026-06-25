@@ -23,7 +23,7 @@ type FieldErrors = {
 
 export default function IndoorRunPage() {
   const { user, loading } = useRequireAuth("/workout/indoor");
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const { unit } = useUnit();
 
   const [distanceKm, setDistanceKm] = useState("");

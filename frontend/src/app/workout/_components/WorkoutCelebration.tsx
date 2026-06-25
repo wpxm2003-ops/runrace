@@ -15,7 +15,6 @@ type WorkoutCelebrationProps = {
   recordId: number;
   durationSec: number;
   distanceM: number;
-  calories: number;
   personalBest?: PersonalBest | null;
   saving?: boolean;
   onConfirm: () => void;
@@ -38,7 +37,6 @@ export function WorkoutCelebration({
   recordId,
   durationSec,
   distanceM,
-  calories,
   personalBest = null,
   saving = false,
   onConfirm,

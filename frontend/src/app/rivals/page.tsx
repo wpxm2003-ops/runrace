@@ -7,7 +7,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { addRival, removeRival, invalidateRivals, useRivals, toDisplayError, reportClientError, reportAndDisplay } from "@/lib/api";
+import { addRival, removeRival, useRivals, toDisplayError, reportClientError, reportAndDisplay } from "@/lib/api";
 import type { RivalRow } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
