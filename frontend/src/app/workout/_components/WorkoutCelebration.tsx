@@ -124,10 +124,8 @@ export function WorkoutCelebration({
             <div className="font-semibold tabular-nums">{formatPace(distanceM, durationSec, unit)}</div>
           </div>
         </div>
-        <p className="mt-2 text-xs text-zinc-500">{t.celebration_calories(calories)}</p>
-
         {personalBest && (() => {
-          const distLabels: Record<string, string> = { "5k": t.pb_5k, "10k": t.pb_10k, half: t.pb_half, marathon: t.pb_marathon };
+          const distLabels: Record<string, string> = { "3k": t.pb_3k, "5k": t.pb_5k, "10k": t.pb_10k, half: t.pb_half, marathon: t.pb_marathon };
           const distLabel = distLabels[personalBest.distanceKey] ?? personalBest.distanceKey;
           const faster = personalBest.previousPaceSec - personalBest.newPaceSec;
           const daysLabel = pbDaysLabel(personalBest.daysSincePrevious, t);

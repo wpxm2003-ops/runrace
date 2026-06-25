@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PersonalBestService {
 
-  static final List<String> DISTANCE_KEYS = List.of("5k", "10k", "half", "marathon");
+  static final List<String> DISTANCE_KEYS = List.of("3k", "5k", "10k", "half", "marathon");
 
   private final PersonalBestRepository personalBestRepository;
 
@@ -59,6 +59,7 @@ public class PersonalBestService {
 
   private static int targetDistanceM(String key) {
     return switch (key) {
+      case "3k" -> 3_000;
       case "5k" -> 5_000;
       case "10k" -> 10_000;
       case "half" -> 21_097;

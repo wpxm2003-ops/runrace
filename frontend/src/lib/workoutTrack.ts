@@ -466,6 +466,7 @@ export function computeKmSplits(path: LatLng[]): KmSplit[] {
 }
 
 const PB_TARGETS = [
+  { key: "3k", m: 3_000 },
   { key: "5k", m: 5_000 },
   { key: "10k", m: 10_000 },
   { key: "half", m: 21_097 },
