@@ -12,6 +12,20 @@ export function formatDistance(distanceM: number, unit: DistanceUnit): string {
   return `${(distanceM / per).toFixed(2)} ${unit}`;
 }
 
+/** 미터 → 선택 단위 거리 문자열(정수 + 단위 라벨). 예: "12 km" / "8 mi" */
+export function formatDistanceInt(distanceM: number, unit: DistanceUnit): string {
+  const per = unit === "mi" ? METERS_PER_MI : METERS_PER_KM;
+  return `${Math.round(distanceM / per)} ${unit}`;
+}
+
+/** km 값 → 선택 단위 정수 숫자 문자열(단위 미포함). 예: "12" */
+export function formatDistanceAmountInt(km: string | number, unit: DistanceUnit): string {
+  const n = typeof km === "string" ? Number(km) : km;
+  if (!Number.isFinite(n)) return String(km);
+  const value = unit === "mi" ? n / KM_PER_MI : n;
+  return String(Math.round(value));
+}
+
 /** km 값(레이스 목표·누적 거리 등 이미 km인 값) → 선택 단위 숫자 문자열(단위 미포함, 소수 2자리). */
 export function formatDistanceAmount(km: string | number, unit: DistanceUnit): string {
   const n = typeof km === "string" ? Number(km) : km;

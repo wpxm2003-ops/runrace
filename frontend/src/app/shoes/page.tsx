@@ -21,7 +21,7 @@ import { handleAuthFailure } from "@/lib/auth";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { formatDistance, formatDistanceAmount } from "@/lib/units";
+import { formatDistance, formatDistanceInt, formatDistanceAmountInt } from "@/lib/units";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { ShoeFormSheet } from "./_components/ShoeFormSheet";
 import { toast } from "sonner";
@@ -43,10 +43,10 @@ function ShoeListRow({
   const { t } = useLocale();
   const { unit } = useUnit();
   const title = shoe.nickname?.trim() || `${shoe.brand} ${shoe.model}`;
-  const pct =
-    shoe.targetDistanceM && shoe.targetDistanceM > 0
-      ? Math.min(100, Math.round((shoe.totalDistanceM / shoe.targetDistanceM) * 100))
-      : null;
+  const hasTarget = shoe.targetDistanceM != null && shoe.targetDistanceM > 0;
+  const pct = hasTarget
+    ? Math.min(100, Math.round((shoe.totalDistanceM / shoe.targetDistanceM!) * 100))
+    : null;
 
   return (
     <div
@@ -88,20 +88,23 @@ function ShoeListRow({
         ) : null}
       </div>
 
-      {pct != null ? (
-        <div className="mt-2.5">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+      <div className="mt-2.5">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+          {hasTarget ? (
             <div
-              className={`h-full rounded-full ${pct >= 100 ? "bg-red-500" : "bg-emerald-500"}`}
+              className={`h-full rounded-full ${pct! >= 100 ? "bg-red-500" : "bg-emerald-500"}`}
               style={{ width: `${pct}%` }}
             />
-          </div>
-          <div className="mt-1 text-right text-[11px] text-zinc-400">
-            {formatDistanceAmount(shoe.totalDistanceM / 1000, unit)} /{" "}
-            {formatDistance(shoe.targetDistanceM!, unit)} ({pct}%)
-          </div>
+          ) : (
+            <div className="h-full w-full rounded-full bg-gradient-to-r from-emerald-300 to-sky-400" />
+          )}
         </div>
-      ) : null}
+        <div className="mt-1 text-right text-[11px] text-zinc-400">
+          {hasTarget
+            ? `${formatDistanceAmountInt(shoe.totalDistanceM / 1000, unit)} / ${formatDistanceInt(shoe.targetDistanceM!, unit)} (${pct}%)`
+            : `${formatDistanceInt(shoe.totalDistanceM, unit)} · ${t.shoe_unlimited}`}
+        </div>
+      </div>
 
       <div className="mt-2 flex justify-end gap-3">
         <button

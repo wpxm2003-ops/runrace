@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ShoeFormBody, ShoeRow } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
-import { formatDistanceAmount, metersFromInput } from "@/lib/units";
+import { goalInputFromKm, metersFromInput } from "@/lib/units";
 import { handleAuthFailure } from "@/lib/auth";
 import { toDisplayError } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
@@ -41,6 +41,7 @@ export function ShoeFormSheet({
   const editing = shoe != null;
 
   const [brandSel, setBrandSel] = useState(shoe ? brandSelectValue(shoe.brand) : BRANDS[0]);
+  const [brandOpen, setBrandOpen] = useState(false);
   const [customBrand, setCustomBrand] = useState(
     shoe && !BRANDS.includes(shoe.brand) ? shoe.brand : "",
   );
@@ -48,7 +49,7 @@ export function ShoeFormSheet({
   const [nickname, setNickname] = useState(shoe?.nickname ?? "");
   const [target, setTarget] = useState(
     shoe?.targetDistanceM && shoe.targetDistanceM > 0
-      ? formatDistanceAmount(shoe.targetDistanceM / 1000, unit)
+      ? goalInputFromKm(shoe.targetDistanceM / 1000, unit)
       : "",
   );
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +57,8 @@ export function ShoeFormSheet({
 
   // Android 백버튼 / ESC로 닫기
   useNativeBack(onClose);
+  // 브랜드 시트가 열려 있으면 백버튼은 시트만 닫는다(폼 유지)
+  useNativeBack(() => setBrandOpen(false), brandOpen);
 
   function mapError(e: unknown): string {
     const msg = String(e);
@@ -95,7 +98,10 @@ export function ShoeFormSheet({
     }
   }
 
+  const brandOptions = [...BRANDS, OTHER];
+
   return (
+    <>
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
       role="presentation"
@@ -122,19 +128,17 @@ export function ShoeFormSheet({
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4">
-          <label className="block">
+          <div className="block">
             <span className="text-xs font-medium text-zinc-600">{t.shoe_brand_label}</span>
-            <select
-              value={brandSel}
-              onChange={(e) => setBrandSel(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+            <button
+              type="button"
+              onClick={() => setBrandOpen(true)}
+              className="mt-1 flex w-full items-center justify-between rounded-lg border border-zinc-300 bg-white px-3 py-2 text-left text-sm focus:border-zinc-500 focus:outline-none"
             >
-              {BRANDS.map((b) => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-              <option value={OTHER}>{t.shoe_brand_other}</option>
-            </select>
-          </label>
+              <span>{brandSel === OTHER ? t.shoe_brand_other : brandSel}</span>
+              <span className="ml-2 text-zinc-400">▾</span>
+            </button>
+          </div>
 
           {brandSel === OTHER ? (
             <input
@@ -205,5 +209,43 @@ export function ShoeFormSheet({
         </div>
       </div>
     </div>
+
+    {brandOpen ? (
+      <div
+        className="fixed inset-0 z-[110] flex items-end justify-center bg-black/45 sm:items-center"
+        role="presentation"
+        onClick={() => setBrandOpen(false)}
+      >
+        <ul
+          role="listbox"
+          className="max-h-[70vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white py-2 shadow-xl sm:rounded-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {brandOptions.map((b) => {
+            const selected = brandSel === b;
+            return (
+              <li key={b}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => {
+                    setBrandSel(b);
+                    setBrandOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between px-5 py-3 text-left text-sm ${
+                    selected ? "font-semibold text-zinc-900" : "text-zinc-700"
+                  } active:bg-zinc-100`}
+                >
+                  <span>{b === OTHER ? t.shoe_brand_other : b}</span>
+                  {selected ? <span className="text-zinc-900">✓</span> : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ) : null}
+    </>
   );
 }
