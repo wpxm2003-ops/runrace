@@ -35,6 +35,8 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(FirebaseAuthFilter.class);
   private static final String BEARER_PREFIX = "Bearer ";
   private static final Pattern CHALLENGE_DETAIL = Pattern.compile("^/api/challenges/[0-9]+$");
+  private static final Pattern CHALLENGE_WORKOUTS =
+      Pattern.compile("^/api/challenges/[0-9]+/workouts$");
   private static final Pattern WORKOUT_SHARE = Pattern.compile("^/api/workouts/[0-9]+/share$");
   private static final Pattern CHALLENGE_SHARE_PAGE =
       Pattern.compile("^/api/share/challenges/[0-9]+$");
@@ -171,7 +173,9 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       return false;
     }
     String path = request.getRequestURI();
-    return "/api/challenges".equals(path) || CHALLENGE_DETAIL.matcher(path).matches();
+    return "/api/challenges".equals(path)
+        || CHALLENGE_DETAIL.matcher(path).matches()
+        || CHALLENGE_WORKOUTS.matcher(path).matches();
   }
 
   /** 프론트 에러 보고는 비로그인 상태에서도 보낼 수 있어야 한다. */
