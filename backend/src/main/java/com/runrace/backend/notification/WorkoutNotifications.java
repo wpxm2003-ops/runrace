@@ -1,8 +1,12 @@
 package com.runrace.backend.notification;
 
 import com.runrace.backend.event.WorkoutEvents;
+import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.push.service.PushService;
+import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.upload.ImageUploadService;
+import java.time.OffsetDateTime;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,8 +21,12 @@ public class WorkoutNotifications {
 
   private static final Logger log = LoggerFactory.getLogger(WorkoutNotifications.class);
 
+  private static final int RIVAL_VARIANTS = 5;
+
   private final PushService pushService;
   private final ImageUploadService imageUploadService;
+  private final RivalRepository rivalRepository;
+  private final SystemPushHistoryRepository systemPushHistoryRepository;
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onIndoorRunPendingApproval(WorkoutEvents.IndoorRunPendingApprovalEvent event) {
@@ -34,6 +42,29 @@ public class WorkoutNotifications {
   public void onIndoorRunApproved(WorkoutEvents.IndoorRunApprovedEvent event) {
     pushService.sendLocalized(
         event.submitterUserId(), "workout.approved.title", "workout.approved.body", null);
+  }
+
+  /**
+   * 라이벌이 운동을 완료하면 해당 사람을 라이벌로 등록한 유저들에게 도발 푸시를 보낸다.
+   * 같은 라이벌의 알림은 하루 1회로 제한한다.
+   */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onWorkoutSaved(WorkoutEvents.WorkoutSavedEvent event) {
+    var toNotify = rivalRepository.findUserIdsWhoHaveMeAsRival(event.userId());
+    if (toNotify.isEmpty()) return;
+
+    String distanceKm = String.format("%.1f", event.distanceM() / 1000.0);
+    String pushType = "rival_workout:" + event.userId();
+    OffsetDateTime todayStart = OffsetDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+    String bodyKey = "rival.workout." + ThreadLocalRandom.current().nextInt(RIVAL_VARIANTS);
+
+    for (var userId : toNotify) {
+      if (systemPushHistoryRepository.existsByUserIdAndPushTypeAndSentAtAfter(userId, pushType, todayStart)) {
+        continue;
+      }
+      pushService.sendLocalized(userId, "rival.workout.title", bodyKey,
+          event.nickname(), distanceKm, "/rivals", pushType);
+    }
   }
 
   /**

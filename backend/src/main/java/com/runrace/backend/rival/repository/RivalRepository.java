@@ -25,6 +25,10 @@ public interface RivalRepository extends JpaRepository<Rival, Long> {
   @Query("select r.rivalUser.id from Rival r where r.user.id = :userId")
   List<UUID> findRivalUserIds(UUID userId);
 
+  /** 이 사람을 라이벌로 등록한 사용자 id 목록 — 운동 완료 푸시 수신 대상 조회용. */
+  @Query("select r.user.id from Rival r where r.rivalUser.id = :rivalUserId")
+  List<UUID> findUserIdsWhoHaveMeAsRival(@Param("rivalUserId") UUID rivalUserId);
+
   boolean existsByUserIdAndRivalUserId(UUID userId, UUID rivalUserId);
 
   void deleteByUserIdAndRivalUserId(UUID userId, UUID rivalUserId);

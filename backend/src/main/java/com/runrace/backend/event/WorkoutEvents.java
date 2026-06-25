@@ -23,6 +23,12 @@ public final class WorkoutEvents {
   ) {}
 
   /**
+   * 실외 운동 저장 완료 — 라이벌 도발 푸시 발송용.
+   * userId를 라이벌로 등록한 모든 사용자에게 AFTER_COMMIT으로 발송한다.
+   */
+  public record WorkoutSavedEvent(UUID userId, String nickname, int distanceM) {}
+
+  /**
    * 운동 삭제 시 S3 이미지 정리용 이벤트.
    * AFTER_COMMIT 리스너에서 처리하여 트랜잭션 내 네트워크 I/O(커넥션 점유)를 방지한다.
    */

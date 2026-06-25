@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface SystemPushHistoryRepository extends JpaRepository<SystemPushHistory, Long> {
 
+  /** 특정 pushType으로 오늘 이미 발송했는지 확인 — 라이벌 알림 중복 방지용. */
+  boolean existsByUserIdAndPushTypeAndSentAtAfter(UUID userId, String pushType, OffsetDateTime after);
+
   @Query("""
       SELECT COUNT(h) FROM SystemPushHistory h
       WHERE h.userId = :userId

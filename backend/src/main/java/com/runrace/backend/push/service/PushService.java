@@ -70,9 +70,30 @@ public class PushService {
     return Locale.forLanguageTag(appUserRepository.findLangCdById(userId).orElse("ko"));
   }
 
+  /** {0}=arg0, {1}=arg1 두 인자 치환 — 라이벌 알림 등 복수 인자 메시지용. */
+  public void sendLocalized(UUID userId, String titleKey, String bodyKey,
+      String arg0, String arg1, String link, String pushType) {
+    if (FirebaseApp.getApps().isEmpty()) return;
+    if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return;
+    Locale locale = localeOf(userId);
+    String title = render(titleKey, locale, arg0);
+    String body = render2(bodyKey, locale, arg0, arg1);
+    sendToUserTokens(userId, title, body, link);
+    if (pushType != null) {
+      systemPushHistoryRepository.save(SystemPushHistory.of(userId, pushType, title, body));
+    }
+  }
+
   private String render(String key, Locale locale, String arg) {
     String msg = messageSource.getMessage(key, null, locale);
     return arg == null ? msg : msg.replace("{0}", arg);
+  }
+
+  private String render2(String key, Locale locale, String arg0, String arg1) {
+    String msg = messageSource.getMessage(key, null, locale);
+    if (arg0 != null) msg = msg.replace("{0}", arg0);
+    if (arg1 != null) msg = msg.replace("{1}", arg1);
+    return msg;
   }
 
   public void sendToUserTokens(UUID userId, String title, String body) {

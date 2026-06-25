@@ -106,6 +106,10 @@ public class WorkoutService {
     // 현재 참여 중인 진행 레이스에 운동 거리 반영
     challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
 
+    // 라이벌 도발 푸시 — AFTER_COMMIT 리스너가 처리
+    eventPublisher.publishEvent(new WorkoutEvents.WorkoutSavedEvent(
+        principal.userId(), user.getNickname(), distanceM));
+
     return saved;
   }
 
