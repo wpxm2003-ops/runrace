@@ -12,26 +12,22 @@ import type { User } from "firebase/auth";
 
 type Props = {
   challengeId: number;
-  isMember: boolean;
   user: User | null;
 };
 
-export function ChallengeMemberWorkouts({ challengeId, isMember, user }: Props) {
+export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
-  // user(Firebase)가 콜드 스타트에 아직 null이어도, 멤버이면 저장 uid/JWT로 즉시 조회한다.
+  // 참여자 운동 목록은 전체 공개 — 비참여자·비로그인도 조회한다.
   const { data: workouts = [], isLoading, error } = useChallengeWorkouts(
     challengeId,
     user,
-    isMember,
   );
 
   return (
     <Card className="mt-6">
       <div className="text-base font-semibold">{t.detail_member_workouts_heading}</div>
-      {!isMember ? (
-        <p className="mt-3 text-sm text-zinc-500">{t.detail_member_workouts_members_only}</p>
-      ) : error ? (
+      {error ? (
         <p className="mt-3 text-sm text-red-600">{toDisplayError(error)}</p>
       ) : isLoading ? (
         <div className="mt-3">

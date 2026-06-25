@@ -10,7 +10,6 @@ import type {
   HeadToHeadRow,
   PendingApproval,
   RejectedApproval,
-  WorkoutDetail,
 } from "./types";
 
 /**
@@ -82,11 +81,6 @@ export function leaveChallenge(id: number, user: User, returnTo?: string) {
  */
 export function fetchChallengeWorkouts(challengeId: number, user: User | null) {
   return publicFetch<ChallengeWorkoutListItem[]>(`/api/challenges/${challengeId}/workouts`, user);
-}
-
-/** 레이스 맥락 운동 상세 (참여자만) */
-export function fetchChallengeWorkout(challengeId: number, workoutId: number, user: User) {
-  return apiFetch<WorkoutDetail>(`/api/challenges/${challengeId}/workouts/${workoutId}`, { user });
 }
 
 /** 레이스 — 승인 대기 중인 실내러닝 목록 */

@@ -19,7 +19,6 @@ import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.domain.WorkoutSession;
-import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -53,7 +52,6 @@ public class ChallengeService {
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
-  private final WorkoutSessionRepository workoutSessionRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final RivalRepository rivalRepository;
   private final RaceFinalizationService raceFinalization;
@@ -327,10 +325,10 @@ public class ChallengeService {
     return challenge.getGoalKm();
   }
 
+  /** 레이스 반영 운동 목록 — 전체 공개(비참여자·비로그인도 조회 가능, GPS 경로 미포함). */
   @Transactional(readOnly = true)
-  public List<ChallengeWorkoutListItem> listWorkoutsForMembers(AuthPrincipal principal, Long challengeId) {
-    Challenge challenge = requireChallenge(challengeId);
-    ensureMemberOnly(principal.userId(), challenge);
+  public List<ChallengeWorkoutListItem> listWorkouts(Long challengeId) {
+    requireChallenge(challengeId); // 존재 검증(없으면 404)
     return challengeWorkoutRepository
         .findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(challengeId, ApprovalStatus.APPROVED)
         .stream()
@@ -338,27 +336,6 @@ public class ChallengeService {
         .toList();
   }
 
-  @Transactional(readOnly = true)
-  public WorkoutSession getLinkedWorkoutForMember(
-      AuthPrincipal principal, Long challengeId, Long workoutSessionId) {
-    Challenge challenge = requireChallenge(challengeId);
-    ensureMemberOnly(principal.userId(), challenge);
-    ChallengeWorkout link = challengeWorkoutRepository
-        .findByChallengeIdAndWorkoutSessionId(challengeId, workoutSessionId)
-        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
-    if (link.getApprovalStatus() != ApprovalStatus.APPROVED) {
-      throw ApiException.notFound("workout_not_found");
-    }
-    return workoutSessionRepository
-        .findDetailById(workoutSessionId)
-        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
-  }
-
-  private void ensureMemberOnly(UUID userId, Challenge challenge) {
-    if (challengeMemberRepository.findByChallengeIdAndUserId(challenge.getId(), userId).isEmpty()) {
-      throw ApiException.forbidden("forbidden");
-    }
-  }
 
   private ChallengeWorkoutListItem toChallengeWorkoutListItem(ChallengeWorkout link) {
     WorkoutSession session = link.getWorkoutSession();

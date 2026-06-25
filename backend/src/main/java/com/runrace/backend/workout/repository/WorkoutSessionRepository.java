@@ -18,10 +18,6 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
   @Query("select w from WorkoutSession w left join fetch w.shoe where w.id = :id and w.user.id = :userId")
   Optional<WorkoutSession> findDetailByIdAndUserId(@Param("id") Long id, @Param("userId") UUID userId);
 
-  /** 레이스 맥락 상세용 — 신발 함께 로드(소유자 확인은 호출 측에서 수행). */
-  @Query("select w from WorkoutSession w left join fetch w.shoe where w.id = :id")
-  Optional<WorkoutSession> findDetailById(@Param("id") Long id);
-
   /** 탈퇴 익명화용 — 사용자 전체 운동 세션(엔티티) 조회. GPS·이미지 제거 + S3 정리에 사용. */
   List<WorkoutSession> findAllByUserId(UUID userId);
 

@@ -13,7 +13,6 @@ import {
   fetchActiveCount,
   fetchMyChallengesPage,
   fetchChallengeWorkouts,
-  fetchChallengeWorkout,
   fetchHeadToHead,
   fetchPendingApprovals,
   fetchRejectedApprovals,
@@ -180,13 +179,12 @@ export function invalidateAfterNicknameChange(userId: string) {
 export function useChallengeWorkouts(
   challengeId: number | null,
   user: User | null,
-  enabled: boolean,
 ) {
-  // 저장된 uid로 키를 즉시 확정 → 콜드 스타트에도 영구 캐시 히트(스켈레톤 없음).
-  // 실제 fetch는 저장 JWT를 쓰는 publicFetch라 Firebase user 없이도 동작한다.
-  const uid = user?.uid ?? getStoredAuthUid() ?? null;
+  // 참여자 운동 목록은 전체 공개 — 비참여자·비로그인도 조회한다(publicFetch).
+  // 로그인 상태면 uid로 캐시 분리, 비로그인이면 "public" 키로 조회.
+  const uid = user?.uid ?? getStoredAuthUid() ?? "public";
   return useSWR(
-    enabled && challengeId != null && uid
+    challengeId != null
       ? (["challenge", challengeId, "workouts", uid] as const)
       : null,
     () => fetchChallengeWorkouts(challengeId!, user),
@@ -327,21 +325,6 @@ export function useWorkoutComparison(workoutId: number | null, user: User | null
       : null,
     () => fetchWorkoutComparison(workoutId!, user!),
     { ...BASE_CONFIG, revalidateOnFocus: false },
-  );
-}
-
-/** 레이스 맥락에서 특정 운동 상세 (타인 기록도 포함) */
-export function useChallengeWorkoutDetail(
-  workoutId: number | null,
-  challengeId: number | null,
-  user: User | null,
-) {
-  return useSWR(
-    user && workoutId != null && challengeId != null
-      ? (["challenge-workout", challengeId, workoutId, user.uid] as const)
-      : null,
-    () => fetchChallengeWorkout(challengeId!, workoutId!, user!),
-    BASE_CONFIG,
   );
 }
 

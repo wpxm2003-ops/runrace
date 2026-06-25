@@ -337,7 +337,6 @@ export default function ChallengeDetailContent() {
           {id != null && detail.hasStarted ? (
             <ChallengeMemberWorkouts
               challengeId={id}
-              isMember={detail.isMember}
               user={user}
             />
           ) : null}

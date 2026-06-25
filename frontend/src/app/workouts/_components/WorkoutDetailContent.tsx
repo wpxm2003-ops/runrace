@@ -8,12 +8,10 @@ import {
   deleteWorkout,
   firstErrorMessage,
   fetchErrorMessage,
-  useChallengeWorkoutDetail,
   useWorkoutDetail,
   invalidateWorkoutDetail,
   invalidateWorkoutLists,
 } from "@/lib/api";
-import { challengeDetailHref, parseChallengeIdFromQuery } from "@/lib/challengeRoute";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutComparisonCard } from "@/app/_components/WorkoutComparisonCard";
 import { WorkoutMemoEditor } from "@/app/_components/WorkoutMemoEditor";
@@ -29,9 +27,8 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { toast } from "sonner";
-import { useSearchParams } from "next/navigation";
 import { useRouteId } from "@/lib/useRouteId";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { getAppUrl } from "@/lib/appUrl";
 
 export default function WorkoutDetailContent() {
@@ -42,39 +39,10 @@ export default function WorkoutDetailContent() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const id = useRouteId(parseWorkoutIdFromPath);
-  const searchParams = useSearchParams();
-  const challengeId = useMemo(
-    () => parseChallengeIdFromQuery(searchParams.get("challenge")),
-    [searchParams],
-  );
-  const fromChallenge = challengeId != null;
-  const returnPath =
-    id != null
-      ? fromChallenge
-        ? `/workouts/${id}?challenge=${challengeId}`
-        : `/workouts/${id}`
-      : undefined;
+  const returnPath = id != null ? `/workouts/${id}` : undefined;
   const { user } = useRequireAuth(returnPath);
 
-  const {
-    data: directDetail,
-    error: directError,
-    isLoading: directLoading,
-  } = useWorkoutDetail(fromChallenge ? null : id, user ?? null);
-
-  const {
-    data: challengeDetail,
-    error: challengeError,
-    isLoading: challengeLoading,
-  } = useChallengeWorkoutDetail(
-    fromChallenge ? id : null,
-    fromChallenge ? challengeId : null,
-    user ?? null,
-  );
-
-  const detail = fromChallenge ? challengeDetail : directDetail;
-  const fetchError = fromChallenge ? challengeError : directError;
-  const isLoading = fromChallenge ? challengeLoading : directLoading;
+  const { data: detail, error: fetchError, isLoading } = useWorkoutDetail(id, user ?? null);
 
   const isIndoor = detail?.workoutType === "INDOOR";
 
@@ -85,7 +53,7 @@ export default function WorkoutDetailContent() {
   }
 
   async function onDelete() {
-    if (!user || !id || fromChallenge) return;
+    if (!user || !id) return;
     const ok = await confirm({
       title: t.workout_delete_title,
       message: t.workout_delete_message,
@@ -107,19 +75,7 @@ export default function WorkoutDetailContent() {
     }
   }
 
-  const pageActions = (
-    <>
-      {detail ? <ShareButton onShare={onShare} /> : null}
-      {fromChallenge ? (
-        <a
-          className="text-sm text-zinc-600 hover:underline"
-          href={challengeDetailHref(challengeId!)}
-        >
-          {t.challenge_workout_back}
-        </a>
-      ) : null}
-    </>
-  );
+  const pageActions = detail ? <ShareButton onShare={onShare} /> : null;
 
   const error = firstErrorMessage(deleteError, fetchErrorMessage(fetchError, t.workout_not_found));
 
@@ -153,7 +109,7 @@ export default function WorkoutDetailContent() {
             <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
           </div>
 
-          {detail && detail.path.length > 0 ? (
+          {detail.path.length > 0 ? (
             <div className="mt-4">
               <KmSplitSection
                 path={detail.path}
@@ -164,7 +120,7 @@ export default function WorkoutDetailContent() {
             </div>
           ) : null}
 
-          {user && !fromChallenge ? (
+          {user ? (
             <div className="mt-4">
               <WorkoutComparisonCard
                 workoutId={id!}
@@ -176,7 +132,7 @@ export default function WorkoutDetailContent() {
             </div>
           ) : null}
 
-          {user && !fromChallenge ? (
+          {user ? (
             <div className="mt-4">
               <WorkoutShoeSelector
                 workoutId={id!}
@@ -186,7 +142,7 @@ export default function WorkoutDetailContent() {
             </div>
           ) : null}
 
-          {user && !fromChallenge ? (
+          {user ? (
             <div className="mt-4">
               <WorkoutMemoEditor workoutId={id!} initialMemo={detail.memo} user={user} />
             </div>
@@ -196,7 +152,7 @@ export default function WorkoutDetailContent() {
             </p>
           ) : null}
 
-          {user && !fromChallenge ? (
+          {user ? (
             <div className="mt-4">
               <Button
                 variant="destructive"

@@ -224,9 +224,7 @@ export const translations = {
     detail_leave_title: "참여 취소",
     detail_leave_message: "이 레이스 참여를 취소할까요?",
     detail_member_workouts_heading: "참여자 운동 기록",
-    detail_member_workouts_members_only: "레이스 참여 인원만 운동 기록을 볼 수 있습니다.",
     detail_member_workouts_empty: "아직 레이스에 반영된 운동 기록이 없습니다.",
-    challenge_workout_back: "레이스 상세",
 
     // ── 레이스 수정 ─────────────────────────
     edit_title: "레이스 수정",
@@ -721,9 +719,7 @@ export const translations = {
     detail_leave_title: "Leave race",
     detail_leave_message: "Cancel your participation in this race?",
     detail_member_workouts_heading: "Member workouts",
-    detail_member_workouts_members_only: "Only race participants can view workout records.",
     detail_member_workouts_empty: "No workouts linked to this race yet.",
-    challenge_workout_back: "Race details",
 
     // ── 레이스 수정 ─────────────────────────
     edit_title: "Edit Race",
@@ -1218,9 +1214,7 @@ export const translations = {
     detail_leave_title: "Salir de la carrera",
     detail_leave_message: "¿Cancelar tu participación en esta carrera?",
     detail_member_workouts_heading: "Entrenamientos",
-    detail_member_workouts_members_only: "Solo los participantes pueden ver los entrenamientos.",
     detail_member_workouts_empty: "Aún no hay entrenamientos en esta carrera.",
-    challenge_workout_back: "Detalles",
 
     // ── Editar carrera ────────────────────
     edit_title: "Editar carrera",
@@ -1715,9 +1709,7 @@ export const translations = {
     detail_leave_title: "参加取り消し",
     detail_leave_message: "このレースの参加を取り消しますか？",
     detail_member_workouts_heading: "参加者の運動記録",
-    detail_member_workouts_members_only: "参加者のみ運動記録を見られます。",
     detail_member_workouts_empty: "まだレースに反映された記録はありません。",
-    challenge_workout_back: "レース詳細",
 
     // ── レース編集 ────────────────────────
     edit_title: "レース編集",
@@ -2212,9 +2204,7 @@ export const translations = {
     detail_leave_title: "取消参加",
     detail_leave_message: "确定取消参加这场比赛吗？",
     detail_member_workouts_heading: "参加者运动记录",
-    detail_member_workouts_members_only: "仅参加者可查看运动记录。",
     detail_member_workouts_empty: "暂无计入比赛的运动记录。",
-    challenge_workout_back: "比赛详情",
 
     // ── 编辑比赛 ──────────────────────────
     edit_title: "编辑比赛",

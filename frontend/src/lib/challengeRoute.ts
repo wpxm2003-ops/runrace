@@ -8,10 +8,6 @@ export function challengeEditHref(id: number) {
   return `/challenges/${id}/edit`;
 }
 
-export function parseChallengeIdFromQuery(value: string | null): number | null {
-  return parseChallengeId(value);
-}
-
 export function parseChallengeId(value: string | null | undefined): number | null {
   if (!value || !CHALLENGE_ID_PATTERN.test(value)) return null;
   const n = Number(value);

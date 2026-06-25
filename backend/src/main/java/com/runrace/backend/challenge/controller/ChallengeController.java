@@ -21,9 +21,6 @@ import com.runrace.backend.challenge.dto.UpdateChallengeRequest;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.HeadToHeadRow;
 import com.runrace.backend.challenge.dto.WinnerRow;
-import com.runrace.backend.workout.service.WorkoutService;
-import com.runrace.backend.workout.domain.WorkoutSession;
-import com.runrace.backend.workout.dto.WorkoutDetailResponse;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
@@ -53,7 +50,6 @@ public class ChallengeController {
 
   private final ChallengeService challengeService;
   private final IndoorApprovalService indoorApprovalService;
-  private final WorkoutService workoutService;
 
   @GetMapping("/active-count")
   public ResponseEntity<ActiveCountResponse> activeCount(AuthPrincipal principal) {
@@ -172,21 +168,10 @@ public class ChallengeController {
     return ResponseEntity.ok(challengeService.headToHead(principal.userId(), id));
   }
 
-  /** 레이스 참여자만 조회 가능한 반영 운동 목록 */
+  /** 레이스 반영 운동 목록 — 전체 공개(인증 불필요). */
   @GetMapping("/{id:" + ID_PATH + "}/workouts")
-  public ResponseEntity<List<ChallengeWorkoutListItem>> listWorkouts(
-      AuthPrincipal principal, @PathVariable("id") Long id) {
-    return ResponseEntity.ok(challengeService.listWorkoutsForMembers(principal, id));
-  }
-
-  @GetMapping("/{id:" + ID_PATH + "}/workouts/{workoutId:" + ID_PATH + "}")
-  public ResponseEntity<WorkoutDetailResponse> workoutDetail(
-      AuthPrincipal principal,
-      @PathVariable("id") Long id,
-      @PathVariable("workoutId") Long workoutId) {
-    WorkoutSession session = challengeService.getLinkedWorkoutForMember(principal, id, workoutId);
-    return ResponseEntity.ok(
-        WorkoutDetailResponse.from(session, workoutService.toPath(session.getPathJson())));
+  public ResponseEntity<List<ChallengeWorkoutListItem>> listWorkouts(@PathVariable("id") Long id) {
+    return ResponseEntity.ok(challengeService.listWorkouts(id));
   }
 
   /** 레이스 승인 대기 중인 실내러닝 목록. */
