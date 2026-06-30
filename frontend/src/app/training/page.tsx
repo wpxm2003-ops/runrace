@@ -20,8 +20,10 @@ import {
   thresholdPaceSecPerKm,
   weeklyPlan,
   formatPaceSec,
+  nsmTodayIndex,
   type NsmSession,
 } from "@/lib/nsm";
+import { weekdayLabels } from "@/lib/format";
 
 const DISTANCES = [
   { label: "5K", m: 5000 },
@@ -36,16 +38,6 @@ const PB_LABEL: Record<string, string> = {
   marathon: "Full",
 };
 
-/** JS 요일(0=일)을 월=0…일=6 인덱스로 변환. */
-function todayIndex(): number {
-  return (new Date().getDay() + 6) % 7;
-}
-
-/** 로케일별 요일 짧은 라벨(월=0…일=6). 2024-01-01은 월요일. */
-function weekdayLabels(locale: string): string[] {
-  const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
-  return Array.from({ length: 7 }, (_, d) => fmt.format(new Date(2024, 0, 1 + d)));
-}
 
 function parseTime(v: string): number | null {
   const m = v.trim().match(/^(\d{1,3}):(\d{2})$/);
@@ -84,7 +76,7 @@ function TrainingContent({ user }: { user: User | null }) {
   const { data: pbs } = usePersonalBests(user);
   const { data: savedPlan, mutate: mutatePlan } = useTrainingPlan(user);
 
-  const days = weekdayLabels(locale);
+  const days = weekdayLabels(locale, true);
 
   const [distM, setDistM] = useState(5000);
   const [timeStr, setTimeStr] = useState("22:00");
@@ -212,7 +204,7 @@ function TrainingContent({ user }: { user: User | null }) {
 
   // "오늘의 세션"은 저장된 활성 플랜에서만 — 계산만 한 미저장 플랜은 미노출.
   const todaySession = savedPlan
-    ? weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays)[todayIndex()]
+    ? weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays)[nsmTodayIndex()]
     : null;
 
   return (
@@ -220,7 +212,7 @@ function TrainingContent({ user }: { user: User | null }) {
       {todaySession ? (
         <Card className="border-zinc-900 bg-zinc-900 text-white">
           <div className="text-xs text-zinc-400">
-            {t.nsm_today} ({days[todayIndex()]}) {t.nsm_session}
+            {t.nsm_today} ({days[nsmTodayIndex()]}) {t.nsm_session}
           </div>
           {(() => {
             const { title, sub } = sessionLabel(todaySession, t);
@@ -377,7 +369,7 @@ function TrainingContent({ user }: { user: User | null }) {
             <div className="mt-3 flex flex-col gap-2">
               {result.plan.map((s) => {
                 const { title, sub, tag } = sessionLabel(s, t);
-                const isToday = s.day === todayIndex();
+                const isToday = s.day === nsmTodayIndex();
                 return (
                   <div
                     key={s.day}

@@ -6,7 +6,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { ImageUploadField, type ImageFieldState } from "@/app/workout/indoor/_components/ImageUploadField";
 import { DurationField } from "@/app/workout/indoor/_components/DurationField";
 import { createIndoorRun, uploadImage } from "@/lib/api";
-import { track } from "@/lib/analytics";
+import { track, distanceBucket } from "@/lib/analytics";
 import { withRetry } from "@/lib/retry";
 import { workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -88,7 +88,7 @@ export default function IndoorRunPage() {
       );
       const distanceKm = distM / 1000;
       void track("record_saved", {
-        distance_bucket: distanceKm < 1 ? "under_1km" : distanceKm < 3 ? "1_3km" : distanceKm < 5 ? "3_5km" : "over_5km",
+        distance_bucket: distanceBucket(distanceKm),
         type: "indoor",
       });
       nativeNavigate(`/workouts/${res.id}`);

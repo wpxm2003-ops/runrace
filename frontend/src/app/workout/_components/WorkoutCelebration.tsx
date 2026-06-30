@@ -2,7 +2,7 @@
 
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { formatDistance, formatPace } from "@/lib/units";
+import { formatDistance, formatPace, formatPaceSecPerUnit } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -21,9 +21,7 @@ type WorkoutCelebrationProps = {
 };
 
 function formatPaceSec(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
-  return `${m}'${String(s).padStart(2, "0")}"`;
+  return formatPaceSecPerUnit(sec);
 }
 
 function pbDaysLabel(days: number, t: ReturnType<typeof useLocale>["t"]): string {

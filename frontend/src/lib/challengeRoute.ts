@@ -1,4 +1,4 @@
-const CHALLENGE_ID_PATTERN = /^\d+$/;
+import { parsePositiveIntId, segmentIdFromPath, staticIdParam } from "@/lib/routeId";
 
 export function challengeDetailHref(id: number) {
   return `/challenges/${id}`;
@@ -9,10 +9,7 @@ export function challengeEditHref(id: number) {
 }
 
 export function parseChallengeId(value: string | null | undefined): number | null {
-  if (!value || !CHALLENGE_ID_PATTERN.test(value)) return null;
-  const n = Number(value);
-  if (!Number.isSafeInteger(n) || n <= 0) return null;
-  return n;
+  return parsePositiveIntId(value);
 }
 
 /**
@@ -22,10 +19,10 @@ export function parseChallengeId(value: string | null | undefined): number | nul
  */
 export const CHALLENGE_ROUTE_TEMPLATE = "view";
 export function challengeStaticParamIds(): { id: string }[] {
-  return [{ id: CHALLENGE_ROUTE_TEMPLATE }];
+  return staticIdParam(CHALLENGE_ROUTE_TEMPLATE);
 }
 
 /** /challenges/{id}[/...] 경로명에서 레이스 id를 파싱한다. */
 export function parseChallengeIdFromPath(pathname: string | null | undefined): number | null {
-  return parseChallengeId(pathname?.split("/")[2] ?? null);
+  return segmentIdFromPath(pathname, 2);
 }

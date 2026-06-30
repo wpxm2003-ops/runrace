@@ -4,6 +4,7 @@ import { useState } from "react";
 import { computeKmSplits } from "@/lib/workoutTrack";
 import type { LatLng, KmSplit } from "@/lib/workoutTrack";
 import type { Translations } from "@/lib/i18n/translations";
+import { formatPaceSecPerUnit } from "@/lib/units";
 
 type Props = {
   path: LatLng[];
@@ -13,16 +14,12 @@ type Props = {
 };
 
 function paceLabel(secPerKm: number): string {
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return `${m}'${String(s).padStart(2, "0")}"`;
+  return formatPaceSecPerUnit(secPerKm);
 }
 
 function paceChangeLabel(delta: number): string {
   const abs = Math.abs(delta);
-  const m = Math.floor(abs / 60);
-  const s = Math.round(abs % 60);
-  return m > 0 ? `${m}'${String(s).padStart(2, "0")}"` : `${Math.round(abs)}초`;
+  return abs >= 60 ? formatPaceSecPerUnit(abs) : `${Math.round(abs)}초`;
 }
 
 function enduranceVerdict(splits: KmSplit[]): { text: string; positive: boolean } | null {

@@ -1,8 +1,24 @@
 /** 화면 표시용 날짜/숫자 포맷 모음. 날짜 순서는 locale를 따르고 시간은 24h로 고정한다.
  *  (입력 폼용 날짜 계산은 challengeForm.ts / toDateTimeInputValue 참고) */
 
-function pad2(n: number): string {
+export function pad2(n: number): string {
   return String(n).padStart(2, "0");
+}
+
+/** Date → datetime-local 값(yyyy-MM-ddTHH:mm), 로컬 타임존 기준. 입력 폼 날짜의 단일 출처. */
+export function toDateTimeLocal(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/**
+ * 요일 라벨 7개 (locale 기준). startMonday=true면 월요일 시작, 아니면 일요일 시작.
+ * 매직 기준일을 한곳에 가둬 캘린더 헤더 표기를 통일한다.
+ */
+export function weekdayLabels(locale: string, startMonday = false): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
+  // 2023-01-01은 일요일. 월요일 시작이면 하루 밀어 2023-01-02(월)부터.
+  const base = startMonday ? 2 : 1;
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, base + i)));
 }
 
 /** 24h HH:mm */
@@ -61,6 +77,5 @@ export function isSameLocalDay(a: string, b: string): boolean {
 
 /** ISO → datetime-local 값(yyyy-MM-ddTHH:mm). */
 export function toDateTimeInputValue(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return toDateTimeLocal(new Date(iso));
 }

@@ -3,21 +3,11 @@ import {
   stripForbiddenText,
 } from "@/lib/forbiddenTextChars";
 import { goalKmFromInput, goalMaxInUnit, type DistanceUnit } from "@/lib/units";
-
-function formatLocalDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
+import { toDateTimeLocal } from "@/lib/format";
 
 /** datetime-local 입력값 (yyyy-MM-ddTHH:mm) */
 export function formatLocalDateTime(d: Date): string {
-  return `${formatLocalDate(d)}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return toDateTimeLocal(d);
 }
 
 /** datetime-local min: 현재 시각(초 단위 절삭) */

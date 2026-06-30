@@ -2,16 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
+import { pad2 } from "@/lib/format";
 
 // ── constants ───────────────────────────────────────────────────────────────
 const ITEM_H = 44;
 const VISIBLE = 5;
 const PAD = Math.floor(VISIBLE / 2); // 2
-
-// ── helpers ─────────────────────────────────────────────────────────────────
-function pad2(n: number) {
-  return String(n).padStart(2, "0");
-}
 
 function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();

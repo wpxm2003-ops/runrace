@@ -34,6 +34,11 @@ export async function track(name: string, params?: EventParams): Promise<void> {
   }
 }
 
+/** record_saved 트래킹용 거리 버킷. 경계 변경 시 한곳만 고치면 된다. */
+export function distanceBucket(distanceKm: number): string {
+  return distanceKm < 1 ? "under_1km" : distanceKm < 3 ? "1_3km" : distanceKm < 5 ? "3_5km" : "over_5km";
+}
+
 /** 로그인 시 사용자 식별자 설정 — 이벤트를 유저 단위로 묶는다. */
 export async function setAnalyticsUser(userId: string | null): Promise<void> {
   try {

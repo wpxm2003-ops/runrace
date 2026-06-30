@@ -8,6 +8,8 @@
  *    최종 출력은 Daniels 계산기 / 런갤 "딸깍 표"와 ±2~3초/km 안에서 맞춰 검증해야 한다.
  */
 
+import { formatPaceSecPerUnit } from "@/lib/units";
+
 /** 역치 강도로 쓰는 VO2max 비율(≈LT2). Daniels T 페이스 근사. 검증 후 보정. */
 const THRESHOLD_VO2_FRACTION = 0.88;
 /** 짧은 렙은 역치보다 빠르게, 긴 렙은 느리게 (5~7초/km). */
@@ -111,7 +113,10 @@ export function weeklyPlan(thresholdSec: number, subTDays: number[]): NsmSession
 
 /** 초/km → "m'ss"" 표기. */
 export function formatPaceSec(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
-  return `${m}'${String(s).padStart(2, "0")}"`;
+  return formatPaceSecPerUnit(sec);
+}
+
+/** 오늘의 NSM 주간 인덱스(월=0 … 일=6). weeklyPlan 인덱싱 규약의 단일 출처. */
+export function nsmTodayIndex(): number {
+  return (new Date().getDay() + 6) % 7;
 }

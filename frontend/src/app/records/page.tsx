@@ -11,7 +11,7 @@ import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear, toDisplayError } from "@/lib/api";
 import { track } from "@/lib/analytics";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, weekdayLabels } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import {
@@ -84,11 +84,8 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
     return workoutsOnDate(monthItems, selectedDateKey);
   }, [monthItems, selectedDateKey]);
 
-  // 2023-01-01은 일요일 → 일요일 시작 7칸을 현재 언어로 자동 생성
-  const weekdays = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
-    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)));
-  }, [locale]);
+  // 일요일 시작 7칸 요일 라벨(현재 언어)
+  const weekdays = useMemo(() => weekdayLabels(locale), [locale]);
 
   function shiftMonth(delta: number) {
     const d = new Date(viewYear, viewMonth + delta, 1);

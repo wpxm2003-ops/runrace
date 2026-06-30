@@ -78,12 +78,16 @@ export function kmFromInput(value: string, unit: DistanceUnit): number {
   return unit === "mi" ? v * KM_PER_MI : v;
 }
 
+/** 초/단위(예: 초/km) → "m'ss"" 표기. 페이스 포맷의 단일 출처. */
+export function formatPaceSecPerUnit(secPerUnit: number): string {
+  const m = Math.floor(secPerUnit / 60);
+  const s = Math.round(secPerUnit % 60);
+  return `${m}'${String(s).padStart(2, "0")}"`;
+}
+
 /** 미터+초 → 선택 단위 기준 페이스("m'ss"" / 단위당). 단위가 마일이면 min/mi. */
 export function formatPace(distanceM: number, elapsedSec: number, unit: DistanceUnit): string {
   if (distanceM < 10 || elapsedSec < 1) return "-";
   const per = unit === "mi" ? METERS_PER_MI : METERS_PER_KM;
-  const secPerUnit = elapsedSec / (distanceM / per);
-  const m = Math.floor(secPerUnit / 60);
-  const s = Math.round(secPerUnit % 60);
-  return `${m}'${String(s).padStart(2, "0")}"`;
+  return formatPaceSecPerUnit(elapsedSec / (distanceM / per));
 }

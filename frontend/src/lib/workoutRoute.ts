@@ -1,10 +1,7 @@
-const WORKOUT_ID_PATTERN = /^\d+$/;
+import { parsePositiveIntId, segmentIdFromPath, staticIdParam } from "@/lib/routeId";
 
 export function parseWorkoutId(value: string | null | undefined): number | null {
-  if (!value || !WORKOUT_ID_PATTERN.test(value)) return null;
-  const n = Number(value);
-  if (!Number.isSafeInteger(n) || n <= 0) return null;
-  return n;
+  return parsePositiveIntId(value);
 }
 
 /**
@@ -14,10 +11,10 @@ export function parseWorkoutId(value: string | null | undefined): number | null 
  */
 export const WORKOUT_ROUTE_TEMPLATE = "view";
 export function workoutStaticParamIds(): { id: string }[] {
-  return [{ id: WORKOUT_ROUTE_TEMPLATE }];
+  return staticIdParam(WORKOUT_ROUTE_TEMPLATE);
 }
 
 /** /workouts/{id}[/...] 경로명에서 운동 id를 파싱한다. */
 export function parseWorkoutIdFromPath(pathname: string | null | undefined): number | null {
-  return parseWorkoutId(pathname?.split("/")[2] ?? null);
+  return segmentIdFromPath(pathname, 2);
 }

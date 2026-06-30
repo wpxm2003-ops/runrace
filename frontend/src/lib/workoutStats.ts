@@ -116,16 +116,17 @@ export function monthComparison(
 
 export type StreakResult = { current: number; longest: number };
 
-/** items 범위 내 최장 연속 운동일 — today 없이 순수 최장만 반환. 월별 패널용. */
-export function longestStreak(items: WorkoutListItem[]): number {
-  if (items.length === 0) return 0;
-  const sorted = Array.from(new Set(items.map((w) => localDateKey(w.startedAt)))).sort();
-  if (sorted.length === 0) return 0;
+/**
+ * 정렬된 날짜키(yyyy-MM-dd) 배열에서 최장 연속일 수. 빈 배열이면 0.
+ * 정오 앵커로 DST 경계 오차를 피한다.
+ */
+function longestConsecutiveDays(sortedKeys: string[]): number {
+  if (sortedKeys.length === 0) return 0;
   let longest = 1;
   let streak = 1;
-  for (let i = 1; i < sorted.length; i++) {
-    const a = new Date(sorted[i - 1] + "T12:00:00");
-    const b = new Date(sorted[i] + "T12:00:00");
+  for (let i = 1; i < sortedKeys.length; i++) {
+    const a = new Date(sortedKeys[i - 1] + "T12:00:00");
+    const b = new Date(sortedKeys[i] + "T12:00:00");
     if (Math.round((b.getTime() - a.getTime()) / 86_400_000) === 1) {
       streak++;
       if (streak > longest) longest = streak;
@@ -134,6 +135,13 @@ export function longestStreak(items: WorkoutListItem[]): number {
     }
   }
   return longest;
+}
+
+/** items 범위 내 최장 연속 운동일 — today 없이 순수 최장만 반환. 월별 패널용. */
+export function longestStreak(items: WorkoutListItem[]): number {
+  if (items.length === 0) return 0;
+  const sorted = Array.from(new Set(items.map((w) => localDateKey(w.startedAt)))).sort();
+  return longestConsecutiveDays(sorted);
 }
 
 /** 연속 운동일 (today 기준). yearItems만으로 계산 — 전년도 스트릭은 미반영. */
@@ -160,18 +168,7 @@ export function computeStreak(items: WorkoutListItem[], today: Date): StreakResu
 
   // 전체 기록에서 최장 연속일
   const sorted = Array.from(dateSet).sort();
-  let longest = 1;
-  let streak = 1;
-  for (let i = 1; i < sorted.length; i++) {
-    const a = new Date(sorted[i - 1] + "T12:00:00");
-    const b = new Date(sorted[i] + "T12:00:00");
-    if (Math.round((b.getTime() - a.getTime()) / 86_400_000) === 1) {
-      streak++;
-      if (streak > longest) longest = streak;
-    } else {
-      streak = 1;
-    }
-  }
+  const longest = longestConsecutiveDays(sorted);
   return { current, longest: Math.max(longest, current, sorted.length > 0 ? 1 : 0) };
 }
 

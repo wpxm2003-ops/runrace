@@ -6,10 +6,10 @@ import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
 import { createWorkout, useTrainingPlan } from "@/lib/api";
-import { weeklyPlan } from "@/lib/nsm";
+import { weeklyPlan, nsmTodayIndex } from "@/lib/nsm";
 import { NsmSessionGuide } from "@/app/workout/_components/NsmSessionGuide";
 import { clearNsmProgress } from "@/lib/nsmSessionProgress";
-import { track } from "@/lib/analytics";
+import { track, distanceBucket } from "@/lib/analytics";
 import { withRetry } from "@/lib/retry";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
@@ -52,9 +52,8 @@ export default function WorkoutPage() {
 
   // NSM 자동 인식 — 활성 플랜이 있고 오늘이 sub-T 날이면, 일반 "운동하기"로도 세션 가이드를 띄운다.
   const { data: trainingPlan } = useTrainingPlan(user);
-  const nsmTodayIdx = (new Date().getDay() + 6) % 7;
   const nsmToday = trainingPlan
-    ? weeklyPlan(trainingPlan.thresholdPaceSec, trainingPlan.subTDays)[nsmTodayIdx]
+    ? weeklyPlan(trainingPlan.thresholdPaceSec, trainingPlan.subTDays)[nsmTodayIndex()]
     : null;
   const isNsmDay = !!nsmToday?.isSubT;
 
@@ -111,9 +110,7 @@ export default function WorkoutPage() {
           pace: snapshot.avgPaceSecPerKm ?? 0,
           calories: snapshot.calories ?? 0,
         });
-        void track("record_saved", {
-          distance_bucket: distanceKm < 1 ? "under_1km" : distanceKm < 3 ? "1_3km" : distanceKm < 5 ? "3_5km" : "over_5km",
-        });
+        void track("record_saved", { distance_bucket: distanceBucket(distanceKm) });
         setPendingSnapshot(null);
         setCelebration({ recordId: res.id, snapshot, personalBest: res.personalBest ?? null });
       } catch {

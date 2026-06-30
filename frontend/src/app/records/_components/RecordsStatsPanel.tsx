@@ -3,6 +3,7 @@
 import type { WorkoutListItem } from "@/lib/api/types";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { weekdayLabels } from "@/lib/format";
 import { formatDistance, formatPace } from "@/lib/units";
 import {
   aggregateWorkouts,
@@ -79,16 +80,10 @@ export function RecordsStatsPanel({
     () => Array.from(new Set(monthItems.map((w) => new Date(w.startedAt).getDate()))),
     [monthItems],
   );
-  // 결산 카드 캘린더용 — 일요일 시작 7개 요일 라벨(2023-01-01=일요일)
-  const recapWeekdays = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
-    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)));
-  }, [locale]);
-
-  const isoWeekdays = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
-    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 2 + i)));
-  }, [locale]);
+  // 결산 카드 캘린더용 — 일요일 시작 7개 요일 라벨
+  const recapWeekdays = useMemo(() => weekdayLabels(locale), [locale]);
+  // 월요일 시작(ISO) 요일 라벨
+  const isoWeekdays = useMemo(() => weekdayLabels(locale, true), [locale]);
 
   const distDelta = cmp.thisDist - cmp.prevDist;
   const distPct = cmp.prevDist > 0 ? Math.round((Math.abs(distDelta) / cmp.prevDist) * 100) : 0;
