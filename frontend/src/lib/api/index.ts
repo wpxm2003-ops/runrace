@@ -8,6 +8,7 @@ export * from "./errors";
 export * from "./challenges";
 export * from "./rivals";
 export * from "./shoes";
+export * from "./training";
 export * from "./nudge";
 export * from "./workouts";
 export * from "./hooks";

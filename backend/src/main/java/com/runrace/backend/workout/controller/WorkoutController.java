@@ -7,6 +7,7 @@ import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
+import com.runrace.backend.workout.dto.PersonalBestRow;
 import com.runrace.backend.workout.service.PersonalBestService;
 import com.runrace.backend.workout.dto.UpdateWorkoutImageRequest;
 import com.runrace.backend.workout.dto.UpdateWorkoutMemoRequest;
@@ -86,6 +87,12 @@ public class WorkoutController {
   @GetMapping("/summary")
   public ResponseEntity<WorkoutSummaryResponse> summary(AuthPrincipal principal) {
     return ResponseEntity.ok(workoutService.summaryForUser(principal.userId()));
+  }
+
+  /** 내 개인 기록(PB) 목록 — NSM 페이스 자동 입력 등. */
+  @GetMapping("/personal-bests")
+  public ResponseEntity<List<PersonalBestRow>> personalBests(AuthPrincipal principal) {
+    return ResponseEntity.ok(personalBestService.listForUser(principal.userId()));
   }
 
   /** 기록 달력용 — 연도별 운동 목록. year 없으면 전체(레거시). */

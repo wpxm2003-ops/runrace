@@ -5,6 +5,7 @@ import type {
   CreateWorkoutResponse,
   CreatedId,
   IndoorRunCreateBody,
+  PersonalBestRow,
   WorkoutComparison,
   WorkoutCreateBody,
   WorkoutDetail,
@@ -16,6 +17,11 @@ import type {
 /** 내정보 — 전체 운동 기록 요약. */
 export function fetchWorkoutSummary(user: User) {
   return apiFetch<WorkoutSummary>("/api/workouts/summary", { user });
+}
+
+/** 내 개인 기록(PB) 목록 — NSM 페이스 자동 입력용. */
+export function fetchPersonalBests(user: User) {
+  return apiFetch<PersonalBestRow[]>("/api/workouts/personal-bests", { user });
 }
 
 /** 기록 탭 달력 — 연도별 운동 목록. */

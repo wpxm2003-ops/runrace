@@ -5,7 +5,10 @@ import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration
 import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
-import { createWorkout } from "@/lib/api";
+import { createWorkout, useTrainingPlan } from "@/lib/api";
+import { weeklyPlan } from "@/lib/nsm";
+import { NsmSessionGuide } from "@/app/workout/_components/NsmSessionGuide";
+import { clearNsmProgress } from "@/lib/nsmSessionProgress";
 import { track } from "@/lib/analytics";
 import { withRetry } from "@/lib/retry";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -46,6 +49,14 @@ export default function WorkoutPage() {
   const [showIosNotice, setShowIosNotice] = useState(false);
 
   const active = session.status !== "idle";
+
+  // NSM 자동 인식 — 활성 플랜이 있고 오늘이 sub-T 날이면, 일반 "운동하기"로도 세션 가이드를 띄운다.
+  const { data: trainingPlan } = useTrainingPlan(user);
+  const nsmTodayIdx = (new Date().getDay() + 6) % 7;
+  const nsmToday = trainingPlan
+    ? weeklyPlan(trainingPlan.thresholdPaceSec, trainingPlan.subTDays)[nsmTodayIdx]
+    : null;
+  const isNsmDay = !!nsmToday?.isSubT;
 
   // 러닝 중 화면이 꺼지지 않게 유지(포그라운드 GPS 유지). 미지원 브라우저는 무시.
   useWakeLock(session.status === "running");
@@ -135,6 +146,7 @@ export default function WorkoutPage() {
     }
 
     const snapshot = session.stop();
+    clearNsmProgress(); // 런 종료 — NSM 렙 진행 정리
     if (!snapshot || snapshot.path.length === 0) {
       setSaveError(t.workout_no_route);
       return;
@@ -189,6 +201,7 @@ export default function WorkoutPage() {
           <WorkoutCountdown
             onComplete={() => {
               setCounting(false);
+              clearNsmProgress(); // 새 런 시작 — 이전 NSM 렙 진행 초기화
               session.start();
             }}
           />
@@ -243,6 +256,18 @@ export default function WorkoutPage() {
             >
               🔒 {t.run_lock_button}
             </button>
+          ) : null}
+          {isNsmDay && active ? (
+            <NsmSessionGuide
+              session={nsmToday!}
+              distanceM={session.distanceM}
+              elapsedSec={session.elapsedSec}
+            />
+          ) : null}
+          {isNsmDay && !active ? (
+            <div className="mb-3 rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-700">
+              🏃 오늘은 <span className="font-semibold">NSM 세션</span>이에요. 시작하면 렙별 페이스 가이드가 떠요.
+            </div>
           ) : null}
           {saveError ? <Alert className="mb-3">{saveError}</Alert> : null}
           {pendingSnapshot ? (

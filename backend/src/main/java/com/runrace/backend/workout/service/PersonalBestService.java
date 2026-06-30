@@ -1,10 +1,13 @@
 package com.runrace.backend.workout.service;
 
+import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.workout.domain.PersonalBest;
 import com.runrace.backend.workout.dto.PersonalBestResult;
+import com.runrace.backend.workout.dto.PersonalBestRow;
 import com.runrace.backend.workout.repository.PersonalBestRepository;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,6 +23,19 @@ public class PersonalBestService {
   static final List<String> DISTANCE_KEYS = List.of("3k", "5k", "10k", "half", "marathon");
 
   private final PersonalBestRepository personalBestRepository;
+
+  /** 내 PB 목록(거리 오름차순) — NSM 페이스 자동 입력용. */
+  @Transactional(readOnly = true)
+  public List<PersonalBestRow> listForUser(UUID userId) {
+    return personalBestRepository.findAllByUserId(userId).stream()
+        .sorted(Comparator.comparingInt(PersonalBest::getDistanceM))
+        .map(pb -> new PersonalBestRow(
+            pb.getDistanceKey(),
+            pb.getBestPaceSec(),
+            pb.getDistanceM(),
+            IsoTime.format(pb.getAchievedAt())))
+        .toList();
+  }
 
   /**
    * 프론트가 계산한 베스트 구간 페이스(초/km)를 받아 PB 갱신 여부를 판정한다.

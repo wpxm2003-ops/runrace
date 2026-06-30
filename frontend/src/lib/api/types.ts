@@ -248,6 +248,24 @@ export type PersonalBest = {
   daysSincePrevious: number;
 };
 
+/** GET /api/workouts/personal-bests — 내 PB 목록. 레이스 환산 시간 = bestPaceSec × distanceM/1000. */
+export type PersonalBestRow = {
+  distanceKey: string;
+  bestPaceSec: number;
+  distanceM: number;
+  achievedAt: string;
+};
+
+// ── NSM 훈련 플랜 ─────────────────────────────────────────────────
+/** 활성 NSM 플랜. 주간 스케줄은 thresholdPaceSec + subTDays(월=0…일=6)로 프론트가 생성. */
+export type TrainingPlan = {
+  vdot: number;
+  thresholdPaceSec: number;
+  subTDays: number[];
+  sourceDistanceM: number;
+  sourceTimeSec: number;
+};
+
 export type CreateWorkoutResponse = {
   id: number;
   personalBest: PersonalBest | null;

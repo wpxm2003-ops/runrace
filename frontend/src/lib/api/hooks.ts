@@ -20,7 +20,8 @@ import {
 } from "./challenges";
 import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
-import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear } from "./workouts";
+import { fetchTrainingPlan } from "./training";
+import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear, fetchPersonalBests } from "./workouts";
 import { fetchMe } from "./auth";
 import { fetchNotificationSetting } from "./push";
 import { SWR_ERROR_RETRY } from "./swrConfig";
@@ -279,6 +280,24 @@ export function useActiveCount(user: User | null) {
 }
 
 // ── 운동 기록 ─────────────────────────────────────────────────────────────────
+/** 내 활성 NSM 훈련 플랜. */
+export function useTrainingPlan(user: User | null) {
+  return useSWR(
+    user ? (["training-plan", user.uid] as const) : null,
+    () => fetchTrainingPlan(user!),
+    BASE_CONFIG,
+  );
+}
+
+/** 내 PB 목록 — NSM 페이스 자동 입력 등. */
+export function usePersonalBests(user: User | null) {
+  return useSWR(
+    user ? (["personal-bests", user.uid] as const) : null,
+    () => fetchPersonalBests(user!),
+    BASE_CONFIG,
+  );
+}
+
 /** 내정보 — 전체 요약 */
 export function useWorkoutSummary(user: User | null) {
   return useSWR(
