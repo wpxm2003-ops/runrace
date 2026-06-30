@@ -224,14 +224,27 @@ export function DateTimePickerSheet({ value, onChange, min, label }: Props) {
 
   function confirm() {
     const result = buildValue(year, month, day, hour, minute);
-    // min 제약: 호출 시점의 현재 시각 기준으로 재계산
     const now = new Date();
     const fallbackMin = buildValue(
       now.getFullYear(), now.getMonth() + 1, now.getDate(),
       now.getHours(), now.getMinutes(),
     );
     const effective = min ?? fallbackMin;
-    onChange(result < effective ? effective : result);
+
+    if (result < effective) {
+      // 과거 날짜 선택 시: 드럼을 최솟값으로 스냅하고 시트 유지 (유저가 보정 확인)
+      const p = parseValue(effective);
+      if (p) {
+        setYear(p.year);
+        setMonth(p.month);
+        setDay(p.day);
+        setHour(p.hour);
+        setMinute(p.minute);
+      }
+      return;
+    }
+
+    onChange(result);
     setOpen(false);
   }
 
