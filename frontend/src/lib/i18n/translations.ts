@@ -36,7 +36,6 @@ export const translations = {
     header_login: "로그인",
 
     // ── 홈 ────────────────────────────────
-    home_tagline: "지금 친구와 달리기 레이스를 시작해보세요!!",
     onboarding_skip: "건너뛰기",
     onboarding_next: "다음",
     onboarding_guide_prompt: "이용 가이드를 보시겠어요?",
@@ -382,7 +381,6 @@ export const translations = {
     stats_streak_section: "연속 운동",
     stats_streak_current: "현재",
     stats_streak_longest: "최장",
-    stats_streak_days: (n: number) => `${n}일`,
     stats_bests_section: "이달 최고 기록",
     stats_best_distance: "최장 거리",
     stats_best_pace: "최고 페이스",
@@ -392,7 +390,6 @@ export const translations = {
     comparison_tab_avg: "한달 평균의 나",
     comparison_tab_prev: "직전의 나",
     comparison_no_prev: "직전 운동 기록이 없습니다.",
-    comparison_recent_avg: "최근 1개월 평균 대비",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}초/${unit} · ${pct}% 향상`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}초/${unit} · ${pct}% 감소`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · ${pct}% 증가`,
@@ -537,7 +534,6 @@ export const translations = {
     celebration_saving: "기록 저장 중...",
     celebration_confirm: "확인",
     celebration_auto: (sec: number) => `${sec}초 후 기록 탭으로 이동합니다`,
-    celebration_calories: (kcal: number) => `${kcal} kcal 소모 (추정)`,
     celebration_memo_placeholder: "오늘 컨디션이나 느낌을 남겨보세요 (선택)",
     celebration_memo_saving: "메모 저장 중...",
 
@@ -629,7 +625,6 @@ export const translations = {
     header_login: "Sign in",
 
     // ── 홈 ────────────────────────────────
-    home_tagline: "Start a running race with your friends right now!!",
     onboarding_skip: "Skip",
     onboarding_next: "Next",
     onboarding_guide_prompt: "Want to see the guide?",
@@ -975,7 +970,6 @@ export const translations = {
     stats_streak_section: "Streak",
     stats_streak_current: "Current",
     stats_streak_longest: "Longest",
-    stats_streak_days: (n: number) => `${n} days`,
     stats_bests_section: "Best this month",
     stats_best_distance: "Longest run",
     stats_best_pace: "Best pace",
@@ -985,7 +979,6 @@ export const translations = {
     comparison_tab_avg: "Monthly me",
     comparison_tab_prev: "Previous me",
     comparison_no_prev: "No previous workout found.",
-    comparison_recent_avg: "vs last 1-month avg",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}s/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}s/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -1130,7 +1123,6 @@ export const translations = {
     celebration_saving: "Saving your record...",
     celebration_confirm: "View Record",
     celebration_auto: (sec: number) => `Going to Records in ${sec}s`,
-    celebration_calories: (kcal: number) => `~${kcal} kcal burned`,
     celebration_memo_placeholder: "How did it feel? Any notes? (optional)",
     celebration_memo_saving: "Saving note...",
 
@@ -1222,7 +1214,6 @@ export const translations = {
     header_login: "Entrar",
 
     // ── Inicio ────────────────────────────
-    home_tagline: "¡Empieza una carrera con tus amigos ahora mismo!",
     onboarding_skip: "Saltar",
     onboarding_next: "Siguiente",
     onboarding_guide_prompt: "¿Quieres ver la guía?",
@@ -1568,7 +1559,6 @@ export const translations = {
     stats_streak_section: "Racha",
     stats_streak_current: "Actual",
     stats_streak_longest: "Más larga",
-    stats_streak_days: (n: number) => `${n} días`,
     stats_bests_section: "Mejores del mes",
     stats_best_distance: "Mayor distancia",
     stats_best_pace: "Mejor ritmo",
@@ -1578,7 +1568,6 @@ export const translations = {
     comparison_tab_avg: "Yo del mes",
     comparison_tab_prev: "Yo anterior",
     comparison_no_prev: "No hay ejercicio anterior.",
-    comparison_recent_avg: "vs promedio último mes",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}s/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}s/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -1723,7 +1712,6 @@ export const translations = {
     celebration_saving: "Guardando tu registro...",
     celebration_confirm: "Ver registro",
     celebration_auto: (sec: number) => `Irás a Historial en ${sec}s`,
-    celebration_calories: (kcal: number) => `~${kcal} kcal quemadas`,
     celebration_memo_placeholder: "¿Cómo te sentiste? Notas opcionales",
     celebration_memo_saving: "Guardando nota...",
 
@@ -1815,7 +1803,6 @@ export const translations = {
     header_login: "ログイン",
 
     // ── ホーム ────────────────────────────
-    home_tagline: "今すぐ友だちとランレースを始めよう！",
     onboarding_skip: "スキップ",
     onboarding_next: "次へ",
     onboarding_guide_prompt: "利用ガイドを見ますか？",
@@ -2161,7 +2148,6 @@ export const translations = {
     stats_streak_section: "連続記録",
     stats_streak_current: "現在",
     stats_streak_longest: "最長",
-    stats_streak_days: (n: number) => `${n}日`,
     stats_bests_section: "今月のベスト",
     stats_best_distance: "最長距離",
     stats_best_pace: "最高ペース",
@@ -2171,7 +2157,6 @@ export const translations = {
     comparison_tab_avg: "月平均の自分",
     comparison_tab_prev: "前回の自分",
     comparison_no_prev: "前回の記録がありません。",
-    comparison_recent_avg: "直近1ヶ月の平均と比較",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}秒/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}秒/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -2316,7 +2301,6 @@ export const translations = {
     celebration_saving: "記録を保存中...",
     celebration_confirm: "記録を見る",
     celebration_auto: (sec: number) => `${sec}秒後に記録タブへ移動します`,
-    celebration_calories: (kcal: number) => `約${kcal} kcal消費`,
     celebration_memo_placeholder: "今日の調子や感想をメモしましょう（任意）",
     celebration_memo_saving: "メモを保存中...",
 
@@ -2408,7 +2392,6 @@ export const translations = {
     header_login: "登录",
 
     // ── 首页 ──────────────────────────────
-    home_tagline: "现在就和好友开始跑步比赛吧！",
     onboarding_skip: "跳过",
     onboarding_next: "下一步",
     onboarding_guide_prompt: "要查看使用指南吗？",
@@ -2754,7 +2737,6 @@ export const translations = {
     stats_streak_section: "连续运动",
     stats_streak_current: "当前",
     stats_streak_longest: "最长",
-    stats_streak_days: (n: number) => `${n}天`,
     stats_bests_section: "本月最佳",
     stats_best_distance: "最长距离",
     stats_best_pace: "最快配速",
@@ -2764,7 +2746,6 @@ export const translations = {
     comparison_tab_avg: "月均的我",
     comparison_tab_prev: "上次的我",
     comparison_no_prev: "暂无上次运动记录。",
-    comparison_recent_avg: "与近1个月平均相比",
     comparison_pace_faster: (sec: number, unit: string, pct: number) => `+${sec}秒/${unit} · +${pct}%`,
     comparison_pace_slower: (sec: number, unit: string, pct: number) => `-${sec}秒/${unit} · -${pct}%`,
     comparison_dist_more: (d: string, pct: number) => `+${d} · +${pct}%`,
@@ -2908,7 +2889,6 @@ export const translations = {
     celebration_saving: "正在保存记录...",
     celebration_confirm: "查看记录",
     celebration_auto: (sec: number) => `${sec}秒后跳转到记录页`,
-    celebration_calories: (kcal: number) => `约消耗${kcal} kcal`,
     celebration_memo_placeholder: "今天感觉怎么样？记录一下吧（选填）",
     celebration_memo_saving: "正在保存备注...",
 
@@ -2967,6 +2947,20 @@ export const translations = {
 } satisfies Record<Locale, Record<string, unknown>>;
 
 export type Translations = (typeof translations)["ko"];
+
+/**
+ * 컴파일 타임 검증 — 비-ko 로케일이 ko의 키 집합·함수 시그니처와 일치해야 한다.
+ * 어떤 로케일에서 키가 누락되거나 함수 인자 타입이 어긋나면 여기서 타입 에러가 난다.
+ * (런타임에 t.key === undefined / TypeError로 터지는 것을 빌드 단계에서 차단)
+ */
+type _LocaleParity = Record<Exclude<Locale, "ko">, Translations>;
+const _localeParity: _LocaleParity = {
+  en: translations.en,
+  es: translations.es,
+  ja: translations.ja,
+  zh: translations.zh,
+};
+void _localeParity;
 
 /** 언어 선택 드롭다운에 노출할 순서·표기(각 언어 자기 이름) */
 export const LOCALES: { code: Locale; label: string }[] = [
