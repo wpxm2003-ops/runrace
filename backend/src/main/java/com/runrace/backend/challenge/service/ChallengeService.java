@@ -3,7 +3,9 @@ package com.runrace.backend.challenge.service;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
+import com.runrace.backend.challenge.domain.ChallengePrize;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
+import com.runrace.backend.challenge.repository.ChallengePrizeRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.common.ApiException;
@@ -12,6 +14,7 @@ import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.HeadToHeadRow;
 import com.runrace.backend.event.ChallengeEndedNoParticipantsEvent;
+import com.runrace.backend.event.ChallengeEvents;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -24,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -47,6 +51,7 @@ public class ChallengeService {
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
+  private final ChallengePrizeRepository challengePrizeRepository;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final RivalRepository rivalRepository;
@@ -127,7 +132,9 @@ public class ChallengeService {
     Challenge challenge = requireChallenge(id);
     ensureOwner(principal, challenge);
     ensureNotStarted(challenge);
+    List<String> prizeKeys = collectPrizeImageKeys(id);
     challengeRepository.delete(challenge);
+    publishPrizeCleanup(prizeKeys);
   }
 
   @Transactional
@@ -225,7 +232,9 @@ public class ChallengeService {
     if (challengeMemberRepository.countByChallengeId(challenge.getId()) > 1) return false;
     Long challengeId = challenge.getId();
     UUID creatorId = challenge.getCreator().getId();
+    List<String> prizeKeys = collectPrizeImageKeys(challengeId);
     challengeRepository.delete(challenge);
+    publishPrizeCleanup(prizeKeys);
     eventPublisher.publishEvent(new ChallengeEndedNoParticipantsEvent(challengeId, creatorId));
     return true;
   }
@@ -410,6 +419,19 @@ public class ChallengeService {
   private void ensureNotStarted(Challenge challenge) {
     if (hasStarted(challenge, OffsetDateTime.now())) {
       throw ApiException.conflict("already_started");
+    }
+  }
+
+  private List<String> collectPrizeImageKeys(Long challengeId) {
+    return challengePrizeRepository.findByChallengeIdOrderByRank(challengeId).stream()
+        .map(ChallengePrize::getImageKey)
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  private void publishPrizeCleanup(List<String> keys) {
+    if (!keys.isEmpty()) {
+      eventPublisher.publishEvent(new ChallengeEvents.PrizeImagesOrphanedEvent(keys));
     }
   }
 

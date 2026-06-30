@@ -2,11 +2,15 @@ package com.runrace.backend.notification;
 
 import com.runrace.backend.event.ChallengeEndedEvent;
 import com.runrace.backend.event.ChallengeEndedNoParticipantsEvent;
+import com.runrace.backend.event.ChallengeEvents;
 import com.runrace.backend.event.MilestoneReachedEvent;
 import com.runrace.backend.event.RankOvertakeEvent;
 import com.runrace.backend.push.service.PushService;
+import com.runrace.backend.upload.ImageUploadService;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -21,7 +25,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 public class ChallengeNotifications {
+  private static final Logger log = LoggerFactory.getLogger(ChallengeNotifications.class);
   private final PushService pushService;
+  private final ImageUploadService imageUploadService;
 
   /** 풀별 변형 개수(messages*.properties의 challenge.milestone50.0~9 등과 일치). */
   private static final int VARIANTS = 10;
@@ -58,6 +64,18 @@ public class ChallengeNotifications {
     event.memberIds().forEach(userId ->
         pushService.sendLocalized(
             userId, "challenge.race_title", bodyKey, event.winnerNickname(), link));
+  }
+
+  /** 레이스 삭제 시 고아가 된 경품 S3 이미지 정리. */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onPrizeImagesOrphaned(ChallengeEvents.PrizeImagesOrphanedEvent event) {
+    event.imageKeys().forEach(key -> {
+      try {
+        imageUploadService.deletePrivate(key);
+      } catch (Exception e) {
+        log.warn("경품 이미지 S3 삭제 실패 (key={}): {}", key, e.getMessage());
+      }
+    });
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
