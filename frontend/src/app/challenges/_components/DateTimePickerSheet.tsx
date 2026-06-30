@@ -115,7 +115,7 @@ function Drum({
       />
       <div
         ref={ref}
-        className="[&::-webkit-scrollbar]:hidden"
+        className="relative [&::-webkit-scrollbar]:hidden"
         style={{
           height: VISIBLE * ITEM_H,
           overflowY: "scroll",
@@ -224,13 +224,14 @@ export function DateTimePickerSheet({ value, onChange, min, label }: Props) {
 
   function confirm() {
     const result = buildValue(year, month, day, hour, minute);
-    // min 제약 적용: 선택 결과가 min보다 이르면 min 값으로 보정
-    const minStr = min ?? buildValue(NOW.getFullYear(), NOW.getMonth() + 1, NOW.getDate(), NOW.getHours(), NOW.getMinutes());
-    if (result < minStr) {
-      onChange(minStr);
-    } else {
-      onChange(result);
-    }
+    // min 제약: 호출 시점의 현재 시각 기준으로 재계산
+    const now = new Date();
+    const fallbackMin = buildValue(
+      now.getFullYear(), now.getMonth() + 1, now.getDate(),
+      now.getHours(), now.getMinutes(),
+    );
+    const effective = min ?? fallbackMin;
+    onChange(result < effective ? effective : result);
     setOpen(false);
   }
 
