@@ -12,8 +12,8 @@ import { useChallengeFormMessages } from "@/app/challenges/_components/useChalle
 import { createChallenge, invalidateChallengeLists, savePrizes, useActiveCount } from "@/lib/api";
 import type { PrizeFormItem } from "@/lib/api/types";
 import { PrizeEditorModal } from "@/app/challenges/_components/PrizeEditorModal";
-import { AccordionRow } from "@/app/challenges/_components/AccordionRow";
-import { minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
+import { PrizeAccordionSection } from "@/app/challenges/_components/PrizeAccordionSection";
+import { minStartAtLocal, plusDaysLocal, prizeMaxRank } from "@/lib/challengeForm";
 import { RACE_TEMPLATES, type RaceTemplate, type RaceTemplateKey } from "@/lib/raceTemplates";
 import { goalInputFromKm } from "@/lib/units";
 import { track } from "@/lib/analytics";
@@ -41,8 +41,7 @@ export default function CreateChallengePage() {
     hints,
   });
 
-  // 경품 등수 상한 = min(정원, 10). 정원 입력이 비거나 잘못되면 10으로.
-  const maxRank = Math.max(1, Math.min(parseInt(form.values.maxMembers || "0", 10) || 10, 10));
+  const maxRank = prizeMaxRank(form.values.maxMembers);
 
   const templateNames: Record<RaceTemplateKey, string> = {
     weekend10: t.tpl_weekend10,
@@ -141,36 +140,13 @@ export default function CreateChallengePage() {
         formError={error}
         formHint={form.formHint}
         extraSection={
-          <AccordionRow
-            label={t.prize_section_title}
-            active={prizes.length > 0}
+          <PrizeAccordionSection
+            prizes={prizes}
+            maxRank={maxRank}
             open={prizeOpen}
             onToggle={() => setPrizeOpen((v) => !v)}
-          >
-            <p className="text-[11px] leading-relaxed text-zinc-400">
-              {t.prize_section_hint(maxRank)}
-            </p>
-            {prizes.length > 0 ? (
-              <ul className="mt-2 space-y-1">
-                {prizes.map((p) => (
-                  <li key={p.rank} className="flex items-center gap-2 text-sm text-zinc-700">
-                    <span className="font-semibold text-zinc-900">{t.prize_rank_label(p.rank)}</span>
-                    <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                    {p.imageKey ? (
-                      <span className="shrink-0 text-[10px] text-emerald-600">{t.prize_has_image_badge}</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => { if (user) setPrizeModalOpen(true); }}
-              className="mt-2 rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-            >
-              {prizes.length ? t.prize_edit_btn : t.prize_add_btn}
-            </button>
-          </AccordionRow>
+            onEdit={() => { if (user) setPrizeModalOpen(true); }}
+          />
         }
         submitNotice={t.create_solo_notice}
         submitLabel={t.create_btn}

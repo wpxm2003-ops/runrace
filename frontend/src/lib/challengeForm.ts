@@ -151,6 +151,11 @@ export function clampGoalKm(value: string, unit: DistanceUnit): ClampNumericResu
   return { value: cleaned, clamped: false };
 }
 
+/** 경품 최대 등수 = min(정원, 10). 정원 입력이 비거나 잘못되면 10으로 폴백. */
+export function prizeMaxRank(maxMembers: string): number {
+  return Math.max(1, Math.min(parseInt(maxMembers || "0", 10) || 10, 10));
+}
+
 /** 인원수: 숫자만, 최대 {@link MAX_MEMBERS}명 */
 export function clampMaxMembers(value: string): ClampNumericResult {
   const digits = sanitizeDigits(value);
