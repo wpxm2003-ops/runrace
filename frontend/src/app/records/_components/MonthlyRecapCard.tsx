@@ -6,15 +6,13 @@ import { formatDistance } from "@/lib/units";
 import type { DistanceUnit } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import { track } from "@/lib/analytics";
+import { CARD_W, CARD_H, captureAndSaveCard } from "@/lib/storyCard";
 import type { Translations } from "@/lib/i18n/translations";
 
 /**
- * 월별 결산 인스타 스토리 카드(1080×1920). 선구현 — 워크아웃 공유 카드(ShareCardButton)와
- * 동일한 캡처/저장 메커니즘을 재사용한다. 거리 히어로 + 횟수·최장 연속·시간 보조 스탯.
+ * 월별 결산 인스타 스토리 카드(1080×1920). 캡처/저장은 lib/storyCard의 공용 로직을 사용한다.
+ * 거리 히어로 + 횟수·최장 연속·시간 보조 스탯.
  */
-const CARD_W = 1080;
-const CARD_H = 1920;
-
 const COLOR = {
   gray: "#7E828B",
   green: "#34D399",
@@ -25,15 +23,6 @@ const COLOR = {
 
 const FONT =
   'ui-sans-serif, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result).split(",")[1] ?? "");
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
 
 export function MonthlyRecapCard({
   monthName,
@@ -86,42 +75,8 @@ export function MonthlyRecapCard({
     if (!node) return;
     setBusy(true);
     try {
-      const { toBlob } = await import("html-to-image");
-      const blob = await toBlob(node, {
-        width: CARD_W,
-        height: CARD_H,
-        pixelRatio: 1,
-        cacheBust: true,
-        backgroundColor: "#0B0C10",
-      });
-      if (!blob) throw new Error("no blob");
-
-      const { Capacitor } = await import("@capacitor/core");
-      if (Capacitor.isNativePlatform()) {
-        const base64 = await blobToBase64(blob);
-        const { Filesystem, Directory } = await import("@capacitor/filesystem");
-        const written = await Filesystem.writeFile({
-          path: `runrace-recap-${Date.now()}.png`,
-          data: base64,
-          directory: Directory.Cache,
-        });
-        const { Share } = await import("@capacitor/share");
-        try {
-          await Share.share({ files: [written.uri] });
-        } catch {
-          return;
-        }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "runrace-recap.png";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
-      void track("recap_card_saved");
+      const result = await captureAndSaveCard(node, "runrace-recap");
+      if (result === "saved") void track("recap_card_saved");
     } catch (e) {
       if ((e as { name?: string })?.name !== "AbortError") {
         toast.error(t.share_card_error);

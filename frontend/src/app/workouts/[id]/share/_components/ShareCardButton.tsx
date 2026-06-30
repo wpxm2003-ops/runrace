@@ -7,6 +7,7 @@ import { RoutePath, type PathPoint } from "@/lib/routePath";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import { track } from "@/lib/analytics";
+import { CARD_W, CARD_H, captureAndSaveCard } from "@/lib/storyCard";
 import type { Translations } from "@/lib/i18n/translations";
 
 /** 카드 렌더에 필요한 최소 필드 — 운동 상세/공유 응답 모두와 호환. */
@@ -18,9 +19,6 @@ type CardData = {
   workoutType: "GPS" | "INDOOR";
   path: PathPoint[];
 };
-
-const CARD_W = 1080;
-const CARD_H = 1920;
 
 const COLOR = {
   gray: "#7E828B",
@@ -34,16 +32,6 @@ const COLOR = {
 
 const FONT =
   'ui-sans-serif, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-
-/** Blob → base64 문자열(데이터 URL 접두어 제거). Capacitor Filesystem 저장용. */
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result).split(",")[1] ?? "");
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
 
 export function ShareCardButton({
   data,
@@ -73,45 +61,8 @@ export function ShareCardButton({
     setBusy(true);
     setError(null);
     try {
-      const { toBlob } = await import("html-to-image");
-      const blob = await toBlob(node, {
-        width: CARD_W,
-        height: CARD_H,
-        pixelRatio: 1,
-        cacheBust: true,
-        backgroundColor: "#0B0C10",
-      });
-      if (!blob) throw new Error("no blob");
-
-      const { Capacitor } = await import("@capacitor/core");
-      if (Capacitor.isNativePlatform()) {
-        // 네이티브: 캐시에 파일로 쓴 뒤 OS "사진에 저장"으로 연결(갤러리 저장).
-        const base64 = await blobToBase64(blob);
-        const { Filesystem, Directory } = await import("@capacitor/filesystem");
-        const written = await Filesystem.writeFile({
-          path: `runrace-${Date.now()}.png`,
-          data: base64,
-          directory: Directory.Cache,
-        });
-        const { Share } = await import("@capacitor/share");
-        // 공유 시트 취소는 플랫폼마다 다른 에러를 던지므로 별도 처리 — 카드 생성은 성공한 셈.
-        try {
-          await Share.share({ files: [written.uri] });
-        } catch {
-          return;
-        }
-      } else {
-        // 웹: 바로 다운로드(폰/PC에 저장).
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "runrace.png";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
-      void track("story_card_saved", { workoutType: data.workoutType });
+      const result = await captureAndSaveCard(node, "runrace");
+      if (result === "saved") void track("story_card_saved", { workoutType: data.workoutType });
     } catch (e) {
       // 저장 시트를 닫은 경우(AbortError)는 오류로 취급하지 않는다.
       if ((e as { name?: string })?.name !== "AbortError") {
