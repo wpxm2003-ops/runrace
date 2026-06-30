@@ -70,6 +70,19 @@ export default function ChallengesPage() {
     savePageState(STORE_KEY, { phase: phaseFilter, size, showAllLangs });
   }, [phaseFilter, size, showAllLangs]);
 
+  // ── 예정·진행중이 비어 있으면 종료 탭으로 1회 자동 전환 ──────────────
+  // 빈 화면 대신 종료된 레이스를 보여준다. ref로 1회만 — 사용자가 다시 active로 가면 존중.
+  const autoSwitchedRef = useRef(false);
+  useEffect(() => {
+    if (autoSwitchedRef.current || phaseFilter !== "active" || waitForAuth || error) return;
+    const lastPage = pages?.[pages.length - 1];
+    // 완전히 로드된 빈 목록(더 불러올 것 없음)일 때만.
+    if (pages != null && itemCount === 0 && lastPage && !lastPage.hasNext) {
+      autoSwitchedRef.current = true;
+      setPhaseFilter("ended");
+    }
+  }, [pages, itemCount, phaseFilter, waitForAuth, error]);
+
   const filterLabel: Record<RacePhaseFilterValue, string> = useMemo(
     () => ({
       active: t.races_filter_active,

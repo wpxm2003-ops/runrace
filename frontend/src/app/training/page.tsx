@@ -257,7 +257,7 @@ function TrainingContent({ user }: { user: User | null }) {
               ))}
             </div>
           </label>
-          <label className="block">
+          <label className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-zinc-600">{t.nsm_record_label}</span>
             <input
               type="text"
@@ -265,7 +265,7 @@ function TrainingContent({ user }: { user: User | null }) {
               value={timeStr}
               onChange={(e) => setTimeStr(e.target.value)}
               placeholder="22:00"
-              className="mt-1 w-32 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+              className="w-32 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
             />
           </label>
           {error ? <p className="text-xs text-red-600">{error}</p> : null}
