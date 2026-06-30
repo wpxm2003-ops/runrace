@@ -5,7 +5,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { EnableNotificationsButton } from "@/app/guides/_components/EnableNotificationsButton";
-import { getAppUrl } from "@/lib/appUrl";
+import { shareGuide } from "@/lib/appUrl";
 import { useLocale } from "@/lib/i18n";
 
 export default function AppGuidePage() {
@@ -18,10 +18,7 @@ export default function AppGuidePage() {
     { h: t.guide_app_s5_h, b: t.guide_app_s5_b },
   ];
 
-  async function onShare() {
-    const { shareLink } = await import("@/lib/shareCard");
-    return shareLink(`${getAppUrl()}/guides/app`, t.guide_app_title);
-  }
+  const onShare = () => shareGuide("/guides/app", t.guide_app_title);
 
   return (
     <PageLayout title={t.guide_app_title} actions={<ShareButton onShare={onShare} />}>

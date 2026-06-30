@@ -1,24 +1,9 @@
 "use client";
 
-import { parseChallengeId } from "@/lib/challengeRoute";
-import { useEffect } from "react";
+import { LegacyIdRedirect } from "@/app/challenges/_components/LegacyIdRedirect";
+import { challengeDetailHref } from "@/lib/challengeRoute";
 
 /** 예전 ?id= 링크 호환 */
 export default function LegacyChallengeDetailQueryPage() {
-  useEffect(() => {
-    const id = parseChallengeId(
-      new URLSearchParams(window.location.search).get("id"),
-    );
-    if (id != null) {
-      window.location.replace(`/challenges/${id}`);
-      return;
-    }
-    window.location.replace("/challenges");
-  }, []);
-
-  return (
-    <div className="min-h-dvh flex items-center justify-center text-sm text-zinc-600">
-      이동 중...
-    </div>
-  );
+  return <LegacyIdRedirect to={challengeDetailHref} />;
 }

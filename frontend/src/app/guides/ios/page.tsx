@@ -4,7 +4,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { GuideNotificationSection } from "@/app/guides/_components/GuideNotificationSection";
-import { getAppUrl } from "@/lib/appUrl";
+import { shareGuide } from "@/lib/appUrl";
 import { useLocale } from "@/lib/i18n";
 
 function InstallScreenshot({ src, alt }: { src: string; alt: string }) {
@@ -27,10 +27,7 @@ function Section({ heading, children }: { heading: string; children: React.React
 export default function IosGuidePage() {
   const { t } = useLocale();
 
-  async function onShare() {
-    const { shareLink } = await import("@/lib/shareCard");
-    return shareLink(`${getAppUrl()}/guides/ios`, t.guide_ios_title);
-  }
+  const onShare = () => shareGuide("/guides/ios", t.guide_ios_title);
 
   return (
     <PageLayout title={t.guide_ios_title} actions={<ShareButton onShare={onShare} />}>

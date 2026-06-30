@@ -203,27 +203,29 @@ export default function WorkoutPage() {
             }}
           />
         ) : null}
-        {session.vehicleTier === "weak_gps" ? (
-          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-violet-50 px-3 py-2 text-sm text-violet-900 shadow-sm">
-            {t.workout_weak_gps}
-          </div>
-        ) : session.vehicleTier === "confirmed" ? (
-          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800 shadow-sm">
-            {t.workout_vehicle_confirmed}
-          </div>
-        ) : session.vehicleTier === "suspect" ? (
-          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 shadow-sm">
-            {t.workout_vehicle_suspect}
-          </div>
-        ) : session.vehicleTier === "recovering" ? (
-          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800 shadow-sm">
-            {t.workout_vehicle_recovering}
-          </div>
-        ) : session.geoError ? (
-          <div className="absolute left-3 right-3 top-3 z-10 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm">
-            {session.geoError}
-          </div>
-        ) : null}
+        {(() => {
+          const base = "absolute left-3 right-3 top-3 z-10 rounded-xl px-3 py-2 text-sm shadow-sm";
+          const tier = session.vehicleTier;
+          const cls: Record<string, string> = {
+            weak_gps: "bg-violet-50 text-violet-900",
+            confirmed: "bg-red-50 text-red-800",
+            suspect: "bg-amber-50 text-amber-800",
+            recovering: "bg-blue-50 text-blue-800",
+          };
+          const msg: Record<string, string> = {
+            weak_gps: t.workout_weak_gps,
+            confirmed: t.workout_vehicle_confirmed,
+            suspect: t.workout_vehicle_suspect,
+            recovering: t.workout_vehicle_recovering,
+          };
+          if (tier && cls[tier]) {
+            return <div className={`${base} ${cls[tier]}`}>{msg[tier]}</div>;
+          }
+          if (session.geoError) {
+            return <div className={`${base} bg-red-50 text-red-700`}>{session.geoError}</div>;
+          }
+          return null;
+        })()}
         {!session.position && !session.geoError ? (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-zinc-100/80 text-sm text-zinc-600">
             {t.workout_locating}

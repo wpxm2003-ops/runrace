@@ -77,6 +77,12 @@ export function useChallengeForm({
     setFormSuccess(null);
   }, []);
 
+  /** 입력 시 직전 에러·성공만 지운다(힌트는 각 핸들러가 따로 설정). */
+  const clearErrors = useCallback(() => {
+    setFormError(null);
+    setFormSuccess(null);
+  }, []);
+
   const reset = useCallback((next: Partial<ChallengeFormValues>) => {
     setTitle(next.title ?? "");
     setGoalKm(next.goalKm ?? "");
@@ -94,10 +100,9 @@ export function useChallengeForm({
       if (removedSpecial) setFormHint(hints.noSpecial);
       else if (truncated) setFormHint(hints.titleMax);
       else setFormHint(null);
-      setFormError(null);
-      setFormSuccess(null);
+      clearErrors();
     },
-    [hints.noSpecial, hints.titleMax],
+    [hints.noSpecial, hints.titleMax, clearErrors],
   );
 
   const onGoalKmChange = useCallback(
@@ -106,10 +111,9 @@ export function useChallengeForm({
       setGoalKm(value);
       if (clamped) setFormHint(hints.goalMax(goalMaxInUnit(unit)));
       else setFormHint(null);
-      setFormError(null);
-      setFormSuccess(null);
+      clearErrors();
     },
-    [hints, unit],
+    [hints, unit, clearErrors],
   );
 
   const onMaxMembersChange = useCallback(
@@ -118,10 +122,9 @@ export function useChallengeForm({
       setMaxMembers(value);
       if (clamped) setFormHint(hints.membersMax(MAX_MEMBERS));
       else setFormHint(null);
-      setFormError(null);
-      setFormSuccess(null);
+      clearErrors();
     },
-    [hints],
+    [hints, clearErrors],
   );
 
   const onStartAtChange = useCallback((v: string) => {
@@ -133,15 +136,13 @@ export function useChallengeForm({
       }
       return prev;
     });
-    setFormError(null);
-    setFormSuccess(null);
-  }, []);
+    clearErrors();
+  }, [clearErrors]);
 
   const onEndAtChange = useCallback((v: string) => {
     setEndAt(v);
-    setFormError(null);
-    setFormSuccess(null);
-  }, []);
+    clearErrors();
+  }, [clearErrors]);
 
   const onStakeChange = useCallback(
     (raw: string) => {
@@ -150,10 +151,9 @@ export function useChallengeForm({
       if (removedSpecial) setFormHint(hints.noSpecial);
       else if (truncated) setFormHint(hints.stakeMax);
       else setFormHint(null);
-      setFormError(null);
-      setFormSuccess(null);
+      clearErrors();
     },
-    [hints.noSpecial, hints.stakeMax],
+    [hints.noSpecial, hints.stakeMax, clearErrors],
   );
 
   const validate = useCallback((): string | null => {

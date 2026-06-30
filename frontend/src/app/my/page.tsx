@@ -8,6 +8,7 @@ import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
+import { NavRowButton } from "@/app/_components/NavRowButton";
 import { NicknameEditor } from "@/app/my/_components/NicknameEditor";
 import {
   useWorkoutSummary,
@@ -199,23 +200,8 @@ function MyPageContent({ user }: { user: User }) {
 
       <NotificationToggle user={user} />
 
-      <button
-        type="button"
-        onClick={() => nativeNavigate("/shoes")}
-        className="mt-4 flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left hover:bg-zinc-50"
-      >
-        <span className="text-base font-semibold text-zinc-900">{t.shoe_manage}</span>
-        <span aria-hidden className="text-zinc-400">›</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => nativeNavigate("/rivals")}
-        className="mt-4 flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left hover:bg-zinc-50"
-      >
-        <span className="text-base font-semibold text-zinc-900">{t.rival_manage}</span>
-        <span aria-hidden className="text-zinc-400">›</span>
-      </button>
+      <NavRowButton title={t.shoe_manage} onClick={() => nativeNavigate("/shoes")} className="mt-4" />
+      <NavRowButton title={t.rival_manage} onClick={() => nativeNavigate("/rivals")} className="mt-4" />
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.my_records_all_time}</div>

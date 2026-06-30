@@ -3,7 +3,7 @@
 import type { WorkoutListItem } from "@/lib/api/types";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { weekdayLabels } from "@/lib/format";
+import { weekdayLabels, formatMonthDayTime } from "@/lib/format";
 import { formatDistance, formatPace } from "@/lib/units";
 import {
   aggregateWorkouts,
@@ -27,16 +27,6 @@ type Props = {
   locale: string;
   onClose: () => void;
 };
-
-function fmtDateTime(iso: string, locale: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(locale, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function RecordsStatsPanel({
   monthItems,
@@ -218,7 +208,7 @@ export function RecordsStatsPanel({
               <BestCard
                 label={t.stats_best_distance}
                 value={bests.longestRun ? formatDistance(bests.longestRun.distanceM, unit) : null}
-                datetime={bests.longestRun ? fmtDateTime(bests.longestRun.startedAt, locale) : null}
+                datetime={bests.longestRun ? formatMonthDayTime(bests.longestRun.startedAt, locale) : null}
                 noData={t.stats_no_data}
               />
               <BestCard
@@ -226,7 +216,7 @@ export function RecordsStatsPanel({
                 value={bests.fastestPace?.avgPaceSecPerKm
                   ? formatPace(1000, bests.fastestPace.avgPaceSecPerKm, unit)
                   : null}
-                datetime={bests.fastestPace ? fmtDateTime(bests.fastestPace.startedAt, locale) : null}
+                datetime={bests.fastestPace ? formatMonthDayTime(bests.fastestPace.startedAt, locale) : null}
                 noData={t.stats_no_data}
               />
             </div>

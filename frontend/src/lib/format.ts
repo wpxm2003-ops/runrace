@@ -64,6 +64,16 @@ export function formatTimeHms(iso: string): string {
   return timeHms(new Date(iso));
 }
 
+/** ISO → "월 일 시:분" (짧은 월, 2자리 시각) — 기록 카드용. */
+export function formatMonthDayTime(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /** 두 ISO 시각이 같은 로컬 날짜(연·월·일)인지. */
 export function isSameLocalDay(a: string, b: string): boolean {
   const da = new Date(a);
