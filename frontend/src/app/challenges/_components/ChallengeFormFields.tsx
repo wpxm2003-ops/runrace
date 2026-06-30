@@ -3,9 +3,10 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
-import { STAKE_MAX_CHARS, minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
+import { STAKE_MAX_CHARS } from "@/lib/challengeForm";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
+import { DateTimePickerSheet } from "./DateTimePickerSheet";
 
 type FormHandlers = {
   onTitleChange: (raw: string) => void;
@@ -124,69 +125,21 @@ export function ChallengeFormFields({
             <label className="block text-sm font-medium">
               {labels.start} {req}
             </label>
-            <div className="mt-2 flex gap-2">
-              <input
-                type="date"
-                className="h-11 flex-1 rounded-xl border border-zinc-200 px-3"
-                value={values.startAt.slice(0, 10)}
-                min={minStartAtLocal().slice(0, 10)}
-                onChange={(e) =>
-                  handlers.onStartAtChange(
-                    e.target.value + "T" + (values.startAt.slice(11, 16) || "09:00"),
-                  )
-                }
-                required
-              />
-              <input
-                type="time"
-                className="h-11 w-24 rounded-xl border border-zinc-200 px-3"
-                value={values.startAt.slice(11, 16)}
-                onChange={(e) =>
-                  handlers.onStartAtChange(
-                    (values.startAt.slice(0, 10) || minStartAtLocal().slice(0, 10)) +
-                      "T" +
-                      e.target.value,
-                  )
-                }
-                required
-              />
-            </div>
+            <DateTimePickerSheet
+              value={values.startAt}
+              onChange={handlers.onStartAtChange}
+              label={labels.start}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium">
               {labels.end} {req}
             </label>
-            <div className="mt-2 flex gap-2">
-              <input
-                type="date"
-                className="h-11 flex-1 rounded-xl border border-zinc-200 px-3"
-                value={values.endAt.slice(0, 10)}
-                min={
-                  values.startAt
-                    ? plusDaysLocal(values.startAt, 0).slice(0, 10)
-                    : minStartAtLocal().slice(0, 10)
-                }
-                onChange={(e) =>
-                  handlers.onEndAtChange(
-                    e.target.value + "T" + (values.endAt.slice(11, 16) || "09:00"),
-                  )
-                }
-                required
-              />
-              <input
-                type="time"
-                className="h-11 w-24 rounded-xl border border-zinc-200 px-3"
-                value={values.endAt.slice(11, 16)}
-                onChange={(e) =>
-                  handlers.onEndAtChange(
-                    (values.endAt.slice(0, 10) || minStartAtLocal().slice(0, 10)) +
-                      "T" +
-                      e.target.value,
-                  )
-                }
-                required
-              />
-            </div>
+            <DateTimePickerSheet
+              value={values.endAt}
+              onChange={handlers.onEndAtChange}
+              label={labels.end}
+            />
           </div>
         </div>
 
