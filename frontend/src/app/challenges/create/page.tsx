@@ -9,7 +9,9 @@ import {
   useChallengeForm,
 } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
-import { createChallenge, invalidateChallengeLists, useActiveCount } from "@/lib/api";
+import { createChallenge, invalidateChallengeLists, savePrizes, useActiveCount } from "@/lib/api";
+import type { PrizeFormItem } from "@/lib/api/types";
+import { PrizeEditorModal } from "@/app/challenges/_components/PrizeEditorModal";
 import { minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
 import { RACE_TEMPLATES, type RaceTemplate, type RaceTemplateKey } from "@/lib/raceTemplates";
 import { goalInputFromKm } from "@/lib/units";
@@ -26,6 +28,8 @@ export default function CreateChallengePage() {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
   const [submitting, setSubmitting] = useState(false);
+  const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
+  const [prizeModalOpen, setPrizeModalOpen] = useState(false);
 
   const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(1);
   const form = useChallengeForm({
@@ -34,6 +38,9 @@ export default function CreateChallengePage() {
     validateOptions,
     hints,
   });
+
+  // 경품 등수 상한 = min(정원, 10). 정원 입력이 비거나 잘못되면 10으로.
+  const maxRank = Math.max(1, Math.min(parseInt(form.values.maxMembers || "0", 10) || 10, 10));
 
   const templateNames: Record<RaceTemplateKey, string> = {
     weekend10: t.tpl_weekend10,
@@ -68,7 +75,15 @@ export default function CreateChallengePage() {
     }
     setSubmitting(true);
     try {
-      await createChallenge({ ...form.getPayload(), langCd: locale }, user);
+      const created = await createChallenge({ ...form.getPayload(), langCd: locale }, user);
+      // 경품은 레이스 생성 후 별도 저장. 실패해도 레이스 생성은 유지하고 경고만.
+      if (prizes.length > 0) {
+        try {
+          await savePrizes(created.id, prizes, user);
+        } catch {
+          toast.error(t.prize_save_failed);
+        }
+      }
       invalidateChallengeLists();
       void track("race_created");
       toast.success(t.create_success);
@@ -123,6 +138,34 @@ export default function CreateChallengePage() {
         }}
         formError={error}
         formHint={form.formHint}
+        extraSection={
+          <div className="mt-5 border-t border-zinc-100 pt-4">
+            <p className="text-sm font-medium text-zinc-800">{t.prize_section_title}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{t.prize_section_hint(maxRank)}</p>
+            {prizes.length > 0 ? (
+              <ul className="mt-2 space-y-1">
+                {prizes.map((p) => (
+                  <li key={p.rank} className="flex items-center gap-2 text-sm text-zinc-700">
+                    <span className="font-semibold text-zinc-900">{t.prize_rank_label(p.rank)}</span>
+                    <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                    {p.imageKey ? (
+                      <span className="shrink-0 text-[10px] text-emerald-600">{t.prize_has_image_badge}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                if (user) setPrizeModalOpen(true);
+              }}
+              className="mt-2 rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+            >
+              {prizes.length ? t.prize_edit_btn : t.prize_add_btn}
+            </button>
+          </div>
+        }
         submitNotice={t.create_solo_notice}
         submitLabel={t.create_btn}
         submitBusyLabel={t.create_btn_busy}
@@ -130,6 +173,16 @@ export default function CreateChallengePage() {
         disabled={!canCreate}
         onSubmit={onSubmit}
       />
+
+      {prizeModalOpen && user ? (
+        <PrizeEditorModal
+          prizes={prizes}
+          maxRank={maxRank}
+          user={user}
+          onSave={setPrizes}
+          onClose={() => setPrizeModalOpen(false)}
+        />
+      ) : null}
     </PageLayout>
   );
 }

@@ -120,6 +120,22 @@ export type ChallengeWorkoutListItem = {
 
 export type ActiveCount = { activeCount: number; maxActive: number };
 
+// ── 경품(prize) ──────────────────────────────────────────────────
+/** 경품 한 줄. 경품명·이미지 유무·수령 여부만(S3 키는 서버가 반환하지 않음). */
+export type PrizeRow = {
+  rank: number;
+  name: string;
+  hasImage: boolean;
+  viewed: boolean;
+};
+
+/** 경품 저장 항목 — 등수·경품명(필수)·이미지 비공개 키(선택). */
+export type PrizeFormItem = {
+  rank: number;
+  name: string;
+  imageKey: string | null;
+};
+
 export type ChallengeFormBody = {
   title: string;
   goalKm: number;

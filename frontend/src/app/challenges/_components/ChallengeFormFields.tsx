@@ -4,7 +4,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
 import { STAKE_MAX_CHARS, minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 
 type FormHandlers = {
@@ -30,6 +30,8 @@ type Props = {
   formError?: string | null;
   formHint?: string | null;
   formSuccess?: string | null;
+  /** 내기 토글 아래, 저장 버튼 위에 끼우는 추가 섹션 (경품 등). */
+  extraSection?: ReactNode;
   /** 저장 버튼 바로 위 안내 (등록 화면 등) */
   submitNotice?: string;
   submitLabel: string;
@@ -46,6 +48,7 @@ export function ChallengeFormFields({
   formError,
   formHint,
   formSuccess,
+  extraSection,
   submitNotice,
   submitLabel,
   submitBusyLabel,
@@ -165,6 +168,8 @@ export function ChallengeFormFields({
             maxLength={STAKE_MAX_CHARS}
           />
         ) : null}
+
+        {extraSection}
 
         {submitNotice ? (
           <p className="mt-6 text-xs leading-relaxed text-black">{submitNotice}</p>

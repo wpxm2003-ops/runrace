@@ -18,6 +18,7 @@ import {
   fetchPendingApprovals,
   fetchRejectedApprovals,
 } from "./challenges";
+import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
 import { fetchTrainingPlan } from "./training";
@@ -160,6 +161,23 @@ export function invalidateChallengeLists() {
 /** 레이스 참여자 운동기록 목록을 갱신한다 (실내러닝 승인 반영 후). */
 export function invalidateChallengeWorkouts(challengeId: number, userId: string) {
   return globalMutate(unstable_serialize(["challenge", challengeId, "workouts", userId]));
+}
+
+/** 레이스 경품 목록. 생성자면 imageKey 포함(키는 uid에 의존). */
+export function usePrizes(challengeId: number | null, user?: User | null) {
+  const uid = user?.uid ?? getStoredAuthUid() ?? null;
+  return useSWR(
+    challengeId == null ? null : (["prizes", challengeId, uid] as const),
+    () => fetchPrizes(challengeId!, user ?? null),
+    BASE_CONFIG,
+  );
+}
+
+/** 경품 저장 후 해당 레이스의 경품 캐시를 재검증한다. */
+export function invalidatePrizes(challengeId: number) {
+  void globalMutate(
+    (key) => Array.isArray(key) && key[0] === "prizes" && key[1] === challengeId,
+  );
 }
 
 /** 닉네임 변경 후 닉네임이 노출되는 SWR 캐시를 재검증한다. */

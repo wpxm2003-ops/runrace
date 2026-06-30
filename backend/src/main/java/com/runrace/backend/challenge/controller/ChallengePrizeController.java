@@ -1,0 +1,50 @@
+package com.runrace.backend.challenge.controller;
+
+import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.challenge.dto.PrizeItemRequest;
+import com.runrace.backend.challenge.dto.PrizeRow;
+import com.runrace.backend.challenge.service.ChallengePrizeService;
+import com.runrace.backend.upload.ImageUploadService;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/** 레이스 경품 — 목록(공개)·저장(생성자)·기프티콘 이미지(종료+해당 등수 게이트). */
+@RestController
+@RequestMapping("/api/challenges/{id:[0-9]+}/prizes")
+@RequiredArgsConstructor
+public class ChallengePrizeController {
+
+  private final ChallengePrizeService prizeService;
+
+  /** 경품 목록 — 전체 공개(경품명·이미지 유무만). S3 키는 반환하지 않는다. */
+  @GetMapping
+  public ResponseEntity<List<PrizeRow>> list(@PathVariable("id") Long id) {
+    return ResponseEntity.ok(prizeService.list(id));
+  }
+
+  /** 경품 저장(전체 교체) — 생성자만, 시작 전만. */
+  @PutMapping
+  public ResponseEntity<Void> save(
+      AuthPrincipal principal, @PathVariable("id") Long id, @RequestBody List<PrizeItemRequest> prizes) {
+    prizeService.save(principal.userId(), id, prizes);
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 기프티콘 이미지 — 종료 + 해당 등수 당첨자만. 바이트 직접 스트리밍(URL 미노출). */
+  @GetMapping("/{rank:[0-9]+}/image")
+  public ResponseEntity<byte[]> image(
+      AuthPrincipal principal, @PathVariable("id") Long id, @PathVariable("rank") int rank) {
+    ImageUploadService.StoredImage img = prizeService.getPrizeImage(principal.userId(), id, rank);
+    return ResponseEntity.ok()
+        .contentType(MediaType.parseMediaType(img.contentType()))
+        .body(img.bytes());
+  }
+}

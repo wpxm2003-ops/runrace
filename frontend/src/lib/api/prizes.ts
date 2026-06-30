@@ -1,0 +1,58 @@
+import type { User } from "firebase/auth";
+import { compressImageForUpload } from "@/lib/compressImage";
+import { ApiError } from "./apiError";
+import { apiFetch, apiUrl, publicFetch } from "./client";
+import type { PrizeFormItem, PrizeRow } from "./types";
+
+/** 경품 목록(전체 공개). 생성자면 imageKey 포함. */
+export function fetchPrizes(challengeId: number, user: User | null) {
+  return publicFetch<PrizeRow[]>(`/api/challenges/${challengeId}/prizes`, user);
+}
+
+/** 경품 저장(전체 교체) — 생성자·시작 전만. */
+export function savePrizes(challengeId: number, prizes: PrizeFormItem[], user: User) {
+  return apiFetch<void>(`/api/challenges/${challengeId}/prizes`, { method: "PUT", user, body: prizes });
+}
+
+/** 비공개 이미지(기프티콘) 업로드 → 객체 키 반환(공개 URL 아님). */
+export async function uploadPrivateImage(file: File, user: User): Promise<string> {
+  const token = await user.getIdToken();
+  const compressed = await compressImageForUpload(file);
+  const formData = new FormData();
+  formData.append("file", compressed);
+  const res = await fetch(apiUrl("/api/uploads/private-image"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    if (res.status === 413) throw new Error("upload_too_large");
+    throw new Error(await res.text().catch(() => String(res.status)));
+  }
+  const data = await res.json();
+  if (typeof data?.key !== "string" || !data.key) throw new Error("upload_invalid_response");
+  return data.key as string;
+}
+
+/**
+ * 기프티콘 이미지를 인증 fetch로 받아 object URL을 만든다.
+ * <img>는 Authorization 헤더를 못 보내므로 blob으로 받아 URL.createObjectURL.
+ * 서버가 종료+해당 등수를 검증하므로, 권한 없으면 throw.
+ */
+export async function fetchPrizeImageObjectUrl(
+  challengeId: number,
+  rank: number,
+  user: User,
+): Promise<string> {
+  const token = await user.getIdToken();
+  const res = await fetch(apiUrl(`/api/challenges/${challengeId}/prizes/${rank}/image`), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    // 상태 코드를 담아 던진다 — 401은 호출부에서 handleAuthFailure로 로그인 유도.
+    const text = await res.text().catch(() => "");
+    throw new ApiError(res.status, `prize_image ${res.status}: ${text}`);
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}

@@ -27,6 +27,7 @@ import { getAppUrl } from "@/lib/appUrl";
 import { challengeEditHref, parseChallengeIdFromPath } from "@/lib/challengeRoute";
 import { getChallengePreview } from "@/lib/challengePreview";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
+import { ChallengePrizes } from "@/app/challenges/_components/ChallengePrizes";
 import {
   ChallengeLeaderboard,
   type HeadToHeadMap,
@@ -316,6 +317,16 @@ export default function ChallengeDetailContent() {
                 🎁 {t.detail_stake_label}: {detail.stake}
               </div>
             ) : null}
+            <ChallengePrizes
+              challengeId={detail.id}
+              user={user}
+              hasEnded={detail.hasEnded}
+              myRank={
+                detail.hasEnded && detail.currentUserId
+                  ? (detail.members.find((m) => m.userId === detail.currentUserId)?.finalRank ?? null)
+                  : null
+              }
+            />
           </Card>
 
           <ChallengeLeaderboard

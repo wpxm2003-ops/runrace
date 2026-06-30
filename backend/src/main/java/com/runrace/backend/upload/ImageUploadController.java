@@ -31,5 +31,22 @@ public class ImageUploadController {
     return ResponseEntity.ok(new ImageUploadResponse(url));
   }
 
+  /**
+   * 비공개 이미지 업로드 (인증 필요) — 기프티콘 등. 공개 URL이 아니라 객체 키만 반환한다.
+   * 반환: { "key": "prizes/xxx.jpg" } — 이후 게이트 엔드포인트로만 열람 가능.
+   */
+  @PostMapping("/private-image")
+  public ResponseEntity<PrivateImageResponse> uploadPrivate(
+      AuthPrincipal principal,
+      @RequestParam("file") MultipartFile file) {
+    if (file.isEmpty()) {
+      throw ApiException.badRequest("file_empty");
+    }
+    String key = imageUploadService.storePrivate(file);
+    return ResponseEntity.ok(new PrivateImageResponse(key));
+  }
+
   public record ImageUploadResponse(String url) {}
+
+  public record PrivateImageResponse(String key) {}
 }
