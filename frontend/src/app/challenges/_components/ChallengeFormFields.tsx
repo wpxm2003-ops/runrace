@@ -125,7 +125,7 @@ export function ChallengeFormFields({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium">
               {labels.start} {req}
@@ -150,15 +150,17 @@ export function ChallengeFormFields({
           </div>
         </div>
 
-        <label className="mt-5 flex items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-zinc-300"
-            checked={showStake}
-            onChange={(e) => toggleStake(e.target.checked)}
-          />
-          {labels.stakeToggle}
-        </label>
+        <div className="mt-5 border-t border-zinc-100 pt-4">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-zinc-300"
+              checked={showStake}
+              onChange={(e) => toggleStake(e.target.checked)}
+            />
+            {labels.stakeToggle}
+          </label>
+        </div>
         {showStake ? (
           <input
             className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"

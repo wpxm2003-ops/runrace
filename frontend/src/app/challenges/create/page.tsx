@@ -139,7 +139,7 @@ export default function CreateChallengePage() {
         formError={error}
         formHint={form.formHint}
         extraSection={
-          <div className="mt-5 border-t border-zinc-100 pt-4">
+          <div className="mt-4">
             <p className="text-sm font-medium text-zinc-800">{t.prize_section_title}</p>
             <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{t.prize_section_hint(maxRank)}</p>
             {prizes.length > 0 ? (
