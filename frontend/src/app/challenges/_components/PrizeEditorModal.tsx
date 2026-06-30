@@ -28,7 +28,7 @@ function toRow(p: PrizeFormItem): Row {
     name: p.name,
     imageKey: p.imageKey,
     previewUrl: null,
-    hasExistingImage: p.imageKey != null,
+    hasExistingImage: p.keepImage === true,
     uploading: false,
     error: null,
   };
@@ -153,7 +153,8 @@ export function PrizeEditorModal({
     const items: PrizeFormItem[] = cleaned.map((r, idx) => ({
       rank: idx + 1,
       name: r.name,
-      imageKey: r.imageKey,
+      imageKey: r.hasExistingImage ? null : r.imageKey,
+      keepImage: r.hasExistingImage,
     }));
     onSave(items);
     onClose();

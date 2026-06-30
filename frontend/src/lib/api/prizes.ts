@@ -9,9 +9,15 @@ export function fetchPrizes(challengeId: number, user: User | null) {
   return publicFetch<PrizeRow[]>(`/api/challenges/${challengeId}/prizes`, user);
 }
 
-/** 경품 저장(전체 교체) — 생성자·시작 전만. */
+/** 경품 저장(전체 교체) — 생성자·시작 전만. 빈 배열 = 전체 삭제. */
 export function savePrizes(challengeId: number, prizes: PrizeFormItem[], user: User) {
-  return apiFetch<void>(`/api/challenges/${challengeId}/prizes`, { method: "PUT", user, body: prizes });
+  const body = prizes.map((p) => ({
+    rank: p.rank,
+    name: p.name,
+    imageKey: p.imageKey,
+    keepImage: p.keepImage ?? false,
+  }));
+  return apiFetch<void>(`/api/challenges/${challengeId}/prizes`, { method: "PUT", user, body });
 }
 
 /** 비공개 이미지(기프티콘) 업로드 → 객체 키 반환(공개 URL 아님). */

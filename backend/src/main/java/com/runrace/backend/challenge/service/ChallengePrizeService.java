@@ -11,8 +11,10 @@ import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.upload.ImageUploadService;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +45,7 @@ public class ChallengePrizeService {
         .toList();
   }
 
-  /** 경품 저장(전체 교체) — 생성자만, 레이스 시작 전만. */
+  /** 경품 저장(전체 교체) — 생성자만, 레이스 시작 전만. 빈 목록 = 경품 전체 삭제. */
   @Transactional
   public void save(UUID userId, Long challengeId, List<PrizeItemRequest> items) {
     Challenge challenge = requireChallenge(challengeId);
@@ -51,24 +53,53 @@ public class ChallengePrizeService {
       throw ApiException.forbidden("not_creator");
     }
     if (!OffsetDateTime.now().isBefore(challenge.getStartAt())) {
-      throw ApiException.badRequest("race_started"); // 시작 후 잠금
+      throw ApiException.badRequest("race_started");
     }
+
+    List<ChallengePrize> existing = prizeRepository.findByChallengeIdOrderByRank(challengeId);
+
+    // 기존 이미지 키를 등수별로 맵핑
+    Map<Integer, String> oldKeysByRank = new HashMap<>();
+    for (ChallengePrize p : existing) {
+      if (p.getImageKey() != null) oldKeysByRank.put(p.getRank(), p.getImageKey());
+    }
+
+    // 빈 목록 = 경품 전체 삭제
+    if (items == null || items.isEmpty()) {
+      oldKeysByRank.values().forEach(imageUploadService::deletePrivate);
+      prizeRepository.deleteByChallengeId(challengeId);
+      return;
+    }
+
     validate(items, challenge.getMaxMembers());
 
-    // 재사용되지 않는 기존 이미지 S3 정리.
-    Set<String> newKeys = new HashSet<>();
+    // 저장 후 실제 사용될 S3 키 집합 계산
+    Set<String> keptKeys = new HashSet<>();
     for (PrizeItemRequest it : items) {
-      if (it.imageKey() != null && imageUploadService.isPrivateKey(it.imageKey())) newKeys.add(it.imageKey());
-    }
-    for (ChallengePrize old : prizeRepository.findByChallengeIdOrderByRank(challengeId)) {
-      if (old.getImageKey() != null && !newKeys.contains(old.getImageKey())) {
-        imageUploadService.deletePrivate(old.getImageKey());
+      if (it.keepImage() && oldKeysByRank.containsKey(it.rank())) {
+        keptKeys.add(oldKeysByRank.get(it.rank()));
+      } else if (it.imageKey() != null && imageUploadService.isPrivateKey(it.imageKey())) {
+        keptKeys.add(it.imageKey());
       }
     }
 
-    prizeRepository.deleteByChallengeId(challengeId); // 벌크 DELETE 선실행(unique 충돌 방지)
+    // 재사용되지 않는 기존 이미지 S3 삭제
+    for (String oldKey : oldKeysByRank.values()) {
+      if (!keptKeys.contains(oldKey)) {
+        imageUploadService.deletePrivate(oldKey);
+      }
+    }
+
+    prizeRepository.deleteByChallengeId(challengeId);
     for (PrizeItemRequest it : items) {
-      String key = (it.imageKey() != null && imageUploadService.isPrivateKey(it.imageKey())) ? it.imageKey() : null;
+      String key;
+      if (it.keepImage() && oldKeysByRank.containsKey(it.rank())) {
+        key = oldKeysByRank.get(it.rank());
+      } else if (it.imageKey() != null && imageUploadService.isPrivateKey(it.imageKey())) {
+        key = it.imageKey();
+      } else {
+        key = null;
+      }
       prizeRepository.save(ChallengePrize.of(challengeId, it.rank(), it.name().trim(), key));
     }
   }
@@ -106,7 +137,6 @@ public class ChallengePrizeService {
   }
 
   private static void validate(List<PrizeItemRequest> items, int maxMembers) {
-    if (items == null || items.isEmpty()) throw ApiException.badRequest("prizes_empty");
     if (items.size() > MAX_PRIZES) throw ApiException.badRequest("prizes_too_many");
     Set<Integer> ranks = new HashSet<>();
     for (PrizeItemRequest it : items) {

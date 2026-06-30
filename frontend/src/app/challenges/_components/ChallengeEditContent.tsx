@@ -73,6 +73,7 @@ export default function ChallengeEditContent() {
       rank: row.rank,
       name: row.name,
       imageKey: null,
+      keepImage: row.hasImage,
     }));
     setPrizes(items);
     if (items.length > 0) setPrizeOpen(true);

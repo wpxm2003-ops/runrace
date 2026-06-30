@@ -133,7 +133,10 @@ export type PrizeRow = {
 export type PrizeFormItem = {
   rank: number;
   name: string;
+  /** 새로 업로드한 이미지의 비공개 키. keepImage=true이면 무시. */
   imageKey: string | null;
+  /** true면 서버에 저장된 기존 이미지를 보존하도록 요청 (수정 시 사용). */
+  keepImage?: boolean;
 };
 
 export type ChallengeFormBody = {
