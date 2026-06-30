@@ -41,25 +41,39 @@ public class PushService {
    * @param arg {0}에 치환할 값(닉네임 등). 없으면 null.
    */
   public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg) {
-    sendLocalized(userId, titleKey, bodyKey, arg, null);
+    send(userId, titleKey, bodyKey, null, null, arg);
   }
 
   /**
    * @param link 알림 탭 시 이동할 앱 내 경로(예: "/challenges/123"). 없으면 null.
    */
   public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg, String link) {
-    sendLocalized(userId, titleKey, bodyKey, arg, link, null);
+    send(userId, titleKey, bodyKey, link, null, arg);
   }
 
   /**
    * @param pushType 발송 유형 식별자(예: "streak_risk"). null이면 이력 미저장.
    */
   public void sendLocalized(UUID userId, String titleKey, String bodyKey, String arg, String link, String pushType) {
+    send(userId, titleKey, bodyKey, link, pushType, arg);
+  }
+
+  /** {0}=arg0, {1}=arg1 두 인자 치환 — 라이벌 알림 등 복수 인자 메시지용. */
+  public void sendLocalized(UUID userId, String titleKey, String bodyKey,
+      String arg0, String arg1, String link, String pushType) {
+    send(userId, titleKey, bodyKey, link, pushType, arg0, arg1);
+  }
+
+  /**
+   * 발송 코어 — 가드·로케일·렌더·전송·이력 저장을 한 곳에 모은다.
+   * title은 첫 인자({0})만, body는 모든 인자({0},{1},…)를 치환한다.
+   */
+  private void send(UUID userId, String titleKey, String bodyKey, String link, String pushType, String... args) {
     if (FirebaseApp.getApps().isEmpty()) return;
     if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return;
     Locale locale = localeOf(userId);
-    String title = render(titleKey, locale, arg);
-    String body = render(bodyKey, locale, arg);
+    String title = render(titleKey, locale, args.length > 0 ? args[0] : null);
+    String body = render(bodyKey, locale, args);
     int sent = sendToUserTokens(userId, title, body, link);
     // 토큰이 없어 실제로 한 건도 접수되지 않았으면 이력을 남기지 않는다.
     if (pushType != null && sent > 0) {
@@ -71,35 +85,13 @@ public class PushService {
     return Locale.forLanguageTag(appUserRepository.findLangCdById(userId).orElse("ko"));
   }
 
-  /** {0}=arg0, {1}=arg1 두 인자 치환 — 라이벌 알림 등 복수 인자 메시지용. */
-  public void sendLocalized(UUID userId, String titleKey, String bodyKey,
-      String arg0, String arg1, String link, String pushType) {
-    if (FirebaseApp.getApps().isEmpty()) return;
-    if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return;
-    Locale locale = localeOf(userId);
-    String title = render(titleKey, locale, arg0);
-    String body = render2(bodyKey, locale, arg0, arg1);
-    int sent = sendToUserTokens(userId, title, body, link);
-    // 토큰이 없어 실제로 한 건도 접수되지 않았으면 이력을 남기지 않는다.
-    if (pushType != null && sent > 0) {
-      systemPushHistoryRepository.save(SystemPushHistory.of(userId, pushType, title, body));
+  /** {i} 자리표시자를 args[i](non-null)로 치환. MessageFormat 미사용(애포스트로피 이스케이프 불필요). */
+  private String render(String key, Locale locale, String... args) {
+    String msg = messageSource.getMessage(key, null, locale);
+    for (int i = 0; i < args.length; i++) {
+      if (args[i] != null) msg = msg.replace("{" + i + "}", args[i]);
     }
-  }
-
-  private String render(String key, Locale locale, String arg) {
-    String msg = messageSource.getMessage(key, null, locale);
-    return arg == null ? msg : msg.replace("{0}", arg);
-  }
-
-  private String render2(String key, Locale locale, String arg0, String arg1) {
-    String msg = messageSource.getMessage(key, null, locale);
-    if (arg0 != null) msg = msg.replace("{0}", arg0);
-    if (arg1 != null) msg = msg.replace("{1}", arg1);
     return msg;
-  }
-
-  public int sendToUserTokens(UUID userId, String title, String body) {
-    return sendToUserTokens(userId, title, body, null);
   }
 
   /** @return FCM 접수에 성공한 토큰 수(실제 전송된 건수). 0이면 전송 대상 없음. */

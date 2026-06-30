@@ -1,6 +1,7 @@
 package com.runrace.backend.shoe.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.shoe.domain.Shoe;
 import com.runrace.backend.shoe.dto.ShoeFormRequest;
 import com.runrace.backend.shoe.dto.ShoeRow;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/shoes")
 @RequiredArgsConstructor
 public class ShoeController {
-  private static final String ID_PATH = "[0-9]+";
+  private static final String ID_PATH = PathPatterns.ID;
 
   private final ShoeService shoeService;
 

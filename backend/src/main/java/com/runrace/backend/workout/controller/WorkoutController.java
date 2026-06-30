@@ -2,6 +2,7 @@ package com.runrace.backend.workout.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
@@ -37,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/workouts")
 @RequiredArgsConstructor
 public class WorkoutController {
-  private static final String ID_PATH = "[0-9]+";
+  private static final String ID_PATH = PathPatterns.ID;
 
   private final WorkoutService workoutService;
   private final PersonalBestService personalBestService;

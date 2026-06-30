@@ -87,13 +87,17 @@ public class RaceFinalizationService {
         .orElse(null);
   }
 
+  /** 실제로 뛴(거리>0) 멤버가 한 명이라도 있는지 — 순위 부여·승자 성립 여부를 가른다. */
+  static boolean anyRan(List<ChallengeMember> members) {
+    return members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
+  }
+
   /**
    * 누적 거리(동률 시 완주 시각) 최상위 멤버의 사용자.
    * 모든 참여자의 거리가 0이면 대결이 성립하지 않으므로 null 반환.
    */
   static AppUser topByDistance(List<ChallengeMember> members) {
-    boolean anyRan = members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
-    if (!anyRan) return null;
+    if (!anyRan(members)) return null;
     return members.stream()
         .max(BY_DISTANCE_THEN_FINISH)
         .map(ChallengeMember::getUser)
@@ -122,8 +126,7 @@ public class RaceFinalizationService {
     challenge.end();
     if (winner != null) challenge.declareWinner(winner);
     // 아무도 0km이면 순위 미부여 → head-to-head 전적에 반영되지 않는다.
-    boolean anyRan = members.stream().anyMatch(m -> m.getTotalKm().compareTo(BigDecimal.ZERO) > 0);
-    if (anyRan) {
+    if (anyRan(members)) {
       assignFinalRanks(members);
     }
     challengeRepository.save(challenge);

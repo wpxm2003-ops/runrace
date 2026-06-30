@@ -8,6 +8,7 @@ import com.runrace.backend.challenge.service.ChallengeService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.challenge.service.RaceFinalizationService;
 import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.challenge.dto.ActiveCountResponse;
 import com.runrace.backend.challenge.dto.ChallengeDetailResponse;
 import com.runrace.backend.challenge.dto.ChallengeListItem;
@@ -46,7 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/challenges")
 @RequiredArgsConstructor
 public class ChallengeController {
-  private static final String ID_PATH = "[0-9]+";
+  private static final String ID_PATH = PathPatterns.ID;
 
   private final ChallengeService challengeService;
   private final IndoorApprovalService indoorApprovalService;
@@ -175,14 +176,14 @@ public class ChallengeController {
   }
 
   /** 레이스 승인 대기 중인 실내러닝 목록. */
-  @GetMapping("/{id:[0-9]+}/pending-approvals")
+  @GetMapping("/{id:" + ID_PATH + "}/pending-approvals")
   public ResponseEntity<List<PendingApprovalResponse>> pendingApprovals(
       AuthPrincipal principal, @PathVariable("id") Long id) {
     return ResponseEntity.ok(indoorApprovalService.getPendingApprovals(id, principal.userId()));
   }
 
   /** 레이스 거부된 실내러닝 목록. */
-  @GetMapping("/{id:[0-9]+}/rejected-approvals")
+  @GetMapping("/{id:" + ID_PATH + "}/rejected-approvals")
   public ResponseEntity<List<RejectedApprovalResponse>> rejectedApprovals(
       AuthPrincipal principal, @PathVariable("id") Long id) {
     return ResponseEntity.ok(indoorApprovalService.getRejectedApprovals(id, principal.userId()));

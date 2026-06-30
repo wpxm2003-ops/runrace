@@ -49,7 +49,7 @@ public class ChallengePrizeService {
   @Transactional
   public void save(UUID userId, Long challengeId, List<PrizeItemRequest> items) {
     Challenge challenge = requireChallenge(challengeId);
-    if (!challenge.getCreator().getId().equals(userId)) {
+    if (!challenge.isOwner(userId)) {
       throw ApiException.forbidden("not_creator");
     }
     if (!OffsetDateTime.now().isBefore(challenge.getStartAt())) {

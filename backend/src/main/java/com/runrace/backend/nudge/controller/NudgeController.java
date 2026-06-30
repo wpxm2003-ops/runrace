@@ -1,6 +1,7 @@
 package com.runrace.backend.nudge.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.nudge.dto.NudgeRequest;
 import com.runrace.backend.nudge.service.NudgeService;
 import java.util.UUID;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class NudgeController {
   private final NudgeService nudgeService;
 
-  @PostMapping("/{challengeId:[0-9]+}/nudge/{targetUserId}")
+  @PostMapping("/{challengeId:" + PathPatterns.ID + "}/nudge/{targetUserId}")
   public ResponseEntity<Void> nudge(
       AuthPrincipal principal,
       @PathVariable("challengeId") Long challengeId,

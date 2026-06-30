@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.runrace.backend.auth.service.FirebaseUserService;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.observability.RequestIdFilter;
 import com.runrace.backend.observability.service.ErrorLogService;
 import jakarta.servlet.FilterChain;
@@ -34,15 +35,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class FirebaseAuthFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(FirebaseAuthFilter.class);
   private static final String BEARER_PREFIX = "Bearer ";
-  private static final Pattern CHALLENGE_DETAIL = Pattern.compile("^/api/challenges/[0-9]+$");
+  private static final Pattern CHALLENGE_DETAIL =
+      Pattern.compile("^/api/challenges/" + PathPatterns.ID + "$");
   private static final Pattern CHALLENGE_WORKOUTS =
-      Pattern.compile("^/api/challenges/[0-9]+/workouts$");
+      Pattern.compile("^/api/challenges/" + PathPatterns.ID + "/workouts$");
   /** 경품명 목록은 전체 공개(이미지는 별도 게이트 엔드포인트). */
   private static final Pattern CHALLENGE_PRIZES =
-      Pattern.compile("^/api/challenges/[0-9]+/prizes$");
-  private static final Pattern WORKOUT_SHARE = Pattern.compile("^/api/workouts/[0-9]+/share$");
+      Pattern.compile("^/api/challenges/" + PathPatterns.ID + "/prizes$");
+  private static final Pattern WORKOUT_SHARE =
+      Pattern.compile("^/api/workouts/" + PathPatterns.ID + "/share$");
   private static final Pattern CHALLENGE_SHARE_PAGE =
-      Pattern.compile("^/api/share/challenges/[0-9]+$");
+      Pattern.compile("^/api/share/challenges/" + PathPatterns.ID + "$");
 
   private final FirebaseUserService firebaseUserService;
   private final JwtService jwtService;

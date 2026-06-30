@@ -4,6 +4,7 @@ import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.dto.PrizeItemRequest;
 import com.runrace.backend.challenge.dto.PrizeRow;
 import com.runrace.backend.challenge.service.ChallengePrizeService;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.upload.ImageUploadService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** 레이스 경품 — 목록(공개)·저장(생성자)·기프티콘 이미지(종료+해당 등수 게이트). */
 @RestController
-@RequestMapping("/api/challenges/{id:[0-9]+}/prizes")
+@RequestMapping("/api/challenges/{id:" + PathPatterns.ID + "}/prizes")
 @RequiredArgsConstructor
 public class ChallengePrizeController {
 
@@ -39,7 +40,7 @@ public class ChallengePrizeController {
   }
 
   /** 기프티콘 이미지 — 종료 + 해당 등수 당첨자만. 바이트 직접 스트리밍(URL 미노출). */
-  @GetMapping("/{rank:[0-9]+}/image")
+  @GetMapping("/{rank:" + PathPatterns.ID + "}/image")
   public ResponseEntity<byte[]> image(
       AuthPrincipal principal, @PathVariable("id") Long id, @PathVariable("rank") int rank) {
     ImageUploadService.StoredImage img = prizeService.getPrizeImage(principal.userId(), id, rank);

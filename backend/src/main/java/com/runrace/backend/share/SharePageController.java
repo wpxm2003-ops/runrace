@@ -3,6 +3,7 @@ package com.runrace.backend.share;
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.service.ChallengeService;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.PathPatterns;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +30,7 @@ public class SharePageController {
   @Value("${runrace.app-url:https://runrace.co.kr}")
   private String appUrl;
 
-  @GetMapping(value = "/challenges/{id:[0-9]+}", produces = MediaType.TEXT_HTML_VALUE)
+  @GetMapping(value = "/challenges/{id:" + PathPatterns.ID + "}", produces = MediaType.TEXT_HTML_VALUE)
   public ResponseEntity<String> challengeShare(@PathVariable("id") Long id) {
     ChallengeService.ChallengeDetailView detail;
     try {
