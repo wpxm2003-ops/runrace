@@ -1,6 +1,6 @@
 "use client";
 
-// NSM 런 중 세션 가이드(B-2) — 라이브 distanceM/elapsedSec로 렙 진행을 추적.
+// NSM 런 중 세션 가이드 — 라이브 distanceM/elapsedSec로 렙 진행을 추적.
 // 거리 렙(1km·3km): 거리 도달로 완료 / 시간 렙(6min): 시간 도달로 완료. 휴식은 타이머.
 // 렙 진행상태는 localStorage에 영속화 — 탭 이탈/리마운트로 0렙 리셋 방지.
 
@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import type { NsmSession } from "@/lib/nsm";
 import { formatPaceSec } from "@/lib/nsm";
 import { loadNsmProgress, saveNsmProgress, type NsmProgress } from "@/lib/nsmSessionProgress";
+import { useLocale } from "@/lib/i18n";
 
 function repTargetMeters(s: NsmSession): number | null {
   return s.repUnit === "km" ? (s.repAmount ?? 0) * 1000 : null;
@@ -34,6 +35,7 @@ export function NsmSessionGuide({
   distanceM: number;
   elapsedSec: number;
 }) {
+  const { t } = useLocale();
   const reps = session.reps ?? 1;
   const targetM = repTargetMeters(session);
   const targetSec = repTargetSeconds(session);
@@ -92,17 +94,17 @@ export function NsmSessionGuide({
   if (!prog.started) {
     return (
       <div className="mb-3 rounded-xl border border-zinc-900 bg-zinc-900 p-3 text-white">
-        <div className="text-xs text-zinc-400">NSM 세션</div>
+        <div className="text-xs text-zinc-400">{t.nsm_guide_label}</div>
         <div className="mt-0.5 text-sm font-semibold">
           {session.reps} × {session.repAmount}
-          {session.repUnit} · 목표 {formatPaceSec(targetPace)}/km · 휴식 {restSec}초
+          {session.repUnit} · {t.nsm_session_sub(formatPaceSec(targetPace), restSec)}
         </div>
         <button
           type="button"
           onClick={startRep}
           className="mt-2 w-full rounded-lg bg-white py-2 text-sm font-semibold text-zinc-900"
         >
-          워밍업 끝났으면 · 1번째 렙 시작
+          {t.nsm_guide_start}
         </button>
       </div>
     );
@@ -112,8 +114,8 @@ export function NsmSessionGuide({
   if (prog.phase === "done") {
     return (
       <div className="mb-3 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
-        <div className="text-sm font-semibold">세션 완료! 🎉 {reps}렙 끝</div>
-        <div className="mt-0.5 text-xs text-emerald-700">마무리 조깅 후 종료를 눌러 저장하세요.</div>
+        <div className="text-sm font-semibold">{t.nsm_done(reps)}</div>
+        <div className="mt-0.5 text-xs text-emerald-700">{t.nsm_guide_done_sub}</div>
       </div>
     );
   }
@@ -124,12 +126,10 @@ export function NsmSessionGuide({
     return (
       <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">휴식</span>
-          <span className="text-2xl font-bold tabular-nums">{remaining}초</span>
+          <span className="text-sm font-semibold">{t.nsm_rest}</span>
+          <span className="text-2xl font-bold tabular-nums">{t.nsm_remain_sec(remaining)}</span>
         </div>
-        <div className="mt-0.5 text-xs text-amber-700">
-          다음 {prog.repIndex + 2}/{reps}번째 렙 준비
-        </div>
+        <div className="mt-0.5 text-xs text-amber-700">{t.nsm_rest_next(prog.repIndex + 2, reps)}</div>
       </div>
     );
   }
@@ -142,40 +142,39 @@ export function NsmSessionGuide({
   let progressLabel: string;
   if (targetM != null) {
     const remainM = Math.max(0, targetM - coveredM);
-    progressLabel = remainM >= 1000 ? `${(remainM / 1000).toFixed(2)}km 남음` : `${Math.round(remainM)}m 남음`;
+    progressLabel = remainM >= 1000 ? t.nsm_remain_km((remainM / 1000).toFixed(2)) : t.nsm_remain_m(Math.round(remainM));
   } else {
     const remainS = Math.max(0, (targetSec ?? 0) - workedSec);
-    progressLabel = `${Math.ceil(remainS)}초 남음`;
+    progressLabel = t.nsm_remain_sec(Math.ceil(remainS));
   }
 
-  // NSM은 sub-T 초과(너무 빠름)를 경계. 목표 대비 ±6초/km 허용.
-  // 데이터가 모이기 전(50m 미만)엔 긍정 단정 대신 중립 표시.
+  // NSM은 sub-T 초과(너무 빠름)를 경계. 데이터 모이기 전(50m 미만)엔 중립 표시.
   let cue: { text: string; cls: string };
   if (repPace == null) {
-    cue = { text: "페이스 측정 중…", cls: "text-zinc-500" };
+    cue = { text: t.nsm_cue_measuring, cls: "text-zinc-500" };
   } else if (repPace < targetPace - 6) {
-    cue = { text: "⚠️ 너무 빨라요 — Sub-T 유지", cls: "text-red-600" };
+    cue = { text: t.nsm_cue_too_fast, cls: "text-red-600" };
   } else if (repPace > targetPace + 6) {
-    cue = { text: "🔻 조금 느려요", cls: "text-amber-700" };
+    cue = { text: t.nsm_cue_slow, cls: "text-amber-700" };
   } else {
-    cue = { text: "✅ 적정 페이스", cls: "text-emerald-700" };
+    cue = { text: t.nsm_cue_ok, cls: "text-emerald-700" };
   }
 
   return (
     <div className="mb-3 rounded-xl border border-zinc-900 bg-zinc-900 p-3 text-white">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">
-          렙 {prog.repIndex + 1}/{reps}
+          {t.nsm_rep} {prog.repIndex + 1}/{reps}
         </span>
         <span className="text-xs text-zinc-400">{progressLabel}</span>
       </div>
       <div className="mt-1.5 flex items-end justify-between">
         <div>
-          <div className="text-[11px] text-zinc-400">목표</div>
+          <div className="text-[11px] text-zinc-400">{t.nsm_target}</div>
           <div className="text-lg font-bold tabular-nums">{formatPaceSec(targetPace)}</div>
         </div>
         <div className="text-right">
-          <div className="text-[11px] text-zinc-400">현재 렙</div>
+          <div className="text-[11px] text-zinc-400">{t.nsm_current_rep}</div>
           <div className="text-lg font-bold tabular-nums">{repPace != null ? formatPaceSec(repPace) : "—"}</div>
         </div>
       </div>

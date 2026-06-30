@@ -80,10 +80,12 @@ export default function Home() {
             <div className="text-base font-semibold text-white">{t.indoor_title}</div>
             <div className="mt-1 text-sm text-zinc-400">{t.indoor_subtitle}</div>
           </Link>
-          {/* NSM 코치 프로토타입 진입점 — i18n은 정식화 후 */}
           <Link href="/training" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-            <div className="text-base font-semibold">NSM 코치 <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">beta</span></div>
-            <div className="mt-1 text-sm text-zinc-600">최근 기록으로 노르웨이식 훈련 페이스·주간 스케줄 자동 계산</div>
+            <div className="text-base font-semibold">
+              {t.nsm_title}
+              <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">beta</span>
+            </div>
+            <div className="mt-1 text-sm text-zinc-600">{t.nsm_home_desc}</div>
           </Link>
           <Link href="/guides" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
             <div className="text-base font-semibold">{t.guide_list_title}</div>

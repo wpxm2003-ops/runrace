@@ -1,8 +1,5 @@
 "use client";
 
-// ⚠️ NSM 프로토타입(B-1) — 플랜 영속화 + 오늘의 세션. 문구는 한국어 하드코딩(i18n·확정 후).
-// 접속: /training (로그인 필요). 런 중 렙 가이드(B-2)는 다음 단계.
-
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
@@ -13,6 +10,8 @@ import type { PersonalBestRow } from "@/lib/api/types";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { useLocale } from "@/lib/i18n";
+import type { Translations } from "@/lib/i18n/translations";
 import { toast } from "sonner";
 import {
   vdotFromRace,
@@ -25,20 +24,25 @@ import {
 const DISTANCES = [
   { label: "5K", m: 5000 },
   { label: "10K", m: 10000 },
-  { label: "하프", m: 21097 },
+  { label: "Half", m: 21097 },
 ];
-const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 const PB_LABEL: Record<string, string> = {
   "3k": "3K",
   "5k": "5K",
   "10k": "10K",
-  half: "하프",
-  marathon: "풀",
+  half: "Half",
+  marathon: "Full",
 };
 
 /** JS 요일(0=일)을 월=0…일=6 인덱스로 변환. */
 function todayIndex(): number {
   return (new Date().getDay() + 6) % 7;
+}
+
+/** 로케일별 요일 짧은 라벨(월=0…일=6). 2024-01-01은 월요일. */
+function weekdayLabels(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
+  return Array.from({ length: 7 }, (_, d) => fmt.format(new Date(2024, 0, 1 + d)));
 }
 
 function parseTime(v: string): number | null {
@@ -55,14 +59,13 @@ function pbTimeSec(pb: PersonalBestRow): number {
   return Math.round((pb.bestPaceSec * pb.distanceM) / 1000);
 }
 
-function sessionLabel(s: NsmSession): { title: string; sub: string; tag: string } {
-  if (s.kind === "EASY") return { title: "이지런", sub: "편하게, 대화 가능한 느린 페이스", tag: "EASY" };
-  if (s.kind === "LONGRUN") return { title: "롱런", sub: "길게, 이지 페이스로", tag: "LONG RUN" };
-  const reps = `${s.reps} × ${s.repAmount}${s.repUnit}`;
-  const pace = s.targetPaceSec ? `${formatPaceSec(s.targetPaceSec)}/km` : "";
-  const rest = s.restSec ? ` · 휴식 ${s.restSec}초` : "";
+function sessionLabel(s: NsmSession, t: Translations): { title: string; sub: string; tag: string } {
+  if (s.kind === "EASY") return { title: t.nsm_easy_title, sub: t.nsm_easy_sub, tag: "EASY" };
+  if (s.kind === "LONGRUN") return { title: t.nsm_longrun_title, sub: t.nsm_longrun_sub, tag: "LONG RUN" };
   const name = s.kind === "SHORT" ? "Short" : s.kind === "MEDIUM" ? "Medium" : "Long";
-  return { title: `${name} — ${reps}`, sub: `목표 ${pace}${rest}`, tag: "sub-T" };
+  const title = `${name} — ${s.reps} × ${s.repAmount}${s.repUnit}`;
+  const sub = s.targetPaceSec ? t.nsm_session_sub(formatPaceSec(s.targetPaceSec), s.restSec ?? 0) : "";
+  return { title, sub, tag: "sub-T" };
 }
 
 type Result = {
@@ -74,8 +77,11 @@ type Result = {
 };
 
 function TrainingContent({ user }: { user: User | null }) {
+  const { t, locale } = useLocale();
   const { data: pbs } = usePersonalBests(user);
   const { data: savedPlan, mutate: mutatePlan } = useTrainingPlan(user);
+
+  const days = weekdayLabels(locale);
 
   const [distM, setDistM] = useState(5000);
   const [timeStr, setTimeStr] = useState("22:00");
@@ -86,7 +92,6 @@ function TrainingContent({ user }: { user: User | null }) {
   const [saving, setSaving] = useState(false);
 
   // 저장된 플랜을 최초 1회 화면에 복원. ref 가드로 늦게 도착해도(SWR 지연) 반드시 1회 적용.
-  // 사용자가 이미 계산(result)했으면 덮어쓰지 않는다.
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (!savedPlan || hydratedRef.current) return;
@@ -105,16 +110,16 @@ function TrainingContent({ user }: { user: User | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedPlan]);
 
-  function compute(dM: number, sec: number, days: number[]) {
+  function compute(dM: number, sec: number, dys: number[]) {
     const vdot = vdotFromRace(dM, sec);
     const threshold = thresholdPaceSecPerKm(vdot);
-    setResult({ vdot, threshold, plan: weeklyPlan(threshold, days), sourceDistanceM: dM, sourceTimeSec: sec });
+    setResult({ vdot, threshold, plan: weeklyPlan(threshold, dys), sourceDistanceM: dM, sourceTimeSec: sec });
   }
 
   function onCalc() {
     const sec = parseTime(timeStr);
     if (sec == null || sec <= 0) {
-      setError("시간을 mm:ss 형식으로 입력해주세요 (예: 22:00)");
+      setError(t.nsm_time_error);
       setResult(null);
       return;
     }
@@ -159,15 +164,14 @@ function TrainingContent({ user }: { user: User | null }) {
         user,
       );
       await mutatePlan();
-      toast.success("플랜을 저장했어요");
+      toast.success(t.nsm_toast_saved);
     } catch {
-      toast.error("저장에 실패했어요");
+      toast.error(t.nsm_toast_save_fail);
     } finally {
       setSaving(false);
     }
   }
 
-  // 저장된 플랜과 현재 결과가 같은지(저장 버튼 노출 판단).
   const sortedKey = (a: number[]) => [...a].sort((x, y) => x - y).join(",");
   const isSaved =
     savedPlan != null &&
@@ -181,13 +185,14 @@ function TrainingContent({ user }: { user: User | null }) {
     : null;
 
   return (
-    <PageLayout title="NSM 코치">
-      {/* 오늘의 세션 — 플랜 있을 때 최상단 */}
+    <PageLayout title={t.nsm_title}>
       {todaySession ? (
         <Card className="border-zinc-900 bg-zinc-900 text-white">
-          <div className="text-xs text-zinc-400">오늘 ({DAYS[todayIndex()]}) 세션</div>
+          <div className="text-xs text-zinc-400">
+            {t.nsm_today} ({days[todayIndex()]}) {t.nsm_session}
+          </div>
           {(() => {
-            const { title, sub } = sessionLabel(todaySession);
+            const { title, sub } = sessionLabel(todaySession, t);
             return (
               <>
                 <div className="mt-1 text-lg font-bold">{title}</div>
@@ -200,25 +205,22 @@ function TrainingContent({ user }: { user: User | null }) {
             onClick={() => nativeNavigate("/workout")}
             className="mt-3 w-full rounded-lg bg-white py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
           >
-            세션 시작
+            {t.nsm_session_start}
           </button>
           {!todaySession.isSubT ? (
-            <p className="mt-2 text-[11px] text-zinc-400">오늘은 이지런 — 페이스 신경 쓰지 말고 편하게.</p>
+            <p className="mt-2 text-[11px] text-zinc-400">{t.nsm_today_easy_note}</p>
           ) : null}
         </Card>
       ) : (
         <Card>
-          <p className="text-xs leading-relaxed text-zinc-500">
-            최근 전력 기록을 넣으면 역치 페이스를 계산하고, 일주일 NSM 스케줄을 만들어줘요.
-          </p>
+          <p className="text-xs leading-relaxed text-zinc-500">{t.nsm_intro}</p>
         </Card>
       )}
 
-      {/* PB 자동 추천 */}
       {pbs && pbs.length > 0 ? (
         <Card className="mt-4">
-          <div className="text-sm font-semibold text-zinc-900">내 기록에서 선택</div>
-          <p className="mt-0.5 text-[11px] text-zinc-500">탭하면 바로 계산돼요.</p>
+          <div className="text-sm font-semibold text-zinc-900">{t.nsm_pb_heading}</div>
+          <p className="mt-0.5 text-[11px] text-zinc-500">{t.nsm_pb_hint}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {pbs.map((pb) => (
               <button
@@ -235,12 +237,11 @@ function TrainingContent({ user }: { user: User | null }) {
         </Card>
       ) : null}
 
-      {/* 직접 입력 */}
       <Card className="mt-4">
-        <div className="text-sm font-semibold text-zinc-900">또는 직접 입력</div>
+        <div className="text-sm font-semibold text-zinc-900">{t.nsm_manual_heading}</div>
         <div className="mt-3 flex flex-col gap-3">
           <label className="block">
-            <span className="text-xs font-medium text-zinc-600">레이스 거리</span>
+            <span className="text-xs font-medium text-zinc-600">{t.nsm_race_distance}</span>
             <div className="mt-1 flex gap-2">
               {DISTANCES.map((d) => (
                 <button
@@ -257,7 +258,7 @@ function TrainingContent({ user }: { user: User | null }) {
             </div>
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-zinc-600">기록 (mm:ss)</span>
+            <span className="text-xs font-medium text-zinc-600">{t.nsm_record_label}</span>
             <input
               type="text"
               inputMode="numeric"
@@ -273,16 +274,15 @@ function TrainingContent({ user }: { user: User | null }) {
             onClick={onCalc}
             className="rounded-lg bg-zinc-900 py-2.5 text-sm text-white hover:bg-zinc-800"
           >
-            계산하기
+            {t.nsm_calc_button}
           </button>
         </div>
       </Card>
 
-      {/* sub-T 요일 선택 */}
       <Card className="mt-4">
-        <div className="text-xs font-medium text-zinc-600">sub-T 요일 (2~3개)</div>
+        <div className="text-xs font-medium text-zinc-600">{t.nsm_subt_days_label}</div>
         <div className="mt-2 flex gap-1.5">
-          {DAYS.map((label, d) => {
+          {days.map((label, d) => {
             const on = subTDays.includes(d);
             return (
               <button
@@ -298,9 +298,7 @@ function TrainingContent({ user }: { user: User | null }) {
             );
           })}
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
-          빡센 날을 직접 골라요. 하루씩 띄우는 걸 추천(예: 화·목·토). 나머지는 이지런으로 자동 채워져요.
-        </p>
+        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">{t.nsm_subt_days_hint}</p>
       </Card>
 
       {result ? (
@@ -308,7 +306,7 @@ function TrainingContent({ user }: { user: User | null }) {
           <Card className="mt-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-zinc-500">내 역치 페이스</div>
+                <div className="text-xs text-zinc-500">{t.nsm_threshold_label}</div>
                 <div className="mt-0.5 text-2xl font-bold text-zinc-900">
                   {formatPaceSec(result.threshold)}
                   <span className="ml-1 text-base font-medium text-zinc-400">/km</span>
@@ -325,11 +323,11 @@ function TrainingContent({ user }: { user: User | null }) {
                 onClick={() => redirectToLogin("/training")}
                 className="mt-3 w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white"
               >
-                가입하고 코칭 받기
+                {t.nsm_signup_cta}
               </button>
             ) : isSaved ? (
               <div className="mt-3 rounded-lg bg-zinc-100 py-2 text-center text-xs font-medium text-zinc-500">
-                내 플랜으로 저장됨 ✓
+                {t.nsm_saved}
               </div>
             ) : (
               <button
@@ -338,16 +336,16 @@ function TrainingContent({ user }: { user: User | null }) {
                 disabled={saving}
                 className="mt-3 w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
-                {saving ? "저장 중..." : "이 플랜으로 시작"}
+                {saving ? t.nsm_saving : t.nsm_save_start}
               </button>
             )}
           </Card>
 
           <Card className="mt-4">
-            <div className="text-base font-semibold">이번 주 스케줄</div>
+            <div className="text-base font-semibold">{t.nsm_week_heading}</div>
             <div className="mt-3 flex flex-col gap-2">
               {result.plan.map((s) => {
-                const { title, sub, tag } = sessionLabel(s);
+                const { title, sub, tag } = sessionLabel(s, t);
                 const isToday = s.day === todayIndex();
                 return (
                   <div
@@ -357,7 +355,7 @@ function TrainingContent({ user }: { user: User | null }) {
                     }`}
                   >
                     <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600">
-                      {DAYS[s.day]}
+                      {days[s.day]}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
@@ -370,7 +368,9 @@ function TrainingContent({ user }: { user: User | null }) {
                           {tag}
                         </span>
                         {isToday ? (
-                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">오늘</span>
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                            {t.nsm_today}
+                          </span>
                         ) : null}
                       </div>
                       <div className="mt-0.5 text-[11px] text-zinc-500">{sub}</div>
@@ -379,9 +379,7 @@ function TrainingContent({ user }: { user: User | null }) {
                 );
               })}
             </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
-              sub-T 세션만 페이스를 빡세게 맞추고, 이지런은 그냥 느리게. 빡센 건 주 {subTDays.length}번, 나머지는 자주 뛰되 편하게.
-            </p>
+            <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">{t.nsm_week_note}</p>
           </Card>
         </>
       ) : null}
@@ -392,10 +390,11 @@ function TrainingContent({ user }: { user: User | null }) {
 export default function TrainingPage() {
   // 비로그인도 계산까지 가능 — 저장/오늘의세션만 로그인 필요.
   const { user, loading } = useAuthUser();
+  const { t } = useLocale();
 
   if (loading) {
     return (
-      <PageLayout title="NSM 코치">
+      <PageLayout title={t.nsm_title}>
         <LoadingCard />
       </PageLayout>
     );

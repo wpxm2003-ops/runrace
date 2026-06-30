@@ -266,7 +266,7 @@ export default function WorkoutPage() {
           ) : null}
           {isNsmDay && !active ? (
             <div className="mb-3 rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-700">
-              🏃 오늘은 <span className="font-semibold">NSM 세션</span>이에요. 시작하면 렙별 페이스 가이드가 떠요.
+              {t.nsm_workout_banner}
             </div>
           ) : null}
           {saveError ? <Alert className="mb-3">{saveError}</Alert> : null}
