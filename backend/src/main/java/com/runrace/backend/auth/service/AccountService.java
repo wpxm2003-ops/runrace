@@ -98,14 +98,8 @@ public class AccountService {
       cache.evict(firebaseUid);
     }
 
-    // 운동 이미지 S3 정리 — 실패해도 익명화는 유지(best-effort).
-    for (String url : cleanup.imageUrls()) {
-      try {
-        imageUploadService.delete(url);
-      } catch (Exception e) {
-        log.warn("탈퇴 이미지 S3 삭제 실패 (url={}): {}", url, e.getMessage());
-      }
-    }
+    // 운동 이미지 S3 정리 — 실패해도 익명화는 유지(best-effort, delete 내부에서 로깅·삼킴).
+    imageUploadService.deleteAll(cleanup.imageUrls());
 
     try {
       FirebaseAuth.getInstance().deleteUser(firebaseUid);

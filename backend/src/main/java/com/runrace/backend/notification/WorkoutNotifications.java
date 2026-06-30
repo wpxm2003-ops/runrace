@@ -8,8 +8,6 @@ import com.runrace.backend.upload.ImageUploadService;
 import java.time.OffsetDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -18,8 +16,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 public class WorkoutNotifications {
-
-  private static final Logger log = LoggerFactory.getLogger(WorkoutNotifications.class);
 
   private static final int RIVAL_VARIANTS = 5;
 
@@ -85,10 +81,7 @@ public class WorkoutNotifications {
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onWorkoutImageDeleted(WorkoutEvents.WorkoutImageDeletedEvent event) {
-    try {
-      imageUploadService.delete(event.imageUrl());
-    } catch (Exception e) {
-      log.warn("운동 이미지 S3 삭제 실패 (url={}): {}", event.imageUrl(), e.getMessage());
-    }
+    // delete가 내부에서 실패를 로깅·삼키므로 호출부 try/catch 불필요.
+    imageUploadService.delete(event.imageUrl());
   }
 }

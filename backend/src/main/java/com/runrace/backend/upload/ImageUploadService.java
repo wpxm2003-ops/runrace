@@ -2,6 +2,7 @@ package com.runrace.backend.upload;
 
 import com.runrace.backend.common.ApiException;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,6 +158,16 @@ public class ImageUploadService {
     } catch (Exception e) {
       log.warn("S3 비공개 객체 삭제 실패: key={}", key, e);
     }
+  }
+
+  /** 여러 공개 URL 정리(best-effort — 개별 실패는 {@link #delete}가 내부에서 로깅·삼킴). */
+  public void deleteAll(Collection<String> urls) {
+    if (urls != null) urls.forEach(this::delete);
+  }
+
+  /** 여러 비공개 키 정리(best-effort — 개별 실패는 {@link #deletePrivate}가 내부에서 로깅·삼킴). */
+  public void deleteAllPrivate(Collection<String> keys) {
+    if (keys != null) keys.forEach(this::deletePrivate);
   }
 
   /** 게이트 서빙용 이미지 바이트 + Content-Type. */

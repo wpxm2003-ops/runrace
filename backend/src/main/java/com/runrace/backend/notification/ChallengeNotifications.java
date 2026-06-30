@@ -9,8 +9,6 @@ import com.runrace.backend.push.service.PushService;
 import com.runrace.backend.upload.ImageUploadService;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -25,7 +23,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 public class ChallengeNotifications {
-  private static final Logger log = LoggerFactory.getLogger(ChallengeNotifications.class);
   private final PushService pushService;
   private final ImageUploadService imageUploadService;
 
@@ -66,16 +63,10 @@ public class ChallengeNotifications {
             userId, "challenge.race_title", bodyKey, event.winnerNickname(), link));
   }
 
-  /** 레이스 삭제 시 고아가 된 경품 S3 이미지 정리. */
+  /** 레이스 삭제 시 고아가 된 경품 S3 이미지 정리. (deletePrivate가 내부에서 실패를 로깅·삼킴) */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onPrizeImagesOrphaned(ChallengeEvents.PrizeImagesOrphanedEvent event) {
-    event.imageKeys().forEach(key -> {
-      try {
-        imageUploadService.deletePrivate(key);
-      } catch (Exception e) {
-        log.warn("경품 이미지 S3 삭제 실패 (key={}): {}", key, e.getMessage());
-      }
-    });
+    imageUploadService.deleteAllPrivate(event.imageKeys());
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
