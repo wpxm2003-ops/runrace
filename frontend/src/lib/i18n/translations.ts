@@ -128,7 +128,7 @@ export const translations = {
     create_err_stake_special:
       "내기 문구에 사용할 수 없는 문자가 있습니다. (' \" ; \\ ` < > 는 사용할 수 없습니다)",
     create_err_stake_too_long: "내기 문구는 최대 30자까지 가능해요.",
-    create_stake_toggle: "페널티/보상 걸기 (선택)",
+    create_stake_toggle: "내기 걸기",
     create_stake_placeholder: "예: 꼴찌 커피 사기 / 치킨 내기",
     detail_stake_label: "내기",
     tpl_section_title: "빠른 시작",
@@ -721,7 +721,7 @@ export const translations = {
     create_err_stake_special:
       "The stake contains invalid characters. (' \" ; \\ ` < > are not allowed)",
     create_err_stake_too_long: "The stake can be up to 30 characters.",
-    create_stake_toggle: "Add a stake (optional)",
+    create_stake_toggle: "Add a wager",
     create_stake_placeholder: "e.g. Loser buys coffee / chicken dinner bet",
     detail_stake_label: "Stake",
     tpl_section_title: "Quick start",
@@ -1314,7 +1314,7 @@ export const translations = {
     create_err_stake_special:
       "La apuesta contiene caracteres no permitidos. (' \" ; \\ ` < > no están permitidos)",
     create_err_stake_too_long: "La apuesta puede tener hasta 30 caracteres.",
-    create_stake_toggle: "Añadir una apuesta (opcional)",
+    create_stake_toggle: "Añadir una apuesta",
     create_stake_placeholder: "p. ej. El último paga el café / pollo",
     detail_stake_label: "Apuesta",
     tpl_section_title: "Inicio rápido",
@@ -1907,7 +1907,7 @@ export const translations = {
     create_err_stake_special:
       "賭けの文言に使用できない文字があります。（' \" ; \\ ` < > は使用できません）",
     create_err_stake_too_long: "賭けの文言は最大30文字までです。",
-    create_stake_toggle: "罰ゲーム/ごほうびを設定（任意）",
+    create_stake_toggle: "賭けを設定",
     create_stake_placeholder: "例: 最下位がコーヒー / チキンをおごる",
     detail_stake_label: "賭け",
     tpl_section_title: "クイックスタート",
@@ -2500,7 +2500,7 @@ export const translations = {
     create_err_stake_special:
       "赌注文字包含不允许的字符。（' \" ; \\ ` < > 不可使用）",
     create_err_stake_too_long: "赌注文字最多30个字符。",
-    create_stake_toggle: "设置惩罚/奖励（可选）",
+    create_stake_toggle: "设置赌注",
     create_stake_placeholder: "例：最后一名请咖啡 / 炸鸡",
     detail_stake_label: "赌注",
     tpl_section_title: "快速开始",

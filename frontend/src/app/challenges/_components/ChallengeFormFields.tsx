@@ -7,6 +7,7 @@ import { STAKE_MAX_CHARS, minStartAtLocal, plusDaysLocal } from "@/lib/challenge
 import { useEffect, useState, type ReactNode } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 import { DateTimePickerSheet } from "./DateTimePickerSheet";
+import { AccordionRow } from "./AccordionRow";
 
 type FormHandlers = {
   onTitleChange: (raw: string) => void;
@@ -65,9 +66,9 @@ export function ChallengeFormFields({
     if (values.stake) setShowStake(true);
   }, [values.stake]);
 
-  function toggleStake(checked: boolean) {
-    setShowStake(checked);
-    if (!checked) handlers.onStakeChange(""); // 접으면 값도 비운다
+  function toggleStake(open: boolean) {
+    setShowStake(open);
+    if (!open) handlers.onStakeChange("");
   }
 
   return (
@@ -150,28 +151,23 @@ export function ChallengeFormFields({
           </div>
         </div>
 
-        <div className="mt-5 border-t border-zinc-100 pt-4">
-          <label className="flex items-center gap-2 text-sm font-medium">
+        <div className="mt-5 border-t border-zinc-100 pt-3">
+          <AccordionRow
+            label={labels.stakeToggle}
+            active={!!values.stake}
+            open={showStake}
+            onToggle={() => toggleStake(!showStake)}
+          >
             <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-zinc-300"
-              checked={showStake}
-              onChange={(e) => toggleStake(e.target.checked)}
+              className="h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm"
+              value={values.stake}
+              onChange={(e) => handlers.onStakeChange(e.target.value)}
+              placeholder={labels.stakePlaceholder}
+              maxLength={STAKE_MAX_CHARS}
             />
-            {labels.stakeToggle}
-          </label>
+          </AccordionRow>
+          {extraSection}
         </div>
-        {showStake ? (
-          <input
-            className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-            value={values.stake}
-            onChange={(e) => handlers.onStakeChange(e.target.value)}
-            placeholder={labels.stakePlaceholder}
-            maxLength={STAKE_MAX_CHARS}
-          />
-        ) : null}
-
-        {extraSection}
 
         {submitNotice ? (
           <p className="mt-6 text-xs leading-relaxed text-black">{submitNotice}</p>

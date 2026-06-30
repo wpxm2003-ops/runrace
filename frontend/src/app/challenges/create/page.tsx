@@ -12,6 +12,7 @@ import { useChallengeFormMessages } from "@/app/challenges/_components/useChalle
 import { createChallenge, invalidateChallengeLists, savePrizes, useActiveCount } from "@/lib/api";
 import type { PrizeFormItem } from "@/lib/api/types";
 import { PrizeEditorModal } from "@/app/challenges/_components/PrizeEditorModal";
+import { AccordionRow } from "@/app/challenges/_components/AccordionRow";
 import { minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
 import { RACE_TEMPLATES, type RaceTemplate, type RaceTemplateKey } from "@/lib/raceTemplates";
 import { goalInputFromKm } from "@/lib/units";
@@ -29,6 +30,7 @@ export default function CreateChallengePage() {
   const { unit } = useUnit();
   const [submitting, setSubmitting] = useState(false);
   const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
+  const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
 
   const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(1);
@@ -139,9 +141,15 @@ export default function CreateChallengePage() {
         formError={error}
         formHint={form.formHint}
         extraSection={
-          <div className="mt-4">
-            <p className="text-sm font-medium text-zinc-800">{t.prize_section_title}</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{t.prize_section_hint(maxRank)}</p>
+          <AccordionRow
+            label={t.prize_section_title}
+            active={prizes.length > 0}
+            open={prizeOpen}
+            onToggle={() => setPrizeOpen((v) => !v)}
+          >
+            <p className="text-[11px] leading-relaxed text-zinc-400">
+              {t.prize_section_hint(maxRank)}
+            </p>
             {prizes.length > 0 ? (
               <ul className="mt-2 space-y-1">
                 {prizes.map((p) => (
@@ -157,14 +165,12 @@ export default function CreateChallengePage() {
             ) : null}
             <button
               type="button"
-              onClick={() => {
-                if (user) setPrizeModalOpen(true);
-              }}
+              onClick={() => { if (user) setPrizeModalOpen(true); }}
               className="mt-2 rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
             >
               {prizes.length ? t.prize_edit_btn : t.prize_add_btn}
             </button>
-          </div>
+          </AccordionRow>
         }
         submitNotice={t.create_solo_notice}
         submitLabel={t.create_btn}
