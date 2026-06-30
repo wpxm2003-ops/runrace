@@ -1,25 +1,14 @@
 import type { User } from "firebase/auth";
-import { apiFetch, apiUrl } from "./client";
-import { storeAccessToken, clearAccessToken } from "@/lib/accessToken";
+import { apiFetch, exchangeFirebaseTokenForJwt } from "./client";
+import { clearAccessToken } from "@/lib/accessToken";
 import type { MeResponse } from "./types";
 
 /**
  * Firebase 로그인 직후 백엔드에 사용자 upsert를 트리거하고 자체 JWT를 발급받는다.
  * Firebase 토큰을 직접 사용해 새 JWT를 받아오므로 기존 저장 토큰을 우선하지 않는다.
  */
-export async function syncBackendLogin(user: User): Promise<void> {
-  const firebaseToken = await user.getIdToken();
-  const res = await fetch(apiUrl("/api/auth/login"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${firebaseToken}` },
-    cache: "no-store",
-  });
-  if (res.ok) {
-    const data = await res.json() as { accessToken?: string; firebaseUid?: string };
-    if (data.accessToken && data.firebaseUid) {
-      storeAccessToken(data.accessToken, data.firebaseUid);
-    }
-  }
+export function syncBackendLogin(user: User): Promise<void> {
+  return exchangeFirebaseTokenForJwt(user);
 }
 
 export function fetchMe(user: User): Promise<MeResponse> {

@@ -1,6 +1,5 @@
 import type { User } from "firebase/auth";
-import { compressImageForUpload } from "@/lib/compressImage";
-import { apiFetch, apiUrl, publicFetch } from "./client";
+import { apiFetch, publicFetch, uploadMultipart } from "./client";
 import type {
   CreateWorkoutResponse,
   CreatedId,
@@ -78,28 +77,10 @@ export function fetchWorkoutShare(id: number) {
 }
 
 /** 이미지 업로드 — multipart/form-data. URL 반환. */
-export async function uploadImage(
+export function uploadImage(
   file: File,
   user: User,
   opts?: { precompressed?: boolean },
 ): Promise<string> {
-  const token = await user.getIdToken();
-  const uploadFile = opts?.precompressed ? file : await compressImageForUpload(file);
-  const formData = new FormData();
-  formData.append("file", uploadFile);
-  const res = await fetch(apiUrl("/api/uploads/image"), {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
-  if (!res.ok) {
-    if (res.status === 413) {
-      throw new Error("upload_too_large");
-    }
-    const err = await res.text().catch(() => String(res.status));
-    throw new Error(err);
-  }
-  const data = await res.json();
-  if (typeof data?.url !== "string" || !data.url) throw new Error("upload_invalid_response");
-  return data.url as string;
+  return uploadMultipart("/api/uploads/image", file, user, "url", opts);
 }

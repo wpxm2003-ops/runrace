@@ -1,7 +1,6 @@
 import type { User } from "firebase/auth";
-import { compressImageForUpload } from "@/lib/compressImage";
 import { ApiError } from "./apiError";
-import { apiFetch, apiUrl, publicFetch } from "./client";
+import { apiFetch, apiUrl, publicFetch, uploadMultipart } from "./client";
 import type { PrizeFormItem, PrizeRow } from "./types";
 
 /** 경품 목록(전체 공개). 생성자면 imageKey 포함. */
@@ -21,23 +20,8 @@ export function savePrizes(challengeId: number, prizes: PrizeFormItem[], user: U
 }
 
 /** 비공개 이미지(기프티콘) 업로드 → 객체 키 반환(공개 URL 아님). */
-export async function uploadPrivateImage(file: File, user: User): Promise<string> {
-  const token = await user.getIdToken();
-  const compressed = await compressImageForUpload(file);
-  const formData = new FormData();
-  formData.append("file", compressed);
-  const res = await fetch(apiUrl("/api/uploads/private-image"), {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
-  if (!res.ok) {
-    if (res.status === 413) throw new Error("upload_too_large");
-    throw new Error(await res.text().catch(() => String(res.status)));
-  }
-  const data = await res.json();
-  if (typeof data?.key !== "string" || !data.key) throw new Error("upload_invalid_response");
-  return data.key as string;
+export function uploadPrivateImage(file: File, user: User): Promise<string> {
+  return uploadMultipart("/api/uploads/private-image", file, user, "key");
 }
 
 /**

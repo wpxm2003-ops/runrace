@@ -17,6 +17,7 @@ import {
   fetchHeadToHead,
   fetchPendingApprovals,
   fetchRejectedApprovals,
+  DEFAULT_PAGE_SIZE,
 } from "./challenges";
 import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
@@ -35,6 +36,18 @@ const onSwrError = (error: unknown) => {
     kind: "swr",
   });
 };
+
+/** 캐시 키용 uid — 로그인 uid → 저장 토큰 uid → 익명 폴백(기본 null). */
+function cacheUid(user?: User | null, anonymous: string | null = null): string | null {
+  return user?.uid ?? getStoredAuthUid() ?? anonymous;
+}
+
+/** [prefix, id, ...] 키 캐시 무효화. id 생략 시 prefix 전체. */
+function invalidateByPrefix(prefix: string, id?: string | number) {
+  void globalMutate(
+    (key) => Array.isArray(key) && key[0] === prefix && (id === undefined || key[1] === id),
+  );
+}
 
 const BASE_CONFIG = {
   /** 진입 시 항상 백그라운드 재검증하되, 그동안 캐시된 데이터를 먼저 보여준다. */
@@ -68,7 +81,7 @@ const LIVE_CONFIG = {
  * 공개 레이스 목록 — phase 필터별 무한스크롤. 페이지 끝(hasNext=false)에 도달하면 추가 키를 만들지 않는다.
  * 필터/언어 변경 시 호출 측에서 setSize(1)로 첫 페이지부터 다시 로드한다.
  */
-const PUBLIC_PAGE_SIZE = 20;
+const PUBLIC_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export function useChallengeListInfinite(
   user: User | null | undefined,
@@ -132,7 +145,7 @@ export function useMyChallengeListInfinite(user: User | null, phase: string) {
 
 // ── 레이스 상세 ────────────────────────────────────────────────────────────────
 export function useChallengeDetail(id: number | null, user?: User | null) {
-  const uid = user?.uid ?? getStoredAuthUid() ?? null;
+  const uid = cacheUid(user);
   return useSWR(
     id == null ? null : (["challenge", id, uid] as const),
     () => fetchChallengeDetail(id!, user),
@@ -165,7 +178,7 @@ export function invalidateChallengeWorkouts(challengeId: number, userId: string)
 
 /** 레이스 경품 목록. 생성자면 imageKey 포함(키는 uid에 의존). */
 export function usePrizes(challengeId: number | null, user?: User | null) {
-  const uid = user?.uid ?? getStoredAuthUid() ?? null;
+  const uid = cacheUid(user);
   return useSWR(
     challengeId == null ? null : (["prizes", challengeId, uid] as const),
     () => fetchPrizes(challengeId!, user ?? null),
@@ -175,9 +188,7 @@ export function usePrizes(challengeId: number | null, user?: User | null) {
 
 /** 경품 저장 후 해당 레이스의 경품 캐시를 재검증한다. */
 export function invalidatePrizes(challengeId: number) {
-  void globalMutate(
-    (key) => Array.isArray(key) && key[0] === "prizes" && key[1] === challengeId,
-  );
+  invalidateByPrefix("prizes", challengeId);
 }
 
 /** 닉네임 변경 후 닉네임이 노출되는 SWR 캐시를 재검증한다. */
@@ -202,7 +213,7 @@ export function useChallengeWorkouts(
 ) {
   // 참여자 운동 목록은 전체 공개 — 비참여자·비로그인도 조회한다(publicFetch).
   // 로그인 상태면 uid로 캐시 분리, 비로그인이면 "public" 키로 조회.
-  const uid = user?.uid ?? getStoredAuthUid() ?? "public";
+  const uid = cacheUid(user, "public");
   return useSWR(
     challengeId != null
       ? (["challenge", challengeId, "workouts", uid] as const)
@@ -238,9 +249,7 @@ export function useRivals(user: User | null) {
 
 /** 라이벌 등록/해제 후 목록 재검증. */
 export function invalidateRivals(userId: string) {
-  void globalMutate(
-    (key) => Array.isArray(key) && key[0] === "rivals" && key[1] === userId,
-  );
+  invalidateByPrefix("rivals", userId);
 }
 
 // ── 신발장 ───────────────────────────────────────────────────────────────────
@@ -254,9 +263,7 @@ export function useShoes(user: User | null) {
 
 /** 신발 등록/수정/삭제/활성화 후 목록 재검증. */
 export function invalidateShoes(userId: string) {
-  void globalMutate(
-    (key) => Array.isArray(key) && key[0] === "shoes" && key[1] === userId,
-  );
+  invalidateByPrefix("shoes", userId);
 }
 
 // ── 실내러닝 승인 (레이스 참여·시작 후에만) ──────────────────────────────────

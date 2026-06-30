@@ -1,6 +1,7 @@
 import { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
 import { getAccessToken, storeAccessToken, clearAccessToken } from "@/lib/accessToken";
+import { compressImageForUpload } from "@/lib/compressImage";
 import { ApiError } from "./apiError";
 
 /** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: 빈 문자열 → Next.js rewrite 프록시(/api/*) 경유 */
@@ -63,26 +64,57 @@ async function authHeaders(user: User, forceRefresh = false) {
   return { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` };
 }
 
+/**
+ * Firebase 토큰을 백엔드(/api/auth/login)에 보내 자체 JWT를 발급받아 저장한다.
+ * 토큰 교환의 단일 출처(로그인 동기화·만료 재발급 공용). 에러는 호출부가 처리한다(여기선 삼키지 않음).
+ */
+export async function exchangeFirebaseTokenForJwt(user: User, forceRefresh = false): Promise<void> {
+  const firebaseToken = await user.getIdToken(forceRefresh);
+  const res = await fetch(apiUrl("/api/auth/login"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${firebaseToken}` },
+    cache: "no-store",
+  });
+  if (res.ok) {
+    const data = (await res.json()) as { accessToken?: string; firebaseUid?: string };
+    if (data.accessToken && data.firebaseUid) storeAccessToken(data.accessToken, data.firebaseUid);
+  }
+}
+
 /** JWT 만료(401) 시 Firebase 토큰으로 새 JWT를 발급받아 저장한다. */
 async function refreshAccessToken(user: User): Promise<{ "Content-Type": string; Authorization: string }> {
   clearAccessToken();
-  const firebaseToken = await user.getIdToken(true);
-  const firebaseHeaders = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${firebaseToken}`,
-  };
   try {
-    const res = await fetch(apiUrl("/api/auth/login"), {
-      method: "POST",
-      headers: firebaseHeaders,
-      cache: "no-store",
-    });
-    if (res.ok) {
-      const data = await res.json() as { accessToken?: string; firebaseUid?: string };
-      if (data.accessToken && data.firebaseUid) storeAccessToken(data.accessToken, data.firebaseUid);
-    }
+    await exchangeFirebaseTokenForJwt(user, true);
   } catch {}
   return await authHeaders(user, false);
+}
+
+/** 이미지 multipart 업로드 공용 코어. 응답에서 responseField(url|key)를 꺼내 반환한다. */
+export async function uploadMultipart(
+  path: string,
+  file: File,
+  user: User,
+  responseField: "url" | "key",
+  opts?: { precompressed?: boolean },
+): Promise<string> {
+  const token = await user.getIdToken();
+  const uploadFile = opts?.precompressed ? file : await compressImageForUpload(file);
+  const formData = new FormData();
+  formData.append("file", uploadFile);
+  const res = await fetch(apiUrl(path), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    if (res.status === 413) throw new Error("upload_too_large");
+    throw new Error(await res.text().catch(() => String(res.status)));
+  }
+  const data = await res.json();
+  const value = data?.[responseField];
+  if (typeof value !== "string" || !value) throw new Error("upload_invalid_response");
+  return value;
 }
 
 /** HTML 응답(nginx 오류 페이지 등)을 간결한 문자열로 변환한다. */

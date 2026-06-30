@@ -12,6 +12,19 @@ import type {
   RejectedApproval,
 } from "./types";
 
+/** 레이스 목록 기본 페이지 크기. 훅(PUBLIC_PAGE_SIZE)과 공유. */
+export const DEFAULT_PAGE_SIZE = 20;
+
+/** 레이스 목록 쿼리스트링 직렬화. phase=all은 생략, size 기본값 적용. */
+function buildPageQuery(opts: { lang?: string; phase?: string; page: number; size?: number }): string {
+  const p = new URLSearchParams();
+  if (opts.lang) p.set("lang", opts.lang);
+  if (opts.phase && opts.phase !== "all") p.set("phase", opts.phase);
+  p.set("page", String(opts.page));
+  p.set("size", String(opts.size ?? DEFAULT_PAGE_SIZE));
+  return p.toString();
+}
+
 /**
  * 공개 레이스 목록 — 페이지 단위(무한스크롤). 비로그인도 조회 가능(로그인 시 isOwner 채워짐).
  * phase: all|scheduled|in_progress|ended, lang 지정 시 해당 언어방만.
@@ -20,12 +33,7 @@ export function fetchChallengesPage(
   user: User | null | undefined,
   opts: { lang?: string; phase?: string; page: number; size?: number },
 ) {
-  const p = new URLSearchParams();
-  if (opts.lang) p.set("lang", opts.lang);
-  if (opts.phase && opts.phase !== "all") p.set("phase", opts.phase);
-  p.set("page", String(opts.page));
-  p.set("size", String(opts.size ?? 20));
-  return publicFetch<ChallengeListPage>(`/api/challenges?${p.toString()}`, user);
+  return publicFetch<ChallengeListPage>(`/api/challenges?${buildPageQuery(opts)}`, user);
 }
 
 /** 내가 참여한 레이스 — 페이지 단위(무한스크롤). phase: all|active|ended. */
@@ -33,11 +41,7 @@ export function fetchMyChallengesPage(
   user: User,
   opts: { phase?: string; page: number; size?: number },
 ) {
-  const p = new URLSearchParams();
-  if (opts.phase && opts.phase !== "all") p.set("phase", opts.phase);
-  p.set("page", String(opts.page));
-  p.set("size", String(opts.size ?? 20));
-  return apiFetch<ChallengeListPage>(`/api/challenges/mine?${p.toString()}`, { user });
+  return apiFetch<ChallengeListPage>(`/api/challenges/mine?${buildPageQuery(opts)}`, { user });
 }
 
 /** 레이스 상세(공개). */
