@@ -124,29 +124,69 @@ export function ChallengeFormFields({
             <label className="block text-sm font-medium">
               {labels.start} {req}
             </label>
-            <input
-              type="datetime-local"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-              value={values.startAt}
-              min={minStartAtLocal()}
-              step={60}
-              onChange={(e) => handlers.onStartAtChange(e.target.value)}
-              required
-            />
+            <div className="mt-2 flex gap-2">
+              <input
+                type="date"
+                className="h-11 flex-1 rounded-xl border border-zinc-200 px-3"
+                value={values.startAt.slice(0, 10)}
+                min={minStartAtLocal().slice(0, 10)}
+                onChange={(e) =>
+                  handlers.onStartAtChange(
+                    e.target.value + "T" + (values.startAt.slice(11, 16) || "09:00"),
+                  )
+                }
+                required
+              />
+              <input
+                type="time"
+                className="h-11 w-24 rounded-xl border border-zinc-200 px-3"
+                value={values.startAt.slice(11, 16)}
+                onChange={(e) =>
+                  handlers.onStartAtChange(
+                    (values.startAt.slice(0, 10) || minStartAtLocal().slice(0, 10)) +
+                      "T" +
+                      e.target.value,
+                  )
+                }
+                required
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium">
               {labels.end} {req}
             </label>
-            <input
-              type="datetime-local"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-              value={values.endAt}
-              min={values.startAt ? plusDaysLocal(values.startAt, 0) : minStartAtLocal()}
-              step={60}
-              onChange={(e) => handlers.onEndAtChange(e.target.value)}
-              required
-            />
+            <div className="mt-2 flex gap-2">
+              <input
+                type="date"
+                className="h-11 flex-1 rounded-xl border border-zinc-200 px-3"
+                value={values.endAt.slice(0, 10)}
+                min={
+                  values.startAt
+                    ? plusDaysLocal(values.startAt, 0).slice(0, 10)
+                    : minStartAtLocal().slice(0, 10)
+                }
+                onChange={(e) =>
+                  handlers.onEndAtChange(
+                    e.target.value + "T" + (values.endAt.slice(11, 16) || "09:00"),
+                  )
+                }
+                required
+              />
+              <input
+                type="time"
+                className="h-11 w-24 rounded-xl border border-zinc-200 px-3"
+                value={values.endAt.slice(11, 16)}
+                onChange={(e) =>
+                  handlers.onEndAtChange(
+                    (values.endAt.slice(0, 10) || minStartAtLocal().slice(0, 10)) +
+                      "T" +
+                      e.target.value,
+                  )
+                }
+                required
+              />
+            </div>
           </div>
         </div>
 
