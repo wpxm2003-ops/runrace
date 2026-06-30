@@ -5,11 +5,13 @@ import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
-import { usePersonalBests, useTrainingPlan, saveTrainingPlan } from "@/lib/api";
+import { usePersonalBests, useTrainingPlan, saveTrainingPlan, cancelTrainingPlan } from "@/lib/api";
 import type { PersonalBestRow } from "@/lib/api/types";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { useConfirm } from "@/app/_components/ConfirmProvider";
+import { clearNsmProgress } from "@/lib/nsmSessionProgress";
 import { useLocale } from "@/lib/i18n";
 import type { Translations } from "@/lib/i18n/translations";
 import { toast } from "sonner";
@@ -78,6 +80,7 @@ type Result = {
 
 function TrainingContent({ user }: { user: User | null }) {
   const { t, locale } = useLocale();
+  const confirm = useConfirm();
   const { data: pbs } = usePersonalBests(user);
   const { data: savedPlan, mutate: mutatePlan } = useTrainingPlan(user);
 
@@ -90,6 +93,7 @@ function TrainingContent({ user }: { user: User | null }) {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   // 저장된 플랜을 최초 1회 화면에 복원. ref 가드로 늦게 도착해도(SWR 지연) 반드시 1회 적용.
   const hydratedRef = useRef(false);
@@ -169,6 +173,33 @@ function TrainingContent({ user }: { user: User | null }) {
       toast.error(t.nsm_toast_save_fail);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onCancel() {
+    if (!user || canceling) return;
+    const ok = await confirm({
+      title: t.nsm_cancel_title,
+      message: t.nsm_cancel_message,
+      confirmLabel: t.nsm_cancel_confirm,
+      cancelLabel: t.nsm_cancel_keep,
+      destructive: true,
+    });
+    if (!ok) return;
+    setCanceling(true);
+    try {
+      await cancelTrainingPlan(user);
+      // 캐시를 즉시 비워 '오늘의 세션'·운동 페이지 NSM 가이드가 바로 사라지게 한다.
+      await mutatePlan(null, { revalidate: false });
+      setResult(null); // 화면을 플랜 없는 상태로 리셋
+      hydratedRef.current = false;
+      // 동일 구조로 플랜 재생성 시 stale 렙 상태가 복원되지 않도록 진행상태 정리.
+      clearNsmProgress();
+      toast.success(t.nsm_toast_canceled);
+    } catch {
+      toast.error(t.nsm_toast_cancel_fail);
+    } finally {
+      setCanceling(false);
     }
   }
 
@@ -382,6 +413,17 @@ function TrainingContent({ user }: { user: User | null }) {
             <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">{t.nsm_week_note}</p>
           </Card>
         </>
+      ) : null}
+
+      {user && savedPlan ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={canceling}
+          className="mt-4 w-full rounded-lg border border-red-200 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        >
+          {t.nsm_cancel_btn}
+        </button>
       ) : null}
     </PageLayout>
   );

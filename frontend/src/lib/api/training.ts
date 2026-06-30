@@ -11,3 +11,8 @@ export function fetchTrainingPlan(user: User) {
 export function saveTrainingPlan(body: TrainingPlan, user: User) {
   return apiFetch<TrainingPlan>("/api/training-plan", { method: "PUT", user, body });
 }
+
+/** NSM 플랜 취소(삭제). 정적 export 환경 대응으로 POST 사용. */
+export function cancelTrainingPlan(user: User) {
+  return apiFetch<void>("/api/training-plan/cancel", { method: "POST", user });
+}

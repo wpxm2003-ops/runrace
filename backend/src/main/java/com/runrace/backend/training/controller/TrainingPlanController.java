@@ -7,6 +7,7 @@ import com.runrace.backend.training.service.TrainingPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,5 +36,15 @@ public class TrainingPlanController {
       AuthPrincipal principal, @RequestBody TrainingPlanRequest body) {
     return ResponseEntity.ok(
         TrainingPlanResponse.from(trainingPlanService.save(principal.userId(), body)));
+  }
+
+  /**
+   * 플랜 취소(삭제). 정적 export 환경에서 DELETE가 막히는 경우가 있어 POST를 사용한다.
+   * 플랜이 없어도 204(멱등).
+   */
+  @PostMapping("/cancel")
+  public ResponseEntity<Void> cancel(AuthPrincipal principal) {
+    trainingPlanService.cancel(principal.userId());
+    return ResponseEntity.noContent().build();
   }
 }

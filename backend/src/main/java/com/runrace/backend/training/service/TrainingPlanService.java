@@ -24,6 +24,12 @@ public class TrainingPlanService {
     return trainingPlanRepository.findByUserId(userId);
   }
 
+  /** 내 활성 플랜 취소(삭제). 플랜이 없으면 멱등 no-op. */
+  @Transactional
+  public void cancel(UUID userId) {
+    trainingPlanRepository.findByUserId(userId).ifPresent(trainingPlanRepository::delete);
+  }
+
   @Transactional
   public TrainingPlan save(UUID userId, TrainingPlanRequest req) {
     String csv = normalizeSubTDays(req.subTDays());
