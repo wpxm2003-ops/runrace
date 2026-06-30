@@ -3,7 +3,7 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
-import { STAKE_MAX_CHARS } from "@/lib/challengeForm";
+import { STAKE_MAX_CHARS, minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 import { DateTimePickerSheet } from "./DateTimePickerSheet";
@@ -133,6 +133,7 @@ export function ChallengeFormFields({
             <DateTimePickerSheet
               value={values.startAt}
               onChange={handlers.onStartAtChange}
+              min={minStartAtLocal()}
               label={labels.start}
             />
           </div>
@@ -143,6 +144,7 @@ export function ChallengeFormFields({
             <DateTimePickerSheet
               value={values.endAt}
               onChange={handlers.onEndAtChange}
+              min={values.startAt ? plusDaysLocal(values.startAt, 0) : minStartAtLocal()}
               label={labels.end}
             />
           </div>

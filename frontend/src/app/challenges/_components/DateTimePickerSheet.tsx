@@ -6,7 +6,7 @@ import { useNativeBack } from "@/lib/useNativeBack";
 // ── constants ───────────────────────────────────────────────────────────────
 const ITEM_H = 44;
 const VISIBLE = 5;
-const PAD = Math.floor(VISIBLE / 2); // 2 rows above/below center
+const PAD = Math.floor(VISIBLE / 2); // 2
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 function pad2(n: number) {
@@ -14,7 +14,7 @@ function pad2(n: number) {
 }
 
 function daysInMonth(year: number, month: number) {
-  return new Date(year, month, 0).getDate(); // month 1-based
+  return new Date(year, month, 0).getDate();
 }
 
 function range(from: number, to: number, fmt?: (n: number) => string): string[] {
@@ -92,7 +92,7 @@ function Drum({
     <div className="relative" style={{ width }}>
       {/* selection highlight */}
       <div
-        className="pointer-events-none absolute inset-x-0.5 rounded-lg bg-zinc-100"
+        className="pointer-events-none absolute inset-x-0 rounded-lg bg-zinc-100"
         style={{ top: PAD * ITEM_H, height: ITEM_H }}
       />
       {/* fade top */}
@@ -141,12 +141,34 @@ function Drum({
   );
 }
 
+// ── Column with header ───────────────────────────────────────────────────────
+function Col({
+  label,
+  items,
+  selectedIdx,
+  onSelect,
+  width,
+}: {
+  label: string;
+  items: string[];
+  selectedIdx: number;
+  onSelect: (idx: number) => void;
+  width: number;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-xs text-zinc-400">{label}</span>
+      <Drum items={items} selectedIdx={selectedIdx} onSelect={onSelect} width={width} />
+    </div>
+  );
+}
+
 // ── static lists ─────────────────────────────────────────────────────────────
 const NOW = new Date();
-const YEAR_START = NOW.getFullYear() - 1;
-const YEAR_END = NOW.getFullYear() + 2;
+const YEAR_START = NOW.getFullYear();
+const YEAR_END = YEAR_START + 3;
 const YEARS = range(YEAR_START, YEAR_END);
-const MONTHS = range(1, 12, String);
+const MONTHS = range(1, 12, (n) => String(n));
 const HOURS = range(0, 23, pad2);
 const MINUTES = range(0, 59, pad2);
 
@@ -154,12 +176,14 @@ const MINUTES = range(0, 59, pad2);
 type Props = {
   value: string; // "yyyy-MM-ddTHH:mm" or ""
   onChange: (v: string) => void;
+  /** 최소 허용 datetime-local 문자열. 없으면 현재 시각. */
+  min?: string;
   label: string;
 };
 
-export function DateTimePickerSheet({ value, onChange, label }: Props) {
+export function DateTimePickerSheet({ value, onChange, min, label }: Props) {
   const [open, setOpen] = useState(false);
-  const [year, setYear] = useState(NOW.getFullYear());
+  const [year, setYear] = useState(YEAR_START);
   const [month, setMonth] = useState(NOW.getMonth() + 1);
   const [day, setDay] = useState(NOW.getDate());
   const [hour, setHour] = useState(9);
@@ -167,10 +191,9 @@ export function DateTimePickerSheet({ value, onChange, label }: Props) {
 
   const days = useMemo(() => {
     const max = daysInMonth(year, month);
-    return range(1, max, String);
+    return range(1, max, (n) => String(n));
   }, [year, month]);
 
-  // clamp day when month/year changes
   useEffect(() => {
     const max = daysInMonth(year, month);
     if (day > max) setDay(max);
@@ -180,18 +203,34 @@ export function DateTimePickerSheet({ value, onChange, label }: Props) {
 
   function openSheet() {
     const p = parseValue(value);
-    if (p) {
+    if (p && YEARS.includes(String(p.year))) {
       setYear(p.year);
       setMonth(p.month);
       setDay(p.day);
       setHour(p.hour);
       setMinute(p.minute);
+    } else {
+      // 값이 없거나 연도가 범위 밖이면 내일 09:00 기본값
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      setYear(YEAR_START);
+      setMonth(d.getMonth() + 1);
+      setDay(d.getDate());
+      setHour(9);
+      setMinute(0);
     }
     setOpen(true);
   }
 
   function confirm() {
-    onChange(buildValue(year, month, day, hour, minute));
+    const result = buildValue(year, month, day, hour, minute);
+    // min 제약 적용: 선택 결과가 min보다 이르면 min 값으로 보정
+    const minStr = min ?? buildValue(NOW.getFullYear(), NOW.getMonth() + 1, NOW.getDate(), NOW.getHours(), NOW.getMinutes());
+    if (result < minStr) {
+      onChange(minStr);
+    } else {
+      onChange(result);
+    }
     setOpen(false);
   }
 
@@ -210,57 +249,56 @@ export function DateTimePickerSheet({ value, onChange, label }: Props) {
 
       {open && (
         <>
-          {/* backdrop */}
           <div
             className="fixed inset-0 z-[100] bg-black/40"
             onClick={() => setOpen(false)}
           />
-          {/* sheet */}
           <div className="fixed inset-x-0 bottom-0 z-[110] rounded-t-2xl bg-white px-4">
             <div className="py-3 text-center text-sm font-medium text-zinc-600">
               {label}
             </div>
 
-            {/* drum columns */}
-            <div className="flex items-center justify-center gap-0.5">
-              <Drum
+            {/* drums */}
+            <div className="flex items-start justify-center gap-2">
+              <Col
+                label="년"
                 items={YEARS}
                 selectedIdx={Math.max(0, YEARS.indexOf(String(year)))}
                 onSelect={(i) => setYear(parseInt(YEARS[i], 10))}
-                width={60}
+                width={64}
               />
-              <span className="shrink-0 px-0.5 text-xs text-zinc-400">년</span>
-              <Drum
+              <Col
+                label="월"
                 items={MONTHS}
                 selectedIdx={month - 1}
                 onSelect={(i) => setMonth(i + 1)}
-                width={40}
+                width={36}
               />
-              <span className="shrink-0 px-0.5 text-xs text-zinc-400">월</span>
-              <Drum
+              <Col
+                label="일"
                 items={days}
                 selectedIdx={Math.min(day - 1, days.length - 1)}
                 onSelect={(i) => setDay(i + 1)}
-                width={40}
+                width={36}
               />
-              <span className="shrink-0 px-0.5 text-xs text-zinc-400">일</span>
-              <div className="w-4" />
-              <Drum
+              <div className="mx-1 self-center text-zinc-200 text-lg">|</div>
+              <Col
+                label="시"
                 items={HOURS}
                 selectedIdx={hour}
                 onSelect={(i) => setHour(i)}
-                width={44}
+                width={40}
               />
-              <span className="shrink-0 text-sm font-medium text-zinc-400">:</span>
-              <Drum
+              <Col
+                label="분"
                 items={MINUTES}
                 selectedIdx={minute}
                 onSelect={(i) => setMinute(i)}
-                width={44}
+                width={40}
               />
             </div>
 
-            {/* action buttons */}
+            {/* buttons */}
             <div className="mt-4 flex gap-3 pb-8">
               <button
                 type="button"
