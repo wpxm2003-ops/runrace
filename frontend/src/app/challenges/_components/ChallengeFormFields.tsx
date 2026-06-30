@@ -3,9 +3,10 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
-import { STAKE_MAX_CHARS, minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
+import { STAKE_MAX_CHARS } from "@/lib/challengeForm";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
+import { DateTimePickerSheet } from "./DateTimePickerSheet";
 
 type FormHandlers = {
   onTitleChange: (raw: string) => void;
@@ -129,28 +130,20 @@ export function ChallengeFormFields({
             <label className="block text-sm font-medium">
               {labels.start} {req}
             </label>
-            <input
-              type="datetime-local"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
+            <DateTimePickerSheet
               value={values.startAt}
-              min={minStartAtLocal()}
-              step={60}
-              onChange={(e) => handlers.onStartAtChange(e.target.value)}
-              required
+              onChange={handlers.onStartAtChange}
+              label={labels.start}
             />
           </div>
           <div>
             <label className="block text-sm font-medium">
               {labels.end} {req}
             </label>
-            <input
-              type="datetime-local"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
+            <DateTimePickerSheet
               value={values.endAt}
-              min={values.startAt ? plusDaysLocal(values.startAt, 0) : minStartAtLocal()}
-              step={60}
-              onChange={(e) => handlers.onEndAtChange(e.target.value)}
-              required
+              onChange={handlers.onEndAtChange}
+              label={labels.end}
             />
           </div>
         </div>
