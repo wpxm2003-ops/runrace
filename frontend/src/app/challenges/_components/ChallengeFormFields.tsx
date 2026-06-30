@@ -3,10 +3,9 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
-import { STAKE_MAX_CHARS } from "@/lib/challengeForm";
+import { STAKE_MAX_CHARS, minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
-import { DateTimePickerSheet } from "./DateTimePickerSheet";
 
 type FormHandlers = {
   onTitleChange: (raw: string) => void;
@@ -96,49 +95,62 @@ export function ChallengeFormFields({
           required
         />
 
-        <label className="mt-4 block text-sm font-medium">
-          {labels.goal} {req}
-        </label>
-        <input
-          className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-          inputMode="decimal"
-          value={values.goalKm}
-          onChange={(e) => handlers.onGoalKmChange(e.target.value)}
-          placeholder={labels.goalPlaceholder}
-          required
-        />
-
-        <label className="mt-4 block text-sm font-medium">
-          {labels.members} {req}
-        </label>
-        <input
-          className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={values.maxMembers}
-          onChange={(e) => handlers.onMaxMembersChange(e.target.value)}
-          required
-        />
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium">
+              {labels.goal} {req}
+            </label>
+            <input
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
+              inputMode="decimal"
+              value={values.goalKm}
+              onChange={(e) => handlers.onGoalKmChange(e.target.value)}
+              placeholder={labels.goalPlaceholder}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">
+              {labels.members} {req}
+            </label>
+            <input
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={values.maxMembers}
+              onChange={(e) => handlers.onMaxMembersChange(e.target.value)}
+              required
+            />
+          </div>
+        </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium">
               {labels.start} {req}
             </label>
-            <DateTimePickerSheet
+            <input
+              type="datetime-local"
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
               value={values.startAt}
-              onChange={handlers.onStartAtChange}
-              label={labels.start}
+              min={minStartAtLocal()}
+              step={60}
+              onChange={(e) => handlers.onStartAtChange(e.target.value)}
+              required
             />
           </div>
           <div>
             <label className="block text-sm font-medium">
               {labels.end} {req}
             </label>
-            <DateTimePickerSheet
+            <input
+              type="datetime-local"
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 px-3"
               value={values.endAt}
-              onChange={handlers.onEndAtChange}
-              label={labels.end}
+              min={values.startAt ? plusDaysLocal(values.startAt, 0) : minStartAtLocal()}
+              step={60}
+              onChange={(e) => handlers.onEndAtChange(e.target.value)}
+              required
             />
           </div>
         </div>
