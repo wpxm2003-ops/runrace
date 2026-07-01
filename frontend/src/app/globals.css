@@ -31,9 +31,9 @@ body {
 input,
 textarea,
 [contenteditable="true"] {
-  -webkit-touch-callout: default;
-  -webkit-user-select: text;
-  user-select: text;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .leaflet-container {
