@@ -35,6 +35,7 @@ type Props = {
   /** 내기와 경품은 양자택일 — 경품이 걸려 있으면 내기 토글을 비활성화한다. */
   stakeDisabled?: boolean;
   stakeDisabledHint?: string;
+  onStakeOpenChange?: (open: boolean) => void;
   /** 내기 토글 아래, 저장 버튼 위에 끼우는 추가 섹션 (경품 등). */
   extraSection?: ReactNode;
   /** 저장 버튼 바로 위 안내 (등록 화면 등) */
@@ -55,6 +56,7 @@ export function ChallengeFormFields({
   formSuccess,
   stakeDisabled = false,
   stakeDisabledHint,
+  onStakeOpenChange,
   extraSection,
   submitNotice,
   submitLabel,
@@ -68,11 +70,14 @@ export function ChallengeFormFields({
   // 내기(페널티/보상) 입력 노출 토글. 기존 값이 있으면(수정 진입 등) 자동으로 펼친다.
   const [showStake, setShowStake] = useState(false);
   useEffect(() => {
-    if (values.stake) setShowStake(true);
-  }, [values.stake]);
+    if (!values.stake) return;
+    setShowStake(true);
+    onStakeOpenChange?.(true);
+  }, [values.stake, onStakeOpenChange]);
 
   function toggleStake(open: boolean) {
     setShowStake(open);
+    onStakeOpenChange?.(open);
     if (!open) handlers.onStakeChange("");
   }
 

@@ -32,6 +32,7 @@ export default function ChallengeEditContent() {
   const initializedIdRef = useRef<number | null>(null);
 
   // 경품
+  const [stakeOpen, setStakeOpen] = useState(false);
   const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
@@ -46,6 +47,8 @@ export default function ChallengeEditContent() {
   const { data: prizeData } = usePrizes(id, user);
 
   const maxRank = prizeMaxRank(form.values.maxMembers);
+  const stakeSelected = stakeOpen || !!form.values.stake;
+  const prizeSelected = prizeOpen || prizes.length > 0;
 
   // 상세 데이터 최초 로드 시 폼 초기화
   useEffect(() => {
@@ -85,6 +88,7 @@ export default function ChallengeEditContent() {
   // id 변경 시 초기화 상태 리셋
   useEffect(() => {
     initializedIdRef.current = null;
+    setStakeOpen(false);
     prizesInitializedRef.current = false;
     setPrizesModified(false);
   }, [id]);
@@ -139,8 +143,9 @@ export default function ChallengeEditContent() {
         }}
         formError={error}
         formHint={form.formHint}
-        stakeDisabled={prizes.length > 0 && !form.values.stake}
+        stakeDisabled={prizeSelected && !stakeSelected}
         stakeDisabledHint={t.reward_mutually_exclusive}
+        onStakeOpenChange={setStakeOpen}
         extraSection={
           <PrizeAccordionSection
             prizes={prizes}
@@ -148,7 +153,7 @@ export default function ChallengeEditContent() {
             open={prizeOpen}
             onToggle={() => setPrizeOpen((v) => !v)}
             onEdit={() => { if (user) setPrizeModalOpen(true); }}
-            disabled={!!form.values.stake && prizes.length === 0}
+            disabled={stakeSelected && !prizeSelected}
             disabledHint={t.reward_mutually_exclusive}
           />
         }

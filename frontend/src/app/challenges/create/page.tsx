@@ -30,6 +30,7 @@ export default function CreateChallengePage() {
   const { unit } = useUnit();
   const [submitting, setSubmitting] = useState(false);
   const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
+  const [stakeOpen, setStakeOpen] = useState(false);
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
 
@@ -42,6 +43,8 @@ export default function CreateChallengePage() {
   });
 
   const maxRank = prizeMaxRank(form.values.maxMembers);
+  const stakeSelected = stakeOpen || !!form.values.stake;
+  const prizeSelected = prizeOpen || prizes.length > 0;
 
   const templateNames: Record<RaceTemplateKey, string> = {
     weekend10: t.tpl_weekend10,
@@ -139,8 +142,9 @@ export default function CreateChallengePage() {
         }}
         formError={error}
         formHint={form.formHint}
-        stakeDisabled={prizes.length > 0 && !form.values.stake}
+        stakeDisabled={prizeSelected && !stakeSelected}
         stakeDisabledHint={t.reward_mutually_exclusive}
+        onStakeOpenChange={setStakeOpen}
         extraSection={
           <PrizeAccordionSection
             prizes={prizes}
@@ -148,7 +152,7 @@ export default function CreateChallengePage() {
             open={prizeOpen}
             onToggle={() => setPrizeOpen((v) => !v)}
             onEdit={() => { if (user) setPrizeModalOpen(true); }}
-            disabled={!!form.values.stake && prizes.length === 0}
+            disabled={stakeSelected && !prizeSelected}
             disabledHint={t.reward_mutually_exclusive}
           />
         }
