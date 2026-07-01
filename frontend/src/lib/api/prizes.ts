@@ -15,6 +15,7 @@ export function savePrizes(challengeId: number, prizes: PrizeFormItem[], user: U
     name: p.name,
     imageKey: p.imageKey,
     keepImage: p.keepImage ?? false,
+    keepImageFromRank: p.keepImageFromRank ?? null,
   }));
   return apiFetch<void>(`/api/challenges/${challengeId}/prizes`, { method: "PUT", user, body });
 }

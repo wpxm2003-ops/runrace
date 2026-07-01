@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import type { PrizeFormItem } from "@/lib/api/types";
-import { uploadPrivateImage } from "@/lib/api/prizes";
+import { uploadPrivateImage, fetchPrizeImageObjectUrl } from "@/lib/api/prizes";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
@@ -19,9 +19,23 @@ type Row = {
   previewUrl: string | null;
   /** 기존 이미지(수정 진입)인데 미리보기 없음 — '이미지 있음'만 표시. */
   hasExistingImage: boolean;
+  /** 보존할 기존 이미지의 원본 등수. 순서 변경에도 이미지를 정확히 매칭하기 위한 안정 식별자. */
+  originalRank: number | null;
   uploading: boolean;
   error: string | null;
 };
+
+function emptyRow(): Row {
+  return {
+    name: "",
+    imageKey: null,
+    previewUrl: null,
+    hasExistingImage: false,
+    originalRank: null,
+    uploading: false,
+    error: null,
+  };
+}
 
 function toRow(p: PrizeFormItem): Row {
   return {
@@ -29,6 +43,7 @@ function toRow(p: PrizeFormItem): Row {
     imageKey: p.imageKey,
     previewUrl: null,
     hasExistingImage: p.keepImage === true,
+    originalRank: p.keepImageFromRank ?? null,
     uploading: false,
     error: null,
   };
@@ -42,6 +57,7 @@ export function PrizeEditorModal({
   prizes,
   maxRank,
   user,
+  challengeId,
   onSave,
   onClose,
 }: {
@@ -49,12 +65,14 @@ export function PrizeEditorModal({
   /** 등록 가능한 최대 등수(= min(정원, 10)). */
   maxRank: number;
   user: User;
+  /** 수정 시 레이스 id — 있으면 기존 경품 이미지를 미리보기로 불러온다(생성 시엔 없음). */
+  challengeId?: number;
   onSave: (prizes: PrizeFormItem[]) => void;
   onClose: () => void;
 }) {
   const { t } = useLocale();
   const [rows, setRows] = useState<Row[]>(() =>
-    prizes.length ? prizes.map(toRow) : [{ name: "", imageKey: null, previewUrl: null, hasExistingImage: false, uploading: false, error: null }],
+    prizes.length ? prizes.map(toRow) : [emptyRow()],
   );
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -68,6 +86,31 @@ export function PrizeEditorModal({
     return () => set.forEach((u) => URL.revokeObjectURL(u));
   }, []);
 
+  // 수정 진입: 기존 경품 이미지를 원본 등수로 불러와 썸네일로 표시(생성자만 서버가 허용).
+  // 실패는 조용히 무시 → '이미지 있음' 표시 유지.
+  useEffect(() => {
+    if (challengeId == null) return;
+    rows
+      .filter((r) => r.hasExistingImage && r.originalRank != null && !r.previewUrl)
+      .forEach((r) => {
+        const rank = r.originalRank as number;
+        fetchPrizeImageObjectUrl(challengeId, rank, user)
+          .then((url) => {
+            previewsRef.current.add(url);
+            setRows((rs) =>
+              rs.map((row) =>
+                row.originalRank === rank && row.hasExistingImage && !row.previewUrl
+                  ? { ...row, previewUrl: url }
+                  : row,
+              ),
+            );
+          })
+          .catch(() => {});
+      });
+    // 마운트 시 1회만 — 초기 로딩된 기존 이미지 대상.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const cap = Math.max(1, Math.min(maxRank, 10));
 
   function patch(i: number, next: Partial<Row>) {
@@ -79,7 +122,7 @@ export function PrizeEditorModal({
     setRows((rs) =>
       rs.length >= cap
         ? rs
-        : [...rs, { name: "", imageKey: null, previewUrl: null, hasExistingImage: false, uploading: false, error: null }],
+        : [...rs, emptyRow()],
     );
   }
 
@@ -155,6 +198,7 @@ export function PrizeEditorModal({
       name: r.name,
       imageKey: r.hasExistingImage ? null : r.imageKey,
       keepImage: r.hasExistingImage,
+      keepImageFromRank: r.hasExistingImage ? r.originalRank : null,
     }));
     onSave(items);
     onClose();

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,11 +77,8 @@ public class ChallengePrizeService {
     // 저장 후 실제 사용될 S3 키 집합 계산
     Set<String> keptKeys = new HashSet<>();
     for (PrizeItemRequest it : items) {
-      if (it.keepImage() && oldKeysByRank.containsKey(it.rank())) {
-        keptKeys.add(oldKeysByRank.get(it.rank()));
-      } else if (it.imageKey() != null && imageUploadService.isPrivateKey(it.imageKey())) {
-        keptKeys.add(it.imageKey());
-      }
+      String kept = keptKey(it, oldKeysByRank);
+      if (kept != null) keptKeys.add(kept);
     }
 
     // 재사용되지 않는 기존 이미지 S3 삭제
@@ -92,32 +90,53 @@ public class ChallengePrizeService {
 
     prizeRepository.deleteByChallengeId(challengeId);
     for (PrizeItemRequest it : items) {
-      String key;
-      if (it.keepImage() && oldKeysByRank.containsKey(it.rank())) {
-        key = oldKeysByRank.get(it.rank());
-      } else if (it.imageKey() != null && imageUploadService.isPrivateKey(it.imageKey())) {
-        key = it.imageKey();
-      } else {
-        key = null;
-      }
-      prizeRepository.save(ChallengePrize.of(challengeId, it.rank(), it.name().trim(), key));
+      prizeRepository.save(ChallengePrize.of(challengeId, it.rank(), it.name().trim(), keptKey(it, oldKeysByRank)));
     }
   }
 
+  private String keptKey(PrizeItemRequest it, Map<Integer, String> oldKeysByRank) {
+    return keptKey(it, oldKeysByRank, imageUploadService::isPrivateKey);
+  }
+
   /**
-   * 기프티콘 이미지 — 게이트: 레이스 종료 + 요청자의 final_rank == 경품 등수일 때만.
-   * 첫 열람 시 수령(viewed) 기록.
+   * 이 항목에 실제 붙일 S3 키를 결정한다. (순수 함수 — 테스트 대상)
+   * keepImage면 '원본 등수'(keepImageFromRank, 없으면 현재 rank)로 기존 이미지를 찾고,
+   * 아니면 새로 업로드된 키를, 그것도 없으면 null(이미지 없음).
+   * 재인덱싱된 현재 rank가 아니라 원본 등수로 매칭해 편집 중 순서 변경 시 이미지 뒤바뀜/유실을 막는다.
+   */
+  static String keptKey(
+      PrizeItemRequest it, Map<Integer, String> oldKeysByRank, Predicate<String> isPrivateKey) {
+    if (it.keepImage()) {
+      int src = it.keepImageFromRank() != null ? it.keepImageFromRank() : it.rank();
+      String old = oldKeysByRank.get(src);
+      if (old != null) return old;
+    }
+    if (it.imageKey() != null && isPrivateKey.test(it.imageKey())) {
+      return it.imageKey();
+    }
+    return null;
+  }
+
+  /**
+   * 기프티콘 이미지.
+   * - 생성자: 자기 레이스 경품 이미지를 편집용으로 언제든 미리볼 수 있다(자기가 올린 것 → 유출 아님). 수령 기록 안 함.
+   * - 그 외: 레이스 종료 + 요청자의 final_rank == 경품 등수일 때만. 첫 열람 시 수령(viewed) 기록.
    */
   @Transactional
   public ImageUploadService.StoredImage getPrizeImage(UUID userId, Long challengeId, int rank) {
     Challenge challenge = requireChallenge(challengeId);
-    if (!challenge.isEnded()) {
-      throw ApiException.forbidden("race_not_ended");
-    }
     ChallengePrize prize = prizeRepository.findByChallengeIdAndRank(challengeId, rank)
         .orElseThrow(() -> ApiException.notFound("prize_not_found"));
     if (prize.getImageKey() == null) {
       throw ApiException.notFound("no_prize_image");
+    }
+
+    if (challenge.isOwner(userId)) {
+      return imageUploadService.loadPrivate(prize.getImageKey());
+    }
+
+    if (!challenge.isEnded()) {
+      throw ApiException.forbidden("race_not_ended");
     }
     ChallengeMember member = challengeMemberRepository.findByChallengeIdAndUserId(challengeId, userId)
         .orElseThrow(() -> ApiException.forbidden("not_a_member"));

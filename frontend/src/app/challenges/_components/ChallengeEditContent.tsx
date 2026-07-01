@@ -75,6 +75,8 @@ export default function ChallengeEditContent() {
       name: row.name,
       imageKey: null,
       keepImage: row.hasImage,
+      // 원본 등수를 기록해 두면 편집 중 순서가 바뀌어도 이미지를 정확히 보존한다.
+      keepImageFromRank: row.hasImage ? row.rank : null,
     }));
     setPrizes(items);
     if (items.length > 0) setPrizeOpen(true);
@@ -158,6 +160,7 @@ export default function ChallengeEditContent() {
           prizes={prizes}
           maxRank={maxRank}
           user={user}
+          challengeId={id ?? undefined}
           onSave={(items) => { setPrizes(items); setPrizesModified(true); }}
           onClose={() => setPrizeModalOpen(false)}
         />

@@ -137,6 +137,11 @@ export type PrizeFormItem = {
   imageKey: string | null;
   /** true면 서버에 저장된 기존 이미지를 보존하도록 요청 (수정 시 사용). */
   keepImage?: boolean;
+  /**
+   * keepImage=true일 때 보존할 기존 이미지의 '원본 등수'.
+   * 편집 중 순서가 바뀌어 rank가 재부여돼도 이미지를 정확히 매칭하기 위한 안정 식별자.
+   */
+  keepImageFromRank?: number | null;
 };
 
 export type ChallengeFormBody = {
