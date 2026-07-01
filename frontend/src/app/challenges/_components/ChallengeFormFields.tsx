@@ -32,6 +32,9 @@ type Props = {
   formError?: string | null;
   formHint?: string | null;
   formSuccess?: string | null;
+  /** 내기와 경품은 양자택일 — 경품이 걸려 있으면 내기 토글을 비활성화한다. */
+  stakeDisabled?: boolean;
+  stakeDisabledHint?: string;
   /** 내기 토글 아래, 저장 버튼 위에 끼우는 추가 섹션 (경품 등). */
   extraSection?: ReactNode;
   /** 저장 버튼 바로 위 안내 (등록 화면 등) */
@@ -50,6 +53,8 @@ export function ChallengeFormFields({
   formError,
   formHint,
   formSuccess,
+  stakeDisabled = false,
+  stakeDisabledHint,
   extraSection,
   submitNotice,
   submitLabel,
@@ -157,6 +162,8 @@ export function ChallengeFormFields({
             active={!!values.stake}
             open={showStake}
             onToggle={() => toggleStake(!showStake)}
+            disabled={stakeDisabled}
+            disabledHint={stakeDisabledHint}
           >
             <input
               className="h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm"

@@ -139,6 +139,8 @@ export default function ChallengeEditContent() {
         }}
         formError={error}
         formHint={form.formHint}
+        stakeDisabled={prizes.length > 0 && !form.values.stake}
+        stakeDisabledHint={t.reward_mutually_exclusive}
         extraSection={
           <PrizeAccordionSection
             prizes={prizes}
@@ -146,6 +148,8 @@ export default function ChallengeEditContent() {
             open={prizeOpen}
             onToggle={() => setPrizeOpen((v) => !v)}
             onEdit={() => { if (user) setPrizeModalOpen(true); }}
+            disabled={!!form.values.stake && prizes.length === 0}
+            disabledHint={t.reward_mutually_exclusive}
           />
         }
         submitLabel={t.edit_btn}

@@ -14,12 +14,17 @@ export function PrizeAccordionSection({
   open,
   onToggle,
   onEdit,
+  disabled = false,
+  disabledHint,
 }: {
   prizes: PrizeFormItem[];
   maxRank: number;
   open: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  /** 내기와 양자택일 — 내기가 걸려 있으면 비활성화. */
+  disabled?: boolean;
+  disabledHint?: string;
 }) {
   const { t } = useLocale();
   return (
@@ -28,6 +33,8 @@ export function PrizeAccordionSection({
       active={prizes.length > 0}
       open={open}
       onToggle={onToggle}
+      disabled={disabled}
+      disabledHint={disabledHint}
     >
       <p className="text-[11px] leading-relaxed text-zinc-400">{t.prize_section_hint(maxRank)}</p>
       {prizes.length > 0 ? (
