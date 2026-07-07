@@ -96,14 +96,11 @@ public class WorkoutController {
     return ResponseEntity.ok(personalBestService.listForUser(principal.userId()));
   }
 
-  /** 기록 달력용 — 연도별 운동 목록. year 없으면 전체(레거시). */
+  /** 기록 달력용 — 연도별 운동 목록. */
   @GetMapping
   public ResponseEntity<List<WorkoutListItem>> list(
-      AuthPrincipal principal, @RequestParam(required = false) Integer year) {
-    var sessions =
-        year != null
-            ? workoutService.listForUserInYear(principal.userId(), year)
-            : workoutService.listForUser(principal.userId());
+      AuthPrincipal principal, @RequestParam Integer year) {
+    var sessions = workoutService.listForUserInYear(principal.userId(), year);
     List<WorkoutListItem> items =
         sessions.stream()
             .map(

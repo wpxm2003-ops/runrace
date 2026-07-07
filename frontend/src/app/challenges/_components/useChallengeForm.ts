@@ -64,7 +64,6 @@ export function useChallengeForm({
   const [stake, setStake] = useState(initial?.stake ?? "");
   const [formError, setFormError] = useState<string | null>(null);
   const [formHint, setFormHint] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   const values: ChallengeFormValues = useMemo(
     () => ({ title, goalKm, maxMembers, startAt, endAt, stake }),
@@ -74,13 +73,11 @@ export function useChallengeForm({
   const clearFeedback = useCallback(() => {
     setFormError(null);
     setFormHint(null);
-    setFormSuccess(null);
   }, []);
 
-  /** 입력 시 직전 에러·성공만 지운다(힌트는 각 핸들러가 따로 설정). */
+  /** 입력 시 직전 에러만 지운다(힌트는 각 핸들러가 따로 설정). */
   const clearErrors = useCallback(() => {
     setFormError(null);
-    setFormSuccess(null);
   }, []);
 
   const reset = useCallback((next: Partial<ChallengeFormValues>) => {
@@ -169,8 +166,6 @@ export function useChallengeForm({
     formError,
     setFormError,
     formHint,
-    formSuccess,
-    setFormSuccess,
     clearFeedback,
     reset,
     onTitleChange,

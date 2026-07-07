@@ -207,13 +207,10 @@ export function handleNativeBack(canGoBack: boolean): void {
     return;
   }
 
-  // 4) 탭 루트가 아닌 일반 경로는 WebView 히스토리 back에 맡긴다.
+  // 4) 탭 루트가 아닌 일반 경로 — WebView 히스토리가 있으면 back에 맡긴다.
+  //    히스토리가 없으면(딥링크 진입 등) router.back()은 no-op이 되어 막다른 골목이 되므로,
+  //    탭 루트와 동일하게 앱을 종료한다.
   if (canGoBack && _back) {
-    _back();
-    return;
-  }
-
-  if (_back) {
     _back();
     return;
   }

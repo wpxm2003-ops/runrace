@@ -9,8 +9,10 @@ import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengePrizeRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.event.ChallengeEvents;
 import com.runrace.backend.upload.ImageUploadService;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +39,7 @@ public class ChallengePrizeService {
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
   private final ImageUploadService imageUploadService;
+  private final ApplicationEventPublisher eventPublisher;
 
   /** 경품 목록 — 경품명·이미지 유무·수령 여부만. S3 키는 절대 반환하지 않는다. */
   @Transactional(readOnly = true)
@@ -67,8 +71,9 @@ public class ChallengePrizeService {
 
     // 빈 목록 = 경품 전체 삭제
     if (items == null || items.isEmpty()) {
-      oldKeysByRank.values().forEach(imageUploadService::deletePrivate);
       prizeRepository.deleteByChallengeId(challengeId);
+      // S3 삭제는 커밋 이후로 미룬다 — 트랜잭션 롤백 시 이미지만 지워지고 row는 남는 고아를 방지.
+      publishPrizeCleanup(new ArrayList<>(oldKeysByRank.values()));
       return;
     }
 
@@ -81,16 +86,23 @@ public class ChallengePrizeService {
       if (kept != null) keptKeys.add(kept);
     }
 
-    // 재사용되지 않는 기존 이미지 S3 삭제
+    // 재사용되지 않는 기존 이미지 = 고아 → 커밋 이후 정리(위와 동일 이유).
+    List<String> orphanedKeys = new ArrayList<>();
     for (String oldKey : oldKeysByRank.values()) {
-      if (!keptKeys.contains(oldKey)) {
-        imageUploadService.deletePrivate(oldKey);
-      }
+      if (!keptKeys.contains(oldKey)) orphanedKeys.add(oldKey);
     }
 
     prizeRepository.deleteByChallengeId(challengeId);
     for (PrizeItemRequest it : items) {
       prizeRepository.save(ChallengePrize.of(challengeId, it.rank(), it.name().trim(), keptKey(it, oldKeysByRank)));
+    }
+    publishPrizeCleanup(orphanedKeys);
+  }
+
+  /** 재사용되지 않는 경품 이미지 S3 정리를 커밋 이후(AFTER_COMMIT)로 위임한다. */
+  private void publishPrizeCleanup(List<String> keys) {
+    if (!keys.isEmpty()) {
+      eventPublisher.publishEvent(new ChallengeEvents.PrizeImagesOrphanedEvent(keys));
     }
   }
 

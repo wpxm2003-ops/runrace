@@ -13,7 +13,6 @@ import {
   isInAppBrowser,
   isPopupBlockedError,
   openInExternalBrowser,
-  preferAuthRedirect,
   prepareOAuthRedirect,
   safeReturnPath,
 } from "@/lib/authLogin";
@@ -65,12 +64,6 @@ function LoginContent() {
     nativeNavigate(returnTo);
   }
 
-  function beginRedirectFlow(): boolean {
-    if (!preferAuthRedirect()) return false;
-    prepareOAuthRedirect(returnTo);
-    return true;
-  }
-
   async function handleOpenExternalBrowser() {
     setError(null);
     setInAppHint(null);
@@ -84,11 +77,6 @@ function LoginContent() {
     setBusy(true);
     let redirecting = false;
     try {
-      if (beginRedirectFlow()) {
-        redirecting = true;
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-        return;
-      }
       const cred = await signInWithGoogleApp();
       markLoggedIn(); // 페이지 이동 전에 플래그 세팅 → 다음 페이지 redirect 차단
       await completeBackendLogin(cred.user);
@@ -182,15 +170,18 @@ function LoginContent() {
   );
 }
 
+function LoginFallback() {
+  const { t } = useLocale();
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+      <p className="text-sm text-zinc-500">{t.loading}</p>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-          <p className="text-sm text-zinc-500">Loading...</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<LoginFallback />}>
       <LoginContent />
     </Suspense>
   );

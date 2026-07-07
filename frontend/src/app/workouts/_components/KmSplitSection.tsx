@@ -17,12 +17,15 @@ function paceLabel(secPerKm: number): string {
   return formatPaceSecPerUnit(secPerKm);
 }
 
-function paceChangeLabel(delta: number): string {
+function paceChangeLabel(delta: number, t: Translations): string {
   const abs = Math.abs(delta);
-  return abs >= 60 ? formatPaceSecPerUnit(abs) : `${Math.round(abs)}초`;
+  return abs >= 60 ? formatPaceSecPerUnit(abs) : `${Math.round(abs)}${t.km_split_sec_unit}`;
 }
 
-function enduranceVerdict(splits: KmSplit[]): { text: string; positive: boolean } | null {
+function enduranceVerdict(
+  splits: KmSplit[],
+  t: Translations,
+): { text: string; positive: boolean } | null {
   const full = splits.filter((s) => s.distanceM >= 900);
   if (full.length < 2) return null;
   const first = full[0];
@@ -31,9 +34,9 @@ function enduranceVerdict(splits: KmSplit[]): { text: string; positive: boolean 
   const absDiff = Math.abs(diff);
   if (absDiff < 5) return null;
   if (diff < 0) {
-    return { text: `후반 스퍼트 성공 — 마지막 km이 첫 km보다 ${paceChangeLabel(absDiff)} 빨랐어요`, positive: true };
+    return { text: t.km_split_verdict_faster(paceChangeLabel(absDiff, t)), positive: true };
   }
-  return { text: `후반에 ${paceChangeLabel(absDiff)} 느려졌어요`, positive: false };
+  return { text: t.km_split_verdict_slower(paceChangeLabel(absDiff, t)), positive: false };
 }
 
 export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
@@ -46,7 +49,7 @@ export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
 
   const fastest = splits.reduce((a, b) => (a.paceSec < b.paceSec ? a : b));
   const slowest = splits.reduce((a, b) => (a.paceSec > b.paceSec ? a : b));
-  const verdict = enduranceVerdict(splits);
+  const verdict = enduranceVerdict(splits, t);
 
   const kmLabel = (s: KmSplit) =>
     s.distanceM < 900
@@ -147,9 +150,9 @@ export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
                   {s.paceChange == null
                     ? "—"
                     : faster
-                      ? `▼ ${paceChangeLabel(s.paceChange)}`
+                      ? `▼ ${paceChangeLabel(s.paceChange, t)}`
                       : slower
-                        ? `▲ ${paceChangeLabel(s.paceChange)}`
+                        ? `▲ ${paceChangeLabel(s.paceChange, t)}`
                         : "="}
                 </span>
               </div>

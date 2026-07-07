@@ -50,10 +50,6 @@ public final class NicknameGenerator {
 
   private NicknameGenerator() {}
 
-  public static String generate() {
-    return generate("ko");
-  }
-
   public static String generate(String lang) {
     String[] a;
     String[] b;

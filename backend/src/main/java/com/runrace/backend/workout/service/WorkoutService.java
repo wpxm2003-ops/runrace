@@ -219,11 +219,6 @@ public class WorkoutService {
   private static final ZoneId LIST_ZONE = ZoneId.of("Asia/Seoul");
 
   @Transactional(readOnly = true)
-  public List<WorkoutSessionRepository.WorkoutListView> listForUser(UUID userId) {
-    return workoutSessionRepository.findListByUserIdOrderByCreatedAtDesc(userId);
-  }
-
-  @Transactional(readOnly = true)
   public WorkoutSummaryResponse summaryForUser(UUID userId) {
     WorkoutSessionRepository.WorkoutSummaryAggregate agg =
         workoutSessionRepository.aggregateForUser(userId);

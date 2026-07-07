@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
+import { useLocale } from "@/lib/i18n";
 import { pad2 } from "@/lib/format";
 
 // ── constants ───────────────────────────────────────────────────────────────
@@ -178,6 +179,7 @@ type Props = {
 };
 
 export function DateTimePickerSheet({ value, onChange, min, label }: Props) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(YEAR_START);
   const [month, setMonth] = useState(NOW.getMonth() + 1);
@@ -271,21 +273,21 @@ export function DateTimePickerSheet({ value, onChange, min, label }: Props) {
             {/* drums */}
             <div className="flex items-start justify-center gap-2">
               <Col
-                label="년"
+                label={t.dtp_year}
                 items={YEARS}
                 selectedIdx={Math.max(0, YEARS.indexOf(String(year)))}
                 onSelect={(i) => setYear(parseInt(YEARS[i], 10))}
                 width={64}
               />
               <Col
-                label="월"
+                label={t.dtp_month}
                 items={MONTHS}
                 selectedIdx={month - 1}
                 onSelect={(i) => setMonth(i + 1)}
                 width={36}
               />
               <Col
-                label="일"
+                label={t.dtp_day}
                 items={days}
                 selectedIdx={Math.min(day - 1, days.length - 1)}
                 onSelect={(i) => setDay(i + 1)}
@@ -293,14 +295,14 @@ export function DateTimePickerSheet({ value, onChange, min, label }: Props) {
               />
               <div className="mx-1 self-center text-zinc-200 text-lg">|</div>
               <Col
-                label="시"
+                label={t.dtp_hour}
                 items={HOURS}
                 selectedIdx={hour}
                 onSelect={(i) => setHour(i)}
                 width={40}
               />
               <Col
-                label="분"
+                label={t.dtp_minute}
                 items={MINUTES}
                 selectedIdx={minute}
                 onSelect={(i) => setMinute(i)}
@@ -315,14 +317,14 @@ export function DateTimePickerSheet({ value, onChange, min, label }: Props) {
                 onClick={() => setOpen(false)}
                 className="h-11 flex-1 rounded-xl border border-zinc-200 text-sm"
               >
-                취소
+                {t.cancel}
               </button>
               <button
                 type="button"
                 onClick={confirm}
                 className="h-11 flex-1 rounded-xl bg-emerald-500 text-sm font-medium text-white"
               >
-                확인
+                {t.confirm}
               </button>
             </div>
           </div>

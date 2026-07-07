@@ -117,7 +117,7 @@ function RivalsContent({ user }: { user: User }) {
           onClick={() => setPreviewOpen((v) => !v)}
           className="flex w-full items-center justify-between text-left"
         >
-          <span className="text-sm text-zinc-600">라이벌 설명보기</span>
+          <span className="text-sm text-zinc-600">{t.rival_description_toggle}</span>
           <span className="ml-2 shrink-0 text-sm text-zinc-400">{previewOpen ? "▲" : "▼"}</span>
         </button>
         {previewOpen && (

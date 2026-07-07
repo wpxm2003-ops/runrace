@@ -71,9 +71,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   const [elapsedSec, setElapsedSec] = useState(0);
   const [distanceM, setDistanceM] = useState(0);
   const [geoError, setGeoError] = useState<string | null>(null);
-  // ── 치팅/복원 상태 ────────────────────────────────────────────────────────
+  // ── 치팅 감지 상태 ────────────────────────────────────────────────────────
   const [vehicleTier, setVehicleTier] = useState<VehicleTier>("normal");
-  const [isRestored, setIsRestored] = useState(false);
 
   // ── 타이밍 레프 ───────────────────────────────────────────────────────────
   const stopWatchRef = useRef<(() => void) | null>(null);
@@ -95,7 +94,10 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
   const pendingResumeWatchRef = useRef(false);
 
-  // ── 퍼시스턴스: 상태 변경마다 저장 ──────────────────────────────────────
+  // ── 퍼시스턴스: 상태 전환(running↔paused) 시 즉시 저장 ────────────────────
+  // 경로(path)는 의존성에서 제외한다 — GPS 포인트마다 재저장하면 매번 전체 배열을
+  // JSON.stringify 하여 O(n^2)로 커진다. 경로 스냅샷은 아래 주기적 flush(SAVE_INTERVAL_MS)
+  // + pagehide/visibilitychange flush가 담당하며, 이 효과는 상태 전환만 즉시 반영한다.
   useEffect(() => {
     if (status === "idle" || runStartedRef.current == null) return;
     saveWorkout({
@@ -105,7 +107,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       pausedAccumMs: pausedAccumRef.current,
       pauseStartedAt: pauseStartedRef.current,
     });
-  }, [status, path]);
+  }, [status]);
 
   // ── 퍼시스턴스: pagehide / visibilitychange / 주기적 저장 ────────────────
   useEffect(() => {
@@ -278,7 +280,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null),
       );
       setStatus("running");
-      setIsRestored(false);
       pendingResumeWatchRef.current = true;
     } else {
       pauseStartedRef.current = saved.pauseStartedAt;
@@ -290,7 +291,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         ),
       );
       setStatus("paused");
-      setIsRestored(true);
     }
   }, []);
 
@@ -338,7 +338,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setElapsedSec(0);
     vehicleStateRef.current = resetVehicleState();
     setVehicleTier("normal");
-    setIsRestored(false);
     pausedAccumRef.current = 0;
     pauseStartedRef.current = null;
     runStartedRef.current = Date.now();
@@ -385,7 +384,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     // 치팅 상태 리셋 — 재개 후 새로 측정
     vehicleStateRef.current = resetVehicleState();
     setVehicleTier("normal");
-    setIsRestored(false);
     setStatus("running");
     startWatch();
   }, [startWatch]);
@@ -434,7 +432,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setDistanceM(0);
     setElapsedSec(0);
     setVehicleTier("normal");
-    setIsRestored(false);
 
     return snapshot;
   }, [clearWatch, position]);
@@ -447,7 +444,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     distanceM,
     geoError,
     vehicleTier,
-    isRestored,
     elapsedLabel: formatDuration(elapsedSec),
     paceLabel: formatPace(distanceM, elapsedSec, unit),
     calories: estimateCalories(distanceM),

@@ -65,6 +65,10 @@ public class UserProvisioningService {
 
     // 동일 이메일로 다른 provider 계정이 있으면 해당 계정의 firebaseUid를 새 provider로 업데이트 (계정 병합).
     // 단, 검증된 이메일일 때만 — 미검증 이메일로 남의 계정을 탈취하는 것을 막는다(미검증이면 별도 계정 생성).
+    //
+    // 병합 전략 주의: 여기서는 '들어온 uid로 덮어쓰기' — 이 경로(Firebase 로그인)는 들어온 uid가
+    // 실제 인증 주체이기 때문이다. 카카오 경로(KakaoAuthService)는 반대로 '기존 uid 유지' 전략을 쓰며,
+    // upsert를 호출하지 않고 자체적으로 병합 로그인을 끝낸다. 두 전략은 의도적으로 다르다.
     if (email != null && emailVerified) {
       AppUser byEmail = appUserRepository.findByEmail(email).orElse(null);
       if (byEmail != null) {

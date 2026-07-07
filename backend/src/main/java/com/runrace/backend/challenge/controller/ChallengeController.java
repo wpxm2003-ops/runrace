@@ -213,7 +213,7 @@ public class ChallengeController {
 
   private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {
     Challenge challenge = detail.challenge();
-    BigDecimal goal = ChallengeService.goalKmAsDecimal(challenge);
+    BigDecimal goal = challenge.getGoalKm();
 
     List<MemberRow> rows =
         detail.members().stream()

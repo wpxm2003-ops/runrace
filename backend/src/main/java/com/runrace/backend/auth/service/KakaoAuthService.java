@@ -69,7 +69,13 @@ public class KakaoAuthService {
       String accessToken = exchangeCode(code, redirectUri);
       KakaoUser kakaoUser = getUserInfo(accessToken);
 
-      // 동일 이메일로 가입된 계정이 있으면 해당 계정으로 병합 로그인 (검증된 이메일일 때만 — 탈취 방지)
+      // 동일 이메일로 가입된 계정이 있으면 해당 계정으로 병합 로그인 (검증된 이메일일 때만 — 탈취 방지).
+      //
+      // 병합 전략 주의: 여기서는 '기존 uid 유지' — 기존 계정의 firebaseUid로 커스텀 토큰을 발급하고
+      // 새 kakao:{id} uid는 버린다(DB 미변경, 아래 upsert 미호출). 이는 기존 Firebase/구글 로그인의
+      // uid가 그대로 살아있어야 하기 때문이다. 반면 Firebase 로그인 경로의
+      // UserProvisioningService.upsert 는 '들어온 uid로 덮어쓰기' 전략을 쓴다(그쪽 uid가 실제 인증 주체).
+      // 두 전략은 맥락상 의도적으로 다르므로 한쪽만 바꾸지 말 것.
       if (kakaoUser.email() != null && kakaoUser.emailVerified()) {
         AppUser existing = appUserRepository.findByEmail(kakaoUser.email()).orElse(null);
         if (existing != null) {

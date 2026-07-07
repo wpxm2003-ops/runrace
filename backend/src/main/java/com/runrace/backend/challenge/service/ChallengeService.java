@@ -326,10 +326,6 @@ public class ChallengeService {
     return challengeMemberRepository.memberCountsByChallengeId(challengeIds);
   }
 
-  public static BigDecimal goalKmAsDecimal(Challenge challenge) {
-    return challenge.getGoalKm();
-  }
-
   /**
    * 레이스 반영 운동 목록 — 전체 공개(비참여자·비로그인도 조회 가능).
    * 스칼라 projection이라 GPS 경로(path_json)를 로딩하지 않는다.
@@ -347,7 +343,7 @@ public class ChallengeService {
     return member
         .getTotalKm()
         .multiply(HUNDRED)
-        .divide(goalKmAsDecimal(challenge), 1, RoundingMode.HALF_UP)
+        .divide(challenge.getGoalKm(), 1, RoundingMode.HALF_UP)
         .min(HUNDRED);
   }
 

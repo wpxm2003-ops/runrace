@@ -12,7 +12,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** NSM 훈련 플랜 — 사용자당 1개. 주간 스케줄은 threshold + sessionsPerWeek로 프론트가 결정적 생성. */
+/** NSM 훈련 플랜 — 사용자당 1개. 주간 스케줄은 threshold + subTDays(sub-T 요일)로 프론트가 결정적 생성. */
 @Entity
 @Table(name = "training_plan")
 @Getter

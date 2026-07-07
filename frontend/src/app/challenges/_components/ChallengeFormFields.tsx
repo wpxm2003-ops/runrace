@@ -3,7 +3,7 @@
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
-import { STAKE_MAX_CHARS, minStartAtLocal, plusDaysLocal } from "@/lib/challengeForm";
+import { STAKE_MAX_CHARS, minStartAtLocal } from "@/lib/challengeForm";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ChallengeFormLabels } from "./useChallengeForm";
 import { DateTimePickerSheet } from "./DateTimePickerSheet";
@@ -31,7 +31,6 @@ type Props = {
   handlers: FormHandlers;
   formError?: string | null;
   formHint?: string | null;
-  formSuccess?: string | null;
   /** 내기와 경품은 양자택일 — 경품이 걸려 있으면 내기 토글을 비활성화한다. */
   stakeDisabled?: boolean;
   stakeDisabledHint?: string;
@@ -53,7 +52,6 @@ export function ChallengeFormFields({
   handlers,
   formError,
   formHint,
-  formSuccess,
   stakeDisabled = false,
   stakeDisabledHint,
   onStakeOpenChange,
@@ -83,12 +81,7 @@ export function ChallengeFormFields({
 
   return (
     <>
-      {formSuccess ? (
-        <Alert tone="success" className="mb-4">
-          {formSuccess}
-        </Alert>
-      ) : null}
-      {formHint && !formSuccess ? (
+      {formHint ? (
         <Alert tone="info" className="mb-4">
           {formHint}
         </Alert>
@@ -155,7 +148,7 @@ export function ChallengeFormFields({
             <DateTimePickerSheet
               value={values.endAt}
               onChange={handlers.onEndAtChange}
-              min={values.startAt ? plusDaysLocal(values.startAt, 0) : minStartAtLocal()}
+              min={values.startAt || minStartAtLocal()}
               label={labels.end}
             />
           </div>
@@ -187,7 +180,7 @@ export function ChallengeFormFields({
 
         <Button
           variant="primary"
-          disabled={disabled || submitting || !!formSuccess}
+          disabled={disabled || submitting}
           onClick={onSubmit}
           className={`${submitNotice ? "mt-2" : "mt-6"} h-11 w-full`}
         >

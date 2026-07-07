@@ -27,14 +27,6 @@ export function isInAppBrowser(): boolean {
   return false;
 }
 
-/**
- * EC2(IP) + signInWithRedirect 는 init.json·쿠키 이슈로 모바일에서 자주 실패.
- * PC/폰 Chrome 모두 popup 사용 (인앱 브라우저는 로그인 버튼에서 차단).
- */
-export function preferAuthRedirect(): boolean {
-  return false;
-}
-
 /** signInWithRedirect 직전 sessionStorage 세팅 */
 export function prepareOAuthRedirect(returnTo: string): void {
   sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);

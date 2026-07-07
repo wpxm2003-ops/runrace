@@ -112,7 +112,7 @@ export function RecordsStatsPanel({
                 type="button"
                 onClick={onClose}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-sm text-zinc-500 hover:bg-zinc-300"
-                aria-label="닫기"
+                aria-label={t.close}
               >
                 ✕
               </button>
@@ -163,7 +163,7 @@ export function RecordsStatsPanel({
                 noPrevLabel={t.stats_no_prev}
               />
               <CompareCard
-                label="횟수"
+                label={t.stats_count_label}
                 prev={t.stats_count_unit(cmp.prevCount)}
                 curr={t.stats_count_unit(cmp.thisCount)}
                 prevLabel={prevMonthName}
@@ -186,14 +186,14 @@ export function RecordsStatsPanel({
                 <p className="text-xs font-medium text-zinc-400">{t.stats_streak_current}</p>
                 <p className="mt-1 text-3xl font-bold tabular-nums text-white">
                   {streak.current}
-                  <span className="ml-1 text-sm font-semibold text-zinc-400">일</span>
+                  <span className="ml-1 text-sm font-semibold text-zinc-400">{t.stat_days_unit}</span>
                 </p>
               </div>
               <div className="rounded-xl bg-zinc-100 px-4 py-3">
                 <p className="text-xs font-medium text-zinc-500">{t.stats_streak_longest}</p>
                 <p className="mt-1 text-3xl font-bold tabular-nums text-zinc-800">
                   {monthLongest}
-                  <span className="ml-1 text-sm font-semibold text-zinc-400">일</span>
+                  <span className="ml-1 text-sm font-semibold text-zinc-400">{t.stat_days_unit}</span>
                 </p>
               </div>
             </div>

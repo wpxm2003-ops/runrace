@@ -112,7 +112,7 @@ public class ChallengeProgressService {
     Challenge challenge = member.getChallenge();
     BigDecimal prevKm = member.getTotalKm();
     BigDecimal next = prevKm.add(deltaKm);
-    BigDecimal goal = ChallengeService.goalKmAsDecimal(challenge);
+    BigDecimal goal = challenge.getGoalKm();
 
     member.addDistance(deltaKm, now);
     onMemberProgress(member, next, allChallengeMembers);
@@ -131,7 +131,7 @@ public class ChallengeProgressService {
   private void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm,
                                  List<ChallengeMember> allMembers) {
     Challenge challenge = member.getChallenge();
-    if (nextTotalKm.compareTo(ChallengeService.goalKmAsDecimal(challenge)) >= 0
+    if (nextTotalKm.compareTo(challenge.getGoalKm()) >= 0
         && member.getFinishedAt() == null) {
       member.markFinished(OffsetDateTime.now());
       challenge.declareWinner(member.getUser());
@@ -172,7 +172,7 @@ public class ChallengeProgressService {
 
             // 목표 미달로 내려가면 완주 상태 초기화
             if (member.getFinishedAt() != null
-                && next.compareTo(ChallengeService.goalKmAsDecimal(challenge)) < 0) {
+                && next.compareTo(challenge.getGoalKm()) < 0) {
               member.resetFinished();
               challenge.resetEnded();
               if (challenge.getWinner() != null && challenge.getWinner().getId().equals(userId)) {
@@ -210,7 +210,7 @@ public class ChallengeProgressService {
           .divide(HUNDRED, 3, RoundingMode.HALF_UP);
       if (prevKm.compareTo(threshold) < 0 && next.compareTo(threshold) >= 0) {
         eventPublisher.publishEvent(new MilestoneReachedEvent(
-            member.getChallenge().getId(), achieverId, nickname, pct, otherIds));
+            member.getChallenge().getId(), achieverId, nickname, otherIds));
       }
     }
   }

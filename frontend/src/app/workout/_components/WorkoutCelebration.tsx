@@ -20,10 +20,6 @@ type WorkoutCelebrationProps = {
   onConfirm: () => void;
 };
 
-function formatPaceSec(sec: number): string {
-  return formatPaceSecPerUnit(sec);
-}
-
 function pbDaysLabel(days: number, t: ReturnType<typeof useLocale>["t"]): string {
   if (days < 1) return "";
   if (days < 30) return t.pb_days_since(Math.round(days));
@@ -131,9 +127,9 @@ export function WorkoutCelebration({
                 🏅 {distLabel} {t.pb_new_record}
               </p>
               <div className="mt-1 flex items-center gap-2 text-sm">
-                <span className="font-mono text-zinc-400 line-through">{formatPaceSec(personalBest.previousPaceSec)}</span>
+                <span className="font-mono text-zinc-400 line-through">{formatPaceSecPerUnit(personalBest.previousPaceSec)}</span>
                 <span className="text-zinc-400">→</span>
-                <span className="font-mono font-semibold text-amber-700">{formatPaceSec(personalBest.newPaceSec)}</span>
+                <span className="font-mono font-semibold text-amber-700">{formatPaceSecPerUnit(personalBest.newPaceSec)}</span>
                 <span className="text-xs text-amber-600">({t.pb_seconds_faster(faster)})</span>
               </div>
               {daysLabel ? (
