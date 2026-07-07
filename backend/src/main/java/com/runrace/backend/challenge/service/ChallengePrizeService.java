@@ -73,7 +73,7 @@ public class ChallengePrizeService {
     if (items == null || items.isEmpty()) {
       prizeRepository.deleteByChallengeId(challengeId);
       // S3 삭제는 커밋 이후로 미룬다 — 트랜잭션 롤백 시 이미지만 지워지고 row는 남는 고아를 방지.
-      publishPrizeCleanup(new ArrayList<>(oldKeysByRank.values()));
+      ChallengeEvents.publishPrizeCleanup(eventPublisher, new ArrayList<>(oldKeysByRank.values()));
       return;
     }
 
@@ -96,14 +96,7 @@ public class ChallengePrizeService {
     for (PrizeItemRequest it : items) {
       prizeRepository.save(ChallengePrize.of(challengeId, it.rank(), it.name().trim(), keptKey(it, oldKeysByRank)));
     }
-    publishPrizeCleanup(orphanedKeys);
-  }
-
-  /** 재사용되지 않는 경품 이미지 S3 정리를 커밋 이후(AFTER_COMMIT)로 위임한다. */
-  private void publishPrizeCleanup(List<String> keys) {
-    if (!keys.isEmpty()) {
-      eventPublisher.publishEvent(new ChallengeEvents.PrizeImagesOrphanedEvent(keys));
-    }
+    ChallengeEvents.publishPrizeCleanup(eventPublisher, orphanedKeys);
   }
 
   private String keptKey(PrizeItemRequest it, Map<Integer, String> oldKeysByRank) {

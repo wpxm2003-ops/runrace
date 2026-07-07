@@ -134,7 +134,7 @@ public class ChallengeService {
     ensureNotStarted(challenge);
     List<String> prizeKeys = collectPrizeImageKeys(id);
     challengeRepository.delete(challenge);
-    publishPrizeCleanup(prizeKeys);
+    ChallengeEvents.publishPrizeCleanup(eventPublisher, prizeKeys);
   }
 
   @Transactional
@@ -234,7 +234,7 @@ public class ChallengeService {
     UUID creatorId = challenge.getCreator().getId();
     List<String> prizeKeys = collectPrizeImageKeys(challengeId);
     challengeRepository.delete(challenge);
-    publishPrizeCleanup(prizeKeys);
+    ChallengeEvents.publishPrizeCleanup(eventPublisher, prizeKeys);
     eventPublisher.publishEvent(new ChallengeEndedNoParticipantsEvent(challengeId, creatorId));
     return true;
   }
@@ -423,12 +423,6 @@ public class ChallengeService {
         .map(ChallengePrize::getImageKey)
         .filter(Objects::nonNull)
         .toList();
-  }
-
-  private void publishPrizeCleanup(List<String> keys) {
-    if (!keys.isEmpty()) {
-      eventPublisher.publishEvent(new ChallengeEvents.PrizeImagesOrphanedEvent(keys));
-    }
   }
 
   public record ChallengeDetailView(

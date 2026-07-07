@@ -36,6 +36,45 @@ export function pathDistanceMeters(points: LatLng[]): number {
   return sum;
 }
 
+/** 연속 두 점 사이가 이 거리(m)를 넘으면 지도에서 추적 끊김(점선)으로 본다. */
+export const MAP_GAP_THRESHOLD_M = 120;
+
+export type PathSegments = { solidLines: LatLng[][]; gapLines: LatLng[][] };
+
+/**
+ * GPS 경로를 지도 렌더링용 실선(연속 구간)·점선(끊긴 구간)으로 분리한다.
+ * 경로 포인트엔 시각이 없어 거리 점프 휴리스틱을 쓴다(백그라운드 추적 끊김 대응).
+ * Kakao/Leaflet 지도 컴포넌트가 공용으로 사용한다.
+ */
+export function splitPathAtGaps(
+  path: LatLng[],
+  gapThresholdM: number = MAP_GAP_THRESHOLD_M,
+): PathSegments {
+  const solidLines: LatLng[][] = [];
+  const gapLines: LatLng[][] = [];
+  let run: LatLng[] = [];
+  for (let i = 0; i < path.length; i++) {
+    if (i === 0) { run = [path[0]]; continue; }
+    if (haversineMeters(path[i - 1], path[i]) > gapThresholdM) {
+      if (run.length >= 2) solidLines.push(run);
+      gapLines.push([path[i - 1], path[i]]);
+      run = [path[i]];
+    } else {
+      run.push(path[i]);
+    }
+  }
+  if (run.length >= 2) solidLines.push(run);
+  return { solidLines, gapLines };
+}
+
+/** 지도 리렌더 판단용 캐시 키 — 경로 길이·시작점·끝점만 반영해 값이 같으면 재계산을 건너뛴다. */
+export function pathBoundsKey(path: LatLng[]): string {
+  if (path.length === 0) return "";
+  const first = path[0];
+  const last = path[path.length - 1];
+  return `${path.length}:${first.lat},${first.lng}:${last.lat},${last.lng}`;
+}
+
 export function shouldAppendPoint(prev: LatLng | null, next: LatLng): boolean {
   if (!prev) return true;
   return haversineMeters(prev, next) >= MIN_MOVE_METERS;

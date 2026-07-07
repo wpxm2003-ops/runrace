@@ -223,19 +223,33 @@ export function useChallengeWorkouts(
   );
 }
 
+/**
+ * challengeId·user·enabled 게이트를 공유하는 레이스 스코프 리소스 훅 공통화.
+ * (head-to-head·실내러닝 승인대기/반려 목록이 동일한 키·게이트 shape를 반복해 추출.)
+ */
+function useGatedChallengeResource<T>(
+  challengeId: number | null,
+  user: User | null,
+  enabled: boolean,
+  segment: string,
+  fetcher: (challengeId: number, user: User) => Promise<T>,
+) {
+  return useSWR(
+    enabled && challengeId != null && user
+      ? (["challenge", challengeId, segment, user.uid] as const)
+      : null,
+    () => fetcher(challengeId!, user!),
+    BASE_CONFIG,
+  );
+}
+
 /** 종료된 레이스 — 이 방의 라이벌 참여자와 나의 누적 전적. 종료 + 로그인 시에만 조회. */
 export function useHeadToHead(
   challengeId: number | null,
   user: User | null,
   enabled: boolean,
 ) {
-  return useSWR(
-    enabled && challengeId != null && user
-      ? (["challenge", challengeId, "head-to-head", user.uid] as const)
-      : null,
-    () => fetchHeadToHead(challengeId!, user!),
-    BASE_CONFIG,
-  );
+  return useGatedChallengeResource(challengeId, user, enabled, "head-to-head", fetchHeadToHead);
 }
 
 // ── 라이벌 ───────────────────────────────────────────────────────────────────
@@ -272,12 +286,8 @@ export function usePendingApprovals(
   user: User | null,
   enabled: boolean,
 ) {
-  return useSWR(
-    enabled && challengeId != null && user
-      ? (["challenge", challengeId, "pending-approvals", user.uid] as const)
-      : null,
-    () => fetchPendingApprovals(challengeId!, user!),
-    BASE_CONFIG,
+  return useGatedChallengeResource(
+    challengeId, user, enabled, "pending-approvals", fetchPendingApprovals,
   );
 }
 
@@ -286,12 +296,8 @@ export function useRejectedApprovals(
   user: User | null,
   enabled: boolean,
 ) {
-  return useSWR(
-    enabled && challengeId != null && user
-      ? (["challenge", challengeId, "rejected-approvals", user.uid] as const)
-      : null,
-    () => fetchRejectedApprovals(challengeId!, user!),
-    BASE_CONFIG,
+  return useGatedChallengeResource(
+    challengeId, user, enabled, "rejected-approvals", fetchRejectedApprovals,
   );
 }
 

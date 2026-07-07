@@ -1,30 +1,10 @@
 "use client";
 
-import type { LatLng } from "@/lib/workoutTrack";
+import { pathBoundsKey, splitPathAtGaps, type LatLng } from "@/lib/workoutTrack";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Map, Polyline, CustomOverlayMap, useKakaoLoader } from "react-kakao-maps-sdk";
 
 const DEFAULT_CENTER: LatLng = { lat: 37.5665, lng: 126.978 };
-const GAP_THRESHOLD_M = 120;
-
-function distMeters(a: LatLng, b: LatLng): number {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const la1 = toRad(a.lat);
-  const la2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-function pathBoundsKey(path: LatLng[]): string {
-  if (path.length === 0) return "";
-  const first = path[0];
-  const last = path[path.length - 1];
-  return `${path.length}:${first.lat},${first.lng}:${last.lat},${last.lng}`;
-}
 
 function fitPathBounds(map: kakao.maps.Map, path: LatLng[]) {
   if (path.length < 2) return;
@@ -49,23 +29,7 @@ export default function KakaoWorkoutMap({ path, position, follow }: WorkoutMapPr
   const center = position ?? path[0] ?? DEFAULT_CENTER;
   const boundsKey = pathBoundsKey(path);
 
-  const { solidLines, gapLines } = useMemo(() => {
-    const solids: LatLng[][] = [];
-    const gaps: LatLng[][] = [];
-    let run: LatLng[] = [];
-    for (let i = 0; i < path.length; i++) {
-      if (i === 0) { run = [path[0]]; continue; }
-      if (distMeters(path[i - 1], path[i]) > GAP_THRESHOLD_M) {
-        if (run.length >= 2) solids.push(run);
-        gaps.push([path[i - 1], path[i]]);
-        run = [path[i]];
-      } else {
-        run.push(path[i]);
-      }
-    }
-    if (run.length >= 2) solids.push(run);
-    return { solidLines: solids, gapLines: gaps };
-  }, [path]);
+  const { solidLines, gapLines } = useMemo(() => splitPathAtGaps(path), [path]);
 
   const scheduleFitBounds = useCallback(() => {
     const map = mapRef.current;

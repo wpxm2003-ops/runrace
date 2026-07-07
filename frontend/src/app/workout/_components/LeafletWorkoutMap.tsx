@@ -1,6 +1,6 @@
 "use client";
 
-import type { LatLng } from "@/lib/workoutTrack";
+import { pathBoundsKey, splitPathAtGaps, type LatLng } from "@/lib/workoutTrack";
 import { latLngBounds } from "leaflet";
 import { useEffect, useMemo } from "react";
 import {
@@ -15,20 +15,8 @@ import "leaflet/dist/leaflet.css";
 
 const DEFAULT_CENTER: LatLng = { lat: 37.5665, lng: 126.978 };
 
-/** 연속 두 점 사이가 이 거리(m)를 넘으면 추적 끊김으로 보고 점선 처리. */
-const GAP_THRESHOLD_M = 120;
-
-/** 두 [lat,lng] 점 사이 거리(m) — haversine. */
-function distMeters(a: [number, number], b: [number, number]): number {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b[0] - a[0]);
-  const dLng = toRad(b[1] - a[1]);
-  const la1 = toRad(a[0]);
-  const la2 = toRad(b[0]);
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+function toTuple(p: LatLng): [number, number] {
+  return [p.lat, p.lng];
 }
 
 function MapResize() {
@@ -95,13 +83,6 @@ type WorkoutMapProps = {
   follow: boolean;
 };
 
-function pathBoundsKey(path: LatLng[]): string {
-  if (path.length === 0) return "";
-  const first = path[0];
-  const last = path[path.length - 1];
-  return `${path.length}:${first.lat},${first.lng}:${last.lat},${last.lng}`;
-}
-
 function FitPathBounds({ path, enabled }: { path: LatLng[]; enabled: boolean }) {
   const map = useMap();
   const boundsKey = pathBoundsKey(path);
@@ -118,34 +99,16 @@ function FitPathBounds({ path, enabled }: { path: LatLng[]; enabled: boolean }) 
 
 export default function LeafletWorkoutMap({ path, position, follow }: WorkoutMapProps) {
   const center = position ?? path[0] ?? DEFAULT_CENTER;
-  // path가 바뀔 때만 재계산 — 경로 변화 없는 리렌더에서 Polyline 재diff 방지
-  const latLngs = useMemo(
-    () => path.map((p) => [p.lat, p.lng] as [number, number]),
-    [path],
-  );
 
   // 연속 두 점 사이 거리가 비정상적으로 크면(백그라운드로 추적이 끊긴 구간) 점선으로 표시한다.
-  // 경로 포인트엔 시각이 없어 거리 점프 휴리스틱을 쓴다.
+  // path가 바뀔 때만 재계산 — 경로 변화 없는 리렌더에서 Polyline 재diff 방지.
   const { solidLines, gapLines } = useMemo(() => {
-    const solids: [number, number][][] = [];
-    const gaps: [number, number][][] = [];
-    let run: [number, number][] = [];
-    for (let i = 0; i < latLngs.length; i++) {
-      if (i === 0) {
-        run = [latLngs[0]];
-        continue;
-      }
-      if (distMeters(latLngs[i - 1], latLngs[i]) > GAP_THRESHOLD_M) {
-        if (run.length >= 2) solids.push(run);
-        gaps.push([latLngs[i - 1], latLngs[i]]);
-        run = [latLngs[i]];
-      } else {
-        run.push(latLngs[i]);
-      }
-    }
-    if (run.length >= 2) solids.push(run);
-    return { solidLines: solids, gapLines: gaps };
-  }, [latLngs]);
+    const segments = splitPathAtGaps(path);
+    return {
+      solidLines: segments.solidLines.map((line) => line.map(toTuple)),
+      gapLines: segments.gapLines.map((line) => line.map(toTuple)),
+    };
+  }, [path]);
 
   return (
     <div className="absolute inset-0 z-0">
