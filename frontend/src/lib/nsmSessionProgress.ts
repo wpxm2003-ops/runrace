@@ -4,6 +4,8 @@
 import { localJson } from "./safeStorage";
 
 export type NsmProgress = {
+  /** Local-date + session signature used to invalidate stale saved progress. */
+  sessionKey: string;
   started: boolean;
   repIndex: number;
   phase: "work" | "rest" | "done";

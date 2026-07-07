@@ -46,6 +46,11 @@ const config: CapacitorConfig = {
   // 원격 페이지 로딩 갭에서 WebView 기본 배경(검정)이 깜빡이는 문제 방지 — 흰색으로 고정.
   // window 배경(styles.xml)만으론 WebView 컨트롤 배경이 안 잡혀 검정이 새어나옴.
   backgroundColor: '#ffffff',
+  android: {
+    // Required by the background geolocation plugin on Android to keep
+    // location callbacks alive reliably after several minutes in background.
+    useLegacyBridge: true,
+  },
   server,
   plugins: {
     CapacitorHttp: {

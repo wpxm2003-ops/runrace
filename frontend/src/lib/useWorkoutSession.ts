@@ -197,6 +197,9 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       };
       setVehicleTier(vehicle.tier);
 
+      // Even when we suppress path/distance accumulation, keep the raw GPS baseline
+      // current so recovery and speed estimation use the newest fix.
+      commitRawPosition(point, now);
       if (vehicle.blockPathPoints) return;
 
       const reanchor = vehicle.reanchorNextPoint;
@@ -215,8 +218,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         setDistanceM(distanceAccumRef.current);
         return next;
       });
-
-      commitRawPosition(point, now);
     },
     [peekSpeedMps, commitRawPosition],
   );
