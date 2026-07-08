@@ -1,5 +1,9 @@
 # RunRace
 
+## UI Guide
+
+- App WebView dropdown rule: [docs/frontend-ui-guidelines.md](C:/workspace/runrace/docs/frontend-ui-guidelines.md)
+
 친구와 함께하는 러닝 대결 앱
 
 ---

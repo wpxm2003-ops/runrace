@@ -21,7 +21,6 @@ import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutSta
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { KmSplitSection } from "./KmSplitSection";
-import { WorkoutShoeSelector } from "./WorkoutShoeSelector";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -127,16 +126,6 @@ export default function WorkoutDetailContent() {
                 currentPaceSec={detail.avgPaceSecPerKm ?? null}
                 currentDistanceM={detail.distanceM}
                 currentDurationSec={detail.durationSec}
-                user={user}
-              />
-            </div>
-          ) : null}
-
-          {user ? (
-            <div className="mt-4">
-              <WorkoutShoeSelector
-                workoutId={id!}
-                initialShoeId={detail.shoeId ?? null}
                 user={user}
               />
             </div>
