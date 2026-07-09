@@ -44,6 +44,12 @@ function parseTime(v: string): number | null {
   if (!m) return null;
   return Number(m[1]) * 60 + Number(m[2]);
 }
+/** 숫자 키패드에는 콜론이 없으므로 입력 숫자만 받아 mm:ss로 자동 포맷 (2200 → 22:00) */
+function maskTimeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 5);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, -2)}:${digits.slice(-2)}`;
+}
 function formatTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
@@ -286,7 +292,7 @@ function TrainingContent({ user }: { user: User | null }) {
               type="text"
               inputMode="numeric"
               value={timeStr}
-              onChange={(e) => setTimeStr(e.target.value)}
+              onChange={(e) => setTimeStr(maskTimeInput(e.target.value))}
               placeholder="22:00"
               className="w-32 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
             />
