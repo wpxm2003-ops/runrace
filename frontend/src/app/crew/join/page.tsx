@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
@@ -27,13 +27,15 @@ export default function CrewJoinPage() {
   const { user, loading: authLoading } = useAuthUser();
   const [joining, setJoining] = useState(false);
 
-  const code = useMemo(() => {
-    if (typeof window === "undefined") return null;
+  // 코드는 마운트 후에 읽는다 — 프리렌더(window 없음)와 첫 클라 렌더가 같은 화면(로딩)을
+  // 그려야 hydration mismatch가 없다. undefined = 아직 안 읽음, null = 쿼리에 코드 없음.
+  const [code, setCode] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("code");
-    return raw ? raw.trim().toUpperCase() : null;
+    setCode(raw && raw.trim() ? raw.trim().toUpperCase() : null);
   }, []);
 
-  const { data: info, isLoading, error } = useCrewJoinInfo(code, user ?? null);
+  const { data: info, isLoading, error } = useCrewJoinInfo(code ?? null, user ?? null);
 
   async function onJoin() {
     if (!user || !code || joining) return;
@@ -63,8 +65,8 @@ export default function CrewJoinPage() {
     }
   }
 
-  // 코드 없음·조회 실패(404 포함) — 안내 후 홈으로.
-  if (!code || error) {
+  // 코드 없음(마운트 후 확인됨)·조회 실패(404 포함) — 안내 후 홈으로.
+  if (code === null || error) {
     return (
       <PageLayout title={t.crew_title}>
         <Card>
@@ -81,7 +83,8 @@ export default function CrewJoinPage() {
     );
   }
 
-  if (isLoading || !info || authLoading) {
+  // code === undefined(아직 안 읽음) 구간이 프리렌더·첫 클라 렌더의 공통 화면이 된다.
+  if (code === undefined || isLoading || !info || authLoading) {
     return (
       <PageLayout title={t.crew_title}>
         <LoadingCard />
