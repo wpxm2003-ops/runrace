@@ -6,6 +6,7 @@ export * from "./types";
 export * from "./auth";
 export * from "./errors";
 export * from "./challenges";
+export * from "./crews";
 export * from "./prizes";
 export * from "./rivals";
 export * from "./shoes";

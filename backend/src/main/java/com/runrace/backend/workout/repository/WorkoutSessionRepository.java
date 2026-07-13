@@ -140,6 +140,30 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
       """, nativeQuery = true)
   int maxStreakDaysForUser(@Param("userId") UUID userId);
 
+  /** 크루 주간 보드 — 사용자들의 {@code from} 이후 거리·횟수 합계(기록 없는 사용자는 행 없음). */
+  @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
+      + "from WorkoutSession w where w.user.id in :userIds and w.startedAt >= :from "
+      + "group by w.user.id")
+  List<UserDistanceAgg> aggregateDistanceSince(
+      @Param("userIds") List<UUID> userIds, @Param("from") OffsetDateTime from);
+
+  /** 크루 지난주 비교·결산 — [from, to) 구간 사용자별 거리·횟수 합계. */
+  @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
+      + "from WorkoutSession w where w.user.id in :userIds "
+      + "and w.startedAt >= :from and w.startedAt < :to "
+      + "group by w.user.id")
+  List<UserDistanceAgg> aggregateDistanceBetween(
+      @Param("userIds") List<UUID> userIds,
+      @Param("from") OffsetDateTime from,
+      @Param("to") OffsetDateTime to);
+
+  /** {@link #aggregateDistanceSince} 결과 투영. */
+  interface UserDistanceAgg {
+    UUID getUserId();
+    long getDistanceM();
+    long getRuns();
+  }
+
   /** 특정 신발의 누적 거리(m) — 교체 알림 임계 판정 + 신발장 표시용. */
   @Query("select coalesce(sum(w.distanceM), 0) from WorkoutSession w where w.shoe.id = :shoeId")
   long sumDistanceByShoeId(@Param("shoeId") Long shoeId);

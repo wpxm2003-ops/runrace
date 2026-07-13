@@ -19,6 +19,7 @@ import {
   fetchRejectedApprovals,
   DEFAULT_PAGE_SIZE,
 } from "./challenges";
+import { fetchMyCrew, fetchCrewJoinInfo, fetchCrewRecap } from "./crews";
 import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
@@ -264,6 +265,40 @@ export function useRivals(user: User | null) {
 /** 라이벌 등록/해제 후 목록 재검증. */
 export function invalidateRivals(userId: string) {
   invalidateByPrefix("rivals", userId);
+}
+
+// ── 크루 ─────────────────────────────────────────────────────────────────────
+/** 내 크루 홈(주간 보드 포함). 미소속이면 data.crew === null. */
+export function useMyCrew(user: User | null) {
+  return useSWR(
+    user ? (["crew-me", user.uid] as const) : null,
+    () => fetchMyCrew(user!),
+    BASE_CONFIG,
+  );
+}
+
+/** 크루 생성/가입/탈퇴/수정/멤버 변경 후 크루 홈 재검증. */
+export function invalidateMyCrew(userId: string) {
+  invalidateByPrefix("crew-me", userId);
+}
+
+/** 지난주 크루 결산 — 크루 소속일 때만 조회(enabled). */
+export function useCrewRecap(user: User | null, enabled: boolean) {
+  return useSWR(
+    enabled && user ? (["crew-recap", user.uid] as const) : null,
+    () => fetchCrewRecap(user!),
+    { ...BASE_CONFIG, revalidateOnFocus: false },
+  );
+}
+
+/** 초대 랜딩 정보 — 비로그인은 "public" 키로 조회. */
+export function useCrewJoinInfo(code: string | null, user: User | null) {
+  const uid = cacheUid(user, "public");
+  return useSWR(
+    code ? (["crew-join-info", code, uid] as const) : null,
+    () => fetchCrewJoinInfo(code!, user),
+    BASE_CONFIG,
+  );
 }
 
 // ── 신발장 ───────────────────────────────────────────────────────────────────

@@ -56,6 +56,57 @@ export type RivalRow = {
   losses: number;
 };
 
+// ── 크루(crew) ────────────────────────────────────────────────────
+/** 주간 보드 한 줄 — 이번 주(KST 월요일 시작) 거리·횟수. 서버가 거리 내림차순으로 정렬해 준다. */
+export type CrewMemberRow = {
+  userId: string;
+  nickname: string | null;
+  isLeader: boolean;
+  isMe: boolean;
+  weekDistanceM: number;
+  weekRuns: number;
+};
+
+export type CrewView = {
+  id: number;
+  name: string;
+  notice: string | null;
+  joinCode: string;
+  isLeader: boolean;
+  maxMembers: number;
+  /** 주간 크루 목표(km). null이면 목표 없음. */
+  weekGoalKm: number | null;
+  /** 지난주 같은 경과 시점까지의 크루 합계(m) — "지난주 이맘때 대비"용. */
+  lastWeekSameTimeDistanceM: number;
+  /** 멤버별 가입 이후 운동 합산(m) — 함께 달린 누적. */
+  allTimeDistanceM: number;
+  members: CrewMemberRow[];
+};
+
+/** 내 크루 홈 응답 — 미소속이면 crew가 null. */
+export type MyCrewResponse = {
+  crew: CrewView | null;
+};
+
+/** 지난주(월~일 완결 주) 크루 결산. 기록 없던 주면 totalRuns=0. */
+export type CrewRecap = {
+  weekStartDate: string;
+  weekEndDate: string;
+  totalDistanceM: number;
+  totalRuns: number;
+  perCapitaDistanceM: number;
+  mvpNickname: string | null;
+  mvpDistanceM: number;
+};
+
+/** 초대 랜딩 정보. status는 비로그인 시 JOINABLE/FULL만 나온다. */
+export type CrewJoinInfo = {
+  name: string;
+  memberCount: number;
+  maxMembers: number;
+  status: "JOINABLE" | "FULL" | "ALREADY_MEMBER" | "IN_OTHER_CREW";
+};
+
 // ── 신발장(shoe) ──────────────────────────────────────────────────
 /** 신발 한 줄 — 누적 거리(totalDistanceM, m) 포함. 활성 신발로 이후 러닝이 자동 귀속된다. */
 export type ShoeRow = {

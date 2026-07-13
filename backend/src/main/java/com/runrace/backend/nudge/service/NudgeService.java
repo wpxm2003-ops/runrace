@@ -6,6 +6,8 @@ import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.service.ChallengeService;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.crew.domain.CrewMember;
+import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.event.NudgeEvents;
 import com.runrace.backend.nudge.domain.Nudge;
 import com.runrace.backend.nudge.repository.NudgeRepository;
@@ -21,8 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 콕 찌르기(독려) — 같은 레이스에 참가 중인 멤버끼리 서로 독려 푸시를 보낸다.
- * 별도의 친구 관계 없이, "진행 중인 레이스의 공동 참가자"를 권한 게이트로 사용한다.
+ * 콕 찌르기(독려) — 같은 레이스 참가자 또는 같은 크루 멤버끼리 서로 독려 푸시를 보낸다.
+ * 별도의 친구 관계 없이, "진행 중인 레이스의 공동 참가자"/"같은 크루 소속"을 권한 게이트로 사용한다.
+ * 일일 제한(보낸이→받는이 하루 1회)은 두 경로가 공유한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -34,6 +37,7 @@ public class NudgeService {
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
+  private final CrewMemberRepository crewMemberRepository;
   private final NudgeRepository nudgeRepository;
   private final ApplicationEventPublisher eventPublisher;
 
@@ -64,6 +68,34 @@ public class NudgeService {
       throw ApiException.notFound("not_member");
     }
 
+    deliver(senderId, targetUserId, preset, now);
+  }
+
+  /**
+   * 같은 크루 멤버 {targetUserId}에게 콕 찌르기를 보낸다(하루 1회 — 레이스 넛지와 공용 제한).
+   * 크루 홈 주간 보드에서 이번 주 0km 멤버 독려용.
+   */
+  @Transactional
+  public void crewNudge(AuthPrincipal principal, UUID targetUserId, Integer variant) {
+    int preset = (variant != null && variant >= 0 && variant < PRESET_COUNT) ? variant : 0;
+    UUID senderId = principal.userId();
+    if (senderId.equals(targetUserId)) {
+      throw ApiException.badRequest("cannot_nudge_self");
+    }
+
+    CrewMember mine = crewMemberRepository.findByUserId(senderId)
+        .orElseThrow(() -> ApiException.forbidden("not_in_crew"));
+    CrewMember target = crewMemberRepository.findByUserId(targetUserId)
+        .orElseThrow(() -> ApiException.notFound("not_crew_mate"));
+    if (!mine.getCrew().getId().equals(target.getCrew().getId())) {
+      throw ApiException.forbidden("not_crew_mate");
+    }
+
+    deliver(senderId, targetUserId, preset, OffsetDateTime.now());
+  }
+
+  /** 공통 발송 — 일일 제한 검사 + 저장 + 커밋 후 푸시 이벤트. */
+  private void deliver(UUID senderId, UUID targetUserId, int preset, OffsetDateTime now) {
     OffsetDateTime startOfDay = LocalDate.now(KST).atStartOfDay(KST).toOffsetDateTime();
     if (nudgeRepository.existsBySenderIdAndReceiverIdAndSentAtGreaterThanEqual(
         senderId, targetUserId, startOfDay)) {

@@ -202,6 +202,7 @@ function MyPageContent({ user }: { user: User }) {
 
       <NavRowButton title={t.shoe_manage} onClick={() => nativeNavigate("/shoes")} className="mt-4" />
       <NavRowButton title={t.rival_manage} onClick={() => nativeNavigate("/rivals")} className="mt-4" />
+      <NavRowButton title={t.crew_manage} onClick={() => nativeNavigate("/crew")} className="mt-4" />
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.my_records_all_time}</div>

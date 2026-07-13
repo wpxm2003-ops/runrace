@@ -1,6 +1,7 @@
 package com.runrace.backend.auth.service;
 
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
+import com.runrace.backend.crew.service.CrewService;
 import com.runrace.backend.fitness.repository.DailyDistanceRepository;
 import com.runrace.backend.nudge.repository.NudgeRepository;
 import com.runrace.backend.push.repository.DeviceTokenRepository;
@@ -33,6 +34,7 @@ class AccountWithdrawalTx {
   private final DeviceTokenRepository deviceTokenRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final DailyDistanceRepository dailyDistanceRepository;
+  private final CrewService crewService;
 
   /** 정리 작업에 필요한 부수 정보(트랜잭션 밖에서 사용). */
   record WithdrawalCleanup(String firebaseUid, List<String> imageUrls) {}
@@ -57,6 +59,8 @@ class AccountWithdrawalTx {
     deviceTokenRepository.deleteAllByUser(userId);
     indoorRunApprovalRepository.deleteAllByVoter(userId);
     dailyDistanceRepository.deleteAllByUser(userId);
+    // 크루 멤버십 정리 — 리더면 승계, 혼자면 크루 삭제 (REQUIRED 전파로 같은 트랜잭션에 합류).
+    crewService.removeMembershipForWithdrawal(userId);
 
     // 3. 계정 익명화 — 개인정보 제거, firebase_uid는 tombstone(재로그인 불가). challenge_member 등은 보존.
     user.withdraw(OffsetDateTime.now());
