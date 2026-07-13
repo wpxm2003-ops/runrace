@@ -174,9 +174,50 @@ export type ChallengeFormValidationMessages = {
   stakeTooLong: string;
 };
 
-/** 레이스 최대 기간(일) — 백엔드 MAX_RACE_DURATION_DAYS와 일치. */
+/** 레이스 최대 기간(일) — 백엔드 RaceRules.MAX_DURATION_DAYS와 일치. */
 export const MAX_RACE_DURATION_DAYS = 31;
 const MAX_RACE_DURATION_MS = MAX_RACE_DURATION_DAYS * 24 * 60 * 60 * 1000;
+
+export type DateWindowMessages = {
+  startRequired: string;
+  endRequired: string;
+  startTooSoon: string;
+  endAfterStart: string;
+  durationTooLong: string;
+};
+
+/**
+ * 시작/종료일시(datetime-local 문자열) 검증 — 레이스 등록·크루 대항전이 공유한다.
+ * 과거 시작 금지(분 단위 절삭 비교), 종료는 시작 이후, 최대 기간 이내(백엔드 RaceRules와 동일 규칙).
+ */
+export function validateDateWindow(
+  startAt: string,
+  endAt: string,
+  msgs: DateWindowMessages,
+): string | null {
+  if (!startAt) return msgs.startRequired;
+  if (!endAt) return msgs.endRequired;
+
+  const startMs = new Date(startAt).getTime();
+  const endMs = new Date(endAt).getTime();
+  const nowFloor = new Date();
+  nowFloor.setSeconds(0, 0);
+  nowFloor.setMilliseconds(0);
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return msgs.startRequired;
+  }
+  if (startMs < nowFloor.getTime()) {
+    return msgs.startTooSoon;
+  }
+  if (endMs <= startMs) {
+    return msgs.endAfterStart;
+  }
+  if (endMs - startMs > MAX_RACE_DURATION_MS) {
+    return msgs.durationTooLong;
+  }
+  return null;
+}
 
 export type ValidateChallengeFormOptions = {
   /** 수정 시 현재 참여 인원(인원수 하한) */
@@ -208,27 +249,8 @@ export function validateChallengeForm(
     return msgs.membersRange;
   }
 
-  if (!form.startAt) return msgs.startRequired;
-  if (!form.endAt) return msgs.endRequired;
-
-  const startMs = new Date(form.startAt).getTime();
-  const endMs = new Date(form.endAt).getTime();
-  const nowFloor = new Date();
-  nowFloor.setSeconds(0, 0);
-  nowFloor.setMilliseconds(0);
-
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-    return msgs.startRequired;
-  }
-  if (startMs < nowFloor.getTime()) {
-    return msgs.startTooSoon;
-  }
-  if (endMs <= startMs) {
-    return msgs.endAfterStart;
-  }
-  if (endMs - startMs > MAX_RACE_DURATION_MS) {
-    return msgs.durationTooLong;
-  }
+  const dateError = validateDateWindow(form.startAt, form.endAt, msgs);
+  if (dateError) return dateError;
 
   if (form.stake.trim()) {
     const stake = form.stake.trim();

@@ -9,6 +9,7 @@ import com.runrace.backend.challenge.repository.ChallengePrizeRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.RaceRules;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
@@ -24,7 +25,6 @@ import com.runrace.backend.user.repository.AppUserRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -428,9 +428,7 @@ public class ChallengeService {
   }
 
   private static final int TITLE_MAX_BYTES = 50;
-  private static final int MAX_GOAL_KM = 1000;
   private static final int MAX_MEMBERS_LIMIT = 50;
-  private static final int MAX_RACE_DURATION_DAYS = 31;
   private void validateRoomInput(
       String title,
       BigDecimal goalKm,
@@ -440,25 +438,13 @@ public class ChallengeService {
     TextValidation.requireCleanText(title, TITLE_MAX_BYTES, true, "title");
     if (goalKm == null
         || goalKm.signum() <= 0
-        || goalKm.compareTo(BigDecimal.valueOf(MAX_GOAL_KM)) > 0) {
+        || goalKm.compareTo(BigDecimal.valueOf(RaceRules.MAX_GOAL_KM)) > 0) {
       throw ApiException.badRequest("invalid_goal_km");
     }
     if (maxMembers < 1 || maxMembers > MAX_MEMBERS_LIMIT) {
       throw ApiException.badRequest("invalid_max_members");
     }
-    if (startAt == null || endAt == null) {
-      throw ApiException.badRequest("invalid_dates");
-    }
-    OffsetDateTime nowMinute = OffsetDateTime.now().truncatedTo(ChronoUnit.MINUTES);
-    if (startAt.truncatedTo(ChronoUnit.MINUTES).isBefore(nowMinute)) {
-      throw ApiException.badRequest("invalid_start_at");
-    }
-    if (!endAt.isAfter(startAt)) {
-      throw ApiException.badRequest("invalid_date_range");
-    }
-    if (endAt.isAfter(startAt.plusDays(MAX_RACE_DURATION_DAYS))) {
-      throw ApiException.badRequest("race_duration_too_long");
-    }
+    RaceRules.validateWindow(startAt, endAt);
   }
 
   private void ensureOwner(AuthPrincipal principal, Challenge challenge) {

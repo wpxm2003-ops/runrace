@@ -14,7 +14,6 @@ public record CrewMatchDetailResponse(
     String opponentCrewName,
     boolean myCrewIsChallenger,
     int rosterSize,
-    int durationDays,
     String createdAt,
     String startAt,
     String endAt,

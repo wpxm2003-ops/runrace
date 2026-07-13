@@ -11,6 +11,7 @@ import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.domain.IndoorRunApproval;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.crew.service.CrewMatchService;
 import com.runrace.backend.event.WorkoutEvents;
 import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.upload.ImageUploadService;
@@ -51,6 +52,7 @@ public class WorkoutService {
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
   private final ChallengeProgressService challengeProgressService;
+  private final CrewMatchService crewMatchService;
   private final IndoorApprovalService indoorApprovalService;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
@@ -107,6 +109,9 @@ public class WorkoutService {
 
     // 현재 참여 중인 진행 레이스에 운동 거리 반영
     challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
+
+    // 진행 중인 크루 대항전 로스터라면, 이 운동으로 방금 상대를 추월했는지 확인해 알린다.
+    crewMatchService.checkOvertakeOnWorkout(principal.userId(), distanceM, endedAt);
 
     // 활성 신발 귀속 + 교체 목표 도달 시 알림 이벤트 발행
     shoeService.attributeActiveShoe(principal.userId(), saved);

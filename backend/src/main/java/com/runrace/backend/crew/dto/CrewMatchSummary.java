@@ -12,7 +12,6 @@ public record CrewMatchSummary(
     String opponentCrewName,
     boolean myCrewIsChallenger,
     int rosterSize,
-    int durationDays,
     String startAt,
     String endAt,
     long myCrewDistanceM,

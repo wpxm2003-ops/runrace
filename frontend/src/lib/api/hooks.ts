@@ -347,10 +347,10 @@ export function invalidateCrewMatches(userId: string) {
   invalidateByPrefix("crew-match");
 }
 
-/** 크루 검색(도전장 상대 선택) — 쿼리별 캐시, 빈 쿼리는 전체 상위 30개. */
-export function useCrewSearch(query: string, user: User | null) {
+/** 크루 검색(도전장 상대 선택) — 쿼리별 캐시. enabled=false면(검색어 없음 등) 조회하지 않는다. */
+export function useCrewSearch(query: string, user: User | null, enabled: boolean) {
   return useSWR(
-    user ? (["crew-search", query, user.uid] as const) : null,
+    enabled && user ? (["crew-search", query, user.uid] as const) : null,
     () => searchCrews(query, user!),
     { ...BASE_CONFIG, keepPreviousData: true },
   );

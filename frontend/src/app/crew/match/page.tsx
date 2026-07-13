@@ -195,7 +195,7 @@ function MatchContent({ matchId, user }: { matchId: number; user: User }) {
             {detail.opponentCrewName}
           </div>
           <div className="mt-1 text-xs text-zinc-500">
-            {t.crew_match_format(detail.rosterSize, detail.durationDays)}
+            {t.crew_match_roster_format(detail.rosterSize)}
             {detail.startAt && detail.endAt
               ? ` · ${shortDate(detail.startAt)} ~ ${shortDate(detail.endAt)}`
               : ""}

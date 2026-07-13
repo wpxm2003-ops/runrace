@@ -6,6 +6,7 @@ import com.runrace.backend.crew.dto.CreateCrewMatchRequest;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
 import com.runrace.backend.crew.dto.MyCrewMatchesResponse;
 import com.runrace.backend.crew.service.CrewMatchService;
+import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,7 +32,8 @@ public class CrewMatchController {
         principal.userId(),
         body.opponentCrewName(),
         body.rosterSize(),
-        body.durationDays(),
+        OffsetDateTime.parse(body.startAt()),
+        OffsetDateTime.parse(body.endAt()),
         body.rosterUserIds());
     return ResponseEntity.noContent().build();
   }

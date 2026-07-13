@@ -125,7 +125,6 @@ export type CrewMatchSummary = {
   opponentCrewName: string;
   myCrewIsChallenger: boolean;
   rosterSize: number;
-  durationDays: number;
   startAt: string | null;
   endAt: string | null;
   myCrewDistanceM: number;
@@ -157,7 +156,6 @@ export type CrewMatchDetail = {
   opponentCrewName: string;
   myCrewIsChallenger: boolean;
   rosterSize: number;
-  durationDays: number;
   createdAt: string;
   startAt: string | null;
   endAt: string | null;

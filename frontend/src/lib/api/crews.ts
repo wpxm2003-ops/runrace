@@ -89,9 +89,18 @@ export function searchCrews(query: string, user: User) {
 
 // ── 크루 대항전(C1) ───────────────────────────────────────────────
 
-/** 도전장 발송(리더 전용) — 선택 멤버 수가 곧 로스터 크기(상대도 동수). */
+/**
+ * 도전장 발송(리더 전용) — 선택 멤버 수가 곧 로스터 크기(상대도 동수).
+ * startAt/endAt은 레이스 등록과 동일한 규칙으로 검증된다.
+ */
 export function createCrewMatch(
-  body: { opponentCrewName: string; rosterSize: number; durationDays: number; rosterUserIds: string[] },
+  body: {
+    opponentCrewName: string;
+    rosterSize: number;
+    startAt: string;
+    endAt: string;
+    rosterUserIds: string[];
+  },
   user: User,
 ) {
   return apiFetch<void>("/api/crew-matches", { method: "POST", user, body });

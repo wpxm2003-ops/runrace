@@ -2,6 +2,7 @@ package com.runrace.backend.crew.service;
 
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.common.RaceRules;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMatch;
 import com.runrace.backend.crew.domain.CrewMatchRoster;
@@ -18,9 +19,7 @@ import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.event.CrewMatchEvents;
 import com.runrace.backend.workout.domain.WorkoutType;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -39,20 +38,15 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 크루 대항전(C1) — 도전장 발송/수락/거절, 로스터 지명(양측 동수), 총거리전 채점.
  * 점수는 로스터 멤버들의 [startAt, endAt) GPS 러닝 합산으로 파생하고(집계 테이블 0,
- * 실내런은 소급 입력 조작 방지를 위해 제외), 종료 확정은 조회 시점에 lazy로 수행한다.
+ * 실내런은 소급 입력 조작 방지를 위해 제외), 종료 확정은 조회 시점 lazy(myMatches/detail) +
+ * {@link CrewMatchScheduler} 주기 배치 양쪽에서 수행해, 아무도 앱을 안 열어도 결과 푸시가 나가게 한다.
  */
 @Service
 @RequiredArgsConstructor
 public class CrewMatchService {
 
-  static final int ROSTER_MIN = 3;
+  static final int ROSTER_MIN = 2;
   static final int ROSTER_MAX = 50;
-  static final int DURATION_MIN_DAYS = 3;
-  static final int DURATION_MAX_DAYS = 14;
-  /** 도전장 유효 기간 — 지나면 만료 취급(상태 저장 없이 파생). */
-  static final int PENDING_TTL_DAYS = 7;
-
-  private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
   private final CrewRepository crewRepository;
   private final CrewMemberRepository crewMemberRepository;
@@ -63,18 +57,20 @@ public class CrewMatchService {
 
   // ── 도전장 생성/수락/거절/취소 ────────────────────────────────
 
-  /** 도전장 발송(리더 전용) — 상대 크루를 이름으로 지목하고 내 로스터를 함께 지명한다. */
+  /**
+   * 도전장 발송(리더 전용) — 상대 크루를 이름으로 지목하고 내 로스터를 함께 지명한다.
+   * 대결 기간(startAt/endAt)은 레이스 등록과 동일한 규칙으로 도전자가 직접 설정한다.
+   * 목표 없이 항상 기간 내 무제한 — 로스터 합산 거리로 승부한다.
+   */
   @Transactional
-  public void create(UUID meId, String opponentCrewName, int rosterSize, int durationDays,
-      List<UUID> rosterUserIds) {
+  public void create(UUID meId, String opponentCrewName, int rosterSize,
+      OffsetDateTime startAt, OffsetDateTime endAt, List<UUID> rosterUserIds) {
     Crew myCrew = requireMyCrewAsLeader(meId);
 
     if (rosterSize < ROSTER_MIN || rosterSize > ROSTER_MAX) {
       throw ApiException.badRequest("invalid_roster_size");
     }
-    if (durationDays < DURATION_MIN_DAYS || durationDays > DURATION_MAX_DAYS) {
-      throw ApiException.badRequest("invalid_duration");
-    }
+    RaceRules.validateWindow(startAt, endAt);
 
     String name = opponentCrewName == null ? "" : opponentCrewName.trim();
     Crew opponent = crewRepository.findByName(name)
@@ -87,10 +83,10 @@ public class CrewMatchService {
     }
 
     OffsetDateTime now = OffsetDateTime.now();
-    if (!crewMatchRepository.findActiveByCrewId(myCrew.getId(), pendingSince(now)).isEmpty()) {
+    if (!crewMatchRepository.findActiveByCrewId(myCrew.getId(), now).isEmpty()) {
       throw ApiException.conflict("match_already_active");
     }
-    if (!crewMatchRepository.findActiveByCrewId(opponent.getId(), pendingSince(now)).isEmpty()) {
+    if (!crewMatchRepository.findActiveByCrewId(opponent.getId(), now).isEmpty()) {
       throw ApiException.conflict("opponent_busy");
     }
 
@@ -100,7 +96,8 @@ public class CrewMatchService {
         .challengerCrew(myCrew)
         .opponentCrew(opponent)
         .rosterSize(rosterSize)
-        .durationDays(durationDays)
+        .startAt(startAt)
+        .endAt(endAt)
         .createdAt(now)
         .build());
     saveRoster(match, myCrew.getId(), myRoster);
@@ -110,7 +107,10 @@ public class CrewMatchService {
         opponent.getLeader().getId(), myCrew.getName(), match.getId()));
   }
 
-  /** 도전장 수락(상대 크루 리더 전용) — 수락 크루 로스터 지명 + 다음날 0시 KST 동시 출발 확정. */
+  /**
+   * 도전장 수락(상대 크루 리더 전용) — 수락 크루 로스터 지명. 기간은 도전장 작성 시 이미
+   * 확정돼 있으므로(레이스 등록과 동일) 상태 전이만 한다. 시작 전까지만 수락할 수 있다.
+   */
   @Transactional
   public void accept(UUID meId, long matchId, List<UUID> rosterUserIds) {
     Crew myCrew = requireMyCrewAsLeader(meId);
@@ -124,7 +124,7 @@ public class CrewMatchService {
 
     // 그 사이 도전 크루가 다른 대결을 잡았을 수 있다 — 이 매치를 제외하고 활성 검사.
     boolean challengerBusy = crewMatchRepository
-        .findActiveByCrewId(match.getChallengerCrew().getId(), pendingSince(now)).stream()
+        .findActiveByCrewId(match.getChallengerCrew().getId(), now).stream()
         .anyMatch(m -> !m.getId().equals(match.getId()) && m.getStatus() == CrewMatch.Status.ACCEPTED);
     if (challengerBusy) {
       throw ApiException.conflict("opponent_busy");
@@ -132,8 +132,7 @@ public class CrewMatchService {
 
     List<CrewMember> roster = validateRoster(myCrew.getId(), rosterUserIds, match.getRosterSize());
 
-    OffsetDateTime startAt = LocalDate.now(KST).plusDays(1).atStartOfDay(KST).toOffsetDateTime();
-    match.accept(startAt, startAt.plusDays(match.getDurationDays()));
+    match.accept();
     crewMatchRepository.save(match);
     saveRoster(match, myCrew.getId(), roster);
 
@@ -166,6 +165,8 @@ public class CrewMatchService {
     requireAlivePending(match, OffsetDateTime.now());
     match.decline();
     crewMatchRepository.save(match);
+    eventPublisher.publishEvent(new CrewMatchEvents.ChallengeDeclined(
+        match.getChallengerCrew().getLeader().getId(), myCrew.getName(), match.getId()));
   }
 
   /** 도전장 취소(도전 크루 리더 전용, 수락 전만) — 행 자체를 삭제한다. */
@@ -194,7 +195,7 @@ public class CrewMatchService {
     CrewMatchSummary current = null;
     List<CrewMatchSummary> received = new ArrayList<>();
     List<CrewMatchSummary> sent = new ArrayList<>();
-    for (CrewMatch m : crewMatchRepository.findActiveByCrewId(crewId, pendingSince(now))) {
+    for (CrewMatch m : crewMatchRepository.findActiveByCrewId(crewId, now)) {
       // 기간이 끝난 ACCEPTED는 여기서 lazy 확정 → lastEnded로 흘러가게 한다.
       if (m.getStatus() == CrewMatch.Status.ACCEPTED && !m.isEnded()
           && !now.isBefore(m.getEndAt())) {
@@ -267,7 +268,7 @@ public class CrewMatchService {
 
     boolean myCrewIsChallenger = challengerId.equals(myCrewId);
     boolean isLeader = membership.getCrew().isLeader(meId);
-    boolean alivePending = match.getStatus() == CrewMatch.Status.PENDING && !expired(match, now);
+    boolean alivePending = match.getStatus() == CrewMatch.Status.PENDING && isAlivePending(match, now);
     return new CrewMatchDetailResponse(
         match.getId(),
         derivedStatus(match, now),
@@ -275,7 +276,6 @@ public class CrewMatchService {
         match.getOpponentCrew().getName(),
         myCrewIsChallenger,
         match.getRosterSize(),
-        match.getDurationDays(),
         IsoTime.format(match.getCreatedAt()),
         IsoTime.formatOrNull(match.getStartAt()),
         IsoTime.formatOrNull(match.getEndAt()),
@@ -289,9 +289,69 @@ public class CrewMatchService {
         opponentRows);
   }
 
+  /**
+   * 기간(endAt)이 지난 ACCEPTED 매치를 확정한다 — CrewMatchScheduler가 주기적으로 호출해,
+   * 아무도 조회하지 않아도 종료 확정 + 결과 푸시가 나가게 한다. 확정했으면 true.
+   */
+  @Transactional
+  public boolean finalizeIfTimeEnded(long matchId, OffsetDateTime now) {
+    CrewMatch match = crewMatchRepository.findByIdWithCrews(matchId).orElse(null);
+    if (match == null) return false; // 그사이 삭제됐으면 건너뜀
+    if (match.getStatus() != CrewMatch.Status.ACCEPTED || match.isEnded()) return false;
+    if (match.getEndAt() == null || now.isBefore(match.getEndAt())) return false;
+    finalizeEnded(match);
+    return true;
+  }
+
+  /**
+   * GPS 워크아웃 저장 직후(WorkoutService.create) 호출 — 사용자가 진행 중인 대항전 로스터에
+   * 있으면 방금 그 운동으로 자기 크루가 상대를 추월했는지 확인해, 추월당한 쪽 로스터 전원에게
+   * 알린다. 진행 중인 대항전이 없거나 이 운동이 대항전 기간 밖이면 아무 일도 하지 않는다.
+   */
+  @Transactional
+  public void checkOvertakeOnWorkout(UUID userId, int distanceM, OffsetDateTime workoutEndedAt) {
+    OffsetDateTime now = OffsetDateTime.now();
+    CrewMatchRoster myRoster = crewMatchRosterRepository.findActiveByUserId(userId, now).orElse(null);
+    if (myRoster == null) return;
+
+    CrewMatch match = myRoster.getMatch();
+    if (workoutEndedAt.isBefore(match.getStartAt()) || !workoutEndedAt.isBefore(match.getEndAt())) {
+      return; // 이 운동은 대항전 채점 구간 밖 — memberDistances 집계에 반영되지 않는다.
+    }
+
+    List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
+    Map<UUID, Long> byUser = memberDistances(match, rosters, now);
+    Long challengerId = match.getChallengerCrew().getId();
+    long challengerSum = 0;
+    long opponentSum = 0;
+    for (CrewMatchRoster r : rosters) {
+      long dist = byUser.getOrDefault(r.getUser().getId(), 0L);
+      if (r.getCrewId().equals(challengerId)) challengerSum += dist; else opponentSum += dist;
+    }
+
+    boolean mySideIsChallenger = myRoster.getCrewId().equals(challengerId);
+    long myNextSum = mySideIsChallenger ? challengerSum : opponentSum;
+    long otherSum = mySideIsChallenger ? opponentSum : challengerSum;
+    long myPrevSum = myNextSum - distanceM; // 방금 반영된 이 운동만큼 제외한 직전 상태
+
+    // 직전엔 뒤지거나 동률이었는데 이 운동으로 앞서게 됐으면 방금 추월한 것.
+    if (myPrevSum > otherSum || myNextSum <= otherSum) return;
+
+    Crew overtakerCrew = mySideIsChallenger ? match.getChallengerCrew() : match.getOpponentCrew();
+    Long overtakenCrewId = mySideIsChallenger ? match.getOpponentCrew().getId() : challengerId;
+    List<UUID> overtakenUserIds = rosters.stream()
+        .filter(r -> r.getCrewId().equals(overtakenCrewId))
+        .map(r -> r.getUser().getId())
+        .toList();
+    if (overtakenUserIds.isEmpty()) return;
+
+    eventPublisher.publishEvent(new CrewMatchEvents.MatchOvertake(
+        match.getId(), overtakerCrew.getName(), overtakenUserIds));
+  }
+
   // ── 내부 헬퍼 ─────────────────────────────────────────────────
 
-  /** 기간 종료된 ACCEPTED 매치의 승자를 확정한다. */
+  /** 기간 종료된 ACCEPTED 매치의 승자를 확정하고, 로스터 전원에게 결과 푸시를 발행한다. */
   private void finalizeEnded(CrewMatch match) {
     List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
     Map<UUID, Long> byUser = memberDistances(match, rosters, match.getEndAt());
@@ -311,6 +371,26 @@ public class CrewMatchService {
         : (opponentSum > challengerSum ? match.getOpponentCrew().getId() : null);
     match.finish(winner);
     crewMatchRepository.save(match);
+    publishMatchEnded(match, rosters, winner);
+  }
+
+  /** 로스터 전원에게 결과(WIN|LOSS|DRAW) 푸시 이벤트를 발행한다. 로스터가 없으면(수락 전 소멸 등) 생략. */
+  private void publishMatchEnded(CrewMatch match, List<CrewMatchRoster> rosters, Long winnerCrewId) {
+    if (rosters.isEmpty()) return;
+    Long challengerId = match.getChallengerCrew().getId();
+    String challengerName = match.getChallengerCrew().getName();
+    String opponentName = match.getOpponentCrew().getName();
+    List<CrewMatchEvents.MatchEnded.RosterResult> receivers = new ArrayList<>();
+    for (CrewMatchRoster r : rosters) {
+      boolean isChallengerSide = r.getCrewId().equals(challengerId);
+      String opponentCrewName = isChallengerSide ? opponentName : challengerName;
+      String result = winnerCrewId == null
+          ? "DRAW"
+          : (winnerCrewId.equals(r.getCrewId()) ? "WIN" : "LOSS");
+      receivers.add(new CrewMatchEvents.MatchEnded.RosterResult(
+          r.getUser().getId(), opponentCrewName, result));
+    }
+    eventPublisher.publishEvent(new CrewMatchEvents.MatchEnded(match.getId(), receivers));
   }
 
   /** 로스터 전원의 [startAt, min(now, endAt)) 구간 GPS 거리. 시작 전·PENDING이면 빈 맵. */
@@ -352,7 +432,6 @@ public class CrewMatchService {
         match.getOpponentCrew().getName(),
         match.getChallengerCrew().getId().equals(myCrewId),
         match.getRosterSize(),
-        match.getDurationDays(),
         IsoTime.formatOrNull(match.getStartAt()),
         IsoTime.formatOrNull(match.getEndAt()),
         myDist,
@@ -364,7 +443,7 @@ public class CrewMatchService {
   private String derivedStatus(CrewMatch match, OffsetDateTime now) {
     return switch (match.getStatus()) {
       case DECLINED -> "DECLINED";
-      case PENDING -> expired(match, now) ? "EXPIRED" : "PENDING";
+      case PENDING -> isAlivePending(match, now) ? "PENDING" : "EXPIRED";
       case ACCEPTED -> match.isEnded() || !now.isBefore(match.getEndAt())
           ? "ENDED"
           : (now.isBefore(match.getStartAt()) ? "SCHEDULED" : "IN_PROGRESS");
@@ -382,19 +461,19 @@ public class CrewMatchService {
     return match.getWinnerCrewId().equals(myCrewId) ? "WIN" : "LOSS";
   }
 
-  private static boolean expired(CrewMatch match, OffsetDateTime now) {
-    return match.getCreatedAt().plusDays(PENDING_TTL_DAYS).isBefore(now);
-  }
-
-  private static OffsetDateTime pendingSince(OffsetDateTime now) {
-    return now.minusDays(PENDING_TTL_DAYS);
+  /**
+   * PENDING 도전장이 아직 살아있는가 — 시작일시 전까지만 수락할 수 있다
+   * (레이스의 "시작 전까지만 참가 가능" 원칙과 동일). start_at이 없는 행(레거시)은 만료로 본다.
+   */
+  private static boolean isAlivePending(CrewMatch match, OffsetDateTime now) {
+    return match.getStartAt() != null && now.isBefore(match.getStartAt());
   }
 
   private void requireAlivePending(CrewMatch match, OffsetDateTime now) {
     if (match.getStatus() != CrewMatch.Status.PENDING) {
       throw ApiException.conflict("match_not_pending");
     }
-    if (expired(match, now)) {
+    if (!isAlivePending(match, now)) {
       throw ApiException.conflict("match_expired");
     }
   }

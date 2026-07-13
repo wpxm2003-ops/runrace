@@ -19,8 +19,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 크루 대항전 — challenger가 opponent에게 도전장을 보내고, 수락 시 다음날 0시(KST) 동시 출발.
- * 점수는 로스터 합산 거리로 파생하며, 종료 확정(승자 기록)은 조회 시점에 lazy로 수행한다.
+ * 크루 대항전 — challenger가 도전장 작성 시 시작/종료일시를 직접 설정한다(레이스 등록과 동일).
+ * 목표 없이 항상 기간 내 무제한 — 로스터 합산 거리가 더 큰 쪽이 승리한다.
+ * opponent는 시작 전까지만 수락할 수 있고, 수락은 상태 전이만 한다(기간은 이미 확정돼 있음).
+ * 종료 확정(승자 기록)은 조회 시점에 lazy로 수행한다.
  */
 @Entity
 @Table(name = "crew_match")
@@ -53,10 +55,7 @@ public class CrewMatch {
   @Column(name = "roster_size", nullable = false)
   private int rosterSize;
 
-  @Column(name = "duration_days", nullable = false)
-  private int durationDays;
-
-  /** 수락 시 확정 — 다음날 0시 KST. PENDING 동안은 null. */
+  /** 도전장 작성 시 확정(레이스 등록과 동일 — 상대 수락 여부와 무관하게 고정). */
   @Column(name = "start_at")
   private OffsetDateTime startAt;
 
@@ -76,11 +75,9 @@ public class CrewMatch {
 
   // ── 도메인 메서드 ──────────────────────────────────────────────
 
-  /** 수락 — 기간을 확정하고 ACCEPTED로 전이한다. */
-  public void accept(OffsetDateTime startAt, OffsetDateTime endAt) {
+  /** 수락 — 기간은 도전장 작성 시 이미 확정돼 있으므로 상태만 전이한다. */
+  public void accept() {
     this.status = Status.ACCEPTED;
-    this.startAt = startAt;
-    this.endAt = endAt;
   }
 
   public void decline() {
