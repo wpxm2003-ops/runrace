@@ -5,12 +5,14 @@ import com.runrace.backend.crew.dto.CreateCrewRequest;
 import com.runrace.backend.crew.dto.CrewInsightsResponse;
 import com.runrace.backend.crew.dto.CrewJoinInfoResponse;
 import com.runrace.backend.crew.dto.CrewRecapResponse;
+import com.runrace.backend.crew.dto.CrewSearchItem;
 import com.runrace.backend.crew.dto.JoinCrewRequest;
 import com.runrace.backend.crew.dto.MyCrewResponse;
 import com.runrace.backend.crew.dto.UpdateCrewRequest;
 import com.runrace.backend.crew.service.CrewService;
 import com.runrace.backend.nudge.dto.NudgeRequest;
 import com.runrace.backend.nudge.service.NudgeService;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,17 @@ public class CrewController {
   @GetMapping("/me/insights")
   public ResponseEntity<CrewInsightsResponse> insights(AuthPrincipal principal) {
     return ResponseEntity.ok(crewService.insights(principal.userId()));
+  }
+
+  /** 크루 검색(도전장 상대 선택) — 내 크루 제외, 멤버 많은 순 상위 30개. */
+  @GetMapping("/search")
+  public ResponseEntity<List<CrewSearchItem>> search(
+      AuthPrincipal principal,
+      @RequestParam(name = "query", required = false, defaultValue = "") String query) {
+    List<CrewSearchItem> items = crewService.search(principal.userId(), query).stream()
+        .map(r -> new CrewSearchItem(r.getId(), r.getName(), r.getMemberCount()))
+        .toList();
+    return ResponseEntity.ok(items);
   }
 
   /** 같은 크루 멤버에게 콕 찌르기(하루 1회). */

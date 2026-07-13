@@ -46,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CrewMatchService {
 
   static final int ROSTER_MIN = 3;
-  static final int ROSTER_MAX = 10;
+  static final int ROSTER_MAX = 50;
   static final int DURATION_MIN_DAYS = 3;
   static final int DURATION_MAX_DAYS = 14;
   /** 도전장 유효 기간 — 지나면 만료 취급(상태 저장 없이 파생). */

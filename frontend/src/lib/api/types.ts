@@ -99,6 +99,13 @@ export type CrewInsights = {
   hallOfFame: { month: string; nickname: string | null; distanceM: number }[];
 };
 
+/** 크루 검색 결과 한 줄(도전장 상대 선택용). */
+export type CrewSearchItem = {
+  id: number;
+  name: string;
+  memberCount: number;
+};
+
 // ── 크루 대항전(crew match) ───────────────────────────────────────
 export type CrewMatchStatus =
   | "PENDING"

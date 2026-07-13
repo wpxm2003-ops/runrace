@@ -152,6 +152,19 @@ public class CrewService {
         mvpNickname, mvpDist);
   }
 
+  /**
+   * 크루 검색(도전장 상대 선택용) — 내 크루 제외, 멤버 많은 순 상위 30개.
+   * 와일드카드 문자(%·_)는 리터럴 취급을 위해 제거한다.
+   */
+  @Transactional(readOnly = true)
+  public List<CrewRepository.CrewSearchRow> search(UUID meId, String rawQuery) {
+    String query = rawQuery == null ? "" : rawQuery.trim().replaceAll("[%_]", "");
+    long excludeCrewId = crewMemberRepository.findByUserId(meId)
+        .map(m -> m.getCrew().getId())
+        .orElse(-1L);
+    return crewRepository.searchByName(query, excludeCrewId);
+  }
+
   /** 초대 랜딩 정보 — 비로그인 가능. 로그인 시 내 소속 상태를 함께 판정한다. */
   @Transactional(readOnly = true)
   public CrewJoinInfoResponse joinInfo(String code, @Nullable UUID meId) {

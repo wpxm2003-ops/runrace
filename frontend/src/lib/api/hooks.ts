@@ -27,6 +27,7 @@ import {
   fetchCrewInsights,
   fetchMyCrewMatches,
   fetchCrewMatchDetail,
+  searchCrews,
 } from "./crews";
 import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
@@ -344,6 +345,15 @@ export function useCrewMatchDetail(matchId: number | null, user: User | null) {
 export function invalidateCrewMatches(userId: string) {
   invalidateByPrefix("crew-matches", userId);
   invalidateByPrefix("crew-match");
+}
+
+/** 크루 검색(도전장 상대 선택) — 쿼리별 캐시, 빈 쿼리는 전체 상위 30개. */
+export function useCrewSearch(query: string, user: User | null) {
+  return useSWR(
+    user ? (["crew-search", query, user.uid] as const) : null,
+    () => searchCrews(query, user!),
+    { ...BASE_CONFIG, keepPreviousData: true },
+  );
 }
 
 /** 초대 랜딩 정보 — 비로그인은 "public" 키로 조회. */

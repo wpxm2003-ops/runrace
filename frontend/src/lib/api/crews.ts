@@ -5,6 +5,7 @@ import type {
   CrewJoinInfo,
   CrewMatchDetail,
   CrewRecap,
+  CrewSearchItem,
   MyCrewMatches,
   MyCrewResponse,
 } from "./types";
@@ -76,6 +77,14 @@ export function kickCrewMember(crewId: number, memberUserId: string, user: User)
     method: "DELETE",
     user,
   });
+}
+
+/** 크루 검색(도전장 상대 선택) — 내 크루 제외, 멤버 많은 순 상위 30개. */
+export function searchCrews(query: string, user: User) {
+  return apiFetch<CrewSearchItem[]>(
+    `/api/crews/search?query=${encodeURIComponent(query)}`,
+    { user },
+  );
 }
 
 // ── 크루 대항전(C1) ───────────────────────────────────────────────

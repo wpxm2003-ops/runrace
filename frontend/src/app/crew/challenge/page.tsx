@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import {
   createCrewMatch,
   useMyCrew,
+  useCrewSearch,
   invalidateCrewMatches,
   toDisplayError,
   reportClientError,
 } from "@/lib/api";
-import type { CrewView } from "@/lib/api/types";
+import type { CrewSearchItem, CrewView } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -21,7 +23,7 @@ import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
 const ROSTER_MIN = 3;
-const ROSTER_MAX = 10;
+const ROSTER_MAX = 50;
 const DURATION_OPTIONS = [3, 7, 14];
 
 function matchErrorMessage(e: unknown, t: ReturnType<typeof useLocale>["t"]): string {
@@ -36,14 +38,23 @@ function matchErrorMessage(e: unknown, t: ReturnType<typeof useLocale>["t"]): st
   return toDisplayError(e) ?? t.error_occurred;
 }
 
-/** 도전장 작성(리더 전용) — 선택한 멤버 수가 곧 로스터 크기(상대 크루도 동수 출전). */
+/** 도전장 작성(리더 전용) — 상대는 검색·선택, 선택한 멤버 수가 곧 로스터 크기(상대도 동수 출전). */
 function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
   const { t } = useLocale();
-  const [opponentName, setOpponentName] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [opponent, setOpponent] = useState<CrewSearchItem | null>(null);
   const [durationDays, setDurationDays] = useState(7);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [sending, setSending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // 타이핑 중 서버 검색 난사 방지 — 250ms 디바운스 후 쿼리별 SWR 캐시.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const { data: crews, isLoading: searching } = useCrewSearch(debouncedSearch, user);
 
   function toggleMember(userId: string) {
     setSelected((prev) => {
@@ -58,16 +69,16 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
   }
 
   const canSend =
-    opponentName.trim().length >= 2 && selected.size >= ROSTER_MIN && selected.size <= ROSTER_MAX;
+    opponent != null && selected.size >= ROSTER_MIN && selected.size <= ROSTER_MAX;
 
   async function onSend() {
-    if (!canSend || sending) return;
+    if (!canSend || !opponent || sending) return;
     setSending(true);
     setActionError(null);
     try {
       await createCrewMatch(
         {
-          opponentCrewName: opponentName.trim(),
+          opponentCrewName: opponent.name,
           rosterSize: selected.size,
           durationDays,
           rosterUserIds: [...selected],
@@ -95,18 +106,65 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
       </Card>
 
       <Card className="mt-4">
-        <label className="text-sm text-zinc-500" htmlFor="opponent-name">
+        <label className="text-sm text-zinc-500" htmlFor="opponent-search">
           {t.crew_match_opponent_label}
         </label>
         <input
-          id="opponent-name"
+          id="opponent-search"
           type="text"
-          value={opponentName}
-          onChange={(e) => setOpponentName(stripForbiddenText(e.target.value).slice(0, 20))}
+          value={search}
+          onChange={(e) => setSearch(stripForbiddenText(e.target.value).slice(0, 20))}
           placeholder={t.crew_match_opponent_placeholder}
           maxLength={20}
           className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
         />
+        {/* 전체 크루(멤버 많은 순 상위 30) — 검색어로 필터, 탭해서 선택 */}
+        <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-zinc-100">
+          {!crews && searching ? (
+            <div className="p-3">
+              <SkeletonLines count={2} />
+            </div>
+          ) : !crews || crews.length === 0 ? (
+            <p className="p-3 text-sm text-zinc-400">{t.crew_match_search_empty}</p>
+          ) : (
+            <div className="divide-y divide-zinc-100">
+              {crews.map((c) => {
+                const isSelected = opponent?.id === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setOpponent((prev) => (prev?.id === c.id ? null : c))}
+                    className={`flex w-full items-center justify-between gap-3 p-3 text-left ${
+                      isSelected ? "bg-zinc-50" : "hover:bg-zinc-50"
+                    }`}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] ${
+                          isSelected
+                            ? "border-zinc-900 bg-zinc-900 text-white"
+                            : "border-zinc-300 text-transparent"
+                        }`}
+                      >
+                        ✓
+                      </span>
+                      <span className="truncate text-sm font-medium text-zinc-900">{c.name}</span>
+                    </div>
+                    <span className="shrink-0 text-xs text-zinc-400">
+                      {t.crew_match_search_members(c.memberCount)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {opponent ? (
+          <p className="mt-2 text-xs font-medium text-emerald-700">
+            {t.crew_match_opponent_selected(opponent.name)}
+          </p>
+        ) : null}
 
         <div className="mt-4 text-sm text-zinc-500">{t.crew_match_duration_label}</div>
         <div className="mt-1.5 flex gap-2">
