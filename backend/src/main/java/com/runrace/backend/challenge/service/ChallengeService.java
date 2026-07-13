@@ -13,6 +13,9 @@ import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.HeadToHeadRow;
+import com.runrace.backend.crew.domain.Crew;
+import com.runrace.backend.crew.repository.CrewMemberRepository;
+import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.event.ChallengeEndedNoParticipantsEvent;
 import com.runrace.backend.event.ChallengeEvents;
 import com.runrace.backend.rival.repository.RivalRepository;
@@ -56,6 +59,8 @@ public class ChallengeService {
   private final ApplicationEventPublisher eventPublisher;
   private final RivalRepository rivalRepository;
   private final RaceFinalizationService raceFinalization;
+  private final CrewMemberRepository crewMemberRepository;
+  private final CrewRepository crewRepository;
 
   @Transactional
   public Challenge createRoom(
@@ -67,7 +72,29 @@ public class ChallengeService {
       OffsetDateTime endAt,
       String langCd,
       String stake) {
+    return createRoom(principal, title, goalKm, maxMembers, startAt, endAt, langCd, stake, false);
+  }
+
+  /** {@code crewOnly=true}면 생성자의 소속 크루 내부 레이스로 만든다(멤버 전용·공개 목록 제외). */
+  @Transactional
+  public Challenge createRoom(
+      AuthPrincipal principal,
+      String title,
+      BigDecimal goalKm,
+      int maxMembers,
+      OffsetDateTime startAt,
+      OffsetDateTime endAt,
+      String langCd,
+      String stake,
+      boolean crewOnly) {
     validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
+
+    Long crewId = null;
+    if (crewOnly) {
+      crewId = crewMemberRepository.findByUserId(principal.userId())
+          .orElseThrow(() -> ApiException.badRequest("not_in_crew"))
+          .getCrew().getId();
+    }
 
     AppUser creator = appUserRepository.getRequired(principal.userId());
     if (challengeRepository.countActiveByCreator(creator.getId(), OffsetDateTime.now())
@@ -86,12 +113,21 @@ public class ChallengeService {
         .startAt(startAt)
         .endAt(endAt)
         .stake(cleanStake(stake))
+        .crewId(crewId)
         .build();
     Challenge saved = challengeRepository.save(challenge);
 
     challengeMemberRepository.save(newMember(saved, creator));
 
     return saved;
+  }
+
+  /** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 목록. */
+  @Transactional(readOnly = true)
+  public List<Challenge> listCrewRaces(UUID userId) {
+    return crewMemberRepository.findByUserId(userId)
+        .map(m -> challengeRepository.findTop10ByCrewIdOrderByStartAtDesc(m.getCrew().getId()))
+        .orElse(List.of());
   }
 
   @Transactional
@@ -144,6 +180,13 @@ public class ChallengeService {
     ensureNotStarted(challenge);
     if (isEnded(challenge, OffsetDateTime.now())) {
       throw ApiException.conflict("ended");
+    }
+    // 크루 내부 레이스 — 해당 크루 멤버만 참가 가능
+    if (challenge.getCrewId() != null
+        && crewMemberRepository
+            .findByCrewIdAndUserId(challenge.getCrewId(), principal.userId())
+            .isEmpty()) {
+      throw ApiException.forbidden("not_crew_member");
     }
     if (challengeMemberRepository.findByChallengeIdAndUserId(id, principal.userId()).isPresent()) {
       throw ApiException.conflict("already_member");
@@ -269,6 +312,11 @@ public class ChallengeService {
     Set<UUID> rivalUserIds =
         userId == null ? Set.of() : new HashSet<>(rivalRepository.findRivalUserIds(userId));
 
+    // 크루 내부 레이스면 뱃지 표시용 크루명(해체로 크루가 사라졌으면 null).
+    String crewName = challenge.getCrewId() == null
+        ? null
+        : crewRepository.findById(challenge.getCrewId()).map(Crew::getName).orElse(null);
+
     return new ChallengeDetailView(
         challenge,
         members,
@@ -279,7 +327,8 @@ public class ChallengeService {
         isEnded(challenge, now),
         winner,
         members.size(),
-        rivalUserIds);
+        rivalUserIds,
+        crewName);
   }
 
   /**
@@ -435,5 +484,6 @@ public class ChallengeService {
       boolean hasEnded,
       AppUser winner,
       int memberCount,
-      Set<UUID> rivalUserIds) {}
+      Set<UUID> rivalUserIds,
+      String crewName) {}
 }

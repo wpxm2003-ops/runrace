@@ -64,7 +64,9 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
         .where(
             lang == null ? null : challenge.langCd.eq(lang),
             phaseFilter(phase, now),
-            notSoloEnded(now))
+            notSoloEnded(now),
+            // 크루 내부 레이스는 공개 목록에서 제외(크루 홈에서만 노출)
+            challenge.crewId.isNull())
         .orderBy(orderBy(phase, now))
         .offset(pageable.getOffset())
         .limit(pageable.getPageSize() + 1L)

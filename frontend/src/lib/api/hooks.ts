@@ -14,12 +14,13 @@ import {
   fetchActiveCount,
   fetchMyChallengesPage,
   fetchChallengeWorkouts,
+  fetchCrewRaces,
   fetchHeadToHead,
   fetchPendingApprovals,
   fetchRejectedApprovals,
   DEFAULT_PAGE_SIZE,
 } from "./challenges";
-import { fetchMyCrew, fetchCrewJoinInfo, fetchCrewRecap } from "./crews";
+import { fetchMyCrew, fetchCrewJoinInfo, fetchCrewRecap, fetchCrewInsights } from "./crews";
 import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
@@ -289,6 +290,29 @@ export function useCrewRecap(user: User | null, enabled: boolean) {
     () => fetchCrewRecap(user!),
     { ...BASE_CONFIG, revalidateOnFocus: false },
   );
+}
+
+/** 크루 잔디 + 명예의 전당 — 크루 소속일 때만 조회(enabled). */
+export function useCrewInsights(user: User | null, enabled: boolean) {
+  return useSWR(
+    enabled && user ? (["crew-insights", user.uid] as const) : null,
+    () => fetchCrewInsights(user!),
+    { ...BASE_CONFIG, revalidateOnFocus: false },
+  );
+}
+
+/** 내 크루의 내부 레이스 목록 — 크루 홈 섹션용. */
+export function useCrewRaces(user: User | null, enabled: boolean) {
+  return useSWR(
+    enabled && user ? (["crew-races", user.uid] as const) : null,
+    () => fetchCrewRaces(user!),
+    LIVE_CONFIG,
+  );
+}
+
+/** 크루 레이스 생성 후 크루 홈 레이스 목록 재검증. */
+export function invalidateCrewRaces(userId: string) {
+  invalidateByPrefix("crew-races", userId);
 }
 
 /** 초대 랜딩 정보 — 비로그인은 "public" 키로 조회. */

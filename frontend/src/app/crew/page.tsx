@@ -14,11 +14,15 @@ import {
   crewNudge,
   useMyCrew,
   useCrewRecap,
+  useCrewInsights,
+  useCrewRaces,
   invalidateMyCrew,
   toDisplayError,
   reportClientError,
 } from "@/lib/api";
-import type { CrewView } from "@/lib/api/types";
+import type { CrewInsights, CrewView } from "@/lib/api/types";
+import { challengeDetailHref } from "@/lib/challengeRoute";
+import { formatGoalDistance } from "@/lib/units";
 import { CrewRecapCard } from "./_components/CrewRecapCard";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
@@ -260,6 +264,53 @@ function shortDate(iso: string): string {
   return `${Number(m)}.${Number(d)}`;
 }
 
+/** "YYYY-MM-DD" 기준 n일 뒤 ISO date. 잔디 그리드 셀 날짜 계산용. */
+function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${dt.getFullYear()}-${mm}-${dd}`;
+}
+
+function todayIso(): string {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+
+/** 크루 잔디 — 최근 5주(월~일) 날짜별 뛴 멤버 수를 깃허브 잔디 스타일로. */
+function HeatmapGrid({ insights }: { insights: CrewInsights }) {
+  const runnersByDate = new Map(insights.heatmap.map((d) => [d.date, d.runners]));
+  const today = todayIso();
+  const cells = Array.from({ length: 35 }, (_, i) => {
+    const date = addDaysIso(insights.heatmapFrom, i);
+    return { date, runners: runnersByDate.get(date) ?? 0, future: date > today };
+  });
+
+  function cellClass(runners: number, future: boolean): string {
+    if (future) return "bg-transparent";
+    if (runners === 0 || insights.memberCount === 0) return "bg-zinc-100";
+    const ratio = runners / insights.memberCount;
+    if (ratio <= 1 / 3) return "bg-emerald-200";
+    if (ratio <= 2 / 3) return "bg-emerald-400";
+    return "bg-emerald-600";
+  }
+
+  return (
+    <div className="grid grid-cols-7 gap-1">
+      {cells.map((c) => (
+        <div
+          key={c.date}
+          title={c.future ? undefined : `${shortDate(c.date)} · ${c.runners}`}
+          className={`h-5 rounded ${cellClass(c.runners, c.future)}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** 크루 홈 — 크루 정보 + 인사이트 스탯 + 이번 주 보드(목표·넛지) + 지난주 결산. */
 function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const { t } = useLocale();
@@ -267,6 +318,8 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
   const [nudgingId, setNudgingId] = useState<string | null>(null);
   const { data: recap } = useCrewRecap(user, true);
+  const { data: insights } = useCrewInsights(user, true);
+  const { data: races } = useCrewRaces(user, true);
 
   const weekTotalM = crew.members.reduce((sum, m) => sum + m.weekDistanceM, 0);
   const myRow = crew.members.find((m) => m.isMe);
@@ -344,6 +397,69 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
         </div>
       </Card>
 
+      {/* 크루 레이스 — 크루원끼리만 겨루는 내부 레이스 */}
+      <Card className="mt-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-base font-semibold">{t.crew_races_heading}</div>
+          <button
+            type="button"
+            onClick={() => nativeNavigate("/challenges/create?crew=1")}
+            className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white"
+          >
+            {t.crew_race_create_btn}
+          </button>
+        </div>
+        <div className="mt-3">
+          {!races || races.length === 0 ? (
+            <p className="text-sm text-zinc-500">{t.crew_races_empty}</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {races.map((r) => {
+                const phaseLabel =
+                  r.phase === "IN_PROGRESS"
+                    ? t.races_filter_in_progress
+                    : r.phase === "ENDED"
+                      ? t.races_filter_ended
+                      : t.races_filter_scheduled;
+                const phaseTone =
+                  r.phase === "IN_PROGRESS"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : r.phase === "ENDED"
+                      ? "bg-zinc-100 text-zinc-500"
+                      : "bg-amber-100 text-amber-700";
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => nativeNavigate(challengeDetailHref(r.id))}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-100 p-3 text-left hover:bg-zinc-50"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-medium text-zinc-900">{r.title}</span>
+                        {r.isMember ? (
+                          <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                            {t.races_joined}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-zinc-500">
+                        {t.races_goal_members(formatGoalDistance(r.goalKm, unit), r.memberCount)}
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${phaseTone}`}
+                    >
+                      {phaseLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
+
       <Card className="mt-4">
         <div className="flex items-baseline justify-between">
           <div className="text-base font-semibold">{t.crew_week_heading}</div>
@@ -397,6 +513,19 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
         </div>
       </Card>
 
+      {/* 크루 잔디 — 최근 5주 활동 히트맵 */}
+      {insights ? (
+        <Card className="mt-4">
+          <div className="flex items-baseline justify-between">
+            <div className="text-base font-semibold">{t.crew_heatmap_heading}</div>
+            <div className="text-xs text-zinc-400">{t.crew_heatmap_caption}</div>
+          </div>
+          <div className="mt-3">
+            <HeatmapGrid insights={insights} />
+          </div>
+        </Card>
+      ) : null}
+
       {/* 지난주 결산 — 기록이 있던 주만 노출 */}
       {recap && recap.totalRuns > 0 ? (
         <Card className="mt-4">
@@ -429,6 +558,31 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
               label={t.crew_recap_per_capita}
               value={formatDistance(recap.perCapitaDistanceM, unit)}
             />
+          </div>
+        </Card>
+      ) : null}
+
+      {/* 명예의 전당 — 월별 MVP 히스토리(완결된 달만) */}
+      {insights && insights.hallOfFame.length > 0 ? (
+        <Card className="mt-4">
+          <div className="text-base font-semibold">{t.crew_hof_heading}</div>
+          <div className="mt-2 divide-y divide-zinc-100">
+            {insights.hallOfFame.map((h) => (
+              <div key={h.month} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="shrink-0 text-sm">🏆</span>
+                  <span className="shrink-0 text-xs tabular-nums text-zinc-400">
+                    {h.month.replace("-", ".")}
+                  </span>
+                  <span className="truncate text-sm font-medium text-zinc-900">
+                    {h.nickname ?? t.no_name}
+                  </span>
+                </div>
+                <span className="shrink-0 text-sm font-semibold tabular-nums text-zinc-900">
+                  {formatDistance(h.distanceM, unit)}
+                </span>
+              </div>
+            ))}
           </div>
         </Card>
       ) : null}

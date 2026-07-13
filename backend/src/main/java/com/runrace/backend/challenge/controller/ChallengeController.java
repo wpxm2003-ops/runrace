@@ -71,8 +71,23 @@ public class ChallengeController {
             OffsetDateTime.parse(body.startAt()),
             OffsetDateTime.parse(body.endAt()),
             body.langCd(),
-            body.stake());
+            body.stake(),
+            Boolean.TRUE.equals(body.crewOnly()));
     return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
+  }
+
+  /** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 목록. */
+  @GetMapping("/crew")
+  public ResponseEntity<List<ChallengeListItem>> listCrewRaces(AuthPrincipal principal) {
+    OffsetDateTime now = OffsetDateTime.now();
+    List<Challenge> challenges = challengeService.listCrewRaces(principal.userId());
+    List<Long> ids = challenges.stream().map(Challenge::getId).toList();
+    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
+    Set<Long> memberIds = challengeService.memberChallengeIds(principal.userId(), ids);
+    List<ChallengeListItem> items = challenges.stream()
+        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds))
+        .toList();
+    return ResponseEntity.ok(items);
   }
 
   @PutMapping("/{id:" + ID_PATH + "}")
@@ -245,6 +260,7 @@ public class ChallengeController {
         IsoTime.format(challenge.getStartAt()),
         IsoTime.formatOrNull(challenge.getEndAt()),
         challenge.getStake(),
+        detail.crewName(),
         challenge.getCreator().getId(),
         detail.currentUserId(),
         detail.isMember(),

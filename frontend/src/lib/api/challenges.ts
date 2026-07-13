@@ -4,6 +4,7 @@ import type {
   ActiveCount,
   ChallengeDetail,
   ChallengeFormBody,
+  ChallengeListItem,
   ChallengeListPage,
   ChallengeWorkoutListItem,
   CreatedId,
@@ -61,6 +62,11 @@ export function fetchHeadToHead(id: number, user: User) {
 
 export function createChallenge(body: ChallengeFormBody, user: User) {
   return apiFetch<CreatedId>("/api/challenges", { method: "POST", user, body });
+}
+
+/** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 배열. */
+export function fetchCrewRaces(user: User) {
+  return apiFetch<ChallengeListItem[]>("/api/challenges/crew", { user });
 }
 
 export function updateChallenge(id: number, body: ChallengeFormBody, user: User) {

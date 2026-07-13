@@ -1,6 +1,8 @@
 package com.runrace.backend.crew.repository;
 
 import com.runrace.backend.crew.domain.CrewMember;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,4 +30,41 @@ public interface CrewMemberRepository extends JpaRepository<CrewMember, Long> {
       + "join crew_member m on m.user_id = w.user_id "
       + "where m.crew_id = :crewId and w.started_at >= m.joined_at", nativeQuery = true)
   long sumMemberDistanceSinceJoin(@Param("crewId") Long crewId);
+
+  /** 크루 잔디 — {@code from} 이후 KST 날짜별 "뛴 멤버 수"(기록 있는 날만 행 반환). */
+  @Query(value = """
+      select (w.started_at at time zone 'Asia/Seoul')::date as "day",
+             count(distinct w.user_id) as "runners"
+      from workout_session w
+      join crew_member m on m.user_id = w.user_id
+      where m.crew_id = :crewId and w.started_at >= :from
+      group by 1
+      """, nativeQuery = true)
+  List<DailyRunnersAgg> countDailyRunners(
+      @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
+
+  /** {@link #countDailyRunners} 결과 투영. */
+  interface DailyRunnersAgg {
+    LocalDate getDay();
+    int getRunners();
+  }
+
+  /** 명예의 전당 — KST 월별·멤버별 거리 합산(가입 시점 이후만). 서비스에서 월별 1위를 뽑는다. */
+  @Query(value = """
+      select to_char(w.started_at at time zone 'Asia/Seoul', 'YYYY-MM') as "ym",
+             w.user_id as "userId",
+             sum(w.distance_m) as "distanceM"
+      from workout_session w
+      join crew_member m on m.user_id = w.user_id
+      where m.crew_id = :crewId and w.started_at >= m.joined_at
+      group by 1, 2
+      """, nativeQuery = true)
+  List<MonthlyMemberAgg> aggregateMonthlyMemberDistance(@Param("crewId") Long crewId);
+
+  /** {@link #aggregateMonthlyMemberDistance} 결과 투영. */
+  interface MonthlyMemberAgg {
+    String getYm();
+    UUID getUserId();
+    long getDistanceM();
+  }
 }

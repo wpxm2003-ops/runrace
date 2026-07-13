@@ -2,6 +2,7 @@ package com.runrace.backend.crew.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.crew.dto.CreateCrewRequest;
+import com.runrace.backend.crew.dto.CrewInsightsResponse;
 import com.runrace.backend.crew.dto.CrewJoinInfoResponse;
 import com.runrace.backend.crew.dto.CrewRecapResponse;
 import com.runrace.backend.crew.dto.JoinCrewRequest;
@@ -42,6 +43,12 @@ public class CrewController {
   @GetMapping("/me/recap")
   public ResponseEntity<CrewRecapResponse> recap(AuthPrincipal principal) {
     return ResponseEntity.ok(crewService.recap(principal.userId()));
+  }
+
+  /** 크루 잔디 + 명예의 전당 — 크루 홈 부가 콘텐츠. */
+  @GetMapping("/me/insights")
+  public ResponseEntity<CrewInsightsResponse> insights(AuthPrincipal principal) {
+    return ResponseEntity.ok(crewService.insights(principal.userId()));
   }
 
   /** 같은 크루 멤버에게 콕 찌르기(하루 1회). */

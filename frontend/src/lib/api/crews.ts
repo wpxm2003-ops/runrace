@@ -1,6 +1,6 @@
 import type { User } from "firebase/auth";
 import { apiFetch, publicFetch } from "./client";
-import type { CrewJoinInfo, CrewRecap, MyCrewResponse } from "./types";
+import type { CrewInsights, CrewJoinInfo, CrewRecap, MyCrewResponse } from "./types";
 
 /** 내 크루 홈(주간 보드 포함). 미소속이면 crew=null. */
 export function fetchMyCrew(user: User) {
@@ -42,6 +42,11 @@ export function updateCrew(
 /** 지난주 크루 결산 — 홈 결산 섹션 + 공유 카드용. */
 export function fetchCrewRecap(user: User) {
   return apiFetch<CrewRecap>("/api/crews/me/recap", { user });
+}
+
+/** 크루 잔디 + 명예의 전당. */
+export function fetchCrewInsights(user: User) {
+  return apiFetch<CrewInsights>("/api/crews/me/insights", { user });
 }
 
 /** 같은 크루 멤버에게 콕 찌르기(하루 1회, 레이스 넛지와 공용 제한). */

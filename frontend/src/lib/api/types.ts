@@ -88,6 +88,17 @@ export type MyCrewResponse = {
   crew: CrewView | null;
 };
 
+/** 크루 잔디 + 명예의 전당 — 크루 홈 부가 콘텐츠. */
+export type CrewInsights = {
+  /** 잔디 그리드 시작일(월요일, ISO date) — 5주(지난 4주 + 이번 주). */
+  heatmapFrom: string;
+  memberCount: number;
+  /** 기록 있는 날만 담김(빈 날은 프론트가 0으로 채움). */
+  heatmap: { date: string; runners: number }[];
+  /** 월별 MVP(최신월 우선, 이번 달 제외, 최대 12개월). */
+  hallOfFame: { month: string; nickname: string | null; distanceM: number }[];
+};
+
 /** 지난주(월~일 완결 주) 크루 결산. 기록 없던 주면 totalRuns=0. */
 export type CrewRecap = {
   weekStartDate: string;
@@ -143,6 +154,8 @@ export type ChallengeDetail = {
   endAt: string | null;
   /** 내기(페널티/보상) 텍스트 — 없으면 null. */
   stake: string | null;
+  /** 크루 내부 레이스면 크루명(뱃지 표시용). 일반 레이스면 null. */
+  crewName: string | null;
   creatorUserId: string;
   /** 로그인 사용자 UUID. 비로그인이면 null */
   currentUserId: string | null;
@@ -205,6 +218,8 @@ export type ChallengeFormBody = {
   stake?: string;
   /** 생성 시점 작성자 UI 언어. 생성에만 전송하며 수정 시에는 무시된다(백엔드가 고정값 유지). */
   langCd?: string;
+  /** true면 내 크루 내부 레이스로 생성(멤버 전용·공개 목록 제외). 생성에만 사용. */
+  crewOnly?: boolean;
 };
 
 // ── 내 정보 ──────────────────────────────────────────────────────

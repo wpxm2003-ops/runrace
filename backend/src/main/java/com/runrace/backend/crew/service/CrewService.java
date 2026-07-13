@@ -3,6 +3,7 @@ package com.runrace.backend.crew.service;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMember;
+import com.runrace.backend.crew.dto.CrewInsightsResponse;
 import com.runrace.backend.crew.dto.CrewJoinInfoResponse;
 import com.runrace.backend.crew.dto.CrewRecapResponse;
 import com.runrace.backend.crew.dto.MyCrewResponse;
@@ -165,6 +166,47 @@ public class CrewService {
       status = count >= crew.getMaxMembers() ? "FULL" : "JOINABLE";
     }
     return new CrewJoinInfoResponse(crew.getName(), count, crew.getMaxMembers(), status);
+  }
+
+  /** 크루 잔디(최근 5주 날짜별 뛴 멤버 수) + 명예의 전당(월별 MVP). */
+  @Transactional(readOnly = true)
+  public CrewInsightsResponse insights(UUID meId) {
+    CrewMember membership = requireMembership(meId);
+    Crew crew = membership.getCrew();
+    List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
+
+    // 잔디 — 지난 4주 + 이번 주(월요일 시작 5줄 그리드)
+    OffsetDateTime heatmapFrom = weekStartKst().minusDays(28);
+    List<CrewInsightsResponse.DayCell> heatmap =
+        crewMemberRepository.countDailyRunners(crew.getId(), heatmapFrom).stream()
+            .map(r -> new CrewInsightsResponse.DayCell(r.getDay().toString(), r.getRunners()))
+            .toList();
+
+    // 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대 12개.
+    Map<UUID, String> nicknames = new HashMap<>();
+    for (CrewMember m : members) {
+      nicknames.put(m.getUser().getId(), m.getUser().getNickname());
+    }
+    String currentYm = LocalDate.now(KST).toString().substring(0, 7);
+    Map<String, CrewInsightsResponse.HallEntry> bestByMonth = new HashMap<>();
+    for (var row : crewMemberRepository.aggregateMonthlyMemberDistance(crew.getId())) {
+      if (row.getYm().compareTo(currentYm) >= 0) {
+        continue;
+      }
+      CrewInsightsResponse.HallEntry cur = bestByMonth.get(row.getYm());
+      if (cur == null || row.getDistanceM() > cur.distanceM()) {
+        bestByMonth.put(row.getYm(), new CrewInsightsResponse.HallEntry(
+            row.getYm(), nicknames.get(row.getUserId()), row.getDistanceM()));
+      }
+    }
+    List<CrewInsightsResponse.HallEntry> hallOfFame = bestByMonth.values().stream()
+        .sorted(Comparator.comparing(CrewInsightsResponse.HallEntry::month).reversed())
+        .limit(12)
+        .toList();
+
+    return new CrewInsightsResponse(
+        heatmapFrom.atZoneSameInstant(KST).toLocalDate().toString(),
+        members.size(), heatmap, hallOfFame);
   }
 
   // ── 생성·가입·탈퇴 ────────────────────────────────────────────

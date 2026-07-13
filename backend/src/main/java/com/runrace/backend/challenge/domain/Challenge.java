@@ -69,6 +69,13 @@ public class Challenge {
   @Column(name = "stake", length = 30)
   private String stake;
 
+  /**
+   * 크루 내부 레이스면 소속 크루 id — 해당 크루 멤버만 참가 가능, 공개 목록 제외.
+   * null이면 일반(공개) 레이스. 크루 해체 시 DB가 null로 풀어 일반 레이스로 남긴다.
+   */
+  @Column(name = "crew_id")
+  private Long crewId;
+
   // ── 도메인 메서드 ──────────────────────────────────────────────
 
   /** 주어진 사용자가 이 레이스의 방장(생성자)인지 여부. */

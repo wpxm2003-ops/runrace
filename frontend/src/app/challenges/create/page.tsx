@@ -9,7 +9,7 @@ import {
   useChallengeForm,
 } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
-import { createChallenge, invalidateChallengeLists, savePrizes, useActiveCount } from "@/lib/api";
+import { createChallenge, invalidateChallengeLists, invalidateCrewRaces, savePrizes, useActiveCount } from "@/lib/api";
 import type { PrizeFormItem } from "@/lib/api/types";
 import { PrizeEditorModal } from "@/app/challenges/_components/PrizeEditorModal";
 import { PrizeAccordionSection } from "@/app/challenges/_components/PrizeAccordionSection";
@@ -22,7 +22,7 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function CreateChallengePage() {
   const { user } = useRequireAuth("/challenges/create");
@@ -33,6 +33,11 @@ export default function CreateChallengePage() {
   const [stakeOpen, setStakeOpen] = useState(false);
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
+  // 크루 홈에서 진입(?crew=1)하면 크루 내부 레이스로 생성 — 마운트 후 읽어 hydration mismatch 방지.
+  const [crewMode, setCrewMode] = useState(false);
+  useEffect(() => {
+    setCrewMode(new URLSearchParams(window.location.search).get("crew") === "1");
+  }, []);
 
   const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(1);
   const form = useChallengeForm({
@@ -79,7 +84,10 @@ export default function CreateChallengePage() {
     }
     setSubmitting(true);
     try {
-      const created = await createChallenge({ ...form.getPayload(), langCd: locale }, user);
+      const created = await createChallenge(
+        { ...form.getPayload(), langCd: locale, ...(crewMode ? { crewOnly: true } : {}) },
+        user,
+      );
       // 경품은 레이스 생성 후 별도 저장. 실패해도 레이스 생성은 유지하고 경고만.
       if (prizes.length > 0) {
         try {
@@ -89,9 +97,10 @@ export default function CreateChallengePage() {
         }
       }
       invalidateChallengeLists();
-      void track("race_created");
+      if (crewMode) invalidateCrewRaces(user.uid);
+      void track("race_created", crewMode ? { crew: true } : undefined);
       toast.success(t.create_success);
-      nativeNavigate("/challenges");
+      nativeNavigate(crewMode ? "/crew" : "/challenges");
     } catch (e) {
       form.setFormError(String(e));
     } finally {
@@ -110,6 +119,12 @@ export default function CreateChallengePage() {
         <Alert tone="warning" className="mb-4">
           {t.create_limit_warning(activeCount.maxActive, activeCount.activeCount)}
         </Alert>
+      ) : null}
+
+      {crewMode ? (
+        <div className="mb-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+          {t.create_crew_race_notice}
+        </div>
       ) : null}
 
       {/* 빠른 시작 — 탭하면 목표·기간이 자동으로 채워진다 */}

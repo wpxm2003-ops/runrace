@@ -162,7 +162,11 @@ export default function ChallengeDetailContent() {
       toast.success(t.toast_race_joined);
       await mutate();
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
+      if (!handleAuthFailure(e, `/challenges/${id}`)) {
+        setActionError(
+          String(e).includes("not_crew_member") ? t.crew_err_not_crew_member : reportAndDisplay(e),
+        );
+      }
     } finally {
       setJoining(false);
     }
@@ -306,6 +310,13 @@ export default function ChallengeDetailContent() {
                 }
               />
             </div>
+            {detail.crewName ? (
+              <div className="mt-1.5">
+                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                  {t.detail_crew_badge(detail.crewName)}
+                </span>
+              </div>
+            ) : null}
             <div className="mt-2 text-sm text-zinc-600">
               {t.detail_goal_members(formatGoalDistance(detail.goalKm, unit), detail.memberCount, detail.maxMembers)}
             </div>
