@@ -93,8 +93,8 @@ export type CrewInsights = {
   /** 잔디 그리드 시작일(월요일, ISO date) — 5주(지난 4주 + 이번 주). */
   heatmapFrom: string;
   memberCount: number;
-  /** 기록 있는 날만 담김(빈 날은 프론트가 0으로 채움). */
-  heatmap: { date: string; runners: number }[];
+  /** 기록 있는 날만 담김(빈 날은 프론트가 0으로 채움). nicknames는 가입 순 최대 10명. */
+  heatmap: { date: string; runners: number; nicknames: (string | null)[] }[];
   /** 월별 MVP(최신월 우선, 이번 달 제외, 최대 12개월). */
   hallOfFame: { month: string; nickname: string | null; distanceM: number }[];
 };

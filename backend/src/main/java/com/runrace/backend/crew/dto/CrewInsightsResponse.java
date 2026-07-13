@@ -14,7 +14,8 @@ public record CrewInsightsResponse(
     /** 월별 MVP(최신월 우선, 진행 중인 이번 달 제외, 최대 12개월). */
     List<HallEntry> hallOfFame) {
 
-  public record DayCell(String date, int runners) {}
+  /** nicknames는 가입 순 최대 10명 — 대형 크루 페이로드 방지(넘치면 runners로 "외 n명" 표시). */
+  public record DayCell(String date, int runners, List<String> nicknames) {}
 
   public record HallEntry(String month, String nickname, long distanceM) {}
 }

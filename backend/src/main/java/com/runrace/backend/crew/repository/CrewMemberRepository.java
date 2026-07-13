@@ -31,22 +31,21 @@ public interface CrewMemberRepository extends JpaRepository<CrewMember, Long> {
       + "where m.crew_id = :crewId and w.started_at >= m.joined_at", nativeQuery = true)
   long sumMemberDistanceSinceJoin(@Param("crewId") Long crewId);
 
-  /** 크루 잔디 — {@code from} 이후 KST 날짜별 "뛴 멤버 수"(기록 있는 날만 행 반환). */
+  /** 크루 잔디 — {@code from} 이후 KST 날짜별 "뛴 멤버"(날짜·멤버 distinct 행). 닉네임 표시용. */
   @Query(value = """
-      select (w.started_at at time zone 'Asia/Seoul')::date as "day",
-             count(distinct w.user_id) as "runners"
+      select distinct (w.started_at at time zone 'Asia/Seoul')::date as "day",
+             w.user_id as "userId"
       from workout_session w
       join crew_member m on m.user_id = w.user_id
       where m.crew_id = :crewId and w.started_at >= :from
-      group by 1
       """, nativeQuery = true)
-  List<DailyRunnersAgg> countDailyRunners(
+  List<DailyRunnerRow> findDailyRunners(
       @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
 
-  /** {@link #countDailyRunners} 결과 투영. */
-  interface DailyRunnersAgg {
+  /** {@link #findDailyRunners} 결과 투영. */
+  interface DailyRunnerRow {
     LocalDate getDay();
-    int getRunners();
+    UUID getUserId();
   }
 
   /** 명예의 전당 — KST 월별·멤버별 거리 합산(가입 시점 이후만). 서비스에서 월별 1위를 뽑는다. */

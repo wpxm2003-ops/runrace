@@ -22,9 +22,12 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.Nullable;
@@ -175,18 +178,30 @@ public class CrewService {
     Crew crew = membership.getCrew();
     List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
 
-    // 잔디 — 지난 4주 + 이번 주(월요일 시작 5줄 그리드)
-    OffsetDateTime heatmapFrom = weekStartKst().minusDays(28);
-    List<CrewInsightsResponse.DayCell> heatmap =
-        crewMemberRepository.countDailyRunners(crew.getId(), heatmapFrom).stream()
-            .map(r -> new CrewInsightsResponse.DayCell(r.getDay().toString(), r.getRunners()))
-            .toList();
-
-    // 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대 12개.
     Map<UUID, String> nicknames = new HashMap<>();
     for (CrewMember m : members) {
       nicknames.put(m.getUser().getId(), m.getUser().getNickname());
     }
+
+    // 잔디 — 지난 4주 + 이번 주(월요일 시작 5줄 그리드). 날짜별 뛴 멤버 닉네임(가입 순, 최대 10명).
+    OffsetDateTime heatmapFrom = weekStartKst().minusDays(28);
+    Map<LocalDate, Set<UUID>> runnersByDay = new HashMap<>();
+    for (var row : crewMemberRepository.findDailyRunners(crew.getId(), heatmapFrom)) {
+      runnersByDay.computeIfAbsent(row.getDay(), k -> new HashSet<>()).add(row.getUserId());
+    }
+    List<CrewInsightsResponse.DayCell> heatmap = runnersByDay.entrySet().stream()
+        .map(e -> {
+          List<String> names = members.stream()
+              .filter(m -> e.getValue().contains(m.getUser().getId()))
+              .map(m -> m.getUser().getNickname())
+              .filter(Objects::nonNull)
+              .limit(10)
+              .toList();
+          return new CrewInsightsResponse.DayCell(e.getKey().toString(), e.getValue().size(), names);
+        })
+        .toList();
+
+    // 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대 12개.
     String currentYm = LocalDate.now(KST).toString().substring(0, 7);
     Map<String, CrewInsightsResponse.HallEntry> bestByMonth = new HashMap<>();
     for (var row : crewMemberRepository.aggregateMonthlyMemberDistance(crew.getId())) {

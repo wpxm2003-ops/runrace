@@ -7,7 +7,6 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { NavRowButton } from "@/app/_components/NavRowButton";
 import {
   createCrew,
   joinCrew,
@@ -32,6 +31,7 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
+import { weekdayLabels } from "@/lib/format";
 import { toast } from "sonner";
 
 /** 초대 코드 입력 정규화 — 대문자 6자(코드 알파벳과 동일 폭). */
@@ -281,6 +281,24 @@ function todayIso(): string {
   return `${now.getFullYear()}-${mm}-${dd}`;
 }
 
+/** 크루 설정 진입 톱니바퀴 — 페이지 제목("크루") 오른쪽에 붙는다. */
+function CrewSettingsGear() {
+  const { t } = useLocale();
+  return (
+    <button
+      type="button"
+      aria-label={t.crew_settings_btn}
+      onClick={() => nativeNavigate("/crew/settings")}
+      className="shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+      </svg>
+    </button>
+  );
+}
+
 /** 대항전 요약 한 줄 — 탭하면 상세로. */
 function MatchRow({ m, text }: { m: CrewMatchSummary; text: string }) {
   const { t } = useLocale();
@@ -416,17 +434,34 @@ function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boolean })
   );
 }
 
-/** 크루 잔디 — 최근 5주(월~일) 날짜별 뛴 멤버 수를 깃허브 잔디 스타일로. */
+/** "YYYY-MM-DD" → locale 월·일 표기 (ko "6월 25일", en "June 25"). TZ 이슈 없이 파트로 생성. */
+function monthDayLabel(iso: string, locale: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { month: "long", day: "numeric" });
+}
+
+/**
+ * 크루 잔디 — 최근 5주(월~일) 날짜별 뛴 멤버를 깃허브 잔디 스타일로.
+ * 모바일(WebView)엔 호버가 없으므로 칸을 탭하면 그리드 아래에 날짜·뛴 멤버 닉네임을 보여준다.
+ */
 function HeatmapGrid({ insights }: { insights: CrewInsights }) {
-  const runnersByDate = new Map(insights.heatmap.map((d) => [d.date, d.runners]));
+  const { t, locale } = useLocale();
+  const [selected, setSelected] = useState<string | null>(null);
+  const byDate = new Map(insights.heatmap.map((d) => [d.date, d]));
   const today = todayIso();
+  const weekdays = weekdayLabels(locale, true);
   const cells = Array.from({ length: 35 }, (_, i) => {
     const date = addDaysIso(insights.heatmapFrom, i);
-    return { date, runners: runnersByDate.get(date) ?? 0, future: date > today };
+    const day = byDate.get(date);
+    return {
+      date,
+      runners: day?.runners ?? 0,
+      nicknames: day?.nicknames ?? [],
+      future: date > today,
+    };
   });
 
-  function cellClass(runners: number, future: boolean): string {
-    if (future) return "bg-transparent";
+  function cellClass(runners: number): string {
     if (runners === 0 || insights.memberCount === 0) return "bg-zinc-100";
     const ratio = runners / insights.memberCount;
     if (ratio <= 1 / 3) return "bg-emerald-200";
@@ -434,15 +469,57 @@ function HeatmapGrid({ insights }: { insights: CrewInsights }) {
     return "bg-emerald-600";
   }
 
+  const selectedCell = selected ? cells.find((c) => c.date === selected) : null;
+  // 서버가 최대 10명까지만 보내므로 넘치는 인원은 "외 n명"으로 표기
+  const overflow = selectedCell ? selectedCell.runners - selectedCell.nicknames.length : 0;
+
   return (
-    <div className="grid grid-cols-7 gap-1">
-      {cells.map((c) => (
-        <div
-          key={c.date}
-          title={c.future ? undefined : `${shortDate(c.date)} · ${c.runners}`}
-          className={`h-5 rounded ${cellClass(c.runners, c.future)}`}
-        />
-      ))}
+    <div>
+      <div className="mb-1 grid grid-cols-7 gap-1">
+        {weekdays.map((w) => (
+          <div key={w} className="text-center text-[10px] text-zinc-400">
+            {w}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((c) =>
+          c.future ? (
+            <div key={c.date} className="h-5 rounded bg-transparent" />
+          ) : (
+            <button
+              key={c.date}
+              type="button"
+              title={`${monthDayLabel(c.date, locale)} · ${c.runners}`}
+              aria-label={`${monthDayLabel(c.date, locale)} · ${c.runners}`}
+              onClick={() => setSelected((prev) => (prev === c.date ? null : c.date))}
+              className={`h-5 rounded transition-shadow ${cellClass(c.runners)} ${
+                selected === c.date ? "ring-2 ring-zinc-900 ring-offset-1" : ""
+              }`}
+            />
+          ),
+        )}
+      </div>
+      <p className="mt-2.5 text-xs leading-relaxed text-zinc-500">
+        {selectedCell ? (
+          <>
+            <span className="font-semibold text-zinc-900">
+              {monthDayLabel(selectedCell.date, locale)}
+            </span>
+            {" · "}
+            {selectedCell.runners === 0 ? (
+              <span>{t.crew_no_record_yet}</span>
+            ) : (
+              <span className="font-medium text-emerald-700">
+                {selectedCell.nicknames.filter(Boolean).join(", ")}
+                {overflow > 0 ? ` ${t.crew_heatmap_more(overflow)}` : ""}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-zinc-400">{t.crew_heatmap_tap_hint}</span>
+        )}
+      </p>
     </div>
   );
 }
@@ -726,11 +803,6 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
         </Card>
       ) : null}
 
-      <NavRowButton
-        title={t.crew_settings_btn}
-        onClick={() => nativeNavigate("/crew/settings")}
-        className="mt-4"
-      />
     </>
   );
 }
@@ -771,6 +843,8 @@ function CrewContent({ user }: { user: User }) {
 export default function CrewPage() {
   const { user, loading } = useRequireAuth("/crew");
   const { t } = useLocale();
+  // 제목 옆 톱니바퀴 노출 판단용 — CrewContent와 같은 SWR 키라 중복 요청 없음.
+  const { data } = useMyCrew(user ?? null);
 
   if (loading || !user) {
     return (
@@ -781,7 +855,10 @@ export default function CrewPage() {
   }
 
   return (
-    <PageLayout title={t.crew_title}>
+    <PageLayout
+      title={t.crew_title}
+      titleSuffix={data?.crew ? <CrewSettingsGear /> : undefined}
+    >
       <CrewContent user={user} />
     </PageLayout>
   );
