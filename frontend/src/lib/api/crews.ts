@@ -1,6 +1,13 @@
 import type { User } from "firebase/auth";
 import { apiFetch, publicFetch } from "./client";
-import type { CrewInsights, CrewJoinInfo, CrewRecap, MyCrewResponse } from "./types";
+import type {
+  CrewInsights,
+  CrewJoinInfo,
+  CrewMatchDetail,
+  CrewRecap,
+  MyCrewMatches,
+  MyCrewResponse,
+} from "./types";
 
 /** 내 크루 홈(주간 보드 포함). 미소속이면 crew=null. */
 export function fetchMyCrew(user: User) {
@@ -69,4 +76,43 @@ export function kickCrewMember(crewId: number, memberUserId: string, user: User)
     method: "DELETE",
     user,
   });
+}
+
+// ── 크루 대항전(C1) ───────────────────────────────────────────────
+
+/** 도전장 발송(리더 전용) — 선택 멤버 수가 곧 로스터 크기(상대도 동수). */
+export function createCrewMatch(
+  body: { opponentCrewName: string; rosterSize: number; durationDays: number; rosterUserIds: string[] },
+  user: User,
+) {
+  return apiFetch<void>("/api/crew-matches", { method: "POST", user, body });
+}
+
+/** 크루 홈 대항전 섹션 — 전적 + 진행중 + 받은/보낸 도전장 + 최근 결과. */
+export function fetchMyCrewMatches(user: User) {
+  return apiFetch<MyCrewMatches>("/api/crew-matches/me", { user });
+}
+
+/** 대항전 상세(참가 크루 멤버만). */
+export function fetchCrewMatchDetail(matchId: number, user: User) {
+  return apiFetch<CrewMatchDetail>(`/api/crew-matches/${matchId}`, { user });
+}
+
+/** 도전장 수락(상대 크루 리더 전용) — 우리 로스터 지명 포함. */
+export function acceptCrewMatch(matchId: number, rosterUserIds: string[], user: User) {
+  return apiFetch<void>(`/api/crew-matches/${matchId}/accept`, {
+    method: "POST",
+    user,
+    body: { rosterUserIds },
+  });
+}
+
+/** 도전장 거절(상대 크루 리더 전용). */
+export function declineCrewMatch(matchId: number, user: User) {
+  return apiFetch<void>(`/api/crew-matches/${matchId}/decline`, { method: "POST", user });
+}
+
+/** 도전장 취소(도전 크루 리더 전용, 수락 전만). */
+export function cancelCrewMatch(matchId: number, user: User) {
+  return apiFetch<void>(`/api/crew-matches/${matchId}`, { method: "DELETE", user });
 }

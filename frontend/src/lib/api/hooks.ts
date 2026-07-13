@@ -20,7 +20,14 @@ import {
   fetchRejectedApprovals,
   DEFAULT_PAGE_SIZE,
 } from "./challenges";
-import { fetchMyCrew, fetchCrewJoinInfo, fetchCrewRecap, fetchCrewInsights } from "./crews";
+import {
+  fetchMyCrew,
+  fetchCrewJoinInfo,
+  fetchCrewRecap,
+  fetchCrewInsights,
+  fetchMyCrewMatches,
+  fetchCrewMatchDetail,
+} from "./crews";
 import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
@@ -313,6 +320,30 @@ export function useCrewRaces(user: User | null, enabled: boolean) {
 /** 크루 레이스 생성 후 크루 홈 레이스 목록 재검증. */
 export function invalidateCrewRaces(userId: string) {
   invalidateByPrefix("crew-races", userId);
+}
+
+/** 크루 홈 대항전 섹션 — 크루 소속일 때만 조회(enabled). */
+export function useMyCrewMatches(user: User | null, enabled: boolean) {
+  return useSWR(
+    enabled && user ? (["crew-matches", user.uid] as const) : null,
+    () => fetchMyCrewMatches(user!),
+    LIVE_CONFIG,
+  );
+}
+
+/** 대항전 상세 — 진행 중엔 점수가 계속 변하므로 LIVE 설정. */
+export function useCrewMatchDetail(matchId: number | null, user: User | null) {
+  return useSWR(
+    user && matchId != null ? (["crew-match", matchId, user.uid] as const) : null,
+    () => fetchCrewMatchDetail(matchId!, user!),
+    LIVE_CONFIG,
+  );
+}
+
+/** 도전장 발송/수락/거절/취소 후 대항전 캐시 재검증. */
+export function invalidateCrewMatches(userId: string) {
+  invalidateByPrefix("crew-matches", userId);
+  invalidateByPrefix("crew-match");
 }
 
 /** 초대 랜딩 정보 — 비로그인은 "public" 키로 조회. */

@@ -147,6 +147,17 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
   List<UserDistanceAgg> aggregateDistanceSince(
       @Param("userIds") List<UUID> userIds, @Param("from") OffsetDateTime from);
 
+  /** 크루 대항전 채점 — GPS 러닝만 [from, to) 합산(실내런 소급 입력 조작 방지). */
+  @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
+      + "from WorkoutSession w where w.user.id in :userIds "
+      + "and w.startedAt >= :from and w.startedAt < :to and w.workoutType = :workoutType "
+      + "group by w.user.id")
+  List<UserDistanceAgg> aggregateDistanceBetweenByType(
+      @Param("userIds") List<UUID> userIds,
+      @Param("from") OffsetDateTime from,
+      @Param("to") OffsetDateTime to,
+      @Param("workoutType") WorkoutType workoutType);
+
   /** 크루 지난주 비교·결산 — [from, to) 구간 사용자별 거리·횟수 합계. */
   @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
       + "from WorkoutSession w where w.user.id in :userIds "

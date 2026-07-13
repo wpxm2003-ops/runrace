@@ -16,11 +16,12 @@ import {
   useCrewRecap,
   useCrewInsights,
   useCrewRaces,
+  useMyCrewMatches,
   invalidateMyCrew,
   toDisplayError,
   reportClientError,
 } from "@/lib/api";
-import type { CrewInsights, CrewView } from "@/lib/api/types";
+import type { CrewInsights, CrewMatchSummary, CrewView } from "@/lib/api/types";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { formatGoalDistance } from "@/lib/units";
 import { CrewRecapCard } from "./_components/CrewRecapCard";
@@ -280,6 +281,141 @@ function todayIso(): string {
   return `${now.getFullYear()}-${mm}-${dd}`;
 }
 
+/** 대항전 요약 한 줄 — 탭하면 상세로. */
+function MatchRow({ m, text }: { m: CrewMatchSummary; text: string }) {
+  const { t } = useLocale();
+  return (
+    <button
+      type="button"
+      onClick={() => nativeNavigate(`/crew/match?id=${m.id}`)}
+      className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-100 p-3 text-left hover:bg-zinc-50"
+    >
+      <span className="min-w-0 truncate text-sm text-zinc-800">{text}</span>
+      <span className="shrink-0 text-xs text-zinc-400">{t.crew_match_view} ›</span>
+    </button>
+  );
+}
+
+/** 크루 대항전 섹션 — 전적 + 진행중 스코어 + 받은/보낸 도전장 + 최근 결과. */
+function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boolean }) {
+  const { t } = useLocale();
+  const { unit } = useUnit();
+  const { data } = useMyCrewMatches(user, true);
+
+  const record = data?.record;
+  const hasRecord = record && record.wins + record.losses + record.draws > 0;
+  const hasAny =
+    !!data &&
+    (data.current != null ||
+      data.pendingReceived.length > 0 ||
+      data.pendingSent.length > 0 ||
+      data.lastEnded != null);
+
+  return (
+    <Card className="mt-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <div className="text-base font-semibold">{t.crew_match_heading}</div>
+          {hasRecord ? (
+            <div className="text-xs text-zinc-500">
+              {t.crew_match_record(record.wins, record.losses, record.draws)}
+            </div>
+          ) : null}
+        </div>
+        {isLeader ? (
+          <button
+            type="button"
+            onClick={() => nativeNavigate("/crew/challenge")}
+            className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white"
+          >
+            {t.crew_match_challenge_btn}
+          </button>
+        ) : null}
+      </div>
+
+      {!data ? (
+        <div className="mt-3">
+          <SkeletonLines count={1} />
+        </div>
+      ) : !hasAny ? (
+        <p className="mt-3 text-sm text-zinc-500">
+          {isLeader ? t.crew_match_empty_leader : t.crew_match_empty_member}
+        </p>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2">
+          {/* 진행중·시작대기 대결 — 스코어 카드 */}
+          {data.current ? (
+            <button
+              type="button"
+              onClick={() => nativeNavigate(`/crew/match?id=${data.current!.id}`)}
+              className="w-full rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-left"
+            >
+              {(() => {
+                const m = data.current!;
+                const total = m.myCrewDistanceM + m.opponentCrewDistanceM;
+                const myPct = total === 0 ? 50 : Math.round((m.myCrewDistanceM / total) * 100);
+                const myName = m.myCrewIsChallenger ? m.challengerCrewName : m.opponentCrewName;
+                const opName = m.myCrewIsChallenger ? m.opponentCrewName : m.challengerCrewName;
+                const dLeft = m.endAt
+                  ? Math.max(0, Math.ceil((new Date(m.endAt).getTime() - Date.now()) / 86_400_000))
+                  : 0;
+                return (
+                  <>
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate font-semibold text-emerald-800">{myName}</span>
+                      <span className="shrink-0 font-medium text-zinc-400">
+                        {m.status === "SCHEDULED"
+                          ? t.crew_match_status_scheduled
+                          : `D-${dLeft}`}
+                      </span>
+                      <span className="truncate text-right font-semibold text-zinc-600">
+                        {opName}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between gap-2 text-sm font-bold tabular-nums text-zinc-900">
+                      <span>{formatDistance(m.myCrewDistanceM, unit)}</span>
+                      <span className="text-[10px] font-semibold text-zinc-400">VS</span>
+                      <span>{formatDistance(m.opponentCrewDistanceM, unit)}</span>
+                    </div>
+                    <div className="mt-1.5 flex h-2 w-full gap-0.5 overflow-hidden rounded-full bg-white">
+                      <div className="h-full rounded-l-full bg-emerald-500" style={{ width: `${myPct}%` }} />
+                      <div className="h-full flex-1 rounded-r-full bg-zinc-300" />
+                    </div>
+                  </>
+                );
+              })()}
+            </button>
+          ) : null}
+
+          {data.pendingReceived.map((m) => (
+            <MatchRow key={m.id} m={m} text={`⚔️ ${t.crew_match_received(m.challengerCrewName)}`} />
+          ))}
+          {data.pendingSent.map((m) => (
+            <MatchRow key={m.id} m={m} text={t.crew_match_sent(m.opponentCrewName)} />
+          ))}
+          {!data.current && data.lastEnded ? (
+            <MatchRow
+              key={data.lastEnded.id}
+              m={data.lastEnded}
+              text={`${t.crew_match_last(
+                data.lastEnded.myCrewIsChallenger
+                  ? data.lastEnded.opponentCrewName
+                  : data.lastEnded.challengerCrewName,
+              )} · ${
+                data.lastEnded.result === "WIN"
+                  ? t.crew_match_result_win
+                  : data.lastEnded.result === "DRAW"
+                    ? t.crew_match_result_draw
+                    : t.crew_match_result_loss
+              }`}
+            />
+          ) : null}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 /** 크루 잔디 — 최근 5주(월~일) 날짜별 뛴 멤버 수를 깃허브 잔디 스타일로. */
 function HeatmapGrid({ insights }: { insights: CrewInsights }) {
   const runnersByDate = new Map(insights.heatmap.map((d) => [d.date, d.runners]));
@@ -396,6 +532,9 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           <StatTile label={t.crew_stat_all_time} value={formatDistance(crew.allTimeDistanceM, unit)} />
         </div>
       </Card>
+
+      {/* 크루 대항전 — 다른 크루와의 총거리전 */}
+      <CrewMatchSection user={user} isLeader={crew.isLeader} />
 
       {/* 크루 레이스 — 크루원끼리만 겨루는 내부 레이스 */}
       <Card className="mt-4">

@@ -246,7 +246,8 @@ public class ChallengeController {
         !detail.isMember()
             && !detail.hasStarted()
             && !detail.hasEnded()
-            && detail.memberCount() < challenge.getMaxMembers();
+            && detail.memberCount() < challenge.getMaxMembers()
+            && detail.crewJoinable();
     boolean canLeave =
         detail.isMember()
             && !detail.isOwner()

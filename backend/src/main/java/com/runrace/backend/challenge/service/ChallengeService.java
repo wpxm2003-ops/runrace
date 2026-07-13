@@ -317,6 +317,11 @@ public class ChallengeService {
         ? null
         : crewRepository.findById(challenge.getCrewId()).map(Crew::getName).orElse(null);
 
+    // 크루 레이스는 크루 멤버만 참가 버튼을 본다(비멤버는 눌러도 403이므로 버튼 자체를 숨김).
+    boolean crewJoinable = challenge.getCrewId() == null
+        || (userId != null
+            && crewMemberRepository.findByCrewIdAndUserId(challenge.getCrewId(), userId).isPresent());
+
     return new ChallengeDetailView(
         challenge,
         members,
@@ -328,7 +333,8 @@ public class ChallengeService {
         winner,
         members.size(),
         rivalUserIds,
-        crewName);
+        crewName,
+        crewJoinable);
   }
 
   /**
@@ -485,5 +491,6 @@ public class ChallengeService {
       AppUser winner,
       int memberCount,
       Set<UUID> rivalUserIds,
-      String crewName) {}
+      String crewName,
+      boolean crewJoinable) {}
 }

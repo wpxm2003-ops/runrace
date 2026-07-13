@@ -99,6 +99,71 @@ export type CrewInsights = {
   hallOfFame: { month: string; nickname: string | null; distanceM: number }[];
 };
 
+// ── 크루 대항전(crew match) ───────────────────────────────────────
+export type CrewMatchStatus =
+  | "PENDING"
+  | "SCHEDULED"
+  | "IN_PROGRESS"
+  | "ENDED"
+  | "DECLINED"
+  | "EXPIRED";
+
+export type CrewMatchResult = "WIN" | "LOSS" | "DRAW" | null;
+
+/** 대항전 요약(크루 홈 카드용). 거리·result는 내 크루 관점. */
+export type CrewMatchSummary = {
+  id: number;
+  status: CrewMatchStatus;
+  challengerCrewName: string;
+  opponentCrewName: string;
+  myCrewIsChallenger: boolean;
+  rosterSize: number;
+  durationDays: number;
+  startAt: string | null;
+  endAt: string | null;
+  myCrewDistanceM: number;
+  opponentCrewDistanceM: number;
+  result: CrewMatchResult;
+};
+
+/** 크루 홈 대항전 섹션 응답. */
+export type MyCrewMatches = {
+  record: { wins: number; losses: number; draws: number };
+  current: CrewMatchSummary | null;
+  pendingReceived: CrewMatchSummary[];
+  pendingSent: CrewMatchSummary[];
+  lastEnded: CrewMatchSummary | null;
+};
+
+export type CrewMatchRosterRow = {
+  userId: string;
+  nickname: string | null;
+  isMe: boolean;
+  distanceM: number;
+};
+
+/** 대항전 상세 — 거리는 도전/상대 크루 기준, result만 내 크루 관점. */
+export type CrewMatchDetail = {
+  id: number;
+  status: CrewMatchStatus;
+  challengerCrewName: string;
+  opponentCrewName: string;
+  myCrewIsChallenger: boolean;
+  rosterSize: number;
+  durationDays: number;
+  createdAt: string;
+  startAt: string | null;
+  endAt: string | null;
+  canAccept: boolean;
+  canDecline: boolean;
+  canCancel: boolean;
+  challengerDistanceM: number;
+  opponentDistanceM: number;
+  result: CrewMatchResult;
+  challengerRoster: CrewMatchRosterRow[];
+  opponentRoster: CrewMatchRosterRow[];
+};
+
 /** 지난주(월~일 완결 주) 크루 결산. 기록 없던 주면 totalRuns=0. */
 export type CrewRecap = {
   weekStartDate: string;
