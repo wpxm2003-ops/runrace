@@ -67,6 +67,10 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     if ("GET".equalsIgnoreCase(request.getMethod()) && CHALLENGE_SHARE_PAGE.matcher(path).matches()) {
       return true;
     }
+    // 크루 초대 공유 페이지 — 카톡 미리보기 스크래퍼가 인증 없이 읽는다
+    if ("GET".equalsIgnoreCase(request.getMethod()) && "/api/share/crew-invite".equals(path)) {
+      return true;
+    }
     // 업로드 이미지 서빙은 공개
     if ("GET".equalsIgnoreCase(request.getMethod()) && path.startsWith("/api/uploads/")) {
       return true;

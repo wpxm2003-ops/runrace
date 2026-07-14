@@ -48,9 +48,9 @@ export function CrewRecapCard({
 
   const [distVal, distUnit] = formatDistance(recap.totalDistanceM, unit).split(" ");
   const stats: [string, string][] = [
-    [t.crew_recap_mvp, recap.mvpNickname ?? "—"],
-    [t.recap_runs_label, t.stats_count_unit(recap.totalRuns)],
-    [t.crew_recap_per_capita, formatDistance(recap.perCapitaDistanceM, unit)],
+    [t.crew_recap_mvp, recap.mvpNickname ?? "-"],
+    [t.crew_recap_total_distance, formatDistance(recap.totalDistanceM, unit)],
+    [t.crew_recap_participants, String(recap.participantCount)],
   ];
 
   async function onSave() {
@@ -152,9 +152,68 @@ export function CrewRecapCard({
             </div>
           ) : null}
 
+          {recap.leaders.length > 0 ? (
+            <div
+              style={{
+                marginTop: 32,
+                borderRadius: 32,
+                background: "#101216",
+                padding: "28px 40px",
+              }}
+            >
+              {recap.leaders.map((leader, index) => (
+                <div
+                  key={`${leader.rank}-${leader.nickname ?? "unknown"}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 24,
+                    padding: index === 0 ? "0 0 20px" : "20px 0 20px",
+                    borderTop: index === 0 ? "none" : `1px solid ${COLOR.divider}`,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 20, minWidth: 0 }}>
+                    <div
+                      style={{
+                        minWidth: 96,
+                        fontSize: 34,
+                        fontWeight: 700,
+                        color: index === 0 ? COLOR.green : COLOR.gray,
+                      }}
+                    >
+                      {t.prize_rank_label(leader.rank)}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 46,
+                        fontWeight: 700,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {leader.nickname ?? t.no_name}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 40,
+                      fontWeight: 600,
+                      color: index === 0 ? COLOR.green : "#FFFFFF",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {formatDistance(leader.distanceM, unit)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <div style={{ flex: 1 }} />
 
-          {/* 보조 스탯 — MVP / 횟수 / 1인당 */}
+          {/* 보조 스탯 — MVP / 총 거리 / 참여 인원 */}
           <div
             style={{
               paddingTop: 70,

@@ -31,16 +31,51 @@ public interface CrewMemberRepository extends JpaRepository<CrewMember, Long> {
       + "where m.crew_id = :crewId and w.started_at >= m.joined_at", nativeQuery = true)
   long sumMemberDistanceSinceJoin(@Param("crewId") Long crewId);
 
-  /** 크루 잔디 — {@code from} 이후 KST 날짜별 "뛴 멤버"(날짜·멤버 distinct 행). 닉네임 표시용. */
+  /**
+   * 크루 잔디 — {@code from} 이후 KST 날짜별 "뛴 멤버"(날짜·멤버 distinct 행). 닉네임 표시용.
+   * 가입 이후 기록만 집계한다(누적·명예의 전당과 동일한 "함께 달린" 의미론).
+   */
   @Query(value = """
       select distinct (w.started_at at time zone 'Asia/Seoul')::date as "day",
              w.user_id as "userId"
       from workout_session w
       join crew_member m on m.user_id = w.user_id
-      where m.crew_id = :crewId and w.started_at >= :from
+      where m.crew_id = :crewId and w.started_at >= m.joined_at and w.started_at >= :from
       """, nativeQuery = true)
   List<DailyRunnerRow> findDailyRunners(
       @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
+
+  /** 멤버별 {@code from} 이후 거리·횟수 — 가입 이후 기록만(주간 보드). */
+  @Query(value = """
+      select w.user_id as "userId", sum(w.distance_m) as "distanceM", count(*) as "runs"
+      from workout_session w
+      join crew_member m on m.user_id = w.user_id
+      where m.crew_id = :crewId and w.started_at >= m.joined_at and w.started_at >= :from
+      group by w.user_id
+      """, nativeQuery = true)
+  List<MemberDistanceAgg> sumMemberDistanceSince(
+      @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
+
+  /** 멤버별 [from, to) 거리·횟수 — 가입 이후 기록만(지난주 대비·결산). */
+  @Query(value = """
+      select w.user_id as "userId", sum(w.distance_m) as "distanceM", count(*) as "runs"
+      from workout_session w
+      join crew_member m on m.user_id = w.user_id
+      where m.crew_id = :crewId and w.started_at >= m.joined_at
+        and w.started_at >= :from and w.started_at < :to
+      group by w.user_id
+      """, nativeQuery = true)
+  List<MemberDistanceAgg> sumMemberDistanceBetween(
+      @Param("crewId") Long crewId,
+      @Param("from") OffsetDateTime from,
+      @Param("to") OffsetDateTime to);
+
+  /** {@link #sumMemberDistanceSince}·{@link #sumMemberDistanceBetween} 결과 투영. */
+  interface MemberDistanceAgg {
+    UUID getUserId();
+    long getDistanceM();
+    long getRuns();
+  }
 
   /** {@link #findDailyRunners} 결과 투영. */
   interface DailyRunnerRow {

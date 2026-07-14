@@ -14,7 +14,6 @@ import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
-import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +31,6 @@ class CrewServiceTest {
   @Mock CrewRepository crewRepository;
   @Mock CrewMemberRepository crewMemberRepository;
   @Mock AppUserRepository appUserRepository;
-  @Mock WorkoutSessionRepository workoutSessionRepository;
 
   @InjectMocks CrewService service;
 

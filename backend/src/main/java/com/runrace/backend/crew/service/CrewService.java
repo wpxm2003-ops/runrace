@@ -13,9 +13,9 @@ import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
-import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -59,7 +59,6 @@ public class CrewService {
   private final CrewRepository crewRepository;
   private final CrewMemberRepository crewMemberRepository;
   private final AppUserRepository appUserRepository;
-  private final WorkoutSessionRepository workoutSessionRepository;
 
   // ── 조회 ──────────────────────────────────────────────────────
 
@@ -73,20 +72,20 @@ public class CrewService {
     Crew crew = membership.get().getCrew();
     List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
 
-    List<UUID> memberIds = members.stream().map(m -> m.getUser().getId()).toList();
     OffsetDateTime now = OffsetDateTime.now();
     OffsetDateTime weekStart = weekStartKst();
     Map<UUID, long[]> agg = new HashMap<>();
-    for (var row : workoutSessionRepository.aggregateDistanceSince(memberIds, weekStart)) {
+    // 가입 이후 기록만 집계 — 가입 전 과거 운동이 크루 보드·잔디에 새어 들어오지 않게 한다.
+    for (var row : crewMemberRepository.sumMemberDistanceSince(crew.getId(), weekStart)) {
       agg.put(row.getUserId(), new long[] {row.getDistanceM(), row.getRuns()});
     }
 
     // 지난주 같은 경과 시점까지의 크루 합계 — "지난주 이맘때 대비"의 공정 비교 기준.
     OffsetDateTime lastWeekStart = weekStart.minusDays(7);
     OffsetDateTime lastWeekSameTime = lastWeekStart.plus(java.time.Duration.between(weekStart, now));
-    long lastWeekSum = workoutSessionRepository
-        .aggregateDistanceBetween(memberIds, lastWeekStart, lastWeekSameTime).stream()
-        .mapToLong(WorkoutSessionRepository.UserDistanceAgg::getDistanceM)
+    long lastWeekSum = crewMemberRepository
+        .sumMemberDistanceBetween(crew.getId(), lastWeekStart, lastWeekSameTime).stream()
+        .mapToLong(CrewMemberRepository.MemberDistanceAgg::getDistanceM)
         .sum();
 
     long allTime = crewMemberRepository.sumMemberDistanceSinceJoin(crew.getId());
@@ -115,41 +114,48 @@ public class CrewService {
     CrewMember membership = requireMembership(meId);
     Crew crew = membership.getCrew();
     List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
-    List<UUID> memberIds = members.stream().map(m -> m.getUser().getId()).toList();
+    Map<UUID, String> nicknamesById = new HashMap<>();
+    for (CrewMember member : members) {
+      nicknamesById.put(member.getUser().getId(), member.getUser().getNickname());
+    }
 
     OffsetDateTime weekStart = weekStartKst();
     OffsetDateTime lastWeekStart = weekStart.minusDays(7);
 
+    // 가입 이후 기록만 — 크루 창단 전 개인 기록이 결산에 섞이지 않게 한다.
+    List<CrewMemberRepository.MemberDistanceAgg> aggregates = crewMemberRepository
+        .sumMemberDistanceBetween(crew.getId(), lastWeekStart, weekStart);
     long total = 0;
     long runs = 0;
-    UUID mvpId = null;
-    long mvpDist = 0;
-    for (var row : workoutSessionRepository
-        .aggregateDistanceBetween(memberIds, lastWeekStart, weekStart)) {
+    for (var row : aggregates) {
       total += row.getDistanceM();
       runs += row.getRuns();
-      if (row.getDistanceM() > mvpDist) {
-        mvpDist = row.getDistanceM();
-        mvpId = row.getUserId();
-      }
     }
 
-    String mvpNickname = null;
-    if (mvpId != null) {
-      final UUID id = mvpId;
-      mvpNickname = members.stream()
-          .filter(m -> m.getUser().getId().equals(id))
-          .findFirst()
-          .map(m -> m.getUser().getNickname())
-          .orElse(null);
+    List<CrewMemberRepository.MemberDistanceAgg> ranked = aggregates.stream()
+        .sorted(Comparator
+            .comparingLong(CrewMemberRepository.MemberDistanceAgg::getDistanceM)
+            .reversed()
+            .thenComparing(row -> Objects.toString(nicknamesById.get(row.getUserId()), "")))
+        .toList();
+    List<CrewRecapResponse.CrewRecapLeader> leaders = new ArrayList<>();
+    for (int i = 0; i < ranked.size() && i < 3; i++) {
+      var row = ranked.get(i);
+      leaders.add(new CrewRecapResponse.CrewRecapLeader(
+          i + 1,
+          nicknamesById.get(row.getUserId()),
+          row.getDistanceM()));
     }
+    String mvpNickname = leaders.isEmpty() ? null : leaders.get(0).nickname();
+    long mvpDist = leaders.isEmpty() ? 0 : leaders.get(0).distanceM();
 
     LocalDate startDate = lastWeekStart.atZoneSameInstant(KST).toLocalDate();
     return new CrewRecapResponse(
         startDate.toString(), startDate.plusDays(6).toString(),
         total, (int) runs,
-        members.isEmpty() ? 0 : total / members.size(),
-        mvpNickname, mvpDist);
+        ranked.size(),
+        mvpNickname, mvpDist,
+        leaders);
   }
 
   /**

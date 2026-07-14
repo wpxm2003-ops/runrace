@@ -41,3 +41,6 @@ frontend/android/capacitor-cordova-android-plugins/
 .DS_Store
 Thumbs.db
 backend/src/main/resources/application-local.yml
+
+# Codex remote attachments (tool workspace)
+.codex-remote-attachments/

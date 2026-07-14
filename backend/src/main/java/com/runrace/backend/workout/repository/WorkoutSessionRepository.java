@@ -140,13 +140,6 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
       """, nativeQuery = true)
   int maxStreakDaysForUser(@Param("userId") UUID userId);
 
-  /** 크루 주간 보드 — 사용자들의 {@code from} 이후 거리·횟수 합계(기록 없는 사용자는 행 없음). */
-  @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
-      + "from WorkoutSession w where w.user.id in :userIds and w.startedAt >= :from "
-      + "group by w.user.id")
-  List<UserDistanceAgg> aggregateDistanceSince(
-      @Param("userIds") List<UUID> userIds, @Param("from") OffsetDateTime from);
-
   /** 크루 대항전 채점 — GPS 러닝만 [from, to) 합산(실내런 소급 입력 조작 방지). */
   @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
       + "from WorkoutSession w where w.user.id in :userIds "
@@ -158,17 +151,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
       @Param("to") OffsetDateTime to,
       @Param("workoutType") WorkoutType workoutType);
 
-  /** 크루 지난주 비교·결산 — [from, to) 구간 사용자별 거리·횟수 합계. */
-  @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
-      + "from WorkoutSession w where w.user.id in :userIds "
-      + "and w.startedAt >= :from and w.startedAt < :to "
-      + "group by w.user.id")
-  List<UserDistanceAgg> aggregateDistanceBetween(
-      @Param("userIds") List<UUID> userIds,
-      @Param("from") OffsetDateTime from,
-      @Param("to") OffsetDateTime to);
-
-  /** {@link #aggregateDistanceSince} 결과 투영. */
+  /** {@link #aggregateDistanceBetweenByType} 결과 투영. */
   interface UserDistanceAgg {
     UUID getUserId();
     long getDistanceM();

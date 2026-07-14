@@ -32,6 +32,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { weekdayLabels } from "@/lib/format";
+import { getAppUrl } from "@/lib/appUrl";
 import { toast } from "sonner";
 
 /** 초대 코드 입력 정규화 — 대문자 6자(코드 알파벳과 동일 폭). */
@@ -543,7 +544,9 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const goalReached = goalM != null && weekTotalM >= goalM;
 
   async function copyInvite() {
-    const url = `${window.location.origin}/crew/join?code=${crew.joinCode}`;
+    // 정적 페이지(/crew/join)는 OG가 제네릭이라 카톡 미리보기가 도메인만 남는다.
+    // 백엔드 공유 페이지(크루명·인원 OG + 초대 화면 리다이렉트)를 복사한다.
+    const url = `${getAppUrl()}/api/share/crew-invite?code=${crew.joinCode}`;
     try {
       await navigator.clipboard.writeText(url);
       toast.success(t.crew_invite_copied);
@@ -763,18 +766,42 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-zinc-50 px-2 py-3">
             <StatTile
               label={t.crew_recap_mvp}
-              value={recap.mvpNickname ?? "—"}
+              value={recap.mvpNickname ?? "-"}
               tone={recap.mvpNickname ? "green" : undefined}
             />
             <StatTile
-              label={t.crew_week_total_label}
+              label={t.crew_recap_total_distance}
               value={formatDistance(recap.totalDistanceM, unit)}
             />
             <StatTile
-              label={t.crew_recap_per_capita}
-              value={formatDistance(recap.perCapitaDistanceM, unit)}
+              label={t.crew_recap_participants}
+              value={String(recap.participantCount)}
             />
           </div>
+          {recap.leaders.length > 0 ? (
+            <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+              {recap.leaders.map((leader, index) => (
+                <div
+                  key={`${leader.rank}-${leader.nickname ?? "unknown"}`}
+                  className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                    index > 0 ? "border-t border-zinc-100" : ""
+                  }`}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">
+                      {t.prize_rank_label(leader.rank)}
+                    </span>
+                    <span className="truncate text-sm font-medium text-zinc-900">
+                      {leader.nickname ?? t.no_name}
+                    </span>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-zinc-900">
+                    {formatDistance(leader.distanceM, unit)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </Card>
       ) : null}
 

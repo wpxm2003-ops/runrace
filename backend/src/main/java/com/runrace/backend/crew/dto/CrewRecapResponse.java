@@ -1,14 +1,20 @@
 package com.runrace.backend.crew.dto;
 
-/**
- * 지난주(월~일 완결 주) 크루 결산 — 결산 카드·홈 결산 섹션용.
- * 기록이 없던 주면 totalRuns=0, mvpNickname=null.
- */
+import java.util.List;
+
+/** 지난주(월요일 시작 주) 크루 결산 응답. */
 public record CrewRecapResponse(
     String weekStartDate,
     String weekEndDate,
     long totalDistanceM,
     int totalRuns,
-    long perCapitaDistanceM,
+    int participantCount,
     String mvpNickname,
-    long mvpDistanceM) {}
+    long mvpDistanceM,
+    List<CrewRecapLeader> leaders) {
+
+  public record CrewRecapLeader(
+      int rank,
+      String nickname,
+      long distanceM) {}
+}

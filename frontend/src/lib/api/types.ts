@@ -170,14 +170,21 @@ export type CrewMatchDetail = {
 };
 
 /** 지난주(월~일 완결 주) 크루 결산. 기록 없던 주면 totalRuns=0. */
+export type CrewRecapLeader = {
+  rank: number;
+  nickname: string | null;
+  distanceM: number;
+};
+
 export type CrewRecap = {
   weekStartDate: string;
   weekEndDate: string;
   totalDistanceM: number;
   totalRuns: number;
-  perCapitaDistanceM: number;
+  participantCount: number;
   mvpNickname: string | null;
   mvpDistanceM: number;
+  leaders: CrewRecapLeader[];
 };
 
 /** 초대 랜딩 정보. status는 비로그인 시 JOINABLE/FULL만 나온다. */
