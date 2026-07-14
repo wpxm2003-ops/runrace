@@ -34,7 +34,7 @@ export function leaveCrew(user: User) {
 /** 이름·공지·주간 목표 수정(리더 전용). */
 export function updateCrew(
   crewId: number,
-  body: { name: string; notice: string | null; weekGoalKm: number | null },
+  body: { notice: string | null; weekGoalKm: number | null },
   user: User,
 ) {
   return apiFetch<void>(`/api/crews/${crewId}`, { method: "PATCH", user, body });

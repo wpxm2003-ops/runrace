@@ -64,8 +64,7 @@ public class Crew {
   }
 
   /** 이름·공지·주간 목표 수정(리더 전용 경로에서만 호출). */
-  public void updateInfo(String name, String notice, BigDecimal weekGoalKm) {
-    this.name = name;
+  public void updateInfo(String notice, BigDecimal weekGoalKm) {
     this.notice = notice;
     this.weekGoalKm = weekGoalKm;
   }

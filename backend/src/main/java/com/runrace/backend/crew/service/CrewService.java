@@ -283,14 +283,10 @@ public class CrewService {
 
   /** 이름·공지·주간 목표 수정(리더 전용). */
   @Transactional
-  public void update(UUID meId, long crewId, String rawName, String rawNotice, BigDecimal weekGoalKm) {
+  public void update(UUID meId, long crewId, String rawNotice, BigDecimal weekGoalKm) {
     Crew crew = requireLeader(meId, crewId);
-    String name = validateName(rawName);
-    if (!name.equals(crew.getName()) && crewRepository.existsByName(name)) {
-      throw ApiException.conflict("crew_name_taken");
-    }
     String notice = validateNotice(rawNotice);
-    crew.updateInfo(name, notice, validateWeekGoal(weekGoalKm));
+    crew.updateInfo(notice, validateWeekGoal(weekGoalKm));
     crewRepository.save(crew);
   }
 

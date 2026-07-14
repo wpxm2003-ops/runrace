@@ -167,7 +167,7 @@ class CrewServiceTest {
       Crew c = crew(UUID.randomUUID());
       when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.update(meId, 1L, "새이름", null, null));
+          () -> service.update(meId, 1L, null, null));
       assertEquals("not_leader", ex.code());
     }
 
@@ -197,23 +197,16 @@ class CrewServiceTest {
       verify(crewMemberRepository).delete(target);
     }
 
-    @Test void 이름_수정시_중복이면_crew_name_taken() {
-      Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
-      when(crewRepository.existsByName("새이름")).thenReturn(true);
-      ApiException ex = assertThrows(ApiException.class,
-          () -> service.update(meId, 1L, "새이름", null, null));
-      assertEquals("crew_name_taken", ex.code());
-    }
-
-    @Test void 같은_이름_유지하며_공지만_수정은_중복검사_안탐() {
+    @Test void 공지_수정시_크루명은_유지된다() {
       Crew c = crew(meId);
       when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
 
-      service.update(meId, 1L, "달밤크루", "토요일 7시 반포", null);
+      String originalName = c.getName();
+      service.update(meId, 1L, "토요일 7시 반포", null);
 
       verify(crewRepository, never()).existsByName(any());
       verify(crewRepository).save(c);
+      assertEquals(originalName, c.getName());
       assertEquals("토요일 7시 반포", c.getNotice());
     }
 
@@ -221,7 +214,7 @@ class CrewServiceTest {
       Crew c = crew(meId);
       when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.update(meId, 1L, "달밤크루", null, java.math.BigDecimal.valueOf(10000)));
+          () -> service.update(meId, 1L, null, java.math.BigDecimal.valueOf(10000)));
       assertEquals("invalid_week_goal", ex.code());
     }
 
@@ -229,7 +222,7 @@ class CrewServiceTest {
       Crew c = crew(meId);
       when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
 
-      service.update(meId, 1L, "달밤크루", null, java.math.BigDecimal.valueOf(100));
+      service.update(meId, 1L, null, java.math.BigDecimal.valueOf(100));
 
       assertEquals(java.math.BigDecimal.valueOf(100), c.getWeekGoalKm());
       verify(crewRepository).save(c);

@@ -29,7 +29,6 @@ import { toast } from "sonner";
 /** 리더 전용 — 이름·공지·주간 목표 수정 폼. */
 function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSaved: () => void }) {
   const { t } = useLocale();
-  const [name, setName] = useState(crew.name);
   const [notice, setNotice] = useState(crew.notice ?? "");
   const [goal, setGoal] = useState(crew.weekGoalKm != null ? String(crew.weekGoalKm) : "");
   const [saving, setSaving] = useState(false);
@@ -37,15 +36,13 @@ function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSa
 
   // 백그라운드 재검증으로 crew 값이 갱신되면 편집 전 초기값도 따라가게 한다(편집 중엔 유지).
   useEffect(() => {
-    setName(crew.name);
     setNotice(crew.notice ?? "");
     setGoal(crew.weekGoalKm != null ? String(crew.weekGoalKm) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crew.id]);
 
   async function onSave() {
-    const trimmed = name.trim();
-    if (trimmed.length < 2 || saving) return;
+    if (saving) return;
     // 주간 목표 — 비우면 목표 없음, 값이 있으면 1~9,999 검증(서버와 동일 규칙).
     const goalRaw = goal.trim();
     const goalKm = goalRaw === "" ? null : Number(goalRaw);
@@ -58,7 +55,7 @@ function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSa
     try {
       await updateCrew(
         crew.id,
-        { name: trimmed, notice: notice.trim() || null, weekGoalKm: goalKm },
+        { notice: notice.trim() || null, weekGoalKm: goalKm },
         user,
       );
       toast.success(t.toast_crew_saved);
@@ -87,14 +84,9 @@ function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSa
       <label className="text-sm text-zinc-500" htmlFor="crew-name">
         {t.crew_field_name}
       </label>
-      <input
-        id="crew-name"
-        type="text"
-        value={name}
-        onChange={(e) => setName(stripForbiddenText(e.target.value).slice(0, 20))}
-        maxLength={20}
-        className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-      />
+      <div id="crew-name" className="mt-1.5 w-full rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
+        {crew.name}
+      </div>
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-notice">
         {t.crew_field_notice}
       </label>
@@ -124,7 +116,7 @@ function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSa
       <button
         type="button"
         onClick={onSave}
-        disabled={saving || name.trim().length < 2}
+        disabled={saving}
         className="mt-4 h-10 w-full rounded-xl bg-zinc-900 text-sm text-white disabled:opacity-50"
       >
         {saving ? t.saving : t.save}
