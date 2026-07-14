@@ -736,7 +736,7 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
                       : t.races_filter_scheduled;
                 const phaseTone =
                   r.phase === "IN_PROGRESS"
-                    ? "bg-emerald-100 text-emerald-700"
+                    ? "bg-sky-100 text-sky-700"
                     : r.phase === "ENDED"
                       ? "bg-zinc-100 text-zinc-500"
                       : "bg-amber-100 text-amber-700";

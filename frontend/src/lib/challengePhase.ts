@@ -60,9 +60,9 @@ export function challengePhaseBadgeClass(phase: ChallengePhase): string {
   const base = "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold";
   switch (phase) {
     case "scheduled":
-      return `${base} bg-sky-100 text-sky-800 ring-1 ring-sky-200/80`;
+      return `${base} bg-amber-100 text-amber-800 ring-1 ring-amber-200/80`;
     case "in_progress":
-      return `${base} bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/80`;
+      return `${base} bg-sky-100 text-sky-800 ring-1 ring-sky-200/80`;
     case "ended":
       return `${base} bg-zinc-200 text-zinc-600 ring-1 ring-zinc-300/80`;
   }
