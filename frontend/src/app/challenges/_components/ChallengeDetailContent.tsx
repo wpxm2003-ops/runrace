@@ -12,6 +12,7 @@ import {
   joinChallenge,
   leaveChallenge,
   invalidateChallengeLists,
+  invalidateCrewRaces,
   nudgeMember,
   useChallengeDetail,
   useHeadToHead,
@@ -143,8 +144,9 @@ export default function ChallengeDetailContent() {
     try {
       await deleteChallenge(id, user, `/challenges/${id}`);
       invalidateChallengeLists();
+      if (detail.crewName) invalidateCrewRaces(user.uid);
       toast.success(t.toast_race_deleted);
-      nativeNavigate("/challenges", { replace: true });
+      nativeNavigate(detail.crewName ? "/crew" : "/challenges", { replace: true });
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
     }
