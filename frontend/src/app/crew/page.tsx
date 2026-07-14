@@ -217,6 +217,7 @@ function BoardRow({
   isMe,
   weekDistanceM,
   weekRuns,
+  goalM,
   onNudge,
   nudged,
   nudging,
@@ -227,6 +228,7 @@ function BoardRow({
   isMe: boolean;
   weekDistanceM: number;
   weekRuns: number;
+  goalM: number | null;
   onNudge?: (variant: number) => void;
   nudged: boolean;
   nudging: boolean;
@@ -235,6 +237,8 @@ function BoardRow({
   const { unit } = useUnit();
   const [pickerOpen, setPickerOpen] = useState(false);
   const idle = weekDistanceM === 0;
+  const goalPercent = goalM != null ? Math.min(100, Math.round((weekDistanceM / goalM) * 100)) : null;
+  const goalReached = goalM != null && weekDistanceM >= goalM;
   const showNudge = idle && !isMe && onNudge;
   return (
     <div className={`py-2.5 ${idle && !showNudge ? "opacity-50" : ""}`}>
@@ -270,6 +274,24 @@ function BoardRow({
           )}
         </div>
       </div>
+      {goalM != null ? (
+        <div className="ml-9 mt-1.5">
+          <div className="flex items-center justify-between gap-2 text-[10px]">
+            <span className={goalReached ? "font-medium text-emerald-600" : "text-zinc-400"}>
+              {goalReached ? t.crew_member_goal_reached : t.crew_member_goal_progress(goalPercent ?? 0)}
+            </span>
+            <span className="tabular-nums text-zinc-400">
+              {formatDistance(weekDistanceM, unit)} / {formatDistance(goalM, unit)}
+            </span>
+          </div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-100">
+            <div
+              className={`h-full rounded-full ${goalReached ? "bg-emerald-500" : "bg-zinc-700"}`}
+              style={{ width: `${goalPercent}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
       {showNudge ? (
         pickerOpen ? (
           <div className="mt-1.5 flex flex-wrap gap-1 pl-9">
@@ -609,7 +631,12 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const myShare =
     weekTotalM > 0 && myRow ? Math.round((myRow.weekDistanceM / weekTotalM) * 100) : null;
   const goalM = crew.weekGoalKm != null ? crew.weekGoalKm * 1000 : null;
-  const goalReached = goalM != null && weekTotalM >= goalM;
+  const goalAchievers = goalM != null
+    ? crew.members.filter((member) => member.weekDistanceM >= goalM).length
+    : 0;
+  const crewGoalPercent = crew.members.length > 0
+    ? Math.round((goalAchievers / crew.members.length) * 100)
+    : 0;
 
   async function copyInvite() {
     // 링크 대신 초대 코드+안내 문구를 복사한다 — 카톡 인앱/딥링크 제약을 우회하고,
@@ -756,27 +783,22 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
             </span>
           </div>
         </div>
-        {/* 주간 크루 목표 진행률 (리더가 설정한 경우만) */}
+        {/* 공통 개인 목표를 달성한 크루원 비율 (리더가 설정한 경우만) */}
         {goalM != null ? (
           <div className="mt-3 rounded-xl bg-zinc-50 p-3">
             <div className="flex items-baseline justify-between gap-2 text-xs">
               <span className="font-medium text-zinc-600">{t.crew_goal_label}</span>
-              <span
-                className={
-                  goalReached ? "font-semibold text-emerald-600" : "tabular-nums text-zinc-500"
-                }
-              >
-                {goalReached
-                  ? t.crew_goal_reached
-                  : `${formatDistance(weekTotalM, unit)} / ${formatDistance(goalM, unit)}`}
+              <span className={goalAchievers === crew.members.length ? "font-semibold text-emerald-600" : "tabular-nums text-zinc-500"}>
+                {t.crew_goal_achievers(goalAchievers, crew.members.length)}
               </span>
+            </div>
+            <div className="mt-1 text-[11px] text-zinc-400">
+              {t.crew_goal_per_member(formatDistance(goalM, unit))}
             </div>
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
               <div
-                className={`h-full rounded-full transition-all ${
-                  goalReached ? "bg-emerald-500" : "bg-zinc-900"
-                }`}
-                style={{ width: `${Math.min(100, Math.round((weekTotalM / goalM) * 100))}%` }}
+                className={`h-full rounded-full transition-all ${goalAchievers === crew.members.length ? "bg-emerald-500" : "bg-zinc-900"}`}
+                style={{ width: `${crewGoalPercent}%` }}
               />
             </div>
           </div>
@@ -791,6 +813,7 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
               isMe={m.isMe}
               weekDistanceM={m.weekDistanceM}
               weekRuns={m.weekRuns}
+              goalM={goalM}
               onNudge={(variant) => onNudge(m.userId, variant)}
               nudged={nudgedIds.has(m.userId)}
               nudging={nudgingId === m.userId}

@@ -49,7 +49,7 @@ public class Crew {
   @Column(name = "max_members", nullable = false)
   private int maxMembers;
 
-  /** 주간 크루 목표 거리(km) — 매주 반복 적용. null이면 목표 없음. */
+  /** 크루원 1인당 주간 목표 거리(km) — 매주 반복 적용. null이면 목표 없음. */
   @Column(name = "week_goal_km", precision = 10, scale = 3)
   private BigDecimal weekGoalKm;
 

@@ -74,7 +74,7 @@ export type CrewView = {
   joinCode: string;
   isLeader: boolean;
   maxMembers: number;
-  /** 주간 크루 목표(km). null이면 목표 없음. */
+  /** 크루원 1인당 주간 목표(km). null이면 목표 없음. */
   weekGoalKm: number | null;
   /** 지난주 같은 경과 시점까지의 크루 합계(m) — "지난주 이맘때 대비"용. */
   lastWeekSameTimeDistanceM: number;
