@@ -3,11 +3,13 @@ package com.runrace.backend.crew.controller;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.crew.dto.CreateCrewRequest;
 import com.runrace.backend.crew.dto.CrewInsightsResponse;
+import com.runrace.backend.crew.dto.CrewDiscoveryResponse;
 import com.runrace.backend.crew.dto.CrewRecapResponse;
 import com.runrace.backend.crew.dto.CrewSearchItem;
 import com.runrace.backend.crew.dto.JoinCrewRequest;
 import com.runrace.backend.crew.dto.MyCrewResponse;
 import com.runrace.backend.crew.dto.UpdateCrewRequest;
+import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.crew.service.CrewService;
 import com.runrace.backend.nudge.dto.NudgeRequest;
 import com.runrace.backend.nudge.service.NudgeService;
@@ -60,6 +62,19 @@ public class CrewController {
         .map(r -> new CrewSearchItem(r.getId(), r.getName(), r.getMemberCount()))
         .toList();
     return ResponseEntity.ok(items);
+  }
+
+  /** 멤버가 많은 순서의 크루 탐색 목록 — 10개씩 더보기. */
+  @GetMapping("/discover")
+  public ResponseEntity<CrewDiscoveryResponse> discover(
+      AuthPrincipal principal, @RequestParam(defaultValue = "0") int page) {
+    int size = 10;
+    List<CrewRepository.CrewSearchRow> rows = crewService.discover(page, size);
+    boolean hasMore = rows.size() > size;
+    List<CrewSearchItem> crews = rows.stream().limit(size)
+        .map(r -> new CrewSearchItem(r.getId(), r.getName(), r.getMemberCount()))
+        .toList();
+    return ResponseEntity.ok(new CrewDiscoveryResponse(crews, hasMore));
   }
 
   /** 같은 크루 멤버에게 콕 찌르기(하루 1회). */

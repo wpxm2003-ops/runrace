@@ -169,6 +169,14 @@ public class CrewService {
     return crewRepository.searchByName(query, excludeCrewId);
   }
 
+  /** 크루 탐색 목록 — 10개 단위, 멤버 수 내림차순. */
+  @Transactional(readOnly = true)
+  public List<CrewRepository.CrewSearchRow> discover(int page, int size) {
+    int safePage = Math.max(0, page);
+    int safeSize = Math.min(50, Math.max(1, size));
+    return crewRepository.findDiscoverable(safeSize + 1, (long) safePage * safeSize);
+  }
+
   /** 크루 잔디(최근 5주 날짜별 뛴 멤버 수) + 명예의 전당(월별 MVP). */
   @Transactional(readOnly = true)
   public CrewInsightsResponse insights(UUID meId) {

@@ -106,6 +106,11 @@ export type CrewSearchItem = {
   memberCount: number;
 };
 
+export type CrewDiscoveryResponse = {
+  crews: CrewSearchItem[];
+  hasMore: boolean;
+};
+
 // ── 크루 대항전(crew match) ───────────────────────────────────────
 export type CrewMatchStatus =
   | "PENDING"

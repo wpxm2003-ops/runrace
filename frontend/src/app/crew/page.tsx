@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -9,6 +9,7 @@ import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import {
   createCrew,
+  fetchCrewDiscovery,
   joinCrew,
   crewNudge,
   useMyCrew,
@@ -20,7 +21,7 @@ import {
   toDisplayError,
   reportClientError,
 } from "@/lib/api";
-import type { CrewInsights, CrewMatchSummary, CrewView } from "@/lib/api/types";
+import type { CrewInsights, CrewMatchSummary, CrewSearchItem, CrewView } from "@/lib/api/types";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { formatGoalDistance } from "@/lib/units";
 import { CrewRecapCard } from "./_components/CrewRecapCard";
@@ -84,32 +85,6 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
       </Card>
 
       <Card className="mt-4">
-        <div className="text-base font-semibold">{t.crew_create_heading}</div>
-        <div className="mt-3 flex gap-2">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(stripForbiddenText(e.target.value).slice(0, 20))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && name.trim().length >= 2)
-                void run("create", () => createCrew(name.trim(), user), t.toast_crew_created);
-            }}
-            placeholder={t.crew_create_placeholder}
-            maxLength={20}
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => run("create", () => createCrew(name.trim(), user), t.toast_crew_created)}
-            disabled={busy !== null || name.trim().length < 2}
-            className="shrink-0 rounded-lg bg-zinc-900 px-4 text-sm text-white disabled:opacity-50"
-          >
-            {busy === "create" ? t.crew_create_busy : t.crew_create_btn}
-          </button>
-        </div>
-      </Card>
-
-      <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_join_heading}</div>
         <div className="mt-3 flex gap-2">
           <input
@@ -136,7 +111,98 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
         </div>
         {actionError ? <p className="mt-2 text-xs text-red-600">{actionError}</p> : null}
       </Card>
+
+      <Card className="mt-4">
+        <div className="text-base font-semibold">{t.crew_create_heading}</div>
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(stripForbiddenText(e.target.value).slice(0, 20))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && name.trim().length >= 2)
+                void run("create", () => createCrew(name.trim(), user), t.toast_crew_created);
+            }}
+            placeholder={t.crew_create_placeholder}
+            maxLength={20}
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => run("create", () => createCrew(name.trim(), user), t.toast_crew_created)}
+            disabled={busy !== null || name.trim().length < 2}
+            className="shrink-0 rounded-lg bg-zinc-900 px-4 text-sm text-white disabled:opacity-50"
+          >
+            {busy === "create" ? t.crew_create_busy : t.crew_create_btn}
+          </button>
+        </div>
+      </Card>
+
+      <CrewDiscovery user={user} />
     </>
+  );
+}
+
+function CrewDiscovery({ user }: { user: User }) {
+  const { t } = useLocale();
+  const [crews, setCrews] = useState<CrewSearchItem[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load(targetPage: number) {
+    if (loading && targetPage !== 0) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchCrewDiscovery(targetPage, user);
+      setCrews((current) => targetPage === 0 ? result.crews : [...current, ...result.crews]);
+      setPage(targetPage);
+      setHasMore(result.hasMore);
+    } catch (e) {
+      if (!handleAuthFailure(e, "/crew")) setError(toDisplayError(e) ?? t.error_occurred);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load(0);
+    // 로그인 사용자가 바뀔 때만 처음부터 다시 불러온다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.uid]);
+
+  return (
+    <Card className="mt-4">
+      <div className="text-base font-semibold">{t.crew_discovery_heading}</div>
+      {loading && crews.length === 0 ? (
+        <div className="mt-3"><SkeletonLines count={3} /></div>
+      ) : error && crews.length === 0 ? (
+        <Alert>{error}</Alert>
+      ) : crews.length === 0 ? (
+        <p className="mt-3 text-sm text-zinc-500">{t.crew_discovery_empty}</p>
+      ) : (
+        <div className="mt-2 divide-y divide-zinc-100">
+          {crews.map((crew, index) => (
+            <div key={crew.id} className="flex items-center justify-between gap-3 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="w-5 shrink-0 text-center text-xs font-semibold text-zinc-400">{index + 1}</span>
+                <span className="truncate text-sm font-medium text-zinc-900">{crew.name}</span>
+              </div>
+              <span className="shrink-0 text-xs text-zinc-500">{t.crew_discovery_members(crew.memberCount)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {error && crews.length > 0 ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+      {hasMore ? (
+        <button type="button" onClick={() => void load(page + 1)} disabled={loading}
+          className="mt-2 w-full rounded-lg border border-zinc-200 py-2.5 text-sm font-medium text-zinc-700 disabled:opacity-50">
+          {loading ? t.crew_discovery_loading : t.crew_discovery_more}
+        </button>
+      ) : null}
+    </Card>
   );
 }
 
@@ -831,6 +897,8 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           </div>
         </Card>
       ) : null}
+
+      <CrewDiscovery user={user} />
 
     </>
   );

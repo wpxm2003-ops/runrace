@@ -5,6 +5,7 @@ import type {
   CrewMatchDetail,
   CrewRecap,
   CrewSearchItem,
+  CrewDiscoveryResponse,
   MyCrewMatches,
   MyCrewResponse,
 } from "./types";
@@ -76,6 +77,11 @@ export function searchCrews(query: string, user: User) {
     `/api/crews/search?query=${encodeURIComponent(query)}`,
     { user },
   );
+}
+
+/** 멤버가 많은 순서의 크루 탐색 목록(10개 단위). */
+export function fetchCrewDiscovery(page: number, user: User) {
+  return apiFetch<CrewDiscoveryResponse>(`/api/crews/discover?page=${page}`, { user });
 }
 
 // ── 크루 대항전(C1) ───────────────────────────────────────────────

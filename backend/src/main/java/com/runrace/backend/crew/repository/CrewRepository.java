@@ -34,6 +34,18 @@ public interface CrewRepository extends JpaRepository<Crew, Long> {
   List<CrewSearchRow> searchByName(
       @Param("query") String query, @Param("excludeCrewId") long excludeCrewId);
 
+  /** 공개 크루 탐색 목록. 멤버 수가 같으면 최신 크루부터 안정적으로 페이징한다. */
+  @Query(value = """
+      select c.id as "id", c.name as "name", count(m.id) as "memberCount"
+      from crew c
+      left join crew_member m on m.crew_id = c.id
+      group by c.id, c.name
+      order by count(m.id) desc, c.id desc
+      limit :limit offset :offset
+      """, nativeQuery = true)
+  List<CrewSearchRow> findDiscoverable(
+      @Param("limit") int limit, @Param("offset") long offset);
+
   /** {@link #searchByName} 결과 투영. */
   interface CrewSearchRow {
     Long getId();
