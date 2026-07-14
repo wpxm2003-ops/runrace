@@ -19,6 +19,8 @@ public interface CrewMatchRosterRepository extends JpaRepository<CrewMatchRoster
   /**
    * 이 사용자가 현재 진행 중(ACCEPTED, 시작~종료 사이)인 대항전에 출전 중이면 그 로스터 행.
    * 워크아웃 저장 직후 추월 감지에 쓴다 — 진행 중인 대항전이 없으면 empty.
+   * 정상 상태에선 최대 1건이지만(크루당 활성 대결 1개), 동시성 틈으로 2건이 생겨도
+   * NonUniqueResult로 터지지 않게 List로 받아 첫 건만 쓴다.
    */
   @Query("""
       select r from CrewMatchRoster r
@@ -27,11 +29,11 @@ public interface CrewMatchRosterRepository extends JpaRepository<CrewMatchRoster
       where r.user.id = :userId and m.status = :accepted and m.isEnded = false
         and m.startAt <= :now and m.endAt > :now
       """)
-  Optional<CrewMatchRoster> findActiveByUserId(
+  List<CrewMatchRoster> findActiveListByUserId(
       @Param("userId") UUID userId, @Param("now") OffsetDateTime now,
       @Param("accepted") CrewMatch.Status accepted);
 
   default Optional<CrewMatchRoster> findActiveByUserId(UUID userId, OffsetDateTime now) {
-    return findActiveByUserId(userId, now, CrewMatch.Status.ACCEPTED);
+    return findActiveListByUserId(userId, now, CrewMatch.Status.ACCEPTED).stream().findFirst();
   }
 }

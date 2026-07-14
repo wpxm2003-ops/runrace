@@ -30,6 +30,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -44,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CrewMatchService {
+  private static final Logger log = LoggerFactory.getLogger(CrewMatchService.class);
 
   static final int ROSTER_MIN = 2;
   static final int ROSTER_MAX = 50;
@@ -307,9 +310,19 @@ public class CrewMatchService {
    * GPS 워크아웃 저장 직후(WorkoutService.create) 호출 — 사용자가 진행 중인 대항전 로스터에
    * 있으면 방금 그 운동으로 자기 크루가 상대를 추월했는지 확인해, 추월당한 쪽 로스터 전원에게
    * 알린다. 진행 중인 대항전이 없거나 이 운동이 대항전 기간 밖이면 아무 일도 하지 않는다.
+   * 추월 알림은 best-effort — 여기서 어떤 예외가 나도 운동 저장 트랜잭션을 깨면 안 되므로
+   * 내부에서 삼키고 로그만 남긴다(프록시 경계를 예외가 넘으면 rollback-only로 저장까지 실패한다).
    */
   @Transactional
   public void checkOvertakeOnWorkout(UUID userId, int distanceM, OffsetDateTime workoutEndedAt) {
+    try {
+      detectAndNotifyOvertake(userId, distanceM, workoutEndedAt);
+    } catch (Exception e) {
+      log.warn("대항전 추월 감지 실패 (userId={}) — 알림 생략", userId, e);
+    }
+  }
+
+  private void detectAndNotifyOvertake(UUID userId, int distanceM, OffsetDateTime workoutEndedAt) {
     OffsetDateTime now = OffsetDateTime.now();
     CrewMatchRoster myRoster = crewMatchRosterRepository.findActiveByUserId(userId, now).orElse(null);
     if (myRoster == null) return;
