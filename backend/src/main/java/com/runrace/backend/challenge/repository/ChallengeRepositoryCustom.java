@@ -23,4 +23,7 @@ public interface ChallengeRepositoryCustom {
 
   /** 내가 참여한 레이스 페이지 — phase(all/active/ended). */
   Slice<Challenge> findMinePage(UUID userId, String phase, OffsetDateTime now, Pageable pageable);
+
+  /** 크루 내부 레이스 페이지 — phase(active/ended), 예정·진행중 상태 우선 정렬. */
+  Slice<Challenge> findCrewPage(Long crewId, String phase, OffsetDateTime now, Pageable pageable);
 }

@@ -15,6 +15,7 @@ import {
   fetchMyChallengesPage,
   fetchChallengeWorkouts,
   fetchCrewRaces,
+  fetchCrewRacesPage,
   fetchHeadToHead,
   fetchPendingApprovals,
   fetchRejectedApprovals,
@@ -311,9 +312,32 @@ export function useCrewInsights(user: User | null, enabled: boolean) {
 /** 내 크루의 내부 레이스 목록 — 크루 홈 섹션용. */
 export function useCrewRaces(user: User | null, enabled: boolean) {
   return useSWR(
-    enabled && user ? (["crew-races", user.uid] as const) : null,
+    enabled && user ? (["crew-races", user.uid, "home"] as const) : null,
     () => fetchCrewRaces(user!),
     LIVE_CONFIG,
+  );
+}
+
+/** 크루 레이스 전체보기 — 예정·진행중/종료 탭별 무한스크롤. */
+export function useCrewRaceListInfinite(user: User | null, phase: string) {
+  return useSWRInfinite(
+    (index, previous) => {
+      if (!user || (previous && !previous.hasNext)) return null;
+      return ["crew-races", user.uid, phase, index] as const;
+    },
+    (key) => fetchCrewRacesPage(user!, {
+      phase,
+      page: key[3] as number,
+      size: DEFAULT_PAGE_SIZE,
+    }),
+    {
+      revalidateFirstPage: true,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+      persistSize: true,
+      dedupingInterval: 0,
+      ...SWR_ERROR_RETRY,
+    },
   );
 }
 

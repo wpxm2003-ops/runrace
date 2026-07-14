@@ -32,7 +32,7 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
-import { weekdayLabels } from "@/lib/format";
+import { formatDateRange, weekdayLabels } from "@/lib/format";
 import { toast } from "sonner";
 
 /** 초대 코드 입력 정규화 — 대문자 6자(코드 알파벳과 동일 폭). */
@@ -617,7 +617,7 @@ function HeatmapGrid({ insights }: { insights: CrewInsights }) {
 
 /** 크루 홈 — 크루 정보 + 인사이트 스탯 + 이번 주 보드(목표·넛지) + 지난주 결산. */
 function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { unit } = useUnit();
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
   const [nudgingId, setNudgingId] = useState<string | null>(null);
@@ -716,10 +716,10 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           <div className="text-base font-semibold">{t.crew_races_heading}</div>
           <button
             type="button"
-            onClick={() => nativeNavigate("/challenges/create?crew=1")}
-            className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white"
+            onClick={() => nativeNavigate("/crew/races")}
+            className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
           >
-            {t.crew_race_create_btn}
+            {t.crew_races_view_all}
           </button>
         </div>
         <div className="mt-3">
@@ -758,6 +758,9 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
                       </div>
                       <div className="mt-0.5 text-[11px] text-zinc-500">
                         {t.races_goal_members(formatGoalDistance(r.goalKm, unit), r.memberCount)}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-zinc-400">
+                        {formatDateRange(r.startAt, r.endAt, locale)}
                       </div>
                     </div>
                     <span

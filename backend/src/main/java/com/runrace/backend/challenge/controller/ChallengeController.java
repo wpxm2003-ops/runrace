@@ -90,6 +90,27 @@ public class ChallengeController {
     return ResponseEntity.ok(items);
   }
 
+  /** 내 크루 내부 레이스 전체보기 — 예정·진행중/종료 탭과 무한스크롤용. */
+  @GetMapping("/crew/page")
+  public ResponseEntity<ChallengeListPage> listCrewRacesPage(
+      AuthPrincipal principal,
+      @RequestParam(name = "phase", defaultValue = "active") String phase,
+      @RequestParam(name = "page", defaultValue = "0") int page,
+      @RequestParam(name = "size", defaultValue = "20") int size) {
+    size = Math.min(Math.max(size, 1), 50);
+    Slice<Challenge> slice = challengeService.listCrewRacesPage(
+        principal.userId(), phase, Math.max(page, 0), size);
+    OffsetDateTime now = OffsetDateTime.now();
+    List<Challenge> challenges = slice.getContent();
+    List<Long> ids = challenges.stream().map(Challenge::getId).toList();
+    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
+    Set<Long> memberIds = challengeService.memberChallengeIds(principal.userId(), ids);
+    List<ChallengeListItem> items = challenges.stream()
+        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds))
+        .toList();
+    return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
+  }
+
   @PutMapping("/{id:" + ID_PATH + "}")
   public ResponseEntity<CreateChallengeResponse> update(
       AuthPrincipal principal, @PathVariable("id") Long id, @RequestBody UpdateChallengeRequest body) {

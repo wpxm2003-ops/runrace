@@ -38,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -128,6 +129,16 @@ public class ChallengeService {
     return crewMemberRepository.findByUserId(userId)
         .map(m -> challengeRepository.findTop10ByCrewIdOrderByStartAtDesc(m.getCrew().getId()))
         .orElse(List.of());
+  }
+
+  /** 내 크루 내부 레이스 — 상태별 페이지. 미소속이면 빈 페이지. */
+  @Transactional(readOnly = true)
+  public Slice<Challenge> listCrewRacesPage(UUID userId, String phase, int page, int size) {
+    PageRequest pageable = PageRequest.of(page, size);
+    return crewMemberRepository.findByUserId(userId)
+        .map(m -> challengeRepository.findCrewPage(
+            m.getCrew().getId(), normalizePhase(phase), OffsetDateTime.now(), pageable))
+        .orElseGet(() -> new SliceImpl<>(List.of(), pageable, false));
   }
 
   @Transactional

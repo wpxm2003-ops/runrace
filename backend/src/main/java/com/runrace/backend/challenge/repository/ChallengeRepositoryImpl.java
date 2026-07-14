@@ -92,6 +92,19 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
     return toSlice(rows, pageable);
   }
 
+  @Override
+  public Slice<Challenge> findCrewPage(
+      Long crewId, String phase, OffsetDateTime now, Pageable pageable) {
+    List<Challenge> rows = query.selectFrom(challenge)
+        .join(challenge.creator).fetchJoin()
+        .where(challenge.crewId.eq(crewId), phaseFilter(phase, now))
+        .orderBy(crewOrderBy(phase, now))
+        .offset(pageable.getOffset())
+        .limit(pageable.getPageSize() + 1L)
+        .fetch();
+    return toSlice(rows, pageable);
+  }
+
   private static Slice<Challenge> toSlice(List<Challenge> rows, Pageable pageable) {
     boolean hasNext = rows.size() > pageable.getPageSize();
     if (hasNext) {
@@ -146,6 +159,25 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
         bucket.asc(),
         challenge.startAt.asc(),
         challenge.id.asc()
+    };
+  }
+
+  /** 크루 홈/전체보기: 예정 → 진행중 순, 각 상태 안에서는 최근 시작 순. */
+  private static com.querydsl.core.types.OrderSpecifier<?>[] crewOrderBy(
+      String phase, OffsetDateTime now) {
+    if ("ended".equals(phase)) {
+      return new com.querydsl.core.types.OrderSpecifier<?>[] {
+          challenge.endAt.desc().nullsLast(),
+          challenge.id.desc()
+      };
+    }
+    var bucket = new CaseBuilder()
+        .when(challenge.startAt.gt(now)).then(0)
+        .otherwise(1);
+    return new com.querydsl.core.types.OrderSpecifier<?>[] {
+        bucket.asc(),
+        challenge.startAt.desc(),
+        challenge.id.desc()
     };
   }
 }

@@ -4,7 +4,6 @@ import type {
   ActiveCount,
   ChallengeDetail,
   ChallengeFormBody,
-  ChallengeListItem,
   ChallengeListPage,
   ChallengeWorkoutListItem,
   CreatedId,
@@ -66,7 +65,19 @@ export function createChallenge(body: ChallengeFormBody, user: User) {
 
 /** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 배열. */
 export function fetchCrewRaces(user: User) {
-  return apiFetch<ChallengeListItem[]>("/api/challenges/crew", { user });
+  return fetchCrewRacesPage(user, { phase: "active", page: 0, size: 5 })
+    .then((page) => page.items);
+}
+
+/** 크루 내부 레이스 전체보기 — 상태별 페이지. */
+export function fetchCrewRacesPage(
+  user: User,
+  opts: { phase: string; page: number; size?: number },
+) {
+  return apiFetch<ChallengeListPage>(
+    `/api/challenges/crew/page?${buildPageQuery(opts)}`,
+    { user },
+  );
 }
 
 export function updateChallenge(id: number, body: ChallengeFormBody, user: User) {
