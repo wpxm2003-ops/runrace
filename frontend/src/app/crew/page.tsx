@@ -323,11 +323,14 @@ function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boolean })
 
   const record = data?.record;
   const hasRecord = record && record.wins + record.losses + record.draws > 0;
+  // 배포 틈의 옛 백엔드 응답에도 죽지 않게 배열 필드는 방어적으로 읽는다.
+  const pendingReceived = data?.pendingReceived ?? [];
+  const pendingSent = data?.pendingSent ?? [];
   const hasAny =
     !!data &&
     (data.current != null ||
-      data.pendingReceived.length > 0 ||
-      data.pendingSent.length > 0 ||
+      pendingReceived.length > 0 ||
+      pendingSent.length > 0 ||
       data.lastEnded != null);
 
   return (
@@ -406,10 +409,10 @@ function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boolean })
             </button>
           ) : null}
 
-          {data.pendingReceived.map((m) => (
+          {pendingReceived.map((m) => (
             <MatchRow key={m.id} m={m} text={`⚔️ ${t.crew_match_received(m.challengerCrewName)}`} />
           ))}
-          {data.pendingSent.map((m) => (
+          {pendingSent.map((m) => (
             <MatchRow key={m.id} m={m} text={t.crew_match_sent(m.opponentCrewName)} />
           ))}
           {!data.current && data.lastEnded ? (
@@ -448,7 +451,7 @@ function monthDayLabel(iso: string, locale: string): string {
 function HeatmapGrid({ insights }: { insights: CrewInsights }) {
   const { t, locale } = useLocale();
   const [selected, setSelected] = useState<string | null>(null);
-  const byDate = new Map(insights.heatmap.map((d) => [d.date, d]));
+  const byDate = new Map((insights.heatmap ?? []).map((d) => [d.date, d]));
   const today = todayIso();
   const weekdays = weekdayLabels(locale, true);
   const cells = Array.from({ length: 35 }, (_, i) => {
@@ -775,12 +778,13 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
             />
             <StatTile
               label={t.crew_recap_participants}
-              value={String(recap.participantCount)}
+              value={String(recap.participantCount ?? 0)}
             />
           </div>
-          {recap.leaders.length > 0 ? (
+          {/* 배포 틈에 옛 백엔드 응답(leaders 없음)을 읽어도 죽지 않게 방어 */}
+          {(recap.leaders ?? []).length > 0 ? (
             <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 bg-white">
-              {recap.leaders.map((leader, index) => (
+              {(recap.leaders ?? []).map((leader, index) => (
                 <div
                   key={`${leader.rank}-${leader.nickname ?? "unknown"}`}
                   className={`flex items-center justify-between gap-3 px-4 py-3 ${
@@ -806,11 +810,11 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
       ) : null}
 
       {/* 명예의 전당 — 월별 MVP 히스토리(완결된 달만) */}
-      {insights && insights.hallOfFame.length > 0 ? (
+      {insights && (insights.hallOfFame ?? []).length > 0 ? (
         <Card className="mt-4">
           <div className="text-base font-semibold">{t.crew_hof_heading}</div>
           <div className="mt-2 divide-y divide-zinc-100">
-            {insights.hallOfFame.map((h) => (
+            {(insights.hallOfFame ?? []).map((h) => (
               <div key={h.month} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="shrink-0 text-sm">🏆</span>

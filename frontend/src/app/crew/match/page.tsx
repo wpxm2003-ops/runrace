@@ -145,8 +145,11 @@ function MatchContent({ matchId, user }: { matchId: number; user: User }) {
   if (!detail) return <LoadingCard />;
 
   const started = detail.status === "IN_PROGRESS" || detail.status === "ENDED";
-  const myRoster = detail.myCrewIsChallenger ? detail.challengerRoster : detail.opponentRoster;
-  const opRoster = detail.myCrewIsChallenger ? detail.opponentRoster : detail.challengerRoster;
+  // 배포 틈의 옛 백엔드 응답에도 죽지 않게 배열 필드는 방어적으로 읽는다.
+  const myRoster =
+    (detail.myCrewIsChallenger ? detail.challengerRoster : detail.opponentRoster) ?? [];
+  const opRoster =
+    (detail.myCrewIsChallenger ? detail.opponentRoster : detail.challengerRoster) ?? [];
   const myName = detail.myCrewIsChallenger ? detail.challengerCrewName : detail.opponentCrewName;
   const opName = detail.myCrewIsChallenger ? detail.opponentCrewName : detail.challengerCrewName;
 

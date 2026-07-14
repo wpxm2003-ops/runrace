@@ -46,11 +46,13 @@ export function CrewRecapCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
+  // 배포 틈에 옛 백엔드 응답(leaders·participantCount 없음)을 읽어도 죽지 않게 방어.
+  const leaders = recap.leaders ?? [];
   const [distVal, distUnit] = formatDistance(recap.totalDistanceM, unit).split(" ");
   const stats: [string, string][] = [
     [t.crew_recap_mvp, recap.mvpNickname ?? "-"],
     [t.crew_recap_total_distance, formatDistance(recap.totalDistanceM, unit)],
-    [t.crew_recap_participants, String(recap.participantCount)],
+    [t.crew_recap_participants, String(recap.participantCount ?? 0)],
   ];
 
   async function onSave() {
@@ -152,7 +154,7 @@ export function CrewRecapCard({
             </div>
           ) : null}
 
-          {recap.leaders.length > 0 ? (
+          {leaders.length > 0 ? (
             <div
               style={{
                 marginTop: 32,
@@ -161,7 +163,7 @@ export function CrewRecapCard({
                 padding: "28px 40px",
               }}
             >
-              {recap.leaders.map((leader, index) => (
+              {leaders.map((leader, index) => (
                 <div
                   key={`${leader.rank}-${leader.nickname ?? "unknown"}`}
                   style={{
