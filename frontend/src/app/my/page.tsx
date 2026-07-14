@@ -96,6 +96,7 @@ function MyRacesSection({ user }: { user: User }) {
         result={result}
         emptyLabel={t.my_races_empty}
         skeletonCount={2}
+        showJoinedBadge
       />
     </Card>
   );

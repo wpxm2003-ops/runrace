@@ -18,7 +18,6 @@ import {
   reportAndDisplay,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
-import { NavListLink } from "@/app/_components/NavListLink";
 import { track } from "@/lib/analytics";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
@@ -246,7 +245,6 @@ export default function ChallengeDetailContent() {
             ) : null}
           </div>
         ) : null}
-        <NavListLink href="/challenges" label={t.detail_list_link} />
       </>
     ),
     [detail?.showManage, menuOpen, id, t, onEditClick, onDelete],

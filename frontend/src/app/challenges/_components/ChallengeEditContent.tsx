@@ -43,7 +43,8 @@ export default function ChallengeEditContent() {
     useChallengeFormMessages(memberCount);
   const form = useChallengeForm({ validationMsgs, validateOptions, hints });
 
-  const { data: detail, isLoading, error: fetchError } = useChallengeDetail(id, user);
+  // 인증 복원 전에 익명 상세(showManage=false)를 받아 수정 화면이 상세로 튕기는 것을 막는다.
+  const { data: detail, isLoading, error: fetchError } = useChallengeDetail(user ? id : null, user);
   const { data: prizeData } = usePrizes(id, user);
 
   const maxRank = prizeMaxRank(form.values.maxMembers);

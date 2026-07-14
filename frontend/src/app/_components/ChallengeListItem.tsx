@@ -32,19 +32,20 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
       className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
     >
       <div className="flex items-center justify-between gap-2">
-        <div className="text-sm font-medium">{c.title}</div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <div className="truncate text-sm font-medium">{c.title}</div>
           {showJoinedBadge && c.isMember ? (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
+            <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
               {c.phase === "ENDED" ? t.races_joined_done : t.races_joined}
             </span>
           ) : null}
-          <ChallengePhaseBadge
-            startAt={c.startAt}
-            endAt={c.endAt}
-            apiPhase={c.phase}
-          />
         </div>
+        <ChallengePhaseBadge
+          startAt={c.startAt}
+          endAt={c.endAt}
+          apiPhase={c.phase}
+          compact
+        />
       </div>
       <div className="mt-1 text-sm text-zinc-600">
         {t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}
