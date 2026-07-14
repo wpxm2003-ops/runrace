@@ -8,6 +8,7 @@ import com.runrace.backend.crew.domain.CrewMatch;
 import com.runrace.backend.crew.domain.CrewMatchRoster;
 import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
+import com.runrace.backend.crew.dto.CrewMatchHistoryPage;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse.RosterRow;
 import com.runrace.backend.crew.dto.CrewMatchSummary;
 import com.runrace.backend.crew.dto.MyCrewMatchesResponse;
@@ -226,6 +227,25 @@ public class CrewMatchService {
         crewMatchRepository.countLosses(crewId),
         crewMatchRepository.countDraws(crewId));
     return new MyCrewMatchesResponse(record, current, received, sent, lastEnded);
+  }
+
+  /** 크루가 주고받은 전체 대항전 — 최신 신청 순 페이지. */
+  @Transactional
+  public CrewMatchHistoryPage history(UUID meId, int page, int size) {
+    Long crewId = requireMembership(meId).getCrew().getId();
+    OffsetDateTime now = OffsetDateTime.now();
+    var slice = crewMatchRepository.findHistoryByCrewId(
+        crewId, PageRequest.of(Math.max(page, 0), size));
+    List<CrewMatchSummary> items = slice.getContent().stream()
+        .map(match -> {
+          if (match.getStatus() == CrewMatch.Status.ACCEPTED && !match.isEnded()
+              && !now.isBefore(match.getEndAt())) {
+            finalizeEnded(match);
+          }
+          return toSummary(match, crewId, now);
+        })
+        .toList();
+    return new CrewMatchHistoryPage(items, slice.hasNext());
   }
 
   /** 대항전 상세 — 참가 크루 멤버만. 기간이 끝났으면 이 시점에 승자를 확정한다. */

@@ -27,6 +27,7 @@ import {
   fetchCrewInsights,
   fetchMyCrewMatches,
   fetchCrewMatchDetail,
+  fetchCrewMatchHistory,
   searchCrews,
 } from "./crews";
 import { fetchPrizes } from "./prizes";
@@ -355,6 +356,25 @@ export function useMyCrewMatches(user: User | null, enabled: boolean) {
   );
 }
 
+/** 역대 크루 대항전 내역 — 최신 신청 순 무한스크롤. */
+export function useCrewMatchHistoryInfinite(user: User | null) {
+  return useSWRInfinite(
+    (index, previous) => {
+      if (!user || (previous && !previous.hasNext)) return null;
+      return ["crew-match-history", user.uid, index] as const;
+    },
+    (key) => fetchCrewMatchHistory(key[2] as number, user!),
+    {
+      revalidateFirstPage: true,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+      persistSize: true,
+      dedupingInterval: 0,
+      ...SWR_ERROR_RETRY,
+    },
+  );
+}
+
 /** 대항전 상세 — 진행 중엔 점수가 계속 변하므로 LIVE 설정. */
 export function useCrewMatchDetail(matchId: number | null, user: User | null) {
   return useSWR(
@@ -368,6 +388,7 @@ export function useCrewMatchDetail(matchId: number | null, user: User | null) {
 export function invalidateCrewMatches(userId: string) {
   invalidateByPrefix("crew-matches", userId);
   invalidateByPrefix("crew-match");
+  invalidateByPrefix("crew-match-history", userId);
 }
 
 /** 크루 검색(도전장 상대 선택) — 쿼리별 캐시. enabled=false면(검색어 없음 등) 조회하지 않는다. */

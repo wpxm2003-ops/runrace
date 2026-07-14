@@ -431,15 +431,13 @@ function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boolean })
             </div>
           ) : null}
         </div>
-        {isLeader ? (
-          <button
-            type="button"
-            onClick={() => nativeNavigate("/crew/challenge")}
-            className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white"
-          >
-            {t.crew_match_challenge_btn}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => nativeNavigate("/crew/matches")}
+          className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+        >
+          {t.crew_matches_view_all}
+        </button>
       </div>
 
       {!data ? (

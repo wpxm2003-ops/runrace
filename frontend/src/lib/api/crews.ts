@@ -3,6 +3,7 @@ import { apiFetch } from "./client";
 import type {
   CrewInsights,
   CrewMatchDetail,
+  CrewMatchHistoryPage,
   CrewRecap,
   CrewSearchItem,
   CrewDiscoveryResponse,
@@ -106,6 +107,14 @@ export function createCrewMatch(
 /** 크루 홈 대항전 섹션 — 전적 + 진행중 + 받은/보낸 도전장 + 최근 결과. */
 export function fetchMyCrewMatches(user: User) {
   return apiFetch<MyCrewMatches>("/api/crew-matches/me", { user });
+}
+
+/** 크루가 주고받은 전체 대항전 내역 — 최신 신청 순 페이지. */
+export function fetchCrewMatchHistory(page: number, user: User, size = 20) {
+  return apiFetch<CrewMatchHistoryPage>(
+    `/api/crew-matches/history?page=${page}&size=${size}`,
+    { user },
+  );
 }
 
 /** 대항전 상세(참가 크루 멤버만). */

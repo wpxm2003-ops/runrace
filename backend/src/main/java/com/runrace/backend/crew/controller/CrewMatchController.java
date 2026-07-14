@@ -4,6 +4,7 @@ import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.crew.dto.AcceptCrewMatchRequest;
 import com.runrace.backend.crew.dto.CreateCrewMatchRequest;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
+import com.runrace.backend.crew.dto.CrewMatchHistoryPage;
 import com.runrace.backend.crew.dto.MyCrewMatchesResponse;
 import com.runrace.backend.crew.service.CrewMatchService;
 import java.time.OffsetDateTime;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 크루 대항전(C1) — 도전장 발송·수락·거절·취소 + 크루 홈 섹션·상세 조회. */
@@ -42,6 +44,16 @@ public class CrewMatchController {
   @GetMapping("/me")
   public ResponseEntity<MyCrewMatchesResponse> myMatches(AuthPrincipal principal) {
     return ResponseEntity.ok(crewMatchService.myMatches(principal.userId()));
+  }
+
+  /** 크루가 주고받은 전체 대항전 내역 — 최신 신청 순. */
+  @GetMapping("/history")
+  public ResponseEntity<CrewMatchHistoryPage> history(
+      AuthPrincipal principal,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    int safeSize = Math.min(Math.max(size, 1), 50);
+    return ResponseEntity.ok(crewMatchService.history(principal.userId(), page, safeSize));
   }
 
   /** 대항전 상세(참가 크루 멤버만). */

@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
+import { Alert } from "@/app/_components/ui/Alert";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { DateTimePickerSheet } from "@/app/challenges/_components/DateTimePickerSheet";
 import {
   createCrewMatch,
   useMyCrew,
+  useMyCrewMatches,
   useCrewSearch,
   invalidateCrewMatches,
   toDisplayError,
@@ -289,6 +291,7 @@ export default function CrewChallengePage() {
   const { user, loading } = useRequireAuth("/crew/challenge");
   const { t } = useLocale();
   const { data } = useMyCrew(user ?? null);
+  const { data: matchState } = useMyCrewMatches(user ?? null, Boolean(user));
 
   if (loading || !user || !data) {
     return (
@@ -312,6 +315,26 @@ export default function CrewChallengePage() {
             {t.crew_go_home}
           </button>
         </Card>
+      </PageLayout>
+    );
+  }
+
+  const hasActiveRequest = Boolean(
+    matchState?.current ||
+    (matchState?.pendingReceived?.length ?? 0) > 0 ||
+    (matchState?.pendingSent?.length ?? 0) > 0,
+  );
+  if (matchState && hasActiveRequest) {
+    return (
+      <PageLayout title={t.crew_match_create_title}>
+        <Alert tone="warning">{t.crew_match_challenge_unavailable}</Alert>
+        <button
+          type="button"
+          onClick={() => nativeNavigate("/crew/matches", { replace: true })}
+          className="mt-4 h-10 w-full rounded-xl border border-zinc-200 text-sm text-zinc-700 hover:bg-zinc-50"
+        >
+          {t.crew_matches_view_all}
+        </button>
       </PageLayout>
     );
   }

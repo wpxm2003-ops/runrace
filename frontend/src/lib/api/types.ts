@@ -146,6 +146,11 @@ export type MyCrewMatches = {
   lastEnded: CrewMatchSummary | null;
 };
 
+export type CrewMatchHistoryPage = {
+  items: CrewMatchSummary[];
+  hasNext: boolean;
+};
+
 export type CrewMatchRosterRow = {
   userId: string;
   nickname: string | null;

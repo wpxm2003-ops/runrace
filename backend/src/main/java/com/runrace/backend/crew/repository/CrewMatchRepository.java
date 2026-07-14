@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -82,4 +83,12 @@ public interface CrewMatchRepository extends JpaRepository<CrewMatch, Long> {
       order by m.endAt desc
       """)
   List<CrewMatch> findEndedByCrewId(@Param("crewId") Long crewId, Pageable pageable);
+
+  /** 크루가 주고받은 전체 대항전 — 최신 신청 순. 취소로 삭제된 행은 제외된다. */
+  @Query("""
+      select m from CrewMatch m join fetch m.challengerCrew join fetch m.opponentCrew
+      where m.challengerCrew.id = :crewId or m.opponentCrew.id = :crewId
+      order by m.createdAt desc, m.id desc
+      """)
+  Slice<CrewMatch> findHistoryByCrewId(@Param("crewId") Long crewId, Pageable pageable);
 }
