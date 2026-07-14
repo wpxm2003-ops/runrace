@@ -32,7 +32,6 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { weekdayLabels } from "@/lib/format";
-import { getAppUrl } from "@/lib/appUrl";
 import { toast } from "sonner";
 
 /** 초대 코드 입력 정규화 — 대문자 6자(코드 알파벳과 동일 폭). */
@@ -547,11 +546,10 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const goalReached = goalM != null && weekTotalM >= goalM;
 
   async function copyInvite() {
-    // 정적 페이지(/crew/join)는 OG가 제네릭이라 카톡 미리보기가 도메인만 남는다.
-    // 백엔드 공유 페이지(크루명·인원 OG + 초대 화면 리다이렉트)를 복사한다.
-    const url = `${getAppUrl()}/api/share/crew-invite?code=${crew.joinCode}`;
+    // 링크 대신 초대 코드+안내 문구를 복사한다 — 카톡 인앱/딥링크 제약을 우회하고,
+    // 받는 사람이 앱 홈의 크루 버튼에서 코드로 직접 가입한다.
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(t.crew_invite_copy_text(crew.joinCode));
       toast.success(t.crew_invite_copied);
     } catch {
       toast.error(t.error_occurred);

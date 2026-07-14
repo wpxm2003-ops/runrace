@@ -3,7 +3,6 @@ package com.runrace.backend.crew.controller;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.crew.dto.CreateCrewRequest;
 import com.runrace.backend.crew.dto.CrewInsightsResponse;
-import com.runrace.backend.crew.dto.CrewJoinInfoResponse;
 import com.runrace.backend.crew.dto.CrewRecapResponse;
 import com.runrace.backend.crew.dto.CrewSearchItem;
 import com.runrace.backend.crew.dto.JoinCrewRequest;
@@ -13,7 +12,6 @@ import com.runrace.backend.crew.service.CrewService;
 import com.runrace.backend.nudge.dto.NudgeRequest;
 import com.runrace.backend.nudge.service.NudgeService;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -72,14 +70,6 @@ public class CrewController {
       @RequestBody(required = false) NudgeRequest body) {
     nudgeService.crewNudge(principal, targetUserId, body != null ? body.variant() : null);
     return ResponseEntity.noContent().build();
-  }
-
-  /** 초대 랜딩 정보 — 비로그인도 조회 가능(로그인 시 소속 상태 포함). */
-  @GetMapping("/join-info")
-  public ResponseEntity<CrewJoinInfoResponse> joinInfo(
-      Optional<AuthPrincipal> principal, @RequestParam("code") String code) {
-    UUID meId = principal.map(AuthPrincipal::userId).orElse(null);
-    return ResponseEntity.ok(crewService.joinInfo(code, meId));
   }
 
   @PostMapping

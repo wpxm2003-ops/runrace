@@ -4,7 +4,6 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.crew.dto.CrewInsightsResponse;
-import com.runrace.backend.crew.dto.CrewJoinInfoResponse;
 import com.runrace.backend.crew.dto.CrewRecapResponse;
 import com.runrace.backend.crew.dto.MyCrewResponse;
 import com.runrace.backend.crew.dto.MyCrewResponse.CrewMemberRow;
@@ -30,7 +29,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -169,25 +167,6 @@ public class CrewService {
         .map(m -> m.getCrew().getId())
         .orElse(-1L);
     return crewRepository.searchByName(query, excludeCrewId);
-  }
-
-  /** 초대 랜딩 정보 — 비로그인 가능. 로그인 시 내 소속 상태를 함께 판정한다. */
-  @Transactional(readOnly = true)
-  public CrewJoinInfoResponse joinInfo(String code, @Nullable UUID meId) {
-    Crew crew = findByCode(code);
-    int count = crewMemberRepository.countByCrewId(crew.getId());
-
-    String status;
-    Optional<CrewMember> membership =
-        meId == null ? Optional.empty() : crewMemberRepository.findByUserId(meId);
-    if (membership.isPresent()) {
-      status = membership.get().getCrew().getId().equals(crew.getId())
-          ? "ALREADY_MEMBER"
-          : "IN_OTHER_CREW";
-    } else {
-      status = count >= crew.getMaxMembers() ? "FULL" : "JOINABLE";
-    }
-    return new CrewJoinInfoResponse(crew.getName(), count, crew.getMaxMembers(), status);
   }
 
   /** 크루 잔디(최근 5주 날짜별 뛴 멤버 수) + 명예의 전당(월별 MVP). */

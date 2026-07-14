@@ -38,7 +38,7 @@ public class Crew {
   @Column(name = "notice", length = 100)
   private String notice;
 
-  /** 초대 링크(/crew/join?code=...)에 쓰이는 고유 코드. 혼동 문자를 제외한 6자. */
+  /** 초대 코드 — 크루 홈에서 복사·공유하고, 받는 사람이 크루 온보딩에서 입력해 가입한다. 혼동 문자 제외 6자. */
   @Column(name = "join_code", nullable = false, length = 6)
   private String joinCode;
 

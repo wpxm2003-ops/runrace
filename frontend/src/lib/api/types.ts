@@ -187,14 +187,6 @@ export type CrewRecap = {
   leaders: CrewRecapLeader[];
 };
 
-/** 초대 랜딩 정보. status는 비로그인 시 JOINABLE/FULL만 나온다. */
-export type CrewJoinInfo = {
-  name: string;
-  memberCount: number;
-  maxMembers: number;
-  status: "JOINABLE" | "FULL" | "ALREADY_MEMBER" | "IN_OTHER_CREW";
-};
-
 // ── 신발장(shoe) ──────────────────────────────────────────────────
 /** 신발 한 줄 — 누적 거리(totalDistanceM, m) 포함. 활성 신발로 이후 러닝이 자동 귀속된다. */
 export type ShoeRow = {

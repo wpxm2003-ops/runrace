@@ -22,7 +22,6 @@ import {
 } from "./challenges";
 import {
   fetchMyCrew,
-  fetchCrewJoinInfo,
   fetchCrewRecap,
   fetchCrewInsights,
   fetchMyCrewMatches,
@@ -353,16 +352,6 @@ export function useCrewSearch(query: string, user: User | null, enabled: boolean
     enabled && user ? (["crew-search", query, user.uid] as const) : null,
     () => searchCrews(query, user!),
     { ...BASE_CONFIG, keepPreviousData: true },
-  );
-}
-
-/** 초대 랜딩 정보 — 비로그인은 "public" 키로 조회. */
-export function useCrewJoinInfo(code: string | null, user: User | null) {
-  const uid = cacheUid(user, "public");
-  return useSWR(
-    code ? (["crew-join-info", code, uid] as const) : null,
-    () => fetchCrewJoinInfo(code!, user),
-    BASE_CONFIG,
   );
 }
 

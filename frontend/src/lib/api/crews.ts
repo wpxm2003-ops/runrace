@@ -1,8 +1,7 @@
 import type { User } from "firebase/auth";
-import { apiFetch, publicFetch } from "./client";
+import { apiFetch } from "./client";
 import type {
   CrewInsights,
-  CrewJoinInfo,
   CrewMatchDetail,
   CrewRecap,
   CrewSearchItem,
@@ -13,14 +12,6 @@ import type {
 /** 내 크루 홈(주간 보드 포함). 미소속이면 crew=null. */
 export function fetchMyCrew(user: User) {
   return apiFetch<MyCrewResponse>("/api/crews/me", { user });
-}
-
-/** 초대 랜딩 정보 — 비로그인도 조회 가능(로그인 시 소속 상태 포함). */
-export function fetchCrewJoinInfo(code: string, user?: User | null) {
-  return publicFetch<CrewJoinInfo>(
-    `/api/crews/join-info?code=${encodeURIComponent(code)}`,
-    user,
-  );
 }
 
 /** 크루 생성 — 생성자가 리더가 된다(1인 1크루). */

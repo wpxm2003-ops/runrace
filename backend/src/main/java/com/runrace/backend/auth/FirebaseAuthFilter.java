@@ -67,10 +67,6 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     if ("GET".equalsIgnoreCase(request.getMethod()) && CHALLENGE_SHARE_PAGE.matcher(path).matches()) {
       return true;
     }
-    // 크루 초대 공유 페이지 — 카톡 미리보기 스크래퍼가 인증 없이 읽는다
-    if ("GET".equalsIgnoreCase(request.getMethod()) && "/api/share/crew-invite".equals(path)) {
-      return true;
-    }
     // 업로드 이미지 서빙은 공개
     if ("GET".equalsIgnoreCase(request.getMethod()) && path.startsWith("/api/uploads/")) {
       return true;
@@ -175,13 +171,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
   /** 토큰이 있으면 인증하되 없어도 통과시키는 엔드포인트. */
   private boolean isOptionalAuthEndpoint(HttpServletRequest request) {
-    return isPublicChallengeRead(request) || isClientErrorReport(request) || isCrewJoinInfo(request);
-  }
-
-  /** 크루 초대 랜딩 — 비로그인 방문자(카톡 인앱 등)도 크루 이름·인원을 볼 수 있어야 한다. */
-  private boolean isCrewJoinInfo(HttpServletRequest request) {
-    return "GET".equalsIgnoreCase(request.getMethod())
-        && "/api/crews/join-info".equals(request.getRequestURI());
+    return isPublicChallengeRead(request) || isClientErrorReport(request);
   }
 
   private boolean isPublicChallengeRead(HttpServletRequest request) {

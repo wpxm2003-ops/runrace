@@ -4,10 +4,6 @@ import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.service.ChallengeService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.PathPatterns;
-import com.runrace.backend.crew.dto.CrewJoinInfoResponse;
-import com.runrace.backend.crew.service.CrewService;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,14 +12,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.HtmlUtils;
 
 /**
  * 카카오톡 등 링크 미리보기용 HTML.
- * 정적 export된 /challenges/{id}·/crew/join 페이지는 빌드 시점 OG가 박히므로,
- * 공유 URL은 이 엔드포인트를 쓰면 항상 최신 정보가 미리보기에 반영된다.
+ * 정적 export된 /challenges/{id} 페이지는 빌드 시점 OG가 박히므로,
+ * 공유 URL은 이 엔드포인트를 쓰면 항상 최신 레이스 정보가 미리보기에 반영된다.
  */
 @RestController
 @RequestMapping("/api/share")
@@ -31,7 +26,6 @@ import org.springframework.web.util.HtmlUtils;
 public class SharePageController {
 
   private final ChallengeService challengeService;
-  private final CrewService crewService;
 
   @Value("${runrace.app-url:https://runrace.co.kr}")
   private String appUrl;
@@ -77,54 +71,6 @@ public class SharePageController {
         </head>
         <body>
           <p><a href="%s">RunRace 레이스로 이동</a></p>
-        </body>
-        </html>
-        """
-            .formatted(title, description, title, description, pageUrl, ogImage, pageUrl, pageUrl);
-
-    return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
-  }
-
-  /** 크루 초대 공유 — OG(크루명·인원) + /crew/join?code= 초대 화면으로 리다이렉트. */
-  @GetMapping(value = "/crew-invite", produces = MediaType.TEXT_HTML_VALUE)
-  public ResponseEntity<String> crewInvite(@RequestParam("code") String code) {
-    CrewJoinInfoResponse info;
-    try {
-      info = crewService.joinInfo(code, null);
-    } catch (ApiException e) {
-      if ("crew_not_found".equals(e.code())) {
-        return ResponseEntity.notFound().build();
-      }
-      throw e;
-    }
-
-    String title = escape(info.name()) + " 크루 초대장 | RunRace";
-    String description = "👥 " + info.memberCount() + "명이 함께 달리는 중 — 지금 합류하세요!";
-    String pageUrl = appUrl + "/crew/join?code="
-        + URLEncoder.encode(code.trim().toUpperCase(), StandardCharsets.UTF_8);
-    String ogImage = appUrl + "/og-image.png";
-
-    String html =
-        """
-        <!DOCTYPE html>
-        <html lang="ko">
-        <head>
-          <meta charset="utf-8"/>
-          <title>%s</title>
-          <meta name="description" content="%s"/>
-          <meta property="og:title" content="%s"/>
-          <meta property="og:description" content="%s"/>
-          <meta property="og:url" content="%s"/>
-          <meta property="og:site_name" content="RunRace"/>
-          <meta property="og:image" content="%s"/>
-          <meta property="og:image:width" content="1200"/>
-          <meta property="og:image:height" content="630"/>
-          <meta property="og:type" content="website"/>
-          <meta name="twitter:card" content="summary_large_image"/>
-          <meta http-equiv="refresh" content="0;url=%s"/>
-        </head>
-        <body>
-          <p><a href="%s">RunRace 크루 초대로 이동</a></p>
         </body>
         </html>
         """
