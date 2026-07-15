@@ -37,10 +37,17 @@ export function ensureGhostTimestamps(path: LatLng[], durationSec: number): LatL
   });
 }
 
-/** 유령이 실제로 소요한 활동시간(ms). 유효한 경로가 아니면 0. */
+/*
+ * 유령 타임라인은 첫 타임드 포인트 기준으로 재정렬(re-base)한다.
+ * 기록의 첫 t는 0이 아니라 GPS 락이 잡힌 시점(수 초~수십 초)이라, 절대 t를 그대로 재생하면
+ * 유령이 레이스 시작 후 한참을 출발점에 서 있게 된다. 재정렬하면 시작과 동시에 달리기 시작하고,
+ * 결과 비교(timeAtDistanceMs)도 양쪽 모두 "움직인 시간" 기준이라 대칭적으로 공정하다.
+ */
+
+/** 유령이 실제로 움직인 활동시간(ms, 첫 포인트 기준 재정렬). 유효한 경로가 아니면 0. */
 export function ghostTotalDurationMs(path: LatLng[]): number {
   const pts = activePoints(path);
-  return pts.length ? pts[pts.length - 1].t : 0;
+  return pts.length ? pts[pts.length - 1].t - pts[0].t : 0;
 }
 
 /**
@@ -49,21 +56,19 @@ export function ghostTotalDurationMs(path: LatLng[]): number {
  */
 export function ghostDistanceAtElapsed(ghostPath: LatLng[], elapsedMs: number): number {
   const pts = activePoints(ghostPath);
-  if (pts.length < 2) return 0;
-  // 첫 타임스탬프(기록 당시 GPS 락 시점) 이전엔 유령은 아직 출발점에 서 있다.
-  // 클램프 없이 보간하면 frac이 음수가 되어 거리가 음수로 외삽된다(시작부터 무조건 앞서 보이는 버그).
-  if (elapsedMs <= pts[0].t) return 0;
+  if (pts.length < 2 || elapsedMs <= 0) return 0;
 
+  const at = elapsedMs + pts[0].t; // 재정렬된 경과시간 → 기록의 절대 t로 환산
   const lastT = pts[pts.length - 1].t;
-  if (elapsedMs >= lastT) return pathDistanceMeters(pts);
+  if (at >= lastT) return pathDistanceMeters(pts);
 
   let cum = 0;
   for (let i = 1; i < pts.length; i++) {
     const t0 = pts[i - 1].t;
     const t1 = pts[i].t;
-    if (elapsedMs <= t1) {
+    if (at <= t1) {
       const segM = haversineMeters(pts[i - 1], pts[i]);
-      const frac = t1 > t0 ? (elapsedMs - t0) / (t1 - t0) : 0;
+      const frac = t1 > t0 ? (at - t0) / (t1 - t0) : 0;
       return cum + frac * segM;
     }
     cum += haversineMeters(pts[i - 1], pts[i]);
@@ -71,11 +76,14 @@ export function ghostDistanceAtElapsed(ghostPath: LatLng[], elapsedMs: number): 
   return cum;
 }
 
-/** 경로가 targetM 거리를 지나는 시점의 활동 경과시간(ms). 경로가 그 거리에 못 미치면 null. */
+/**
+ * 경로가 targetM 거리를 지나는 시점의 움직인 시간(ms, 첫 포인트 기준 재정렬).
+ * 경로가 그 거리에 못 미치면 null.
+ */
 export function timeAtDistanceMs(path: LatLng[], targetM: number): number | null {
   const pts = activePoints(path);
   if (pts.length < 2) return null;
-  if (targetM <= 0) return pts[0].t;
+  if (targetM <= 0) return 0;
 
   let cum = 0;
   for (let i = 1; i < pts.length; i++) {
@@ -84,7 +92,7 @@ export function timeAtDistanceMs(path: LatLng[], targetM: number): number | null
     cum += segM;
     if (cum >= targetM) {
       const frac = segM > 0 ? (targetM - prevCum) / segM : 1;
-      return pts[i - 1].t + frac * (pts[i].t - pts[i - 1].t);
+      return pts[i - 1].t + frac * (pts[i].t - pts[i - 1].t) - pts[0].t;
     }
   }
   return null;
@@ -96,15 +104,15 @@ export function ghostPositionAtElapsed(ghostPath: LatLng[], elapsedMs: number): 
   if (pts.length === 0) return null;
   if (pts.length === 1) return { lat: pts[0].lat, lng: pts[0].lng };
 
+  const base = pts[0].t;
   const lastT = pts[pts.length - 1].t;
-  // 하한을 첫 타임스탬프로 클램프 — 그 이전 시각은 출발점 고정(음수 frac 외삽 방지).
-  const clamped = Math.max(pts[0].t, Math.min(elapsedMs, lastT));
+  const at = Math.max(base, Math.min(elapsedMs + base, lastT));
 
   for (let i = 1; i < pts.length; i++) {
     const t0 = pts[i - 1].t;
     const t1 = pts[i].t;
-    if (clamped <= t1) {
-      const frac = t1 > t0 ? (clamped - t0) / (t1 - t0) : 0;
+    if (at <= t1) {
+      const frac = t1 > t0 ? (at - t0) / (t1 - t0) : 0;
       return {
         lat: pts[i - 1].lat + frac * (pts[i].lat - pts[i - 1].lat),
         lng: pts[i - 1].lng + frac * (pts[i].lng - pts[i - 1].lng),
@@ -115,15 +123,16 @@ export function ghostPositionAtElapsed(ghostPath: LatLng[], elapsedMs: number): 
 }
 
 /**
- * 유령이 elapsedMs까지 "지나온" 구간만 반환 — 전체 경로를 미리 깔지 않고
- * 나(라이브 GPS)처럼 시간에 따라 자란다. 마지막에 보간 위치를 이어붙여 끊김 없이 매끄럽게 만든다.
+ * 유령이 elapsedMs까지 "지나온" 구간만 반환 — 나(라이브 GPS)처럼 시간에 따라 자란다.
+ * 마지막에 보간 위치를 이어붙여 끊김 없이 매끄럽게 만든다.
  */
 export function ghostTrailAtElapsed(ghostPath: LatLng[], elapsedMs: number): LatLng[] {
   const pts = activePoints(ghostPath);
   if (pts.length === 0) return [];
 
+  const base = pts[0].t;
   const current = ghostPositionAtElapsed(ghostPath, elapsedMs);
-  const traveled = pts.filter((p) => p.t <= elapsedMs);
+  const traveled = pts.filter((p) => p.t - base <= elapsedMs);
   if (!current) return traveled;
 
   const last = traveled[traveled.length - 1];

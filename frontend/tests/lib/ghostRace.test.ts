@@ -5,6 +5,7 @@ import {
   ensureGhostTimestamps,
   ghostDistanceAtElapsed,
   ghostPositionAtElapsed,
+  ghostTotalDurationMs,
   ghostTrailAtElapsed,
   timeAtDistanceMs,
 } from "@/lib/ghostRace";
@@ -54,12 +55,25 @@ describe("ghostDistanceAtElapsed", () => {
     expect(ghostDistanceAtElapsed([], 5_000)).toBe(0);
   });
 
-  it("첫 타임스탬프(GPS 락 시점) 이전엔 0 — 음수로 외삽되지 않는다", () => {
-    // 실기록처럼 첫 포인트 t가 0이 아닌 경우(GPS 락 지연 5초)
-    const offset = straightPath(6, 10_000).map((p) => ({ ...p, t: p.t! + 5_000 }));
-    expect(ghostDistanceAtElapsed(offset, 2_000)).toBe(0);
-    expect(ghostDistanceAtElapsed(offset, 5_000)).toBe(0);
-    expect(ghostDistanceAtElapsed(offset, 5_001)).toBeGreaterThan(0);
+  it("타임라인은 첫 포인트 기준 재정렬 — GPS 락 머리 구간을 재생하지 않고 즉시 달린다", () => {
+    // 실기록처럼 첫 포인트 t가 0이 아닌 경우(GPS 락 지연 30초)
+    const offset = straightPath(6, 10_000).map((p) => ({ ...p, t: p.t! + 30_000 }));
+    const plain = straightPath(6, 10_000);
+    expect(ghostDistanceAtElapsed(offset, 0)).toBe(0);
+    // 오프셋과 무관하게 같은 경과시간엔 같은 거리(음수 외삽도 없어야 한다)
+    expect(ghostDistanceAtElapsed(offset, 5_000)).toBeGreaterThan(0);
+    expect(ghostDistanceAtElapsed(offset, 25_000)).toBeCloseTo(
+      ghostDistanceAtElapsed(plain, 25_000),
+      6,
+    );
+  });
+});
+
+describe("ghostTotalDurationMs", () => {
+  it("첫 포인트 기준 재정렬된 '움직인 시간'을 반환한다", () => {
+    const offset = straightPath(6, 10_000).map((p) => ({ ...p, t: p.t! + 30_000 }));
+    expect(ghostTotalDurationMs(offset)).toBe(50_000); // 80_000이 아니라 재정렬된 50초
+    expect(ghostTotalDurationMs([])).toBe(0);
   });
 });
 
@@ -113,12 +127,16 @@ describe("ghostPositionAtElapsed", () => {
     expect(ghostPositionAtElapsed([single], 5_000)).toEqual({ lat: 1, lng: 2 });
   });
 
-  it("첫 타임스탬프 이전엔 출발점 고정 — 뒤로 외삽되지 않는다", () => {
-    const offset = straightPath(6, 10_000).map((p) => ({ ...p, t: p.t! + 5_000 }));
-    expect(ghostPositionAtElapsed(offset, 2_000)).toEqual({
+  it("첫 포인트 t 오프셋과 무관하게 같은 경과시간이면 같은 위치(뒤로 외삽 없음)", () => {
+    const offset = straightPath(6, 10_000).map((p) => ({ ...p, t: p.t! + 30_000 }));
+    const plain = straightPath(6, 10_000);
+    expect(ghostPositionAtElapsed(offset, 0)).toEqual({
       lat: offset[0].lat,
       lng: offset[0].lng,
     });
+    expect(ghostPositionAtElapsed(offset, 25_000)).toEqual(
+      ghostPositionAtElapsed(plain, 25_000),
+    );
   });
 
   it("빈 경로는 null", () => {
