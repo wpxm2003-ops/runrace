@@ -40,7 +40,8 @@ export default function KakaoWorkoutMap({
 
   const { solidLines, gapLines } = useMemo(() => splitPathAtGaps(path), [path]);
 
-  // 유령 — 전체를 미리 깔지 않고 나처럼 시간에 따라 자라는 트레일 + 현재 위치.
+  // 유령 — 전체 경로를 연한 점선으로 미리 깔아 어디로 달릴지 보여주고,
+  // 지나온 구간은 진한 실선 트레일로 채워 진행이 쭉 이어져 보이게 한다.
   const hasGhost = !!ghostPath && ghostPath.length > 0;
   const ghostTrail = useMemo(
     () => (hasGhost ? ghostTrailAtElapsed(ghostPath!, ghostElapsedMs) : []),
@@ -131,13 +132,22 @@ export default function KakaoWorkoutMap({
             strokeStyle="shortdot"
           />
         ))}
+        {hasGhost && ghostPath!.length >= 2 && (
+          <Polyline
+            path={ghostPath!.map((p) => ({ lat: p.lat, lng: p.lng }))}
+            strokeWeight={3}
+            strokeColor="#8b5cf6"
+            strokeOpacity={0.25}
+            strokeStyle="shortdot"
+          />
+        )}
         {ghostTrail.length >= 2 && (
           <Polyline
             path={ghostTrail.map((p) => ({ lat: p.lat, lng: p.lng }))}
             strokeWeight={4}
             strokeColor="#8b5cf6"
-            strokeOpacity={0.55}
-            strokeStyle="shortdot"
+            strokeOpacity={0.75}
+            strokeStyle="solid"
           />
         )}
         {ghostPosition && (
