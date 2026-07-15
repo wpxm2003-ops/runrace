@@ -18,6 +18,14 @@ export function formatDistanceInt(distanceM: number, unit: DistanceUnit): string
   return `${Math.round(distanceM / per)} ${unit}`;
 }
 
+const FEET_PER_M = 3.28084;
+
+/** 미터 → 짧은 격차 문자열(고스트 레이스 갭 표시용). km 단위면 m, mi 단위면 ft. 예: "18m" / "59ft" */
+export function formatGapDistance(distanceM: number, unit: DistanceUnit): string {
+  if (unit === "mi") return `${Math.round(distanceM * FEET_PER_M)}ft`;
+  return `${Math.round(distanceM)}m`;
+}
+
 /** km 값 → 선택 단위 정수 숫자 문자열(단위 미포함). 예: "12" */
 export function formatDistanceAmountInt(km: string | number, unit: DistanceUnit): string {
   const n = typeof km === "string" ? Number(km) : km;

@@ -7,6 +7,7 @@ import { formatDuration } from "@/lib/workoutTrack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nativeNavigate } from "@/lib/nativeNav";
 import type { PersonalBest } from "@/lib/api/types";
+import type { GhostRaceResult } from "@/lib/ghostRace";
 
 const CONFETTI_COLORS = ["#f59e0b", "#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899"] as const;
 const AUTO_NAVIGATE_SEC = 15;
@@ -16,6 +17,8 @@ type WorkoutCelebrationProps = {
   durationSec: number;
   distanceM: number;
   personalBest?: PersonalBest | null;
+  ghostResult?: GhostRaceResult | null;
+  ghostLabel?: string | null;
   saving?: boolean;
   onConfirm: () => void;
 };
@@ -32,6 +35,8 @@ export function WorkoutCelebration({
   durationSec,
   distanceM,
   personalBest = null,
+  ghostResult = null,
+  ghostLabel = null,
   saving = false,
   onConfirm,
 }: WorkoutCelebrationProps) {
@@ -135,6 +140,21 @@ export function WorkoutCelebration({
               {daysLabel ? (
                 <p className="mt-0.5 text-xs text-amber-500">{daysLabel}</p>
               ) : null}
+            </div>
+          );
+        })()}
+
+        {ghostResult && ghostLabel && (() => {
+          const deltaSec = Math.round(Math.abs(ghostResult.deltaMs) / 1000);
+          const faster = ghostResult.deltaMs < 0;
+          const overlapLabel = formatDistance(ghostResult.overlapDistanceM, unit);
+          return (
+            <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-violet-800">👻 {t.ghost_result_title(ghostLabel)}</p>
+              <p className="mt-1 text-sm font-semibold text-violet-700">
+                {faster ? t.ghost_result_faster(deltaSec) : t.ghost_result_slower(deltaSec)}
+              </p>
+              <p className="mt-0.5 text-xs text-violet-500">{t.ghost_result_overlap(overlapLabel)}</p>
             </div>
           );
         })()}

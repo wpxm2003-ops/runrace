@@ -32,3 +32,22 @@ export function loadWorkout(): PersistedWorkout | null {
 export function clearWorkout(): void {
   store.remove();
 }
+
+/**
+ * 유령 선택 — 러닝 본체(path 등)와 별개 저장소.
+ * 백그라운드 전환으로 WebView가 재구성돼도(런 자체는 위 store가 복원) 고른 유령을 잃지 않게
+ * id만 저장해두고, 복귀 시 상세를 다시 조회해 복원한다.
+ */
+const ghostStore = sessionJson<{ workoutId: number }>("runrace_workout_ghost");
+
+export function saveGhostSelection(workoutId: number): void {
+  ghostStore.set({ workoutId });
+}
+
+export function loadGhostSelection(): number | null {
+  return ghostStore.get()?.workoutId ?? null;
+}
+
+export function clearGhostSelection(): void {
+  ghostStore.remove();
+}

@@ -1,7 +1,7 @@
 # RunRace 경쟁 기능 로드맵
 
 > 상태: 초안 · 작성 2026-06-11
-> 관련: [product-positioning.md](product-positioning.md) (포지셔닝 근거) · [health-sync-design.md](health-sync-design.md) (병렬 트랙, 보류) · [nsm-roadmap.md](nsm-roadmap.md) (NSM 훈련 코칭 축 — N3에서 P3 크루와 결합)
+> 관련: [product-positioning.md](product-positioning.md) (포지셔닝 근거) · [health-sync-design.md](health-sync-design.md) (병렬 트랙, 보류) · [nsm-roadmap.md](nsm-roadmap.md) (NSM 훈련 코칭 축 — N3에서 P3 크루와 결합) · [fun-ideas-backlog.md](fun-ideas-backlog.md) (P0~P4 위/밖에 얹는 재미·게임필 레이어 아이디어 풀)
 > 전제: "경쟁 게임 레이어"가 핵심 강점. 추적은 아웃소싱, 경쟁·재미·관계만 소유. (positioning §3)
 
 ---

@@ -1,6 +1,7 @@
 "use client";
 
 import { pathBoundsKey, splitPathAtGaps, type LatLng } from "@/lib/workoutTrack";
+import { ghostPositionAtElapsed, ghostTrailAtElapsed } from "@/lib/ghostRace";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Map, Polyline, CustomOverlayMap, useKakaoLoader } from "react-kakao-maps-sdk";
 
@@ -17,9 +18,17 @@ type WorkoutMapProps = {
   path: LatLng[];
   position: LatLng | null;
   follow: boolean;
+  ghostPath?: LatLng[] | null;
+  ghostElapsedMs?: number;
 };
 
-export default function KakaoWorkoutMap({ path, position, follow }: WorkoutMapProps) {
+export default function KakaoWorkoutMap({
+  path,
+  position,
+  follow,
+  ghostPath,
+  ghostElapsedMs = 0,
+}: WorkoutMapProps) {
   const [loading, error] = useKakaoLoader({
     appkey: process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? "",
   });
@@ -30,6 +39,17 @@ export default function KakaoWorkoutMap({ path, position, follow }: WorkoutMapPr
   const boundsKey = pathBoundsKey(path);
 
   const { solidLines, gapLines } = useMemo(() => splitPathAtGaps(path), [path]);
+
+  // 유령 — 전체를 미리 깔지 않고 나처럼 시간에 따라 자라는 트레일 + 현재 위치.
+  const hasGhost = !!ghostPath && ghostPath.length > 0;
+  const ghostTrail = useMemo(
+    () => (hasGhost ? ghostTrailAtElapsed(ghostPath!, ghostElapsedMs) : []),
+    [hasGhost, ghostPath, ghostElapsedMs],
+  );
+  const ghostPosition = useMemo(
+    () => (hasGhost ? ghostPositionAtElapsed(ghostPath!, ghostElapsedMs) : null),
+    [hasGhost, ghostPath, ghostElapsedMs],
+  );
 
   const scheduleFitBounds = useCallback(() => {
     const map = mapRef.current;
@@ -111,6 +131,35 @@ export default function KakaoWorkoutMap({ path, position, follow }: WorkoutMapPr
             strokeStyle="shortdot"
           />
         ))}
+        {ghostTrail.length >= 2 && (
+          <Polyline
+            path={ghostTrail.map((p) => ({ lat: p.lat, lng: p.lng }))}
+            strokeWeight={4}
+            strokeColor="#8b5cf6"
+            strokeOpacity={0.55}
+            strokeStyle="shortdot"
+          />
+        )}
+        {ghostPosition && (
+          <CustomOverlayMap position={{ lat: ghostPosition.lat, lng: ghostPosition.lng }}>
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                backgroundColor: "rgba(139, 92, 246, 0.35)",
+                border: "2px dashed #8b5cf6",
+                transform: "translate(-50%, -50%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 11,
+              }}
+            >
+              👻
+            </div>
+          </CustomOverlayMap>
+        )}
         {position && (
           <CustomOverlayMap position={{ lat: position.lat, lng: position.lng }}>
             <div

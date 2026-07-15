@@ -1,0 +1,166 @@
+import { describe, expect, it } from "vitest";
+import { haversineMeters, type LatLng } from "@/lib/workoutTrack";
+import {
+  computeGhostRaceResult,
+  ghostDistanceAtElapsed,
+  ghostPositionAtElapsed,
+  ghostTrailAtElapsed,
+  timeAtDistanceMs,
+} from "@/lib/ghostRace";
+
+// 위도 0.001° ≈ 111m — 등속 직선 경로 시뮬레이션 (workoutTrack.test.ts와 동일 관례)
+function straightPath(count: number, msPerPoint: number): LatLng[] {
+  return Array.from({ length: count }, (_, i) => ({
+    lat: i * 0.001,
+    lng: 0,
+    t: i * msPerPoint,
+  }));
+}
+
+function cumulativeAt(path: LatLng[], index: number): number {
+  let sum = 0;
+  for (let i = 1; i <= index; i++) sum += haversineMeters(path[i - 1], path[i]);
+  return sum;
+}
+
+describe("ghostDistanceAtElapsed", () => {
+  const path = straightPath(6, 10_000); // 6개 지점, 10초 간격
+
+  it("시작 전(0 이하)은 0", () => {
+    expect(ghostDistanceAtElapsed(path, 0)).toBe(0);
+    expect(ghostDistanceAtElapsed(path, -100)).toBe(0);
+  });
+
+  it("포인트 사이는 시간 비례 보간", () => {
+    const at2 = cumulativeAt(path, 2);
+    const at3 = cumulativeAt(path, 3);
+    const mid = ghostDistanceAtElapsed(path, 25_000); // 2·3번째 포인트(20s·30s) 사이
+    expect(mid).toBeGreaterThan(at2);
+    expect(mid).toBeLessThan(at3);
+  });
+
+  it("정확히 포인트 시각이면 그 지점의 누적거리", () => {
+    expect(ghostDistanceAtElapsed(path, 30_000)).toBeCloseTo(cumulativeAt(path, 3), 5);
+  });
+
+  it("유령의 총 소요시간을 넘으면 총거리에서 멈춤", () => {
+    const total = cumulativeAt(path, path.length - 1);
+    expect(ghostDistanceAtElapsed(path, 999_000)).toBeCloseTo(total, 5);
+  });
+
+  it("포인트가 1개 이하면 0", () => {
+    expect(ghostDistanceAtElapsed([{ lat: 0, lng: 0, t: 0 }], 5_000)).toBe(0);
+    expect(ghostDistanceAtElapsed([], 5_000)).toBe(0);
+  });
+});
+
+describe("timeAtDistanceMs", () => {
+  const path = straightPath(6, 10_000);
+
+  it("targetM 0 이하는 시작 시각", () => {
+    expect(timeAtDistanceMs(path, 0)).toBe(0);
+  });
+
+  it("포인트 사이 거리는 보간된 시각", () => {
+    const at2 = cumulativeAt(path, 2);
+    const at3 = cumulativeAt(path, 3);
+    const t = timeAtDistanceMs(path, (at2 + at3) / 2);
+    expect(t).not.toBeNull();
+    expect(t!).toBeGreaterThan(20_000);
+    expect(t!).toBeLessThan(30_000);
+  });
+
+  it("경로 총거리를 넘으면 null", () => {
+    const total = cumulativeAt(path, path.length - 1);
+    expect(timeAtDistanceMs(path, total + 1_000)).toBeNull();
+  });
+
+  it("포인트가 1개 이하면 null", () => {
+    expect(timeAtDistanceMs([{ lat: 0, lng: 0, t: 0 }], 100)).toBeNull();
+  });
+});
+
+describe("ghostPositionAtElapsed", () => {
+  const path = straightPath(6, 10_000);
+
+  it("시작 전은 첫 지점에 고정", () => {
+    expect(ghostPositionAtElapsed(path, -100)).toEqual({ lat: path[0].lat, lng: path[0].lng });
+    expect(ghostPositionAtElapsed(path, 0)).toEqual({ lat: path[0].lat, lng: path[0].lng });
+  });
+
+  it("총 소요시간을 넘으면 마지막 지점에 고정", () => {
+    const last = path[path.length - 1];
+    expect(ghostPositionAtElapsed(path, 999_000)).toEqual({ lat: last.lat, lng: last.lng });
+  });
+
+  it("포인트 사이는 시간 비례 위경도 보간", () => {
+    const pos = ghostPositionAtElapsed(path, 25_000); // 2번째(20s)와 3번째(30s) 사이 절반
+    expect(pos).not.toBeNull();
+    expect(pos!.lat).toBeCloseTo((path[2].lat + path[3].lat) / 2, 6);
+  });
+
+  it("포인트가 1개면 항상 그 지점", () => {
+    const single: LatLng = { lat: 1, lng: 2, t: 0 };
+    expect(ghostPositionAtElapsed([single], 5_000)).toEqual({ lat: 1, lng: 2 });
+  });
+
+  it("빈 경로는 null", () => {
+    expect(ghostPositionAtElapsed([], 5_000)).toBeNull();
+  });
+});
+
+describe("ghostTrailAtElapsed", () => {
+  const path = straightPath(6, 10_000);
+
+  it("시작 시점엔 첫 지점 하나만", () => {
+    const trail = ghostTrailAtElapsed(path, 0);
+    expect(trail).toHaveLength(1);
+    expect(trail[0]).toEqual({ lat: path[0].lat, lng: path[0].lng, t: 0 });
+  });
+
+  it("중간 시점엔 지나온 포인트 + 보간된 현재 위치가 끝점", () => {
+    const trail = ghostTrailAtElapsed(path, 25_000); // 2번째(20s) 지나 3번째(30s) 전
+    expect(trail.length).toBe(4); // 0,10,20s 지점(3개) + 보간 현재위치(1개)
+    const current = ghostPositionAtElapsed(path, 25_000)!;
+    expect(trail[trail.length - 1]).toEqual(current);
+  });
+
+  it("총 소요시간을 넘으면 전체 포인트 그대로(중복 없이)", () => {
+    const trail = ghostTrailAtElapsed(path, 999_000);
+    expect(trail).toHaveLength(path.length);
+  });
+
+  it("빈 경로는 빈 배열", () => {
+    expect(ghostTrailAtElapsed([], 5_000)).toEqual([]);
+  });
+});
+
+describe("computeGhostRaceResult", () => {
+  it("동일 경로면 delta 0", () => {
+    const path = straightPath(6, 10_000);
+    const result = computeGhostRaceResult(path, path);
+    expect(result).not.toBeNull();
+    expect(result!.deltaMs).toBe(0);
+  });
+
+  it("내가 더 빠르면 음수 delta", () => {
+    const ghost = straightPath(6, 10_000); // 10초/구간
+    const me = straightPath(6, 8_000); // 8초/구간 — 더 빠름
+    const result = computeGhostRaceResult(me, ghost);
+    expect(result).not.toBeNull();
+    expect(result!.deltaMs).toBeLessThan(0);
+  });
+
+  it("유령이 더 길면 내 총거리까지만 비교", () => {
+    const ghost = straightPath(10, 10_000);
+    const me = straightPath(4, 10_000);
+    const result = computeGhostRaceResult(me, ghost);
+    expect(result).not.toBeNull();
+    expect(result!.overlapDistanceM).toBeCloseTo(cumulativeAt(me, me.length - 1), 5);
+  });
+
+  it("겹치는 구간이 너무 짧으면 null", () => {
+    const short = straightPath(2, 10_000); // ~111m
+    expect(computeGhostRaceResult(short, short)).toBeNull();
+  });
+});

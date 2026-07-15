@@ -1,0 +1,130 @@
+import { haversineMeters, pathDistanceMeters, type LatLng } from "./workoutTrack";
+
+/** 유령 후보로 쓰기엔 너무 짧은 런(오조작 방지). */
+export const MIN_GHOST_CANDIDATE_M = 500;
+
+/** 결과 카드를 보여주기엔 너무 짧게 겹친 구간(노이즈 방지). */
+export const MIN_GHOST_RESULT_OVERLAP_M = 200;
+
+function activePoints(path: LatLng[]): (LatLng & { t: number })[] {
+  return path.filter((p): p is LatLng & { t: number } => p.t != null);
+}
+
+/** 유령이 실제로 소요한 활동시간(ms). 유효한 경로가 아니면 0. */
+export function ghostTotalDurationMs(path: LatLng[]): number {
+  const pts = activePoints(path);
+  return pts.length ? pts[pts.length - 1].t : 0;
+}
+
+/**
+ * 유령이 활동 경과시간(elapsedMs, 정지시간 제외)에 도달한 누적거리(m).
+ * elapsedMs가 유령의 총 소요시간을 넘으면 유령은 결승 지점에 멈춰 있는 것으로 본다.
+ */
+export function ghostDistanceAtElapsed(ghostPath: LatLng[], elapsedMs: number): number {
+  const pts = activePoints(ghostPath);
+  if (pts.length < 2 || elapsedMs <= 0) return 0;
+
+  const lastT = pts[pts.length - 1].t;
+  if (elapsedMs >= lastT) return pathDistanceMeters(pts);
+
+  let cum = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const t0 = pts[i - 1].t;
+    const t1 = pts[i].t;
+    if (elapsedMs <= t1) {
+      const segM = haversineMeters(pts[i - 1], pts[i]);
+      const frac = t1 > t0 ? (elapsedMs - t0) / (t1 - t0) : 0;
+      return cum + frac * segM;
+    }
+    cum += haversineMeters(pts[i - 1], pts[i]);
+  }
+  return cum;
+}
+
+/** 경로가 targetM 거리를 지나는 시점의 활동 경과시간(ms). 경로가 그 거리에 못 미치면 null. */
+export function timeAtDistanceMs(path: LatLng[], targetM: number): number | null {
+  const pts = activePoints(path);
+  if (pts.length < 2) return null;
+  if (targetM <= 0) return pts[0].t;
+
+  let cum = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const segM = haversineMeters(pts[i - 1], pts[i]);
+    const prevCum = cum;
+    cum += segM;
+    if (cum >= targetM) {
+      const frac = segM > 0 ? (targetM - prevCum) / segM : 1;
+      return pts[i - 1].t + frac * (pts[i].t - pts[i - 1].t);
+    }
+  }
+  return null;
+}
+
+/** 유령의 elapsedMs 시점 실제 위경도 — 구간 내 시간 비례 선형보간, 범위 밖은 시작/끝점에 고정. */
+export function ghostPositionAtElapsed(ghostPath: LatLng[], elapsedMs: number): LatLng | null {
+  const pts = activePoints(ghostPath);
+  if (pts.length === 0) return null;
+  if (pts.length === 1) return { lat: pts[0].lat, lng: pts[0].lng };
+
+  const lastT = pts[pts.length - 1].t;
+  const clamped = Math.max(0, Math.min(elapsedMs, lastT));
+
+  for (let i = 1; i < pts.length; i++) {
+    const t0 = pts[i - 1].t;
+    const t1 = pts[i].t;
+    if (clamped <= t1) {
+      const frac = t1 > t0 ? (clamped - t0) / (t1 - t0) : 0;
+      return {
+        lat: pts[i - 1].lat + frac * (pts[i].lat - pts[i - 1].lat),
+        lng: pts[i - 1].lng + frac * (pts[i].lng - pts[i - 1].lng),
+      };
+    }
+  }
+  return { lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lng };
+}
+
+/**
+ * 유령이 elapsedMs까지 "지나온" 구간만 반환 — 전체 경로를 미리 깔지 않고
+ * 나(라이브 GPS)처럼 시간에 따라 자란다. 마지막에 보간 위치를 이어붙여 끊김 없이 매끄럽게 만든다.
+ */
+export function ghostTrailAtElapsed(ghostPath: LatLng[], elapsedMs: number): LatLng[] {
+  const pts = activePoints(ghostPath);
+  if (pts.length === 0) return [];
+
+  const current = ghostPositionAtElapsed(ghostPath, elapsedMs);
+  const traveled = pts.filter((p) => p.t <= elapsedMs);
+  if (!current) return traveled;
+
+  const last = traveled[traveled.length - 1];
+  if (last && last.lat === current.lat && last.lng === current.lng) return traveled;
+  return [...traveled, current];
+}
+
+export type GhostRaceResult = {
+  /** 나와 유령 둘 다 도달한 구간(m) — 더 긴 쪽의 나머지는 비교에서 제외. */
+  overlapDistanceM: number;
+  myTimeMs: number;
+  ghostTimeMs: number;
+  /** 음수면 내가 더 빠름. */
+  deltaMs: number;
+};
+
+/**
+ * 거리 목표(결승선) 없이, 둘 다 뛴 만큼(overlap)만 기준으로 시간을 비교한다.
+ * 겹친 구간이 너무 짧으면(MIN_GHOST_RESULT_OVERLAP_M 미만) null.
+ */
+export function computeGhostRaceResult(
+  myPath: LatLng[],
+  ghostPath: LatLng[],
+): GhostRaceResult | null {
+  const myTotalM = pathDistanceMeters(activePoints(myPath));
+  const ghostTotalM = pathDistanceMeters(activePoints(ghostPath));
+  const overlapM = Math.min(myTotalM, ghostTotalM);
+  if (overlapM < MIN_GHOST_RESULT_OVERLAP_M) return null;
+
+  const myTimeMs = timeAtDistanceMs(myPath, overlapM);
+  const ghostTimeMs = timeAtDistanceMs(ghostPath, overlapM);
+  if (myTimeMs == null || ghostTimeMs == null) return null;
+
+  return { overlapDistanceM: overlapM, myTimeMs, ghostTimeMs, deltaMs: myTimeMs - ghostTimeMs };
+}
