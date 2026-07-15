@@ -68,7 +68,10 @@ public class NudgeService {
       throw ApiException.notFound("not_member");
     }
 
-    deliver(senderId, targetUserId, preset, now);
+    // 푸시 제목에 출처를 드러낸다 — 크루 내부 레이스면 "크루 레이스", 아니면 "레이스".
+    String titleKey =
+        challenge.getCrewId() != null ? "nudge.title.crew_race" : "nudge.title.race";
+    deliver(senderId, targetUserId, preset, now, titleKey);
   }
 
   /**
@@ -91,11 +94,12 @@ public class NudgeService {
       throw ApiException.forbidden("not_crew_mate");
     }
 
-    deliver(senderId, targetUserId, preset, OffsetDateTime.now());
+    deliver(senderId, targetUserId, preset, OffsetDateTime.now(), "nudge.title.crew");
   }
 
-  /** 공통 발송 — 일일 제한 검사 + 저장 + 커밋 후 푸시 이벤트. */
-  private void deliver(UUID senderId, UUID targetUserId, int preset, OffsetDateTime now) {
+  /** 공통 발송 — 일일 제한 검사 + 저장 + 커밋 후 푸시 이벤트(titleKey로 출처 구분). */
+  private void deliver(
+      UUID senderId, UUID targetUserId, int preset, OffsetDateTime now, String titleKey) {
     OffsetDateTime startOfDay = LocalDate.now(KST).atStartOfDay(KST).toOffsetDateTime();
     if (nudgeRepository.existsBySenderIdAndReceiverIdAndSentAtGreaterThanEqual(
         senderId, targetUserId, startOfDay)) {
@@ -121,6 +125,7 @@ public class NudgeService {
     // 본문은 수신자 언어의 프리셋 문구로 렌더링한다.
     String senderNickname = sender.getNickname() != null ? sender.getNickname() : "친구";
     eventPublisher.publishEvent(
-        new NudgeEvents.NudgeSent(receiver.getId(), senderNickname, "nudge.preset." + preset));
+        new NudgeEvents.NudgeSent(
+            receiver.getId(), senderNickname, titleKey, "nudge.preset." + preset));
   }
 }

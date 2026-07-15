@@ -40,7 +40,7 @@ public class ChallengeNotifications {
     String link = challengeLink(event.challengeId());
     event.otherMemberIds().forEach(userId ->
         pushService.sendLocalized(
-            userId, "challenge.race_title", bodyKey, event.achieverNickname(), link));
+            userId, "challenge.milestone.title", bodyKey, event.achieverNickname(), link));
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -60,7 +60,7 @@ public class ChallengeNotifications {
     String link = challengeLink(event.challengeId());
     event.memberIds().forEach(userId ->
         pushService.sendLocalized(
-            userId, "challenge.race_title", bodyKey, event.winnerNickname(), link));
+            userId, "challenge.ended.title", bodyKey, event.winnerNickname(), link));
   }
 
   /** 레이스 삭제 시 고아가 된 경품 S3 이미지 정리. (deletePrivate가 내부에서 실패를 로깅·삼킴) */
@@ -75,6 +75,6 @@ public class ChallengeNotifications {
     String link = challengeLink(event.challengeId());
     event.overtakenUserIds().forEach(userId ->
         pushService.sendLocalized(
-            userId, "challenge.race_title", bodyKey, event.overtakerNickname(), link));
+            userId, "challenge.overtake.title", bodyKey, event.overtakerNickname(), link));
   }
 }

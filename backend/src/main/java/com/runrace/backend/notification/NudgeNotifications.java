@@ -16,6 +16,6 @@ public class NudgeNotifications {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onNudgeSent(NudgeEvents.NudgeSent event) {
     pushService.sendLocalized(
-        event.receiverUserId(), "nudge.title", event.bodyKey(), event.senderNickname());
+        event.receiverUserId(), event.titleKey(), event.bodyKey(), event.senderNickname());
   }
 }
