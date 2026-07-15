@@ -684,8 +684,8 @@ export const translations = {
     workout_stop_saving: "저장 중...",
 
     // ── 고스트 레이스 ─────────────────────
-    ghost_chip_label: "유령과 달리기",
-    ghost_chip_subtitle: "뛴 만큼만 비교해요. 거리 목표는 없어요.",
+    ghost_chip_label: "고스트 레이스",
+    ghost_chip_subtitle: "유령과 달려봐요 — 뛴 만큼만 비교해요, 거리 목표는 없어요.",
     ghost_chip_selected: (label: string) => `${label}와 대결 중`,
     ghost_change: "변경",
     ghost_clear: "해제",
