@@ -49,7 +49,10 @@ export function ghostTotalDurationMs(path: LatLng[]): number {
  */
 export function ghostDistanceAtElapsed(ghostPath: LatLng[], elapsedMs: number): number {
   const pts = activePoints(ghostPath);
-  if (pts.length < 2 || elapsedMs <= 0) return 0;
+  if (pts.length < 2) return 0;
+  // 첫 타임스탬프(기록 당시 GPS 락 시점) 이전엔 유령은 아직 출발점에 서 있다.
+  // 클램프 없이 보간하면 frac이 음수가 되어 거리가 음수로 외삽된다(시작부터 무조건 앞서 보이는 버그).
+  if (elapsedMs <= pts[0].t) return 0;
 
   const lastT = pts[pts.length - 1].t;
   if (elapsedMs >= lastT) return pathDistanceMeters(pts);
@@ -94,7 +97,8 @@ export function ghostPositionAtElapsed(ghostPath: LatLng[], elapsedMs: number): 
   if (pts.length === 1) return { lat: pts[0].lat, lng: pts[0].lng };
 
   const lastT = pts[pts.length - 1].t;
-  const clamped = Math.max(0, Math.min(elapsedMs, lastT));
+  // 하한을 첫 타임스탬프로 클램프 — 그 이전 시각은 출발점 고정(음수 frac 외삽 방지).
+  const clamped = Math.max(pts[0].t, Math.min(elapsedMs, lastT));
 
   for (let i = 1; i < pts.length; i++) {
     const t0 = pts[i - 1].t;

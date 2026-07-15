@@ -53,6 +53,14 @@ describe("ghostDistanceAtElapsed", () => {
     expect(ghostDistanceAtElapsed([{ lat: 0, lng: 0, t: 0 }], 5_000)).toBe(0);
     expect(ghostDistanceAtElapsed([], 5_000)).toBe(0);
   });
+
+  it("첫 타임스탬프(GPS 락 시점) 이전엔 0 — 음수로 외삽되지 않는다", () => {
+    // 실기록처럼 첫 포인트 t가 0이 아닌 경우(GPS 락 지연 5초)
+    const offset = straightPath(6, 10_000).map((p) => ({ ...p, t: p.t! + 5_000 }));
+    expect(ghostDistanceAtElapsed(offset, 2_000)).toBe(0);
+    expect(ghostDistanceAtElapsed(offset, 5_000)).toBe(0);
+    expect(ghostDistanceAtElapsed(offset, 5_001)).toBeGreaterThan(0);
+  });
 });
 
 describe("timeAtDistanceMs", () => {
@@ -103,6 +111,14 @@ describe("ghostPositionAtElapsed", () => {
   it("포인트가 1개면 항상 그 지점", () => {
     const single: LatLng = { lat: 1, lng: 2, t: 0 };
     expect(ghostPositionAtElapsed([single], 5_000)).toEqual({ lat: 1, lng: 2 });
+  });
+
+  it("첫 타임스탬프 이전엔 출발점 고정 — 뒤로 외삽되지 않는다", () => {
+    const offset = straightPath(6, 10_000).map((p) => ({ ...p, t: p.t! + 5_000 }));
+    expect(ghostPositionAtElapsed(offset, 2_000)).toEqual({
+      lat: offset[0].lat,
+      lng: offset[0].lng,
+    });
   });
 
   it("빈 경로는 null", () => {
