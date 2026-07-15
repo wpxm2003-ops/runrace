@@ -349,9 +349,17 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const p: LatLng = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          // 시작 기준점에도 t를 부여 — 유령 격차·구간 기록이 첫 포인트부터 t에 의존한다.
+          t: runStartedRef.current != null ? Date.now() - runStartedRef.current : 0,
+        };
         setPosition(p);
-        setPath([p]);
+        // 콜백이 GPS 워치보다 늦게 도착할 수 있다(최대 15초). 이미 워치가 경로를
+        // 쌓기 시작했다면 덮어쓰지 않는다 — 덮어쓰면 초기 포인트가 유실되고
+        // 누적 거리(distanceAccumRef)와 경로가 어긋난다.
+        setPath((prev) => (prev.length > 0 ? prev : [p]));
       },
       (err) => setGeoError(geolocationErrorMessage(err)),
       { enableHighAccuracy: true, timeout: 15000 },

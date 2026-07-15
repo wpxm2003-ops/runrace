@@ -30,6 +30,7 @@ import { GhostPicker, type GhostSelection } from "@/app/workout/_components/Ghos
 import { GhostGapBanner } from "@/app/workout/_components/GhostGapBanner";
 import {
   computeGhostRaceResult,
+  ensureGhostTimestamps,
   ghostDistanceAtElapsed,
   ghostTotalDurationMs,
   type GhostRaceResult,
@@ -103,7 +104,13 @@ export default function WorkoutPage() {
     if (savedId == null) return;
     fetchWorkout(savedId, user)
       .then((detail) => {
-        setGhost({ id: detail.id, label: formatDistance(detail.distanceM, unit), distanceM: detail.distanceM, path: detail.path });
+        setGhost({
+          id: detail.id,
+          label: formatDistance(detail.distanceM, unit),
+          distanceM: detail.distanceM,
+          // 피커와 동일하게 구형 기록(t 없음)도 t를 합성해 복원한다.
+          path: ensureGhostTimestamps(detail.path, detail.durationSec),
+        });
       })
       .catch(() => clearGhostSelection());
     // eslint-disable-next-line react-hooks/exhaustive-deps

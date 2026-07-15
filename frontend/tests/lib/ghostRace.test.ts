@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { haversineMeters, type LatLng } from "@/lib/workoutTrack";
 import {
   computeGhostRaceResult,
+  ensureGhostTimestamps,
   ghostDistanceAtElapsed,
   ghostPositionAtElapsed,
   ghostTrailAtElapsed,
@@ -135,6 +136,37 @@ describe("ghostTrailAtElapsed", () => {
   });
 });
 
+describe("ensureGhostTimestamps", () => {
+  // t 없는 구형 기록 — 위도 등간격 직선(구간 거리 동일)
+  function legacyPath(count: number): LatLng[] {
+    return Array.from({ length: count }, (_, i) => ({ lat: i * 0.001, lng: 0 }));
+  }
+
+  it("t 없는 구형 경로에 총 소요시간을 거리 비례로 배분한다", () => {
+    const path = ensureGhostTimestamps(legacyPath(5), 40); // 4구간 등거리 × 40초
+    expect(path[0].t).toBe(0);
+    expect(path[4].t).toBe(40_000);
+    // 등거리 구간이므로 t도 등간격(10초씩)
+    expect(path[1].t).toBeCloseTo(10_000, -2);
+    expect(path[2].t).toBeCloseTo(20_000, -2);
+    // 합성 후엔 유령 계산이 실제로 동작한다(격차·마커의 회귀 방지)
+    expect(ghostDistanceAtElapsed(path, 20_000)).toBeGreaterThan(0);
+    expect(ghostPositionAtElapsed(path, 20_000)).not.toBeNull();
+  });
+
+  it("t가 이미 있는 신형 경로는 그대로 반환한다", () => {
+    const path = straightPath(5, 7_000);
+    expect(ensureGhostTimestamps(path, 999)).toBe(path);
+  });
+
+  it("포인트 부족·소요시간 0·이동거리 0이면 원본 그대로", () => {
+    expect(ensureGhostTimestamps(legacyPath(1), 40)).toEqual(legacyPath(1));
+    expect(ensureGhostTimestamps(legacyPath(5), 0)).toEqual(legacyPath(5));
+    const stationary: LatLng[] = [{ lat: 1, lng: 1 }, { lat: 1, lng: 1 }];
+    expect(ensureGhostTimestamps(stationary, 40)).toEqual(stationary);
+  });
+});
+
 describe("computeGhostRaceResult", () => {
   it("동일 경로면 delta 0", () => {
     const path = straightPath(6, 10_000);
@@ -160,7 +192,11 @@ describe("computeGhostRaceResult", () => {
   });
 
   it("겹치는 구간이 너무 짧으면 null", () => {
-    const short = straightPath(2, 10_000); // ~111m
+    // 0.0003° ≈ 33m — MIN_GHOST_RESULT_OVERLAP_M(50m) 미만
+    const short: LatLng[] = [
+      { lat: 0, lng: 0, t: 0 },
+      { lat: 0.0003, lng: 0, t: 10_000 },
+    ];
     expect(computeGhostRaceResult(short, short)).toBeNull();
   });
 });

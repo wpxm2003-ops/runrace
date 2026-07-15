@@ -5,7 +5,7 @@ import type { User } from "firebase/auth";
 import { useWorkoutListByYear, fetchWorkout } from "@/lib/api";
 import type { WorkoutListItem } from "@/lib/api/types";
 import { monthBests } from "@/lib/workoutStats";
-import { MIN_GHOST_CANDIDATE_M } from "@/lib/ghostRace";
+import { MIN_GHOST_CANDIDATE_M, ensureGhostTimestamps } from "@/lib/ghostRace";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace } from "@/lib/units";
@@ -114,7 +114,8 @@ export function GhostPicker({ open, onClose, onSelect, user }: Props) {
         id: detail.id,
         label: ghostLabel(detail.distanceM, unit),
         distanceM: detail.distanceM,
-        path: detail.path,
+        // 구형 기록(경로에 t 없음)도 유령으로 쓸 수 있게 t를 합성한다.
+        path: ensureGhostTimestamps(detail.path, detail.durationSec),
       });
       onClose();
     } catch {

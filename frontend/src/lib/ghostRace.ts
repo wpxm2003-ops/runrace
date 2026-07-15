@@ -1,13 +1,40 @@
 import { haversineMeters, pathDistanceMeters, type LatLng } from "./workoutTrack";
 
-/** 유령 후보로 쓰기엔 너무 짧은 런(오조작 방지). */
-export const MIN_GHOST_CANDIDATE_M = 500;
+/**
+ * 결과 카드를 보여주기엔 너무 짧게 겹친 구간(노이즈 방지).
+ * 테스트 편의를 위해 임시로 50m까지 완화해둔 상태 — 안정화 후 200m로 되돌릴 것.
+ */
+export const MIN_GHOST_RESULT_OVERLAP_M = 50;
 
-/** 결과 카드를 보여주기엔 너무 짧게 겹친 구간(노이즈 방지). */
-export const MIN_GHOST_RESULT_OVERLAP_M = 200;
+/**
+ * 유령 후보 최소 거리 — 결과 판정 최소 겹침과 같게 둔다.
+ * (이보다 짧으면 골라도 결과가 안 나오는 후보라 목록에서 제외하는 것.)
+ */
+export const MIN_GHOST_CANDIDATE_M = MIN_GHOST_RESULT_OVERLAP_M;
 
 function activePoints(path: LatLng[]): (LatLng & { t: number })[] {
   return path.filter((p): p is LatLng & { t: number } => p.t != null);
+}
+
+/**
+ * 경로에 t(시작 후 경과 ms)가 없는 구형 기록을 유령으로 쓸 수 있게, 총 소요시간을
+ * 누적 거리에 비례 배분해 t를 합성한다(등속 가정 — 근사치).
+ * t가 이미 있는 신형 기록은 그대로 반환한다. 유령 격차·마커·결과 계산이 모두 t에
+ * 의존하므로, 유령 선택 시 반드시 이 함수를 거쳐야 구형 기록에서도 동작한다.
+ */
+export function ensureGhostTimestamps(path: LatLng[], durationSec: number): LatLng[] {
+  if (path.length < 2 || durationSec <= 0) return path;
+  if (activePoints(path).length >= 2) return path;
+
+  const totalM = pathDistanceMeters(path);
+  if (totalM <= 0) return path;
+
+  const totalMs = durationSec * 1000;
+  let cum = 0;
+  return path.map((p, i) => {
+    if (i > 0) cum += haversineMeters(path[i - 1], path[i]);
+    return { ...p, t: Math.round((cum / totalM) * totalMs) };
+  });
 }
 
 /** 유령이 실제로 소요한 활동시간(ms). 유효한 경로가 아니면 0. */
