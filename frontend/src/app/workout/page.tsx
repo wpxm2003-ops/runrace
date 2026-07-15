@@ -81,9 +81,10 @@ export default function WorkoutPage() {
 
   const active = session.status !== "idle";
 
-  // 유령 레이스 — 내 활동 경과시간(정지 구간 제외)은 방금 찍힌 GPS 포인트의 t를 그대로 쓴다.
-  // 일시정지 중엔 새 포인트가 안 찍히므로 t가 멈추고, 유령도 자연히 함께 멈춘다.
-  const myElapsedMs = session.path[session.path.length - 1]?.t ?? 0;
+  // 유령 레이스 — 유령은 활동시간 시계(elapsedSec, 일시정지 제외·1초 갱신)를 따라 달린다.
+  // 마지막 GPS 포인트의 t를 쓰면 내가 제자리에 서 있는 동안(새 포인트 없음) 유령까지
+  // 같이 얼어붙는다 — 레이스답게 내가 멈춰도 유령은 계속 달리고, 일시정지에만 함께 멈춘다.
+  const myElapsedMs = session.status === "idle" ? 0 : session.elapsedSec * 1000;
   const ghostTotalMs = useMemo(() => (ghost ? ghostTotalDurationMs(ghost.path) : 0), [ghost]);
   const ghostFinished = ghost != null && myElapsedMs >= ghostTotalMs;
   const ghostGapM = useMemo(() => {
