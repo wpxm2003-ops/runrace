@@ -21,9 +21,15 @@ import {
   weeklyPlan,
   formatPaceSec,
   nsmTodayIndex,
+  isRealisticThreshold,
   type NsmSession,
 } from "@/lib/nsm";
 import { weekdayLabels } from "@/lib/format";
+import { sessionJson } from "@/lib/safeStorage";
+
+// 비로그인 계산 결과가 로그인 리다이렉트로 유실되지 않도록 입력값을 잠시 보관한다(같은 탭 세션 한정).
+type NsmDraft = { distM: number; timeStr: string; subTDays: number[] };
+const nsmDraftStore = sessionJson<NsmDraft>("nsm_calc_draft");
 
 const DISTANCES = [
   { label: "5K", m: 5000 },
@@ -42,7 +48,11 @@ const PB_LABEL: Record<string, string> = {
 function parseTime(v: string): number | null {
   const m = v.trim().match(/^(\d{1,3}):(\d{2})$/);
   if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
+  const min = Number(m[1]);
+  const sec = Number(m[2]);
+  if (sec >= 60) return null; // 초는 0~59
+  if (min > 240) return null; // 상한 4시간 — 오타/비정상 입력 차단
+  return min * 60 + sec;
 }
 /** 숫자 키패드에는 콜론이 없으므로 입력 숫자만 받아 mm:ss로 자동 포맷 (2200 → 22:00) */
 function maskTimeInput(raw: string): string {
@@ -96,14 +106,33 @@ function TrainingContent({ user }: { user: User | null }) {
   // 저장된 플랜을 최초 1회 화면에 복원. ref 가드로 늦게 도착해도(SWR 지연) 반드시 1회 적용.
   const hydratedRef = useRef(false);
   useEffect(() => {
-    if (!savedPlan || hydratedRef.current) return;
+    if (hydratedRef.current) return;
+
+    // 서버 플랜이 없으면 — 비로그인 계산 후 로그인 복귀 등 — 임시 저장된 초안을 복원(1회성).
+    if (!savedPlan) {
+      const draft = nsmDraftStore.get();
+      if (draft && !result) {
+        hydratedRef.current = true;
+        nsmDraftStore.remove();
+        setSubTDays(draft.subTDays);
+        setDistM(draft.distM);
+        setTimeStr(draft.timeStr);
+        const sec = parseTime(draft.timeStr);
+        if (sec != null && sec > 0) compute(draft.distM, sec, draft.subTDays);
+      }
+      return;
+    }
+
     hydratedRef.current = true;
     if (result) return; // 사용자 계산값 우선 — 클로버 방지
+    // 오염 행(문자열 "Infinity"/NaN vdot 등) 방어 — 유한값이 아니면 복원 스킵.
+    const savedVdot = Number(savedPlan.vdot);
+    if (!Number.isFinite(savedVdot) || !Number.isFinite(savedPlan.thresholdPaceSec)) return;
     setSubTDays(savedPlan.subTDays);
     setDistM(savedPlan.sourceDistanceM);
     setTimeStr(formatTime(savedPlan.sourceTimeSec));
     setResult({
-      vdot: savedPlan.vdot,
+      vdot: savedVdot,
       threshold: savedPlan.thresholdPaceSec,
       plan: weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays),
       sourceDistanceM: savedPlan.sourceDistanceM,
@@ -112,10 +141,18 @@ function TrainingContent({ user }: { user: User | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedPlan]);
 
-  function compute(dM: number, sec: number, dys: number[]) {
+  // 계산 성공 시 true. 거리·시간 조합이 비현실적이면 에러 노출 후 false(결과 미표시).
+  function compute(dM: number, sec: number, dys: number[]): boolean {
     const vdot = vdotFromRace(dM, sec);
     const threshold = thresholdPaceSecPerKm(vdot);
+    if (!isRealisticThreshold(threshold)) {
+      setError(t.nsm_range_error);
+      setResult(null);
+      return false;
+    }
+    setError(null);
     setResult({ vdot, threshold, plan: weeklyPlan(threshold, dys), sourceDistanceM: dM, sourceTimeSec: sec });
+    return true;
   }
 
   function onCalc() {
@@ -125,7 +162,6 @@ function TrainingContent({ user }: { user: User | null }) {
       setResult(null);
       return;
     }
-    setError(null);
     compute(distM, sec, subTDays);
   }
 
@@ -155,11 +191,13 @@ function TrainingContent({ user }: { user: User | null }) {
     if (!result || saving || !user) return;
     setSaving(true);
     try {
+      // 백엔드 계약(2~3개, dedup·정렬)과 동일하게 정규화해 전송 — 프론트/백 상한 정책 일치.
+      const normalizedDays = Array.from(new Set(subTDays)).sort((a, b) => a - b).slice(0, 3);
       await saveTrainingPlan(
         {
           vdot: result.vdot,
           thresholdPaceSec: result.threshold,
-          subTDays,
+          subTDays: normalizedDays,
           sourceDistanceM: result.sourceDistanceM,
           sourceTimeSec: result.sourceTimeSec,
         },
@@ -206,6 +244,8 @@ function TrainingContent({ user }: { user: User | null }) {
     savedPlan != null &&
     result != null &&
     savedPlan.thresholdPaceSec === result.threshold &&
+    savedPlan.sourceDistanceM === result.sourceDistanceM &&
+    savedPlan.sourceTimeSec === result.sourceTimeSec &&
     sortedKey(savedPlan.subTDays) === sortedKey(subTDays);
 
   // "오늘의 세션"은 저장된 활성 플랜에서만 — 계산만 한 미저장 플랜은 미노출.
@@ -349,7 +389,11 @@ function TrainingContent({ user }: { user: User | null }) {
             {!user ? (
               <button
                 type="button"
-                onClick={() => redirectToLogin("/training")}
+                onClick={() => {
+                  // 로그인 리다이렉트로 계산 결과가 유실되지 않게 입력값을 잠시 보관.
+                  nsmDraftStore.set({ distM, timeStr, subTDays });
+                  redirectToLogin("/training");
+                }}
                 className="mt-3 w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white"
               >
                 {t.nsm_signup_cta}

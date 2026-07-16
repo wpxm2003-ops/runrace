@@ -4,6 +4,7 @@ import {
   thresholdFromRace,
   thresholdPaceSecPerKm,
   weeklyPlan,
+  isRealisticThreshold,
 } from "@/lib/nsm";
 
 describe("NSM VDOT 계산", () => {
@@ -35,6 +36,34 @@ describe("NSM 역치 페이스", () => {
 
   it("VDOT가 높을수록 역치 페이스가 빨라진다(초/km 감소)", () => {
     expect(thresholdPaceSecPerKm(50)).toBeLessThan(thresholdPaceSecPerKm(44));
+  });
+});
+
+describe("NSM 현실범위 검증(isRealisticThreshold)", () => {
+  it("정상 기록의 역치 페이스는 통과", () => {
+    expect(isRealisticThreshold(thresholdFromRace(5000, 22 * 60))).toBe(true); // ~4:40/km
+    expect(isRealisticThreshold(thresholdFromRace(10000, 45 * 60))).toBe(true);
+    expect(isRealisticThreshold(thresholdFromRace(21097, 100 * 60))).toBe(true);
+  });
+
+  it("비현실적 빠른 조합(Half 10:00)은 거부", () => {
+    // v=2109.7 m/min → 역치 ~31초/km (하한 150초 미만)
+    expect(isRealisticThreshold(thresholdFromRace(21097, 10 * 60))).toBe(false);
+  });
+
+  it("비현실적 느린 조합(5K 205:00)은 거부", () => {
+    // 역치 ~2464초/km (상한 600초 초과)
+    expect(isRealisticThreshold(thresholdFromRace(5000, 205 * 60))).toBe(false);
+  });
+
+  it("경계값·비유한값 방어", () => {
+    expect(isRealisticThreshold(150)).toBe(true);
+    expect(isRealisticThreshold(600)).toBe(true);
+    expect(isRealisticThreshold(149)).toBe(false);
+    expect(isRealisticThreshold(601)).toBe(false);
+    expect(isRealisticThreshold(Infinity)).toBe(false);
+    expect(isRealisticThreshold(NaN)).toBe(false);
+    expect(isRealisticThreshold(-5)).toBe(false);
   });
 });
 
@@ -91,5 +120,24 @@ describe("NSM 주간 플랜", () => {
     expect(plan.filter((s) => s.isSubT).length).toBe(3);
     expect(plan.filter((s) => s.kind === "LONGRUN").length).toBe(1);
     expect(plan).toHaveLength(7);
+  });
+
+  it("하한 위반(빈 배열/1개)도 크래시 없이 잘 정의된 7일 플랜 반환", () => {
+    const empty = weeklyPlan(t, []);
+    expect(empty).toHaveLength(7);
+    expect(empty.filter((s) => s.isSubT).length).toBe(0);
+    expect(empty.filter((s) => s.kind === "LONGRUN").length).toBe(1);
+
+    const one = weeklyPlan(t, [2]);
+    expect(one).toHaveLength(7);
+    expect(one.filter((s) => s.isSubT).length).toBe(1);
+    expect(one[2].kind).toBe("SHORT");
+  });
+
+  it("범위 밖 요일은 필터링되고 남은 유효 요일만 배치", () => {
+    const plan = weeklyPlan(t, [1, 9, -3, 5]); // 9,-3 무시 → [1,5]
+    expect(plan.filter((s) => s.isSubT).length).toBe(2);
+    expect(plan[1].isSubT).toBe(true);
+    expect(plan[5].isSubT).toBe(true);
   });
 });

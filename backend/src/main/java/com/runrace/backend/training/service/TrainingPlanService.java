@@ -33,8 +33,14 @@ public class TrainingPlanService {
   @Transactional
   public TrainingPlan save(UUID userId, TrainingPlanRequest req) {
     String csv = normalizeSubTDays(req.subTDays());
-    if (!(req.vdot() > 0)) throw ApiException.badRequest("invalid_vdot"); // NaN/음수/0 차단
-    if (req.thresholdPaceSec() <= 0) throw ApiException.badRequest("invalid_threshold");
+    // NaN·Infinity·음수/0 차단 + 현실 상한(VDOT은 세계기록권도 ~85). isFinite가 NaN·Infinity 동시 차단.
+    if (!Double.isFinite(req.vdot()) || req.vdot() <= 0 || req.vdot() > 100) {
+      throw ApiException.badRequest("invalid_vdot");
+    }
+    // 역치 페이스 현실 범위(초/km): 2'00"~15'00". 클라 계산 오류·조작으로 인한 음수/비정상 렙 페이스 차단.
+    if (req.thresholdPaceSec() < 120 || req.thresholdPaceSec() > 900) {
+      throw ApiException.badRequest("invalid_threshold");
+    }
     if (req.sourceDistanceM() <= 0 || req.sourceTimeSec() <= 0) {
       throw ApiException.badRequest("invalid_source_record");
     }

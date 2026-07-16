@@ -88,6 +88,8 @@ export function kmFromInput(value: string, unit: DistanceUnit): number {
 
 /** 초/단위(예: 초/km) → "m'ss"" 표기. 페이스 포맷의 단일 출처. */
 export function formatPaceSecPerUnit(secPerUnit: number): string {
+  // 음수/비유한 값은 페이스로 성립 불가 — 포맷이 "-2'-40"" 같은 깨진 문자열을 뱉지 않게 방어.
+  if (!Number.isFinite(secPerUnit) || secPerUnit < 0) return "-";
   const m = Math.floor(secPerUnit / 60);
   const s = Math.round(secPerUnit % 60);
   return `${m}'${String(s).padStart(2, "0")}"`;

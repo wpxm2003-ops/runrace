@@ -12,6 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -67,6 +68,15 @@ public class ApiExceptionHandler {
   @ExceptionHandler(DateTimeParseException.class)
   public ResponseEntity<ApiError> handleDateParse(DateTimeParseException e) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error("invalid_date_format"));
+  }
+
+  /**
+   * 유니크 제약 경합 등 무결성 위반 — 동시 요청(예: 훈련 플랜 최초 저장 더블 서밋)으로 발생하며
+   * 유니크 인덱스가 1행을 보장하므로 재시도(=update 경로)로 해결된다. 클라 상황이라 409(에러로그 제외).
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException e) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(error("conflict"));
   }
 
   /**

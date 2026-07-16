@@ -32,9 +32,9 @@ function localDayKey(): string {
   return `${y}-${m}-${d}`;
 }
 
-function sessionKeyOf(session: NsmSession): string {
+function sessionKeyOf(session: NsmSession, dayKey: string): string {
   return [
-    localDayKey(),
+    dayKey,
     session.day,
     session.kind,
     session.reps ?? "",
@@ -60,7 +60,9 @@ export function NsmSessionGuide({
   const targetSec = repTargetSeconds(session);
   const targetPace = session.targetPaceSec ?? 0;
   const restSec = session.restSec ?? 0;
-  const sessionKey = sessionKeyOf(session);
+  // 마운트 시 날짜 고정 — 세션 진행 중 자정을 넘어도 sessionKey가 바뀌어 진행상태가 리셋되지 않게.
+  const [dayKey] = useState(localDayKey);
+  const sessionKey = sessionKeyOf(session, dayKey);
 
   const [prog, setProg] = useState<NsmProgress>(() => {
     const saved = loadNsmProgress();
@@ -76,13 +78,15 @@ export function NsmSessionGuide({
   }, [sessionKey]);
 
   useEffect(() => {
-    if (!prog.started || prog.phase === "done") return;
+    if (!prog.started) return;
 
-    // A new run restarted from zero or a different session key was mounted.
+    // 새 런이 0에서 다시 시작됨 — done 상태여도 리셋을 허용해 같은 날 재가이드가 '완료' 화면에 갇히지 않게.
     if (distanceM + 1 < prog.baseDist) {
       setProg({ ...INITIAL, sessionKey });
       return;
     }
+
+    if (prog.phase === "done") return;
 
     if (prog.phase === "work") {
       const workDone =
@@ -123,6 +127,16 @@ export function NsmSessionGuide({
       baseSec: elapsedSec,
       restEnd: 0,
     });
+  }
+
+  // 수동으로 현재 렙 완료 처리 — GPS 약함으로 거리가 멈춰 km렙이 자동 완료되지 않을 때의 탈출구.
+  function advanceRep() {
+    if (prog.phase !== "work") return;
+    if (prog.repIndex + 1 >= reps) {
+      setProg({ ...prog, phase: "done" });
+    } else {
+      setProg({ ...prog, phase: "rest", restEnd: elapsedSec + restSec });
+    }
   }
 
   if (!prog.started) {
@@ -213,8 +227,15 @@ export function NsmSessionGuide({
           </div>
         </div>
       </div>
-      <div className="mt-1 text-xs font-medium">
-        <span className={`rounded bg-white px-1.5 py-0.5 ${cue.cls}`}>{cue.text}</span>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className={`rounded bg-white px-1.5 py-0.5 text-xs font-medium ${cue.cls}`}>{cue.text}</span>
+        <button
+          type="button"
+          onClick={advanceRep}
+          className="shrink-0 rounded-md bg-white/10 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-white/20"
+        >
+          {t.nsm_next_rep} ›
+        </button>
       </div>
     </div>
   );

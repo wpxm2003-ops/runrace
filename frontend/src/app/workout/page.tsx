@@ -11,7 +11,7 @@ import {
   loadGhostSelection,
   saveGhostSelection,
 } from "@/lib/workoutPersistence";
-import { weeklyPlan, nsmTodayIndex } from "@/lib/nsm";
+import { weeklyPlan, nsmTodayIndex, type NsmSession } from "@/lib/nsm";
 import { NsmSessionGuide } from "@/app/workout/_components/NsmSessionGuide";
 import { clearNsmProgress } from "@/lib/nsmSessionProgress";
 import { track, distanceBucket } from "@/lib/analytics";
@@ -119,9 +119,18 @@ export default function WorkoutPage() {
 
   // NSM 자동 인식 — 활성 플랜이 있고 오늘이 sub-T 날이면, 일반 "운동하기"로도 세션 가이드를 띄운다.
   const { data: trainingPlan } = useTrainingPlan(user);
-  const nsmToday = trainingPlan
+  const liveNsmToday = trainingPlan
     ? weeklyPlan(trainingPlan.thresholdPaceSec, trainingPlan.subTDays)[nsmTodayIndex()]
     : null;
+  // 러닝 중엔 오늘의 세션을 런 시작 시점 값으로 고정 — 자정을 넘어 nsmTodayIndex가 바뀌어도
+  // 가이드가 세션 종류를 바꾸거나 언마운트돼 진행이 끊기지 않게 한다.
+  const [frozenNsmToday, setFrozenNsmToday] = useState<NsmSession | null>(null);
+  useEffect(() => {
+    if (active) setFrozenNsmToday((prev) => prev ?? liveNsmToday);
+    else setFrozenNsmToday(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+  const nsmToday = active ? frozenNsmToday ?? liveNsmToday : liveNsmToday;
   const isNsmDay = !!nsmToday?.isSubT;
 
   // 러닝 중 화면이 꺼지지 않게 유지(포그라운드 GPS 유지). 미지원 브라우저는 무시.

@@ -48,6 +48,22 @@ export function thresholdFromRace(distanceM: number, timeSec: number): number {
   return thresholdPaceSecPerKm(vdotFromRace(distanceM, timeSec));
 }
 
+/** 현실적 역치 페이스 범위(초/km) — 이 밖이면 거리·시간 조합이 사람이 달릴 수 없는 값. */
+export const MIN_REALISTIC_THRESHOLD_SEC = 150; // 2'30"/km
+export const MAX_REALISTIC_THRESHOLD_SEC = 600; // 10'00"/km
+
+/**
+ * 계산된 역치 페이스가 현실 범위인지. 거리(고정 버튼)와 시간(자유 입력)의 조합이
+ * 생리학적으로 불가능하면(예: Half + 10분, 5K + 205분) false — 비정상 VDOT·페이스 저장·표시 차단.
+ */
+export function isRealisticThreshold(thresholdSec: number): boolean {
+  return (
+    Number.isFinite(thresholdSec) &&
+    thresholdSec >= MIN_REALISTIC_THRESHOLD_SEC &&
+    thresholdSec <= MAX_REALISTIC_THRESHOLD_SEC
+  );
+}
+
 export type NsmSessionKind = "EASY" | "LONGRUN" | "SHORT" | "MEDIUM" | "LONG";
 
 export type NsmSession = {
@@ -97,8 +113,9 @@ export function weeklyPlan(thresholdSec: number, subTDays: number[]): NsmSession
   const makers = [shortSession, mediumSession, longSession];
   const result: NsmSession[] = Array.from({ length: 7 }, (_, d) => easy(d));
 
+  // days는 위에서 slice(0,3)으로 최대 3개라 makers[i]는 항상 유효(i<3). SHORT→MEDIUM→LONG.
   days.forEach((d, i) => {
-    result[d] = makers[Math.min(i, makers.length - 1)](d, t);
+    result[d] = makers[i](d, t);
   });
 
   // 롱런 — 가장 늦은(일요일 우선) 이지런 날에 배치.
