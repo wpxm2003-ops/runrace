@@ -5,6 +5,7 @@ import {
   thresholdPaceSecPerKm,
   weeklyPlan,
   isRealisticThreshold,
+  hasAdjacentSubTDays,
 } from "@/lib/nsm";
 
 describe("NSM VDOT 계산", () => {
@@ -64,6 +65,29 @@ describe("NSM 현실범위 검증(isRealisticThreshold)", () => {
     expect(isRealisticThreshold(Infinity)).toBe(false);
     expect(isRealisticThreshold(NaN)).toBe(false);
     expect(isRealisticThreshold(-5)).toBe(false);
+  });
+});
+
+describe("NSM 인접 요일 경고(hasAdjacentSubTDays)", () => {
+  it("하루씩 띄운 요일은 경고 없음", () => {
+    expect(hasAdjacentSubTDays([1, 3, 5])).toBe(false); // 화·목·토
+    expect(hasAdjacentSubTDays([0, 2, 4])).toBe(false);
+    expect(hasAdjacentSubTDays([1, 4])).toBe(false);
+  });
+
+  it("이틀 연속 요일은 경고", () => {
+    expect(hasAdjacentSubTDays([4, 5, 6])).toBe(true); // 금·토·일
+    expect(hasAdjacentSubTDays([1, 2])).toBe(true); // 화·수
+    expect(hasAdjacentSubTDays([0, 1, 4])).toBe(true); // 월·화 연속
+  });
+
+  it("중복·비정렬 입력도 정규화 후 판정", () => {
+    expect(hasAdjacentSubTDays([5, 4, 4])).toBe(true);
+    expect(hasAdjacentSubTDays([5, 1, 3])).toBe(false);
+  });
+
+  it("주 경계(일↔월)는 인접으로 보지 않음", () => {
+    expect(hasAdjacentSubTDays([0, 6])).toBe(false); // 월·일 — 시각적으로 안 붙음
   });
 });
 

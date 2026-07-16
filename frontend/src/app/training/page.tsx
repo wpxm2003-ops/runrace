@@ -22,6 +22,7 @@ import {
   formatPaceSec,
   nsmTodayIndex,
   isRealisticThreshold,
+  hasAdjacentSubTDays,
   type NsmSession,
 } from "@/lib/nsm";
 import { weekdayLabels } from "@/lib/format";
@@ -368,6 +369,11 @@ function TrainingContent({ user }: { user: User | null }) {
           })}
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">{t.nsm_subt_days_hint}</p>
+        {hasAdjacentSubTDays(subTDays) ? (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+            {t.nsm_subt_adjacent_warning}
+          </p>
+        ) : null}
       </Card>
 
       {result ? (

@@ -137,3 +137,15 @@ export function formatPaceSec(sec: number): string {
 export function nsmTodayIndex(): number {
   return (new Date().getDay() + 6) % 7;
 }
+
+/**
+ * 선택한 sub-T 요일 중 이틀 연속(붙어있는) 날이 있는지 — NSM은 빡센 세션 사이에 이지런을 권장.
+ * 소프트 경고용(비차단). 주 경계(일↔월)는 시각적으로 붙어 보이지 않아 제외한다.
+ */
+export function hasAdjacentSubTDays(days: number[]): boolean {
+  const sorted = Array.from(new Set(days)).sort((a, b) => a - b);
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] - sorted[i - 1] === 1) return true;
+  }
+  return false;
+}
