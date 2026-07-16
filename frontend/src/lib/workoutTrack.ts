@@ -113,7 +113,13 @@ const INSTANT_VEHICLE_SPEED_MS = 9;
 const VEHICLE_BAND_EXIT_MS = 5.0;
 /** 복귀: 양호 GPS + 이 속도 이하가 8~10초 지속 (~14 km/h) */
 const RECOVERY_MAX_SPEED_MS = 4.0;
+/** 탈것(속도) 감지 후 복귀 — 치팅 위험이 있어 보수적으로 길게 확인. */
 const RECOVERY_CONFIRM_MS = 5_000;
+/**
+ * GPS 끊김(터널·빌딩숲)만으로 weak였다가 복귀 — 탈것 속도가 감지된 적이 없어 치팅 위험이 낮다.
+ * 복귀도 여전히 저속(≤14km/h)+양호 GPS를 요구하므로, 짧게 확인해 정직한 러너의 체감 렉만 줄인다.
+ */
+const RECOVERY_CONFIRM_WEAK_MS = 2_000;
 
 /** 추후 심박·케이던스·도시 민감도 등 (현재 미연동) */
 type VehicleSignals = {
@@ -131,6 +137,8 @@ export type VehicleDetectState = {
   confirmedHighSinceMs: number | null;
   lowSpeedSinceMs: number | null;
   weakGpsSinceMs: number | null;
+  /** recovering일 때, GPS 끊김만으로 진입했는지(true=탈것 속도 미개입 → 빠른 복귀 허용). */
+  recoveringFromWeakGps: boolean;
   accuracyRecent: AccuracySample[];
 };
 
@@ -153,6 +161,7 @@ type VehicleDetectResult = {
   confirmedHighSinceMs: number | null;
   lowSpeedSinceMs: number | null;
   weakGpsSinceMs: number | null;
+  recoveringFromWeakGps: boolean;
   accuracyRecent: AccuracySample[];
 };
 
@@ -235,7 +244,7 @@ function effectiveThreshold(base: number, signals?: VehicleSignals): number {
  */
 export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectResult {
   const { speedMps, accuracyM, nowMs, state, signals } = input;
-  const { tier, accuracyRecent } = state;
+  const { tier, accuracyRecent, recoveringFromWeakGps } = state;
   let {
     suspectHighSinceMs,
     confirmedHighSinceMs,
@@ -263,6 +272,7 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
     confirmedHighSinceMs: partial.confirmedHighSinceMs ?? confirmedHighSinceMs,
     lowSpeedSinceMs: partial.lowSpeedSinceMs ?? lowSpeedSinceMs,
     weakGpsSinceMs: partial.weakGpsSinceMs ?? weakGpsSinceMs,
+    recoveringFromWeakGps: partial.recoveringFromWeakGps ?? recoveringFromWeakGps,
     accuracyRecent: partial.accuracyRecent ?? accuracyRecent,
     tier: partial.tier,
   });
@@ -305,6 +315,7 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
       blockPathPoints: true,
       suspectHighSinceMs: null,
       confirmedHighSinceMs: null,
+      recoveringFromWeakGps: true, // GPS만 끊겼던 복귀 → 빠른 복귀 대상
       lowSpeedSinceMs:
         speedMps != null && speedMps <= recoveryMs ? nowMs : null,
     });
@@ -314,9 +325,11 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
   if (tier === "recovering") {
     const speedOk = speedMps != null && speedMps <= recoveryMs;
     const gpsOk = isGpsGood(accuracyM);
+    // GPS 끊김만으로 진입한 복귀는 치팅 위험이 낮아 짧게 확인(속도·GPS 조건은 동일).
+    const confirmMs = recoveringFromWeakGps ? RECOVERY_CONFIRM_WEAK_MS : RECOVERY_CONFIRM_MS;
     if (speedOk && gpsOk) {
       if (lowSpeedSinceMs == null) lowSpeedSinceMs = nowMs;
-      if (nowMs - lowSpeedSinceMs >= RECOVERY_CONFIRM_MS) {
+      if (nowMs - lowSpeedSinceMs >= confirmMs) {
         return result({
           tier: "normal",
           blockDistance: false,
@@ -326,6 +339,7 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
           confirmedHighSinceMs: null,
           lowSpeedSinceMs: null,
           weakGpsSinceMs: null,
+          recoveringFromWeakGps: false,
         });
       }
     } else {
@@ -404,6 +418,7 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
         blockPathPoints: true,
         suspectHighSinceMs: null,
         confirmedHighSinceMs: null,
+        recoveringFromWeakGps: false, // 탈것 속도가 감지됐던 복귀 → 보수적(긴) 확인
         lowSpeedSinceMs: speedMps <= recoveryMs ? nowMs : null,
       });
     }
@@ -419,6 +434,7 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
     confirmedHighSinceMs: null,
     lowSpeedSinceMs: null,
     weakGpsSinceMs: null,
+    recoveringFromWeakGps: false,
   });
 }
 

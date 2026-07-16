@@ -57,6 +57,7 @@ function resetVehicleState(): VehicleDetectState {
     confirmedHighSinceMs: null,
     lowSpeedSinceMs: null,
     weakGpsSinceMs: null,
+    recoveringFromWeakGps: false,
     accuracyRecent: [],
   };
 }
@@ -195,6 +196,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         confirmedHighSinceMs: vehicle.confirmedHighSinceMs,
         lowSpeedSinceMs: vehicle.lowSpeedSinceMs,
         weakGpsSinceMs: vehicle.weakGpsSinceMs,
+        recoveringFromWeakGps: vehicle.recoveringFromWeakGps,
         accuracyRecent: vehicle.accuracyRecent,
       };
       setVehicleTier(vehicle.tier);

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   estimateCalories,
+  evaluateVehicleTier,
   formatDuration,
   pathBoundsKey,
   splitPathAtGaps,
 } from "@/lib/workoutTrack";
-import type { LatLng } from "@/lib/workoutTrack";
+import type { LatLng, VehicleDetectState } from "@/lib/workoutTrack";
 
 describe("formatDuration", () => {
   it("1시간 미만은 mm:ss", () => {
@@ -86,5 +87,85 @@ describe("pathBoundsKey", () => {
     const a: LatLng[] = [{ lat: 0, lng: 0 }, { lat: 2, lng: 2 }];
     const b: LatLng[] = [{ lat: 0, lng: 0 }, { lat: 3, lng: 3 }];
     expect(pathBoundsKey(a)).not.toBe(pathBoundsKey(b));
+  });
+});
+
+describe("evaluateVehicleTier — 복귀 시간 분기(치팅 위험별)", () => {
+  function initialState(): VehicleDetectState {
+    return {
+      tier: "normal",
+      suspectHighSinceMs: null,
+      confirmedHighSinceMs: null,
+      lowSpeedSinceMs: null,
+      weakGpsSinceMs: null,
+      recoveringFromWeakGps: false,
+      accuracyRecent: [],
+    };
+  }
+
+  type Step = { speedMps: number | null; accuracyM: number; nowMs: number };
+
+  // 결과(VehicleDetectResult)는 state의 상위집합이라 다음 tick의 state로 그대로 넘길 수 있다.
+  function run(steps: Step[]) {
+    let s: VehicleDetectState = initialState();
+    let last = evaluateVehicleTier({ ...steps[0], state: s });
+    s = last;
+    for (let i = 1; i < steps.length; i++) {
+      last = evaluateVehicleTier({ ...steps[i], state: s });
+      s = last;
+    }
+    return last;
+  }
+
+  const GOOD = 10; // ≤20m → isGpsGood
+  const WEAK = 50; // >30m → 즉시 weak
+  const RUN = 2; // ≤4m/s → 러닝 저속
+
+  it("GPS 끊김(weak) 복귀는 저속·양호 GPS가 2초 지속되면 normal", () => {
+    // t0 weak → t1 recovering(빠른 대상) → t3 (2초 경과) normal
+    expect(
+      run([
+        { speedMps: RUN, accuracyM: WEAK, nowMs: 0 },
+        { speedMps: RUN, accuracyM: GOOD, nowMs: 1000 },
+        { speedMps: RUN, accuracyM: GOOD, nowMs: 3000 },
+      ]).tier,
+    ).toBe("normal");
+  });
+
+  it("weak 복귀도 2초 전에는 아직 recovering(거리 차단 유지)", () => {
+    const r = run([
+      { speedMps: RUN, accuracyM: WEAK, nowMs: 0 },
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 1000 },
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 2500 }, // 1.5초만 경과
+    ]);
+    expect(r.tier).toBe("recovering");
+    expect(r.blockDistance).toBe(true);
+  });
+
+  it("탈것(속도) 감지 복귀는 2초로는 부족하고 5초 지나야 normal", () => {
+    // t0 즉시 confirmed(≥9m/s) → t1 recovering(느린 대상)
+    const at3s = run([
+      { speedMps: 10, accuracyM: GOOD, nowMs: 0 },
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 1000 },
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 3000 }, // 2초 경과 — weak라면 풀렸을 시점
+    ]);
+    expect(at3s.tier).toBe("recovering"); // 탈것 복귀는 아직 안 풀림
+
+    const at6s = run([
+      { speedMps: 10, accuracyM: GOOD, nowMs: 0 },
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 1000 },
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 6000 }, // 5초 경과
+    ]);
+    expect(at6s.tier).toBe("normal");
+  });
+
+  it("weak 빠른 복귀도 저속 조건은 동일 — 고속이면 안 풀린다(탈것 악용 방지)", () => {
+    const r = run([
+      { speedMps: RUN, accuracyM: WEAK, nowMs: 0 }, // weak_gps
+      { speedMps: 10, accuracyM: GOOD, nowMs: 1000 }, // recovering이지만 고속
+      { speedMps: 10, accuracyM: GOOD, nowMs: 5000 }, // 4초가 지나도 고속이라
+    ]);
+    expect(r.tier).toBe("recovering");
+    expect(r.blockDistance).toBe(true);
   });
 });
