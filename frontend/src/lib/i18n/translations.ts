@@ -707,7 +707,8 @@ export const translations = {
     ghost_finished: "유령이 결승 지점에 멈췄다 — 계속 달아나자!",
     ghost_result_title: (label: string) => `${label}와의 대결`,
     ghost_result_faster: (sec: number) => `${sec}초 빨랐다`,
-    ghost_result_slower: (sec: number) => `${sec}초 뒤졌다 — 다음엔 뒤집어보자`,
+    ghost_result_tied: "무승부 — 거의 동시에 도착했어요!",
+    ghost_result_slower: (sec: number) => `${sec}초 늦었다 — 다음엔 앞서보자`,
     ghost_result_overlap: (distanceLabel: string) => `같이 뛴 ${distanceLabel} 구간 기준`,
 
     // ── 운동 완료 ─────────────────────────
@@ -1484,6 +1485,7 @@ export const translations = {
     ghost_finished: "The ghost stopped at its finish — keep pulling away!",
     ghost_result_title: (label: string) => `Vs ${label}`,
     ghost_result_faster: (sec: number) => `${sec}s faster`,
+    ghost_result_tied: "It's a tie — you finished almost together!",
     ghost_result_slower: (sec: number) => `${sec}s slower — get it next time`,
     ghost_result_overlap: (distanceLabel: string) => `Over the ${distanceLabel} you both covered`,
 
@@ -2261,6 +2263,7 @@ export const translations = {
     ghost_finished: "El fantasma se detuvo en su meta — ¡sigue alejándote!",
     ghost_result_title: (label: string) => `Vs ${label}`,
     ghost_result_faster: (sec: number) => `${sec}s más rápido`,
+    ghost_result_tied: "Empate — ¡llegaron casi al mismo tiempo!",
     ghost_result_slower: (sec: number) => `${sec}s más lento — la próxima lo logras`,
     ghost_result_overlap: (distanceLabel: string) => `En los ${distanceLabel} que ambos recorrieron`,
 
@@ -3038,6 +3041,7 @@ export const translations = {
     ghost_finished: "ゴーストはゴール地点で止まっています — このまま突き放そう！",
     ghost_result_title: (label: string) => `${label}との対決`,
     ghost_result_faster: (sec: number) => `${sec}秒速かった`,
+    ghost_result_tied: "引き分け — ほぼ同時にゴールしました！",
     ghost_result_slower: (sec: number) => `${sec}秒遅かった — 次はリベンジ`,
     ghost_result_overlap: (distanceLabel: string) => `お互い走った${distanceLabel}区間の記録`,
 
@@ -3814,6 +3818,7 @@ export const translations = {
     ghost_finished: "幽灵已停在终点 — 继续拉开差距吧！",
     ghost_result_title: (label: string) => `对战${label}`,
     ghost_result_faster: (sec: number) => `快了${sec}秒`,
+    ghost_result_tied: "平局 — 几乎同时到达！",
     ghost_result_slower: (sec: number) => `慢了${sec}秒 — 下次翻盘`,
     ghost_result_overlap: (distanceLabel: string) => `以共同跑过的${distanceLabel}为准`,
 

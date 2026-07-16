@@ -147,12 +147,17 @@ export function WorkoutCelebration({
         {ghostResult && ghostLabel && (() => {
           const deltaSec = Math.round(Math.abs(ghostResult.deltaMs) / 1000);
           const faster = ghostResult.deltaMs < 0;
+          const tied = deltaSec === 0;
           const overlapLabel = formatDistance(ghostResult.overlapDistanceM, unit);
           return (
             <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left">
               <p className="text-sm font-semibold text-violet-800">👻 {t.ghost_result_title(ghostLabel)}</p>
               <p className="mt-1 text-sm font-semibold text-violet-700">
-                {faster ? t.ghost_result_faster(deltaSec) : t.ghost_result_slower(deltaSec)}
+                {tied
+                  ? t.ghost_result_tied
+                  : faster
+                    ? t.ghost_result_faster(deltaSec)
+                    : t.ghost_result_slower(deltaSec)}
               </p>
               <p className="mt-0.5 text-xs text-violet-500">{t.ghost_result_overlap(overlapLabel)}</p>
             </div>
