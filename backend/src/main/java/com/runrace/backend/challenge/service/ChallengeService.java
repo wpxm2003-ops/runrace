@@ -123,6 +123,44 @@ public class ChallengeService {
     return saved;
   }
 
+  /**
+   * 공식(자동 보충) 공개 레이스 생성 — 스케줄러 전용.
+   *
+   * <p>신규 유저가 언제 들어와도 참가할 레이스가 있도록 시스템이 여는 온램프용 레이스다.
+   * 입력 검증은 일반 생성과 동일하게 재사용하되, 방장당 활성 방 개수 제한
+   * ({@link #MAX_ACTIVE_ROOMS_PER_CREATOR})은 적용하지 않는다 — 시스템이 회차를 관리하므로
+   * 운영 계정의 개인 레이스 한도와 경쟁시키지 않는다.
+   */
+  @Transactional
+  public Challenge createOfficialRace(
+      UUID creatorId,
+      String title,
+      BigDecimal goalKm,
+      int maxMembers,
+      OffsetDateTime startAt,
+      OffsetDateTime endAt) {
+    validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
+
+    AppUser creator = appUserRepository.getRequired(creatorId);
+    Challenge challenge = Challenge.builder()
+        .creator(creator)
+        .createdAt(OffsetDateTime.now())
+        .langCd(SupportedLanguages.normalizeOrDefault("ko"))
+        .title(title.trim())
+        .goalKm(goalKm.setScale(3, RoundingMode.HALF_UP))
+        .maxMembers(maxMembers)
+        .startAt(startAt)
+        .endAt(endAt)
+        .stake(null)
+        .crewId(null) // 공개 레이스
+        .build();
+    Challenge saved = challengeRepository.save(challenge);
+
+    challengeMemberRepository.save(newMember(saved, creator));
+
+    return saved;
+  }
+
   /** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 목록. */
   @Transactional(readOnly = true)
   public List<Challenge> listCrewRaces(UUID userId) {

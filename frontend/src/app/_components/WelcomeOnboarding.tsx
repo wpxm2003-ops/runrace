@@ -26,9 +26,14 @@ export function WelcomeOnboarding() {
     setOpen(false);
   }
 
-  function goGuide() {
+  function goRaces() {
     close();
-    nativeNavigate("/guides/app");
+    nativeNavigate("/challenges");
+  }
+
+  function goTraining() {
+    close();
+    nativeNavigate("/training");
   }
 
   useNativeBack(close, open);
@@ -78,23 +83,22 @@ export function WelcomeOnboarding() {
         </div>
 
         {isLast ? (
+          // 온보딩의 끝은 "읽을거리"가 아니라 지금 할 수 있는 행동이어야 한다.
+          // 주 CTA는 1탭으로 사람이 있는 곳에 합류하는 레이스 참가, 훈련 플랜은 관심 있는 사람만.
           <div className="mt-5">
-            <p className="mb-3 text-center text-sm font-medium text-zinc-700">
-              {t.onboarding_guide_prompt}
-            </p>
             <button
               type="button"
-              onClick={goGuide}
+              onClick={goRaces}
               className="h-12 w-full rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800"
             >
-              {t.onboarding_view_guide}
+              {t.onboarding_join_race}
             </button>
             <button
               type="button"
-              onClick={close}
+              onClick={goTraining}
               className="mt-2 h-11 w-full rounded-xl text-sm font-medium text-zinc-500 hover:bg-zinc-50"
             >
-              {t.onboarding_later}
+              {t.onboarding_try_training}
             </button>
           </div>
         ) : (

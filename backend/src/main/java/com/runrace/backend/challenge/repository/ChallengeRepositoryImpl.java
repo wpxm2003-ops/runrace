@@ -57,6 +57,18 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
   }
 
   @Override
+  public boolean existsOpenPublicRace(OffsetDateTime now) {
+    Integer found = query.selectOne()
+        .from(challenge)
+        .where(
+            challenge.crewId.isNull(), // 공개 레이스만(크루 내부 제외)
+            challenge.isEnded.isFalse(),
+            challenge.startAt.gt(now)) // 아직 시작 전 = 참가 가능
+        .fetchFirst();
+    return found != null;
+  }
+
+  @Override
   public Slice<Challenge> findPublicPage(
       String lang, String phase, OffsetDateTime now, Pageable pageable) {
     List<Challenge> rows = query.selectFrom(challenge)
