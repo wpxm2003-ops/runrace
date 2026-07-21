@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/Button";
@@ -8,30 +8,27 @@ import { updateWorkoutImage, uploadImage, patchWorkoutDetailImage } from "@/lib/
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
 
-/**
- * 기록 카드의 "사진으로 남기기" 버튼.
- * - 저장된 사진이 없으면: 사진 선택창 → 업로드 후 첨부
- * - 저장된 사진이 있으면: 큰 뷰어로 보기(교체·삭제는 뷰어 안에서)
- */
 export function WorkoutPhotoButton({
   workoutId,
   imageUrl,
   user,
   className = "",
+  children,
+  ariaLabel,
 }: {
   workoutId: number;
   imageUrl: string | null;
   user: User;
   className?: string;
+  children?: ReactNode;
+  ariaLabel?: string;
 }) {
   const { t } = useLocale();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
-  // 버튼·뷰어의 진실은 로컬 상태 — 응답 받은 값으로 바로 갱신(캐시 전파에 의존하지 않음).
   const [url, setUrl] = useState<string | null>(imageUrl);
 
-  // 뷰어가 열려 있으면 Android 백버튼/ESC는 뷰어만 닫는다.
   useNativeBack(() => setViewerOpen(false), viewerOpen);
 
   function pickFile() {
@@ -46,15 +43,15 @@ export function WorkoutPhotoButton({
 
   async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ""; // 같은 파일 재선택 허용
+    e.target.value = "";
     if (!file) return;
-    setViewerOpen(false); // 교체 시 뷰어 닫고 메인 버튼에 진행 표시
+    setViewerOpen(false);
     setBusy(true);
     try {
       const newUrl = await uploadImage(file, user);
-      await updateWorkoutImage(workoutId, newUrl, user); // 200 → 등록/교체 성공
-      setUrl(newUrl); // 버튼명·뷰어 이미지 즉시 갱신
-      patchWorkoutDetailImage(workoutId, user.uid, newUrl); // 상단 미디어 등 다른 뷰 동기화
+      await updateWorkoutImage(workoutId, newUrl, user);
+      setUrl(newUrl);
+      patchWorkoutDetailImage(workoutId, user.uid, newUrl);
       toast.success(t.photo_saved);
     } catch (err) {
       toast.error(String(err).includes("upload_too_large") ? t.upload_too_large : t.error_occurred);
@@ -67,8 +64,8 @@ export function WorkoutPhotoButton({
     if (busy) return;
     setBusy(true);
     try {
-      await updateWorkoutImage(workoutId, null, user); // 204 → 삭제 성공
-      setUrl(null); // 버튼을 "사진으로 남기기"로 즉시 복귀
+      await updateWorkoutImage(workoutId, null, user);
+      setUrl(null);
       patchWorkoutDetailImage(workoutId, user.uid, null);
       setViewerOpen(false);
       toast.success(t.photo_deleted);
@@ -78,6 +75,9 @@ export function WorkoutPhotoButton({
       setBusy(false);
     }
   }
+
+  const buttonLabel = busy ? t.photo_busy : url ? t.photo_view_btn : t.photo_save_btn;
+  const accessibleLabel = ariaLabel ?? buttonLabel;
 
   return (
     <>
@@ -93,8 +93,10 @@ export function WorkoutPhotoButton({
         disabled={busy}
         onClick={onTrigger}
         className={className}
+        aria-label={accessibleLabel}
+        title={accessibleLabel}
       >
-        {busy ? t.photo_busy : url ? `🖼️ ${t.photo_view_btn}` : `📷 ${t.photo_save_btn}`}
+        {children ?? buttonLabel}
       </Button>
 
       {viewerOpen && url ? (
@@ -111,11 +113,10 @@ export function WorkoutPhotoButton({
               aria-label={t.cancel}
               className="rounded-lg p-2 text-2xl leading-none text-white/80 hover:text-white"
             >
-              ✕
+              x
             </button>
           </div>
           <div className="flex min-h-0 flex-1 items-center justify-center px-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
               alt=""

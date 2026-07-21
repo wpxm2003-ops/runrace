@@ -21,6 +21,7 @@ import {
   filterWorkoutsByMonth,
   formatMonthLabel,
   workoutDateKeys,
+  workoutsOnDate,
 } from "@/lib/workoutStats";
 import { savePageState, loadPageState, usePageScrollRestore } from "@/lib/pageStateStore";
 
@@ -89,7 +90,12 @@ export default function RecordsPage() {
   }
 
   function selectDay(dateKey: string) {
+    const dayWorkouts = workoutsOnDate(monthItems, dateKey);
     setSelectedDateKey(dateKey);
+    if (dayWorkouts.length === 1) {
+      nativeNavigate(`/workouts/${dayWorkouts[0].id}`);
+      return;
+    }
     nativeNavigate(recordsDayHref(dateKey));
   }
 
@@ -161,7 +167,6 @@ export default function RecordsPage() {
         onSelectDay={selectDay}
       />
 
-      <p className="mt-4 text-center text-sm text-zinc-500">{t.records_select_day}</p>
       {statsOpen ? (
         <RecordsStatsPanel
           monthItems={monthItems}
