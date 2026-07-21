@@ -131,7 +131,7 @@ function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSa
         disabled={saving}
         className="mt-4 h-10 w-full rounded-xl bg-zinc-900 text-sm text-white disabled:opacity-50"
       >
-        {saving ? t.saving : t.save}
+        {saving ? t.saving : t.crew_settings_apply_btn}
       </button>
     </Card>
   );
@@ -435,7 +435,7 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
         disabled={saving || !region}
         className="mt-4 h-10 w-full rounded-xl bg-zinc-900 text-sm text-white disabled:opacity-50"
       >
-        {saving ? t.saving : t.save}
+        {saving ? t.saving : t.crew_settings_apply_btn}
       </button>
     </Card>
   );
@@ -682,8 +682,8 @@ function SettingsContent({ user }: { user: User }) {
         <>
           <EditSection crew={crew} user={user} onSaved={refresh} />
           <ProfileSection crew={crew} user={user} onSaved={refresh} />
-          <JoinRequestInbox user={user} />
           <MemberSection crew={crew} user={user} onChanged={refresh} />
+          <JoinRequestInbox user={user} />
           <button
             type="button"
             disabled={busy}
