@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
-import { WorkoutRecordPanel } from "@/app/_components/WorkoutRecordPanel";
 import { RecordsStatsPanel } from "@/app/records/_components/RecordsStatsPanel";
 import { WorkoutCalendar } from "@/app/records/_components/WorkoutCalendar";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -11,8 +10,10 @@ import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear, toDisplayError } from "@/lib/api";
 import { track } from "@/lib/analytics";
-import { formatDateTime, weekdayLabels } from "@/lib/format";
+import { weekdayLabels } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
+import { nativeNavigate } from "@/lib/nativeNav";
+import { recordsDayHref } from "@/lib/recordsRoute";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import {
   aggregateWorkouts,
@@ -20,7 +21,6 @@ import {
   filterWorkoutsByMonth,
   formatMonthLabel,
   workoutDateKeys,
-  workoutsOnDate,
 } from "@/lib/workoutStats";
 import { savePageState, loadPageState, usePageScrollRestore } from "@/lib/pageStateStore";
 
@@ -41,11 +41,9 @@ export default function RecordsPage() {
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(() => {
     return loadPageState(STORE_KEY).selectedDateKey ?? null;
   });
-  const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
-  const detailSectionRef = useRef<HTMLElement>(null);
 
-  const { data: yearRecords = [], isLoading, error, mutate: mutateYearRecords } = useWorkoutListByYear(
+  const { data: yearRecords = [], isLoading, error } = useWorkoutListByYear(
     user,
     viewYear,
   );
@@ -73,16 +71,12 @@ export default function RecordsPage() {
   );
   const monthSummaryTitle = t.records_month_summary(monthName);
 
-const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
+  const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
   const calendarCells = useMemo(
     () => buildCalendarCells(viewYear, viewMonth),
     [viewYear, viewMonth],
   );
 
-  const dayWorkouts = useMemo(() => {
-    if (!selectedDateKey) return [];
-    return workoutsOnDate(monthItems, selectedDateKey);
-  }, [monthItems, selectedDateKey]);
 
   // 일요일 시작 7칸 요일 라벨(현재 언어)
   const weekdays = useMemo(() => weekdayLabels(locale), [locale]);
@@ -92,37 +86,12 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
     setViewYear(d.getFullYear());
     setViewMonth(d.getMonth());
     setSelectedDateKey(null);
-    setSelectedWorkoutId(null);
   }
 
   function selectDay(dateKey: string) {
-    const list = workoutsOnDate(monthItems, dateKey);
     setSelectedDateKey(dateKey);
-    setSelectedWorkoutId(list[0]?.id ?? null);
+    nativeNavigate(recordsDayHref(dateKey));
   }
-
-  useEffect(() => {
-    if (!selectedDateKey) return;
-    const list = workoutsOnDate(monthItems, selectedDateKey);
-    if (list.length === 0) {
-      setSelectedWorkoutId(null);
-      return;
-    }
-    setSelectedWorkoutId((current) => {
-      if (current != null && list.some((w) => w.id === current)) return current;
-      return list[0].id;
-    });
-  }, [monthItems, selectedDateKey]);
-
-  useEffect(() => {
-    if (!selectedDateKey || selectedWorkoutId == null) return;
-    const el = detailSectionRef.current;
-    if (!el) return;
-    const id = window.requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "end" });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [selectedDateKey, selectedWorkoutId]);
 
   if (loading || !user) {
     return (
@@ -172,7 +141,7 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
         </button>
       </div>
 
-<section className="mb-4">
+      <section className="mb-4">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">
           {monthSummaryTitle}
         </h2>
@@ -192,51 +161,7 @@ const activeDateKeys = useMemo(() => workoutDateKeys(monthItems), [monthItems]);
         onSelectDay={selectDay}
       />
 
-      <section ref={detailSectionRef} className="mt-4 scroll-mt-4">
-        {!selectedDateKey ? (
-          <p className="text-center text-sm text-zinc-500">{t.records_select_day}</p>
-        ) : dayWorkouts.length === 0 ? (
-          <p className="text-center text-sm text-zinc-500">{t.records_no_workout_day}</p>
-        ) : (
-          <>
-            {dayWorkouts.length > 1 ? (
-              <div
-                className={`mb-3 grid w-full gap-2 ${
-                  dayWorkouts.length === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
-                }`}
-              >
-                {dayWorkouts.map((w) => (
-                  <button
-                    key={w.id}
-                    type="button"
-                    onClick={() => setSelectedWorkoutId(w.id)}
-                    className={`min-w-0 rounded-xl border px-2 py-2 text-center text-xs tabular-nums ${
-                      selectedWorkoutId === w.id
-                        ? "border-zinc-900 bg-zinc-100 font-semibold text-zinc-900 ring-1 ring-zinc-900"
-                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                    }`}
-                  >
-                    <span className="block truncate">{formatDateTime(w.startedAt, locale)}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {selectedWorkoutId != null ? (
-              <WorkoutRecordPanel
-                key={selectedWorkoutId}
-                workoutId={selectedWorkoutId}
-                user={user}
-                viewYear={viewYear}
-                onDeleted={() => {
-                  setSelectedWorkoutId(null);
-                  setSelectedDateKey(null);
-                  void mutateYearRecords();
-                }}
-              />
-            ) : null}
-          </>
-        )}
-      </section>
+      <p className="mt-4 text-center text-sm text-zinc-500">{t.records_select_day}</p>
       {statsOpen ? (
         <RecordsStatsPanel
           monthItems={monthItems}

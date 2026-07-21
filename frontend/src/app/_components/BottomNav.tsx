@@ -109,7 +109,7 @@ export function BottomNav() {
         label: t.nav_records,
         href: "/records",
         icon: ICONS.records,
-        isActive: (p) => p === "/records",
+        isActive: (p) => p === "/records" || p.startsWith("/records/"),
       },
       {
         id: "my",

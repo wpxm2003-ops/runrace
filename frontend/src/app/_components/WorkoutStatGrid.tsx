@@ -50,8 +50,8 @@ export function WorkoutStatGrid({
   const gridCols = columns === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4";
 
   const cards: [string, string][] = [
-    [labels.time, formatDuration(durationSec)],
     [labels.distance, formatDistance(distanceM, unit)],
+    [labels.time, formatDuration(durationSec)],
     [labels.pace, formatPace(distanceM, durationSec, unit)],
     [labels.calories, `${calories} kcal`],
   ];

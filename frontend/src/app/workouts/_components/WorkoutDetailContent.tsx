@@ -20,6 +20,7 @@ import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
+import { WorkoutPhotoButton } from "@/app/_components/WorkoutPhotoButton";
 import { KmSplitSection } from "./KmSplitSection";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
@@ -143,6 +144,13 @@ export default function WorkoutDetailContent() {
 
           {user ? (
             <div className="mt-4">
+              <WorkoutPhotoButton
+                key={id!}
+                workoutId={id!}
+                imageUrl={detail.imageUrl ?? null}
+                user={user}
+                className="mb-2 h-11 w-full"
+              />
               <Button
                 variant="destructive"
                 disabled={deleting || !detail}
