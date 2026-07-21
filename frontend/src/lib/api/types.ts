@@ -137,6 +137,7 @@ export type CrewDetail = {
   name: string;
   region: CrewRegion;
   imageUrl: string | null;
+  imageUrls: string[];
   intro: string | null;
   memberCount: number;
   maxMembers: number;
@@ -156,6 +157,7 @@ export type CrewDetail = {
 export type CrewProfileBody = {
   region: CrewRegion;
   imageUrl: string | null;
+  imageUrls: string[];
   intro: string | null;
   meetupPlace: string | null;
   meetupDays: number[];

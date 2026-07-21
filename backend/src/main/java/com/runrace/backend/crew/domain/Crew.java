@@ -62,6 +62,9 @@ public class Crew {
   @Column(name = "image_url")
   private String imageUrl;
 
+  @Column(name = "image_urls")
+  private String imageUrlsJson;
+
   /** 공개 소개(비회원 대상 발견 목록·상세용). notice(회원 전용 고정공지)와 별개. */
   @Column(name = "intro", length = 500)
   private String intro;
@@ -99,10 +102,11 @@ public class Crew {
    * meetup 3종은 각각 독립 선택값이라 하나만 채워도 된다.
    */
   public void updateProfile(
-      String region, String imageUrl, String intro,
+      String region, String imageUrl, String imageUrlsJson, String intro,
       String meetupPlace, String meetupDays, String meetupTime) {
     this.region = region;
     this.imageUrl = imageUrl;
+    this.imageUrlsJson = imageUrlsJson;
     this.intro = intro;
     this.meetupPlace = meetupPlace;
     this.meetupDays = meetupDays;

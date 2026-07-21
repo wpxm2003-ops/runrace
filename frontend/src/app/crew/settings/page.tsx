@@ -215,7 +215,7 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
   const fileRef = useRef<HTMLInputElement>(null);
   const [initialized, setInitialized] = useState(false);
   const [region, setRegion] = useState<CrewRegionCode | "">("");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [intro, setIntro] = useState("");
   const [meetupPlace, setMeetupPlace] = useState("");
   const [meetupDays, setMeetupDays] = useState<number[]>([]);
@@ -232,7 +232,7 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
   useEffect(() => {
     if (!detail || initialized) return;
     setRegion(detail.region as CrewRegionCode);
-    setImageUrl(detail.imageUrl);
+    setImageUrls(detail.imageUrls?.length ? detail.imageUrls : detail.imageUrl ? [detail.imageUrl] : []);
     setIntro(detail.intro ?? "");
     setMeetupPlace(detail.meetupPlace ?? "");
     setMeetupDays(detail.meetupDays);
@@ -247,11 +247,11 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
   }
 
   async function onPickImage(file: File | undefined) {
-    if (!file) return;
+    if (!file || imageUrls.length >= 4) return;
     setUploading(true);
     try {
       const url = await uploadImage(file, user);
-      setImageUrl(url);
+      setImageUrls((cur) => [...cur, url].slice(0, 4));
     } catch (e) {
       toast.error(String(e).includes("upload_too_large") ? t.upload_too_large : t.error_occurred);
     } finally {
@@ -268,7 +268,8 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
         crew.id,
         {
           region: region as CrewRegionCode,
-          imageUrl,
+          imageUrl: imageUrls[0] ?? null,
+          imageUrls,
           intro: intro.trim() || null,
           meetupPlace: meetupPlace.trim() || null,
           meetupDays,
@@ -328,43 +329,50 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
 
       <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_image_label}</label>
       <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_image_hint}</p>
-      <div className="mt-2 flex items-center gap-3">
-        {imageUrl ? (
-          <img src={imageUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
-        ) : null}
-        <div className="flex flex-col gap-1.5">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              void onPickImage(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() => fileRef.current?.click()}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-          >
-            {uploading
-              ? t.prize_uploading
-              : imageUrl
-                ? t.crew_profile_image_replace_btn
-                : t.crew_profile_image_upload_btn}
-          </button>
-          {imageUrl && !uploading ? (
+      <div className="mt-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            void onPickImage(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <div className="grid grid-cols-4 gap-2">
+          {imageUrls.map((url, index) => (
+            <div key={url} className="relative aspect-square overflow-hidden rounded-xl bg-zinc-100">
+              <img src={url} alt="" className="h-full w-full object-cover" />
+              <span className="absolute left-1.5 top-1.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                {index + 1}
+              </span>
+              <button
+                type="button"
+                disabled={uploading || saving}
+                onClick={() => setImageUrls((cur) => cur.filter((_, i) => i !== index))}
+                aria-label={t.crew_profile_image_remove_btn}
+                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-xs text-white disabled:opacity-50"
+              >
+                x
+              </button>
+            </div>
+          ))}
+          {imageUrls.length < 4 ? (
             <button
               type="button"
-              onClick={() => setImageUrl(null)}
-              className="text-left text-[11px] text-zinc-400 hover:text-red-500"
+              disabled={uploading || saving}
+              onClick={() => fileRef.current?.click()}
+              className="aspect-square rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-3xl font-light text-zinc-400 hover:bg-zinc-100 disabled:opacity-50"
+              aria-label={t.crew_profile_image_upload_btn}
             >
-              {t.crew_profile_image_remove_btn}
+              {uploading ? "..." : "+"}
             </button>
           ) : null}
         </div>
+        <p className="mt-1.5 text-[11px] text-zinc-400">
+          {imageUrls.length}/4
+        </p>
       </div>
 
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-intro">

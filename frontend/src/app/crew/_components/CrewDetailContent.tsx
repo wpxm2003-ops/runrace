@@ -107,14 +107,19 @@ function ApplyModal({
 }
 
 function ImageViewer({
-  imageUrl,
+  imageUrls,
+  initialIndex,
   onClose,
 }: {
-  imageUrl: string;
+  imageUrls: string[];
+  initialIndex: number;
   onClose: () => void;
 }) {
   const { t } = useLocale();
+  const [index, setIndex] = useState(initialIndex);
   useNativeBack(onClose);
+  const imageUrl = imageUrls[index] ?? imageUrls[0];
+  const hasMany = imageUrls.length > 1;
 
   return (
     <div
@@ -136,6 +141,29 @@ function ImageViewer({
           alt=""
           className="max-h-[85vh] w-full rounded-2xl object-contain"
         />
+        {hasMany ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setIndex((cur) => (cur - 1 + imageUrls.length) % imageUrls.length)}
+              aria-label="Previous image"
+              className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-xl text-white"
+            >
+              {"<"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIndex((cur) => (cur + 1) % imageUrls.length)}
+              aria-label="Next image"
+              className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-xl text-white"
+            >
+              {">"}
+            </button>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white">
+              {index + 1} / {imageUrls.length}
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -247,7 +275,7 @@ export default function CrewDetailContent() {
   const { data: myApplications } = useMyApplications(user ?? null);
 
   const [applyOpen, setApplyOpen] = useState(false);
-  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
@@ -296,6 +324,7 @@ export default function CrewDetailContent() {
   const hasMeetupInfo = Boolean(
     detail && (detail.meetupPlace || detail.meetupDays.length > 0 || detail.meetupTime),
   );
+  const imageUrls = detail ? (detail.imageUrls?.length ? detail.imageUrls : detail.imageUrl ? [detail.imageUrl] : []) : [];
 
   return (
     <PageLayout title={detail?.name ?? t.crew_title}>
@@ -310,18 +339,34 @@ export default function CrewDetailContent() {
       ) : !detail ? null : (
         <>
           <Card>
-            {detail.imageUrl ? (
-              <button
-                type="button"
-                onClick={() => setImageViewerOpen(true)}
-                className="block w-full overflow-hidden rounded-xl"
-              >
-                <img
-                  src={detail.imageUrl}
-                  alt=""
-                  className="h-40 w-full rounded-xl object-cover"
-                />
-              </button>
+            {imageUrls.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImageViewerIndex(0)}
+                  className="col-span-4 block overflow-hidden rounded-xl"
+                >
+                  <img
+                    src={imageUrls[0]}
+                    alt=""
+                    className="h-40 w-full rounded-xl object-cover"
+                  />
+                </button>
+                {imageUrls.length > 1 ? (
+                  <div className="col-span-4 grid grid-cols-4 gap-2">
+                    {imageUrls.slice(1).map((url, index) => (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => setImageViewerIndex(index + 1)}
+                        className="aspect-square overflow-hidden rounded-lg bg-zinc-100"
+                      >
+                        <img src={url} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <div className="flex h-40 w-full items-center justify-center rounded-xl bg-zinc-100 text-4xl font-bold text-zinc-300">
                 {detail.name.slice(0, 1)}
@@ -406,8 +451,12 @@ export default function CrewDetailContent() {
           submitting={submitting}
         />
       ) : null}
-      {imageViewerOpen && detail?.imageUrl ? (
-        <ImageViewer imageUrl={detail.imageUrl} onClose={() => setImageViewerOpen(false)} />
+      {imageViewerIndex != null && imageUrls.length > 0 ? (
+        <ImageViewer
+          imageUrls={imageUrls}
+          initialIndex={imageViewerIndex}
+          onClose={() => setImageViewerIndex(null)}
+        />
       ) : null}
     </PageLayout>
   );

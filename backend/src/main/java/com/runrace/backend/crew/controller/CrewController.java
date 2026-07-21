@@ -136,7 +136,7 @@ public class CrewController {
   public ResponseEntity<Void> updateProfile(
       AuthPrincipal principal, @PathVariable("id") long id, @RequestBody UpdateCrewProfileRequest body) {
     crewService.updateProfile(
-        principal.userId(), id, body.region(), body.imageUrl(), body.intro(),
+        principal.userId(), id, body.region(), body.imageUrl(), body.imageUrls(), body.intro(),
         body.meetupPlace(), body.meetupDays(), body.meetupTime());
     return ResponseEntity.noContent().build();
   }

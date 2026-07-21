@@ -1,6 +1,7 @@
 package com.runrace.backend.crew.dto;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * 공개 크루 상세 — 비회원도 조회 가능(멤버 명단은 비공개, 인원수만).
@@ -11,6 +12,7 @@ public record CrewDetailResponse(
     String name,
     String region,
     String imageUrl,
+    List<String> imageUrls,
     String intro,
     int memberCount,
     int maxMembers,
