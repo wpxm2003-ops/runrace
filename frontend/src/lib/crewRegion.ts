@@ -13,7 +13,6 @@ export const CREW_DISCOVERY_FEATURED_REGIONS = [
   "INCHEON",
   "BUSAN",
   "DAEGU",
-  "ONLINE",
 ] as const;
 
 export type CrewRegionCode = (typeof CREW_REGIONS)[number];

@@ -201,7 +201,7 @@ export const translations = {
     crew_settings_apply_btn: "적용",
     crew_field_name: "크루 이름",
     crew_field_notice: "공지 한 줄 (선택)",
-    crew_field_notice_placeholder: "예: 매주 토요일 7시 반포대교 남단",
+    crew_field_notice_placeholder: "예: 다음주 러닝 후 회식입니다!",
     crew_members_heading: "멤버 관리",
     crew_kick_btn: "내보내기",
     crew_kick_confirm_title: "멤버 내보내기",

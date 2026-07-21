@@ -106,6 +106,41 @@ function ApplyModal({
   );
 }
 
+function ImageViewer({
+  imageUrl,
+  onClose,
+}: {
+  imageUrl: string;
+  onClose: () => void;
+}) {
+  const { t } = useLocale();
+  useNativeBack(onClose);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t.close}
+          className="absolute right-2 top-2 z-10 rounded-full bg-black/50 px-3 py-1.5 text-sm font-medium text-white"
+        >
+          {t.close}
+        </button>
+        <img
+          src={imageUrl}
+          alt=""
+          className="max-h-[85vh] w-full rounded-2xl object-contain"
+        />
+      </div>
+    </div>
+  );
+}
+
 /** 가입 신청 CTA — 로그인/소속 상태·정원·쿨다운·대기중을 전부 분기한다. */
 function ApplyCta({
   user,
@@ -212,6 +247,7 @@ export default function CrewDetailContent() {
   const { data: myApplications } = useMyApplications(user ?? null);
 
   const [applyOpen, setApplyOpen] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
@@ -275,11 +311,17 @@ export default function CrewDetailContent() {
         <>
           <Card>
             {detail.imageUrl ? (
-              <img
-                src={detail.imageUrl}
-                alt=""
-                className="h-40 w-full rounded-xl object-cover"
-              />
+              <button
+                type="button"
+                onClick={() => setImageViewerOpen(true)}
+                className="block w-full overflow-hidden rounded-xl"
+              >
+                <img
+                  src={detail.imageUrl}
+                  alt=""
+                  className="h-40 w-full rounded-xl object-cover"
+                />
+              </button>
             ) : (
               <div className="flex h-40 w-full items-center justify-center rounded-xl bg-zinc-100 text-4xl font-bold text-zinc-300">
                 {detail.name.slice(0, 1)}
@@ -363,6 +405,9 @@ export default function CrewDetailContent() {
           onSubmit={onApply}
           submitting={submitting}
         />
+      ) : null}
+      {imageViewerOpen && detail?.imageUrl ? (
+        <ImageViewer imageUrl={detail.imageUrl} onClose={() => setImageViewerOpen(false)} />
       ) : null}
     </PageLayout>
   );

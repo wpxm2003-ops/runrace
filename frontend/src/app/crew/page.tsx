@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -341,6 +341,23 @@ function CrewDiscovery({ user }: { user: User }) {
   const lastPage = data?.[data.length - 1];
   const hasMore = lastPage?.hasMore ?? false;
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setSize(1);
+  }, [region, setSize]);
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasMore || isLoadingMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      const [entry] = entries;
+      if (!entry?.isIntersecting) return;
+      void setSize((current) => current + 1);
+    }, { rootMargin: "160px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, setSize]);
 
   return (
     <Card className="mt-4">
@@ -359,7 +376,7 @@ function CrewDiscovery({ user }: { user: User }) {
           <RegionChip label={selectedRegionLabel} active onClick={() => setRegionSheetOpen(true)} />
         ) : null}
         <RegionChip
-          label={t.crew_profile_region_label}
+          label={t.crew_discovery_more}
           active={selectedOutsideFeatured}
           onClick={() => setRegionSheetOpen(true)}
         />
@@ -386,15 +403,9 @@ function CrewDiscovery({ user }: { user: User }) {
           ))}
         </div>
       )}
-      {hasMore ? (
-        <button
-          type="button"
-          onClick={() => void setSize(size + 1)}
-          disabled={Boolean(isLoadingMore)}
-          className="mt-2 w-full rounded-lg border border-zinc-200 py-2.5 text-sm font-medium text-zinc-700 disabled:opacity-50"
-        >
-          {isLoadingMore ? t.crew_discovery_loading : t.crew_discovery_more}
-        </button>
+      {hasMore ? <div ref={loadMoreRef} className="h-4 w-full" aria-hidden="true" /> : null}
+      {isLoadingMore && crews.length > 0 ? (
+        <p className="mt-2 text-center text-sm text-zinc-500">{t.crew_discovery_loading}</p>
       ) : null}
     </Card>
   );
