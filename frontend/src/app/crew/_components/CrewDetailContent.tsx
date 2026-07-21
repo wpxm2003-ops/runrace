@@ -340,33 +340,17 @@ export default function CrewDetailContent() {
         <>
           <Card>
             {imageUrls.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setImageViewerIndex(0)}
-                  className="col-span-4 block overflow-hidden rounded-xl"
-                >
-                  <img
-                    src={imageUrls[0]}
-                    alt=""
-                    className="h-40 w-full rounded-xl object-cover"
-                  />
-                </button>
-                {imageUrls.length > 1 ? (
-                  <div className="col-span-4 grid grid-cols-4 gap-2">
-                    {imageUrls.slice(1).map((url, index) => (
-                      <button
-                        key={url}
-                        type="button"
-                        onClick={() => setImageViewerIndex(index + 1)}
-                        className="aspect-square overflow-hidden rounded-lg bg-zinc-100"
-                      >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+              <button
+                type="button"
+                onClick={() => setImageViewerIndex(0)}
+                className="block w-full overflow-hidden rounded-xl"
+              >
+                <img
+                  src={imageUrls[0]}
+                  alt=""
+                  className="h-40 w-full rounded-xl object-cover"
+                />
+              </button>
             ) : (
               <div className="flex h-40 w-full items-center justify-center rounded-xl bg-zinc-100 text-4xl font-bold text-zinc-300">
                 {detail.name.slice(0, 1)}

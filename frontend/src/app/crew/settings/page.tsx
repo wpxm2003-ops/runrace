@@ -366,7 +366,7 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
               className="aspect-square rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-3xl font-light text-zinc-400 hover:bg-zinc-100 disabled:opacity-50"
               aria-label={t.crew_profile_image_upload_btn}
             >
-              {uploading ? "..." : "+"}
+              {uploading ? "업로드중.." : "+"}
             </button>
           ) : null}
         </div>
