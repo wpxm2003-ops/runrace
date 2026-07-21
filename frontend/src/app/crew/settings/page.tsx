@@ -500,7 +500,7 @@ function RejectModal({
 }
 
 /** 리더 전용 — 가입 신청 인박스(대기중 전체). 신청 없으면 안내문만 표시. */
-function JoinRequestInbox({ user }: { user: User }) {
+function JoinRequestInbox({ user, onChanged }: { user: User; onChanged: () => void }) {
   const { t, locale } = useLocale();
   const { data, isLoading, mutate } = useLeaderJoinRequests(user, true);
   const [approvingId, setApprovingId] = useState<number | null>(null);
@@ -521,12 +521,13 @@ function JoinRequestInbox({ user }: { user: User }) {
     try {
       await approveJoinRequest(requestId, user);
       toast.success(t.toast_crew_join_approved);
-      invalidateMyCrew(user.uid);
+      onChanged();
     } catch (e) {
       toast.error(inboxErrorMessage(e));
     } finally {
       setApprovingId(null);
       void mutate();
+      invalidateMyCrew(user.uid);
       invalidateLeaderJoinRequests(user.uid);
     }
   }
@@ -683,7 +684,7 @@ function SettingsContent({ user }: { user: User }) {
           <EditSection crew={crew} user={user} onSaved={refresh} />
           <ProfileSection crew={crew} user={user} onSaved={refresh} />
           <MemberSection crew={crew} user={user} onChanged={refresh} />
-          <JoinRequestInbox user={user} />
+          <JoinRequestInbox user={user} onChanged={refresh} />
           <button
             type="button"
             disabled={busy}
