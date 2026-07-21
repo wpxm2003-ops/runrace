@@ -1,7 +1,7 @@
 import { parsePositiveIntId, segmentIdFromPath, staticIdParam } from "@/lib/routeId";
 
 export function crewDetailHref(id: number) {
-  return `/crew/${id}`;
+  return `/crew/view?id=${id}`;
 }
 
 export function parseCrewId(value: string | null | undefined): number | null {

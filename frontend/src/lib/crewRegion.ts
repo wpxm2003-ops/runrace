@@ -7,6 +7,15 @@ export const CREW_REGIONS = [
   "GYEONGBUK", "GYEONGNAM", "JEJU", "ONLINE", "ETC",
 ] as const;
 
+export const CREW_DISCOVERY_FEATURED_REGIONS = [
+  "SEOUL",
+  "GYEONGGI",
+  "INCHEON",
+  "BUSAN",
+  "DAEGU",
+  "ONLINE",
+] as const;
+
 export type CrewRegionCode = (typeof CREW_REGIONS)[number];
 
 /** 지역 코드 → 로케일별 표시명. */

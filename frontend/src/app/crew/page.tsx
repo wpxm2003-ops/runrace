@@ -32,9 +32,15 @@ import type {
 } from "@/lib/api/types";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { crewDetailHref } from "@/lib/crewRoute";
-import { CREW_REGIONS, crewRegionLabel, type CrewRegionCode } from "@/lib/crewRegion";
+import {
+  CREW_DISCOVERY_FEATURED_REGIONS,
+  CREW_REGIONS,
+  crewRegionLabel,
+  type CrewRegionCode,
+} from "@/lib/crewRegion";
 import { formatGoalDistance } from "@/lib/units";
 import { CrewRecapCard } from "./_components/CrewRecapCard";
+import { CrewRegionPicker, CrewRegionPickerSheet, type CrewRegionOption } from "./_components/CrewRegionPicker";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -122,12 +128,19 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
   const [region, setRegion] = useState<CrewRegionCode | "">("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const regionOptions: CrewRegionOption[] = CREW_REGIONS.map((value) => ({
+    value,
+    label: crewRegionLabel(value, t),
+  }));
 
   async function run(kind: "create" | "join", fn: () => Promise<void>, successToast: string) {
     if (busy) return;
     setBusy(kind);
-    setActionError(null);
+    if (kind === "join") setJoinError(null);
+    if (kind === "create") setCreateError(null);
     try {
       await fn();
       toast.success(successToast);
@@ -138,7 +151,11 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
         stack: e instanceof Error ? (e.stack ?? null) : null,
         kind: "action",
       });
-      if (!handleAuthFailure(e, "/crew")) setActionError(crewErrorMessage(e, t));
+      if (!handleAuthFailure(e, "/crew")) {
+        const message = crewErrorMessage(e, t);
+        if (kind === "join") setJoinError(message);
+        if (kind === "create") setCreateError(message);
+      }
     } finally {
       setBusy(null);
     }
@@ -177,7 +194,7 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
             {busy === "join" ? t.crew_join_busy : t.crew_join_btn}
           </button>
         </div>
-        {actionError ? <p className="mt-2 text-xs text-red-600">{actionError}</p> : null}
+        {joinError ? <p className="mt-2 text-xs text-red-600">{joinError}</p> : null}
       </Card>
 
       <Card className="mt-4">
@@ -188,19 +205,18 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
             value={name}
             onChange={(e) => setName(stripForbiddenText(e.target.value).slice(0, 20))}
             placeholder={t.crew_create_placeholder}
-            maxLength={20}
-            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-          />
-          <select
+              maxLength={20}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+            />
+          <CrewRegionPicker
             value={region}
-            onChange={(e) => setRegion(e.target.value as CrewRegionCode)}
-            className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-          >
-            <option value="" disabled>{t.crew_region_placeholder}</option>
-            {CREW_REGIONS.map((r) => (
-              <option key={r} value={r}>{crewRegionLabel(r, t)}</option>
-            ))}
-          </select>
+            options={regionOptions}
+            placeholder={t.crew_region_placeholder}
+            title={t.crew_profile_region_label}
+            onChange={(value) => setRegion(value as CrewRegionCode)}
+            disabled={busy !== null}
+          />
+          {createError ? <p className="text-xs text-red-600">{createError}</p> : null}
           <button
             type="button"
             onClick={() =>
@@ -272,7 +288,6 @@ function CrewDiscoveryCard({
       className="flex w-full items-center gap-3 rounded-xl border border-zinc-100 p-3 text-left hover:bg-zinc-50"
     >
       {crew.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={crew.imageUrl}
           alt=""
@@ -310,7 +325,17 @@ function CrewDiscoveryCard({
 function CrewDiscovery({ user }: { user: User }) {
   const { t, locale } = useLocale();
   const [region, setRegion] = useState<CrewRegionCode | "">("");
+  const [regionSheetOpen, setRegionSheetOpen] = useState(false);
   const { data, size, setSize, isLoading, error } = useCrewDiscoveryInfinite(region, user);
+  const featuredRegions = [...CREW_DISCOVERY_FEATURED_REGIONS];
+  const featuredSet = new Set<string>(featuredRegions);
+  const selectedOutsideFeatured = region !== "" && !featuredSet.has(region);
+  const regionOptions: CrewRegionOption[] = [
+    { value: "", label: t.crew_region_all },
+    ...CREW_REGIONS.map((value) => ({ value, label: crewRegionLabel(value, t) })),
+  ];
+  const selectedRegionLabel =
+    regionOptions.find((option) => option.value === region)?.label ?? t.crew_profile_region_label;
 
   const crews = data ? data.flatMap((p) => p.crews) : [];
   const lastPage = data?.[data.length - 1];
@@ -322,7 +347,7 @@ function CrewDiscovery({ user }: { user: User }) {
       <div className="text-base font-semibold">{t.crew_discovery_heading}</div>
       <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
         <RegionChip label={t.crew_region_all} active={region === ""} onClick={() => setRegion("")} />
-        {CREW_REGIONS.map((r) => (
+        {featuredRegions.map((r) => (
           <RegionChip
             key={r}
             label={crewRegionLabel(r, t)}
@@ -330,7 +355,24 @@ function CrewDiscovery({ user }: { user: User }) {
             onClick={() => setRegion(r)}
           />
         ))}
+        {selectedOutsideFeatured ? (
+          <RegionChip label={selectedRegionLabel} active onClick={() => setRegionSheetOpen(true)} />
+        ) : null}
+        <RegionChip
+          label={t.crew_profile_region_label}
+          active={selectedOutsideFeatured}
+          onClick={() => setRegionSheetOpen(true)}
+        />
       </div>
+      {regionSheetOpen ? (
+        <CrewRegionPickerSheet
+          title={t.crew_profile_region_label}
+          value={region}
+          options={regionOptions}
+          onSelect={(value) => setRegion(value as CrewRegionCode | "")}
+          onClose={() => setRegionSheetOpen(false)}
+        />
+      ) : null}
       {!data && isLoading ? (
         <div className="mt-3"><SkeletonLines count={3} /></div>
       ) : error && crews.length === 0 ? (

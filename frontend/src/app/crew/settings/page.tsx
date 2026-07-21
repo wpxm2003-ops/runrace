@@ -27,6 +27,7 @@ import {
 } from "@/lib/api";
 import type { CrewView } from "@/lib/api/types";
 import { CREW_REGIONS, crewRegionLabel, type CrewRegionCode } from "@/lib/crewRegion";
+import { CrewRegionPicker, type CrewRegionOption } from "../_components/CrewRegionPicker";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
@@ -222,6 +223,10 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const regionOptions: CrewRegionOption[] = CREW_REGIONS.map((value) => ({
+    value,
+    label: crewRegionLabel(value, t),
+  }));
 
   // 상세 응답이 처음 도착했을 때 한 번만 폼을 채운다 — 이후 백그라운드 재검증이 편집 중인 값을 덮어쓰지 않게.
   useEffect(() => {
@@ -310,22 +315,21 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-region">
         {t.crew_profile_region_label}
       </label>
-      <select
-        id="crew-profile-region"
-        value={region}
-        onChange={(e) => setRegion(e.target.value as CrewRegionCode)}
-        className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-      >
-        {CREW_REGIONS.map((r) => (
-          <option key={r} value={r}>{crewRegionLabel(r, t)}</option>
-        ))}
-      </select>
+      <div id="crew-profile-region" className="mt-1.5">
+        <CrewRegionPicker
+          value={region}
+          options={regionOptions}
+          placeholder={t.crew_region_placeholder}
+          title={t.crew_profile_region_label}
+          onChange={(value) => setRegion(value as CrewRegionCode)}
+          disabled={saving}
+        />
+      </div>
 
       <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_image_label}</label>
       <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_image_hint}</p>
       <div className="mt-2 flex items-center gap-3">
         {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
         ) : null}
         <div className="flex flex-col gap-1.5">

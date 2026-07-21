@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -23,9 +23,8 @@ import type { CrewDetail } from "@/lib/api/types";
 import { crewRegionLabel } from "@/lib/crewRegion";
 import { redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { crewDetailHref, parseCrewIdFromPath } from "@/lib/crewRoute";
+import { crewDetailHref, parseCrewId, parseCrewIdFromPath } from "@/lib/crewRoute";
 import { useAuthUser } from "@/lib/useAuthUser";
-import { useRouteId } from "@/lib/useRouteId";
 import { useNativeBack } from "@/lib/useNativeBack";
 import { useLocale } from "@/lib/i18n";
 import { formatDate, weekdayLabels } from "@/lib/format";
@@ -198,7 +197,15 @@ function ApplyCta({
 export default function CrewDetailContent() {
   const { user } = useAuthUser();
   const { t, locale } = useLocale();
-  const id = useRouteId(parseCrewIdFromPath);
+  const id = useSyncExternalStore(
+    () => () => {},
+    () => {
+      if (typeof window === "undefined") return null;
+      return parseCrewIdFromPath(window.location.pathname)
+        ?? parseCrewId(new URLSearchParams(window.location.search).get("id"));
+    },
+    () => null,
+  );
 
   const { data: detail, isLoading, error, mutate } = useCrewDetail(id, user);
   const { data: myCrewData } = useMyCrew(user ?? null);
@@ -268,7 +275,6 @@ export default function CrewDetailContent() {
         <>
           <Card>
             {detail.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={detail.imageUrl}
                 alt=""
