@@ -40,7 +40,6 @@ import {
   type CrewRegionCode,
 } from "@/lib/crewRegion";
 import { formatGoalDistance } from "@/lib/units";
-import { CrewRecapCard } from "./_components/CrewRecapCard";
 import { CrewRegionPicker, CrewRegionPickerSheet, type CrewRegionOption } from "./_components/CrewRegionPicker";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
@@ -897,13 +896,15 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
               {t.crew_member_count(crew.members.length, crew.maxMembers)}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={copyInvite}
-            className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
-          >
-            {t.crew_invite_btn}
-          </button>
+          {crew.isLeader ? (
+            <button
+              type="button"
+              onClick={copyInvite}
+              className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+            >
+              {t.crew_invite_btn}
+            </button>
+          ) : null}
         </div>
         {crew.notice ? (
           <div className="mt-3 rounded-xl bg-zinc-50 px-3 py-2.5">
@@ -1059,20 +1060,13 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
       {/* 지난주 결산 — 기록이 있던 주만 노출 */}
       {recap && recap.totalRuns > 0 ? (
         <Card className="mt-4">
-          <div className="flex items-center justify-between gap-3">
+          <div>
             <div className="min-w-0">
               <div className="text-base font-semibold">{t.crew_recap_heading}</div>
               <div className="mt-0.5 text-xs text-zinc-400">
                 {shortDate(recap.weekStartDate)} ~ {shortDate(recap.weekEndDate)}
               </div>
             </div>
-            <CrewRecapCard
-              crewName={crew.name}
-              memberCount={crew.members.length}
-              recap={recap}
-              unit={unit}
-              t={t}
-            />
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-zinc-50 px-2 py-3">
             <StatTile
