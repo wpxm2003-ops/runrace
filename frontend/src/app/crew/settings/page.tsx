@@ -401,8 +401,6 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
         maxLength={60}
         className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
       />
-      <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_meetup_place_hint}</p>
-
       <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_meetup_days_label}</label>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {weekdays.map((w, i) => (
@@ -420,8 +418,6 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
           </button>
         ))}
       </div>
-      <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_meetup_days_hint}</p>
-
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-meetup-time">
         {t.crew_profile_meetup_time_label}
       </label>
@@ -434,8 +430,6 @@ function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: User; o
         maxLength={30}
         className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
       />
-      <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_meetup_time_hint}</p>
-
       {actionError ? <p className="mt-3 text-xs text-red-600">{actionError}</p> : null}
       <button
         type="button"
