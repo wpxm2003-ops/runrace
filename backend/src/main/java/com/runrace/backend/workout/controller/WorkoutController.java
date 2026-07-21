@@ -48,7 +48,7 @@ public class WorkoutController {
   public ResponseEntity<CreateWorkoutResponse> create(
       AuthPrincipal principal, @RequestBody CreateWorkoutRequest body) {
     List<WorkoutService.PathPoint> path =
-        body.path().stream().map(p -> new WorkoutService.PathPoint(p.lat(), p.lng(), p.t())).toList();
+        body.path().stream().map(p -> new WorkoutService.PathPoint(p.lat(), p.lng(), p.t(), p.ele())).toList();
     WorkoutSession session =
         workoutService.create(
             principal,

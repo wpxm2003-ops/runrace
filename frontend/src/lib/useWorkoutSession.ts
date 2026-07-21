@@ -166,7 +166,15 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     (coords: GeoCoords) => {
       if (statusRef.current !== "running") return;
       setGeoError(null);
-      const point: LatLng = { lat: coords.latitude, lng: coords.longitude };
+      const altitude =
+        coords.altitude != null && Number.isFinite(coords.altitude)
+          ? coords.altitude
+          : undefined;
+      const point: LatLng = {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        ...(altitude != null ? { ele: altitude } : {}),
+      };
       setPosition(point);
 
       const now = Date.now();
@@ -351,9 +359,14 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const altitude =
+          pos.coords.altitude != null && Number.isFinite(pos.coords.altitude)
+            ? pos.coords.altitude
+            : undefined;
         const p: LatLng = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
+          ...(altitude != null ? { ele: altitude } : {}),
           // 시작 기준점에도 t를 부여 — 유령 격차·구간 기록이 첫 포인트부터 t에 의존한다.
           t: runStartedRef.current != null ? Date.now() - runStartedRef.current : 0,
         };

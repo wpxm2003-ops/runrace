@@ -1,5 +1,5 @@
 /** lat/lng에 러닝 시작 후 경과 ms(t)를 함께 저장한다. 구형 기록은 t가 없을 수 있다. */
-export type LatLng = { lat: number; lng: number; t?: number };
+export type LatLng = { lat: number; lng: number; t?: number; ele?: number };
 
 export type WorkoutStatus = "idle" | "running" | "paused";
 

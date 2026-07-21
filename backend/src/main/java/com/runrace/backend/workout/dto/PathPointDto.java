@@ -1,3 +1,3 @@
 package com.runrace.backend.workout.dto;
 
-public record PathPointDto(double lat, double lng, Long t) {}
+public record PathPointDto(double lat, double lng, Long t, Double ele) {}

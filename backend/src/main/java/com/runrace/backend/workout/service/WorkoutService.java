@@ -361,12 +361,17 @@ public class WorkoutService {
   /** 저장 직전 좌표를 6자리로 반올림한다(거리·페이스는 클라이언트 계산값을 쓰므로 영향 없음). */
   private static List<PathPoint> roundCoords(List<PathPoint> path) {
     return path.stream()
-        .map(p -> new PathPoint(roundCoord(p.lat()), roundCoord(p.lng()), p.t()))
+        .map(p -> new PathPoint(roundCoord(p.lat()), roundCoord(p.lng()), p.t(), roundElevation(p.ele())))
         .toList();
   }
 
   private static double roundCoord(double value) {
     return Math.round(value * COORD_SCALE) / COORD_SCALE;
+  }
+
+  private static Double roundElevation(Double value) {
+    if (value == null || !Double.isFinite(value)) return null;
+    return Math.round(value * 10d) / 10d;
   }
 
   private List<PathPoint> parsePath(String pathJson) {
@@ -382,7 +387,7 @@ public class WorkoutService {
   /** 저장된 경로 JSON을 응답용 좌표 목록으로 변환한다(상세·공유 응답 공통). */
   public List<PathPointDto> toPath(String pathJson) {
     return parsePath(pathJson).stream()
-        .map(p -> new PathPointDto(p.lat(), p.lng(), p.t()))
+        .map(p -> new PathPointDto(p.lat(), p.lng(), p.t(), p.ele()))
         .toList();
   }
 
@@ -392,5 +397,9 @@ public class WorkoutService {
     return (int) Math.round(durationSec / (distanceM / 1000.0));
   }
 
-  public record PathPoint(double lat, double lng, Long t) {}
+  public record PathPoint(double lat, double lng, Long t, Double ele) {
+    public PathPoint(double lat, double lng, Long t) {
+      this(lat, lng, t, null);
+    }
+  }
 }

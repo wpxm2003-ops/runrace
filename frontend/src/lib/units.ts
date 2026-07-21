@@ -26,6 +26,12 @@ export function formatGapDistance(distanceM: number, unit: DistanceUnit): string
   return `${Math.round(distanceM)}m`;
 }
 
+/** 고도/상승고도 표시. km 단위 사용자는 m, mi 단위 사용자는 ft. */
+export function formatElevation(elevationM: number, unit: DistanceUnit): string {
+  if (unit === "mi") return `${Math.round(elevationM * FEET_PER_M)} ft`;
+  return `${Math.round(elevationM)} m`;
+}
+
 /** km 값 → 선택 단위 정수 숫자 문자열(단위 미포함). 예: "12" */
 export function formatDistanceAmountInt(km: string | number, unit: DistanceUnit): string {
   const n = typeof km === "string" ? Number(km) : km;

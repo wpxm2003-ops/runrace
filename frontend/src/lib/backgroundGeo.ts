@@ -10,6 +10,7 @@ export type GeoCoords = {
   longitude: number;
   accuracy: number;
   speed: number | null;
+  altitude: number | null;
 };
 
 type PositionCallback = (coords: GeoCoords) => void;
@@ -42,11 +43,13 @@ export async function startBackgroundWatch(
           return;
         }
         if (position) {
+          const p = position as typeof position & { altitude?: number | null };
           onPosition({
             latitude: position.latitude,
             longitude: position.longitude,
             accuracy: position.accuracy,
             speed: position.speed ?? null,
+            altitude: p.altitude ?? null,
           });
         }
       },
@@ -65,6 +68,7 @@ export async function startBackgroundWatch(
         longitude: pos.coords.longitude,
         accuracy: pos.coords.accuracy,
         speed: pos.coords.speed,
+        altitude: pos.coords.altitude,
       });
     },
     (err) => onError(err.message),
