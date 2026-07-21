@@ -106,9 +106,77 @@ export type CrewSearchItem = {
   memberCount: number;
 };
 
+/** 시도 지역 코드 — 발견 목록 필터·크루 프로필 공용 화이트리스트. ETC=기타(백필), ONLINE=온라인/전국. */
+export type CrewRegion =
+  | "SEOUL" | "BUSAN" | "DAEGU" | "INCHEON" | "GWANGJU" | "DAEJEON" | "ULSAN" | "SEJONG"
+  | "GYEONGGI" | "GANGWON" | "CHUNGBUK" | "CHUNGNAM" | "JEONBUK" | "JEONNAM"
+  | "GYEONGBUK" | "GYEONGNAM" | "JEJU" | "ONLINE" | "ETC";
+
+/** 크루 발견 목록 카드 한 줄(리치) — 지역·이미지·정기런 요약. */
+export type CrewDiscoveryItem = {
+  id: number;
+  name: string;
+  region: CrewRegion;
+  imageUrl: string | null;
+  memberCount: number;
+  maxMembers: number;
+  meetupPlace: string | null;
+  /** 월=0…일=6, 정기런 없으면 빈 배열. */
+  meetupDays: number[];
+  meetupTime: string | null;
+};
+
 export type CrewDiscoveryResponse = {
-  crews: CrewSearchItem[];
+  crews: CrewDiscoveryItem[];
   hasMore: boolean;
+};
+
+/** 공개 크루 상세 — 비회원도 조회 가능(멤버 명단은 비공개, 인원수만). */
+export type CrewDetail = {
+  id: number;
+  name: string;
+  region: CrewRegion;
+  imageUrl: string | null;
+  intro: string | null;
+  memberCount: number;
+  maxMembers: number;
+  meetupPlace: string | null;
+  meetupDays: number[];
+  meetupTime: string | null;
+  createdAt: string;
+  leaderNickname: string | null;
+  isFull: boolean;
+  /** 로그인 + 이 크루에 대기중 신청이 있을 때만 "PENDING", 그 외 null. */
+  myApplicationStatus: "PENDING" | null;
+  /** 로그인 + 이 크루에서 최근 거절돼 24h 쿨다운 중이면 true. */
+  inCooldown: boolean;
+};
+
+/** 크루 발견 프로필(리더 전용 수정) — 지역(필수)·이미지·소개·정기런(전부 선택). */
+export type CrewProfileBody = {
+  region: CrewRegion;
+  imageUrl: string | null;
+  intro: string | null;
+  meetupPlace: string | null;
+  meetupDays: number[];
+  meetupTime: string | null;
+};
+
+/** 리더 인박스 한 줄 — 대기중 가입신청. */
+export type CrewJoinRequestRow = {
+  requestId: number;
+  applicantUserId: string;
+  applicantNickname: string | null;
+  message: string | null;
+  appliedAt: string;
+};
+
+/** 내 신청 현황 한 줄 — 대기중인 가입신청. */
+export type MyApplicationRow = {
+  requestId: number;
+  crewId: number;
+  crewName: string;
+  appliedAt: string;
 };
 
 // ── 크루 대항전(crew match) ───────────────────────────────────────

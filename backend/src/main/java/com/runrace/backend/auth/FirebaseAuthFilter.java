@@ -46,6 +46,9 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       Pattern.compile("^/api/workouts/" + PathPatterns.ID + "/share$");
   private static final Pattern CHALLENGE_SHARE_PAGE =
       Pattern.compile("^/api/share/challenges/" + PathPatterns.ID + "$");
+  /** 크루 발견 목록·공개 상세 — 비회원도 구경 가능, 로그인 상태면 내 신청 상태를 함께 내려준다. */
+  private static final Pattern CREW_DETAIL =
+      Pattern.compile("^/api/crews/" + PathPatterns.ID + "$");
 
   private final FirebaseUserService firebaseUserService;
   private final JwtService jwtService;
@@ -171,7 +174,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
   /** 토큰이 있으면 인증하되 없어도 통과시키는 엔드포인트. */
   private boolean isOptionalAuthEndpoint(HttpServletRequest request) {
-    return isPublicChallengeRead(request) || isClientErrorReport(request);
+    return isPublicChallengeRead(request) || isPublicCrewRead(request) || isClientErrorReport(request);
   }
 
   private boolean isPublicChallengeRead(HttpServletRequest request) {
@@ -183,6 +186,15 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
         || CHALLENGE_DETAIL.matcher(path).matches()
         || CHALLENGE_WORKOUTS.matcher(path).matches()
         || CHALLENGE_PRIZES.matcher(path).matches();
+  }
+
+  /** 크루 발견 목록(/api/crews/discover)·공개 상세(/api/crews/{id})는 비회원도 조회 가능. */
+  private boolean isPublicCrewRead(HttpServletRequest request) {
+    if (!"GET".equalsIgnoreCase(request.getMethod())) {
+      return false;
+    }
+    String path = request.getRequestURI();
+    return "/api/crews/discover".equals(path) || CREW_DETAIL.matcher(path).matches();
   }
 
   /** 프론트 에러 보고는 비로그인 상태에서도 보낼 수 있어야 한다. */

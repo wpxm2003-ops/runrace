@@ -6,7 +6,7 @@
 import useSWR, { mutate as globalMutate, unstable_serialize } from "swr";
 import useSWRInfinite from "swr/infinite";
 import type { User } from "firebase/auth";
-import type { WorkoutDetail } from "./types";
+import type { CrewRegion, WorkoutDetail } from "./types";
 import { reportClientError } from "./errors";
 import {
   fetchChallengesPage,
@@ -28,6 +28,10 @@ import {
   fetchMyCrewMatches,
   fetchCrewMatchDetail,
   fetchCrewMatchHistory,
+  fetchCrewDiscovery,
+  fetchCrewDetail,
+  fetchLeaderJoinRequests,
+  fetchMyApplications,
   searchCrews,
 } from "./crews";
 import { fetchPrizes } from "./prizes";
@@ -398,6 +402,68 @@ export function useCrewSearch(query: string, user: User | null, enabled: boolean
     () => searchCrews(query, user!),
     { ...BASE_CONFIG, keepPreviousData: true },
   );
+}
+
+/** 크루 발견 목록 — 지역 필터별 무한스크롤. 비회원도 조회 가능(공개). */
+export function useCrewDiscoveryInfinite(region: CrewRegion | "", user: User | null | undefined) {
+  return useSWRInfinite(
+    (index, previous) => {
+      if (previous && !previous.hasMore) return null;
+      return ["crew-discovery", region, index] as const;
+    },
+    (key) => fetchCrewDiscovery(key[1] as CrewRegion | "", key[2] as number, user),
+    {
+      revalidateFirstPage: true,
+      revalidateOnFocus: false,
+      keepPreviousData: true,
+      persistSize: true,
+      dedupingInterval: 0,
+      ...SWR_ERROR_RETRY,
+    },
+  );
+}
+
+/** 공개 크루 상세 — 비회원도 조회 가능. id 변경 시 재요청. */
+export function useCrewDetail(crewId: number | null, user: User | null | undefined) {
+  const uid = cacheUid(user, "public");
+  return useSWR(
+    crewId != null ? (["crew-detail", crewId, uid] as const) : null,
+    () => fetchCrewDetail(crewId!, user),
+    LIVE_CONFIG,
+  );
+}
+
+/** 가입신청/취소 후 크루 상세(대기중·쿨다운 상태)를 재검증한다. */
+export function invalidateCrewDetail(crewId: number) {
+  invalidateByPrefix("crew-detail", crewId);
+}
+
+/** 리더 인박스 — 내 크루의 대기중 가입신청. 크루 소속(리더)일 때만 조회(enabled). */
+export function useLeaderJoinRequests(user: User | null, enabled: boolean) {
+  return useSWR(
+    enabled && user ? (["crew-join-requests", user.uid] as const) : null,
+    () => fetchLeaderJoinRequests(user!),
+    LIVE_CONFIG,
+  );
+}
+
+/** 승인/거절 후 리더 인박스 재검증. */
+export function invalidateLeaderJoinRequests(userId: string) {
+  invalidateByPrefix("crew-join-requests", userId);
+}
+
+/** 내 신청 현황(대기중 전체) — 크루 미소속 홈에서 노출. */
+export function useMyApplications(user: User | null) {
+  return useSWR(
+    user ? (["crew-my-applications", user.uid] as const) : null,
+    () => fetchMyApplications(user!),
+    LIVE_CONFIG,
+  );
+}
+
+/** 신청/취소/타 크루 승인(자동취소) 후 내 신청 현황 재검증. */
+export function invalidateMyApplications(userId: string) {
+  invalidateByPrefix("crew-my-applications", userId);
 }
 
 // ── 신발장 ───────────────────────────────────────────────────────────────────

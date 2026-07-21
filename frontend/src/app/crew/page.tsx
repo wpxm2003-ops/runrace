@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -9,20 +9,30 @@ import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import {
   createCrew,
-  fetchCrewDiscovery,
   joinCrew,
   crewNudge,
+  cancelJoinRequest,
   useMyCrew,
   useCrewRecap,
   useCrewInsights,
   useCrewRaces,
   useMyCrewMatches,
+  useCrewDiscoveryInfinite,
+  useMyApplications,
   invalidateMyCrew,
+  invalidateMyApplications,
   toDisplayError,
   reportClientError,
 } from "@/lib/api";
-import type { CrewInsights, CrewMatchSummary, CrewSearchItem, CrewView } from "@/lib/api/types";
+import type {
+  CrewDiscoveryItem,
+  CrewInsights,
+  CrewMatchSummary,
+  CrewView,
+} from "@/lib/api/types";
 import { challengeDetailHref } from "@/lib/challengeRoute";
+import { crewDetailHref } from "@/lib/crewRoute";
+import { CREW_REGIONS, crewRegionLabel, type CrewRegionCode } from "@/lib/crewRegion";
 import { formatGoalDistance } from "@/lib/units";
 import { CrewRecapCard } from "./_components/CrewRecapCard";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
@@ -44,16 +54,72 @@ function crewErrorMessage(e: unknown, t: ReturnType<typeof useLocale>["t"]): str
   const msg = String(e);
   if (msg.includes("crew_name_taken")) return t.crew_err_name_taken;
   if (msg.includes("invalid_crew_name")) return t.crew_err_name_invalid;
+  if (msg.includes("invalid_region")) return t.crew_err_invalid_region;
   if (msg.includes("already_in_crew")) return t.crew_err_already_in_crew;
   if (msg.includes("crew_not_found")) return t.crew_err_not_found;
   if (msg.includes("crew_full")) return t.crew_err_full;
   return toDisplayError(e) ?? t.error_occurred;
 }
 
+/** 미소속 홈 — 대기중인 가입 신청 현황 + 취소. 신청이 없으면 렌더하지 않는다. */
+function MyApplicationsSection({ user }: { user: User }) {
+  const { t } = useLocale();
+  const { data, mutate } = useMyApplications(user);
+  const [cancelingId, setCancelingId] = useState<number | null>(null);
+
+  if (!data || data.length === 0) return null;
+
+  async function onCancel(requestId: number) {
+    if (cancelingId) return;
+    setCancelingId(requestId);
+    try {
+      await cancelJoinRequest(requestId, user);
+      toast.success(t.toast_crew_application_canceled);
+      void mutate();
+      invalidateMyApplications(user.uid);
+    } catch (e) {
+      if (!handleAuthFailure(e, "/crew")) toast.error(toDisplayError(e) ?? t.error_occurred);
+    } finally {
+      setCancelingId(null);
+    }
+  }
+
+  return (
+    <Card className="mt-4">
+      <div className="text-base font-semibold">{t.crew_my_applications_heading}</div>
+      <div className="mt-2 divide-y divide-zinc-100">
+        {data.map((a) => (
+          <div key={a.requestId} className="flex items-center justify-between gap-3 py-2.5">
+            <button
+              type="button"
+              onClick={() => nativeNavigate(crewDetailHref(a.crewId))}
+              className="min-w-0 flex-1 text-left"
+            >
+              <div className="truncate text-sm font-medium text-zinc-900">{a.crewName}</div>
+              <div className="text-[11px] font-medium text-amber-600">
+                {t.crew_my_applications_pending_label}
+              </div>
+            </button>
+            <button
+              type="button"
+              disabled={cancelingId === a.requestId}
+              onClick={() => onCancel(a.requestId)}
+              className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              {t.crew_my_applications_cancel_btn}
+            </button>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 /** 크루 없음 — 만들기 / 초대 코드 가입 온보딩. */
 function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
   const { t } = useLocale();
   const [name, setName] = useState("");
+  const [region, setRegion] = useState<CrewRegionCode | "">("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -83,6 +149,8 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
       <Card>
         <p className="text-sm text-zinc-600">{t.crew_onboard_intro}</p>
       </Card>
+
+      <MyApplicationsSection user={user} />
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_join_heading}</div>
@@ -114,24 +182,36 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_create_heading}</div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-col gap-2">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(stripForbiddenText(e.target.value).slice(0, 20))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && name.trim().length >= 2)
-                void run("create", () => createCrew(name.trim(), user), t.toast_crew_created);
-            }}
             placeholder={t.crew_create_placeholder}
             maxLength={20}
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
           />
+          <select
+            value={region}
+            onChange={(e) => setRegion(e.target.value as CrewRegionCode)}
+            className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+          >
+            <option value="" disabled>{t.crew_region_placeholder}</option>
+            {CREW_REGIONS.map((r) => (
+              <option key={r} value={r}>{crewRegionLabel(r, t)}</option>
+            ))}
+          </select>
           <button
             type="button"
-            onClick={() => run("create", () => createCrew(name.trim(), user), t.toast_crew_created)}
-            disabled={busy !== null || name.trim().length < 2}
-            className="shrink-0 rounded-lg bg-zinc-900 px-4 text-sm text-white disabled:opacity-50"
+            onClick={() =>
+              run(
+                "create",
+                () => createCrew(name.trim(), region as CrewRegionCode, user),
+                t.toast_crew_created,
+              )
+            }
+            disabled={busy !== null || name.trim().length < 2 || !region}
+            className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm text-white disabled:opacity-50"
           >
             {busy === "create" ? t.crew_create_busy : t.crew_create_btn}
           </button>
@@ -143,63 +223,135 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
   );
 }
 
+/** 지역 필터 칩 — 가로 스크롤, 선택된 칩만 강조. */
+function RegionChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+        active
+          ? "border-zinc-900 bg-zinc-900 text-white"
+          : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** 발견 카드 한 줄 — 썸네일(64px)·지역뱃지·정원마감뱃지·정기런 요약. 탭하면 상세로 이동. */
+function CrewDiscoveryCard({
+  crew,
+  t,
+  locale,
+}: {
+  crew: CrewDiscoveryItem;
+  t: ReturnType<typeof useLocale>["t"];
+  locale: string;
+}) {
+  const full = crew.memberCount >= crew.maxMembers;
+  const weekdays = weekdayLabels(locale, true);
+  const daysLabel = crew.meetupDays.length > 0
+    ? crew.meetupDays.map((d) => weekdays[d]).join("·")
+    : null;
+  const meetupParts = [crew.meetupPlace, daysLabel, crew.meetupTime].filter(Boolean);
+
+  return (
+    <button
+      type="button"
+      onClick={() => nativeNavigate(crewDetailHref(crew.id))}
+      className="flex w-full items-center gap-3 rounded-xl border border-zinc-100 p-3 text-left hover:bg-zinc-50"
+    >
+      {crew.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={crew.imageUrl}
+          alt=""
+          className="h-16 w-16 shrink-0 rounded-xl object-cover"
+        />
+      ) : (
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-lg font-semibold text-zinc-400">
+          {crew.name.slice(0, 1)}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-semibold text-zinc-900">{crew.name}</span>
+          {full ? (
+            <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+              {t.crew_discovery_full_badge}
+            </span>
+          ) : null}
+        </div>
+        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-zinc-500">
+          <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-600">
+            {crewRegionLabel(crew.region, t)}
+          </span>
+          <span>{t.crew_discovery_members(crew.memberCount)}</span>
+        </div>
+        {meetupParts.length > 0 ? (
+          <div className="mt-1 truncate text-[11px] text-zinc-400">{meetupParts.join(" · ")}</div>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+/** 크루 발견 — 시도 지역 필터 + 리치 카드(썸네일·지역·정기런 요약), 10개 단위 더보기. 비회원도 조회 가능. */
 function CrewDiscovery({ user }: { user: User }) {
-  const { t } = useLocale();
-  const [crews, setCrews] = useState<CrewSearchItem[]>([]);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { t, locale } = useLocale();
+  const [region, setRegion] = useState<CrewRegionCode | "">("");
+  const { data, size, setSize, isLoading, error } = useCrewDiscoveryInfinite(region, user);
 
-  async function load(targetPage: number) {
-    if (loading && targetPage !== 0) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchCrewDiscovery(targetPage, user);
-      setCrews((current) => targetPage === 0 ? result.crews : [...current, ...result.crews]);
-      setPage(targetPage);
-      setHasMore(result.hasMore);
-    } catch (e) {
-      if (!handleAuthFailure(e, "/crew")) setError(toDisplayError(e) ?? t.error_occurred);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load(0);
-    // 로그인 사용자가 바뀔 때만 처음부터 다시 불러온다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.uid]);
+  const crews = data ? data.flatMap((p) => p.crews) : [];
+  const lastPage = data?.[data.length - 1];
+  const hasMore = lastPage?.hasMore ?? false;
+  const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
 
   return (
     <Card className="mt-4">
       <div className="text-base font-semibold">{t.crew_discovery_heading}</div>
-      {loading && crews.length === 0 ? (
+      <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
+        <RegionChip label={t.crew_region_all} active={region === ""} onClick={() => setRegion("")} />
+        {CREW_REGIONS.map((r) => (
+          <RegionChip
+            key={r}
+            label={crewRegionLabel(r, t)}
+            active={region === r}
+            onClick={() => setRegion(r)}
+          />
+        ))}
+      </div>
+      {!data && isLoading ? (
         <div className="mt-3"><SkeletonLines count={3} /></div>
       ) : error && crews.length === 0 ? (
-        <Alert>{error}</Alert>
+        <Alert>{toDisplayError(error) ?? t.error_occurred}</Alert>
       ) : crews.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t.crew_discovery_empty}</p>
       ) : (
-        <div className="mt-2 divide-y divide-zinc-100">
-          {crews.map((crew, index) => (
-            <div key={crew.id} className="flex items-center justify-between gap-3 py-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="w-5 shrink-0 text-center text-xs font-semibold text-zinc-400">{index + 1}</span>
-                <span className="truncate text-sm font-medium text-zinc-900">{crew.name}</span>
-              </div>
-              <span className="shrink-0 text-xs text-zinc-500">{t.crew_discovery_members(crew.memberCount)}</span>
-            </div>
+        <div className="mt-3 flex flex-col gap-2">
+          {crews.map((crew) => (
+            <CrewDiscoveryCard key={crew.id} crew={crew} t={t} locale={locale} />
           ))}
         </div>
       )}
-      {error && crews.length > 0 ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
       {hasMore ? (
-        <button type="button" onClick={() => void load(page + 1)} disabled={loading}
-          className="mt-2 w-full rounded-lg border border-zinc-200 py-2.5 text-sm font-medium text-zinc-700 disabled:opacity-50">
-          {loading ? t.crew_discovery_loading : t.crew_discovery_more}
+        <button
+          type="button"
+          onClick={() => void setSize(size + 1)}
+          disabled={Boolean(isLoadingMore)}
+          className="mt-2 w-full rounded-lg border border-zinc-200 py-2.5 text-sm font-medium text-zinc-700 disabled:opacity-50"
+        >
+          {isLoadingMore ? t.crew_discovery_loading : t.crew_discovery_more}
         </button>
       ) : null}
     </Card>

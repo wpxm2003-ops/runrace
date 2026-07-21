@@ -53,6 +53,31 @@ public class Crew {
   @Column(name = "week_goal_km", precision = 10, scale = 3)
   private BigDecimal weekGoalKm;
 
+  /** 시도 지역 코드(SEOUL/BUSAN/.../ONLINE/ETC) — 발견 목록 필터 기준. 생성 시 필수, 기존 크루는 ETC 백필. */
+  @Builder.Default
+  @Column(name = "region", nullable = false, length = 20)
+  private String region = "ETC";
+
+  /** 대표 이미지 URL(공개). null이면 이미지 없음 — 목록에서 이니셜 플레이스홀더로 대체. */
+  @Column(name = "image_url")
+  private String imageUrl;
+
+  /** 공개 소개(비회원 대상 발견 목록·상세용). notice(회원 전용 고정공지)와 별개. */
+  @Column(name = "intro", length = 500)
+  private String intro;
+
+  /** 정기런 장소 자유텍스트(선택). */
+  @Column(name = "meetup_place", length = 60)
+  private String meetupPlace;
+
+  /** 정기런 요일 CSV(월=0…일=6, 선택) — training_plan.sub_t_days와 동일 규약. */
+  @Column(name = "meetup_days", length = 20)
+  private String meetupDays;
+
+  /** 정기런 시간 자유텍스트(선택). */
+  @Column(name = "meetup_time", length = 30)
+  private String meetupTime;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -67,6 +92,21 @@ public class Crew {
   public void updateInfo(String notice, BigDecimal weekGoalKm) {
     this.notice = notice;
     this.weekGoalKm = weekGoalKm;
+  }
+
+  /**
+   * 발견 프로필(지역·이미지·소개·정기런) 수정(리더 전용). 전부 개별 null 허용 —
+   * meetup 3종은 각각 독립 선택값이라 하나만 채워도 된다.
+   */
+  public void updateProfile(
+      String region, String imageUrl, String intro,
+      String meetupPlace, String meetupDays, String meetupTime) {
+    this.region = region;
+    this.imageUrl = imageUrl;
+    this.intro = intro;
+    this.meetupPlace = meetupPlace;
+    this.meetupDays = meetupDays;
+    this.meetupTime = meetupTime;
   }
 
   /** 리더 승계 — 리더 탈퇴(계정 익명화) 시 가장 오래된 멤버에게 넘긴다. */
