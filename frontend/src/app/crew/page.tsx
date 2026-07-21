@@ -19,6 +19,7 @@ import {
   useMyCrewMatches,
   useCrewDiscoveryInfinite,
   useMyApplications,
+  useLeaderJoinRequests,
   invalidateMyCrew,
   invalidateMyApplications,
   toDisplayError,
@@ -42,9 +43,9 @@ import { formatGoalDistance } from "@/lib/units";
 import { CrewRecapCard } from "./_components/CrewRecapCard";
 import { CrewRegionPicker, CrewRegionPickerSheet, type CrewRegionOption } from "./_components/CrewRegionPicker";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
-import { handleAuthFailure } from "@/lib/auth";
+import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
-import { useRequireAuth } from "@/lib/useRequireAuth";
+import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
@@ -122,7 +123,7 @@ function MyApplicationsSection({ user }: { user: User }) {
 }
 
 /** 크루 없음 — 만들기 / 초대 코드 가입 온보딩. */
-function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
+function CrewOnboarding({ user, onDone }: { user: User | null; onDone: () => void }) {
   const { t } = useLocale();
   const [name, setName] = useState("");
   const [region, setRegion] = useState<CrewRegionCode | "">("");
@@ -136,8 +137,16 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
     label: crewRegionLabel(value, t),
   }));
 
+  function requireLogin() {
+    redirectToLogin("/crew");
+  }
+
   async function run(kind: "create" | "join", fn: () => Promise<void>, successToast: string) {
     if (busy) return;
+    if (!user) {
+      requireLogin();
+      return;
+    }
     setBusy(kind);
     if (kind === "join") setJoinError(null);
     if (kind === "create") setCreateError(null);
@@ -167,7 +176,7 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
         <p className="text-sm text-zinc-600">{t.crew_onboard_intro}</p>
       </Card>
 
-      <MyApplicationsSection user={user} />
+      {user ? <MyApplicationsSection user={user} /> : null}
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_join_heading}</div>
@@ -178,7 +187,7 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
             onChange={(e) => setCode(normalizeCode(e.target.value))}
             onKeyDown={(e) => {
               if (e.key === "Enter" && code.length === 6)
-                void run("join", () => joinCrew(code, user), t.toast_crew_joined);
+                void run("join", () => joinCrew(code, user!), t.toast_crew_joined);
             }}
             placeholder={t.crew_join_placeholder}
             maxLength={6}
@@ -187,7 +196,7 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
           />
           <button
             type="button"
-            onClick={() => run("join", () => joinCrew(code, user), t.toast_crew_joined)}
+            onClick={() => run("join", () => joinCrew(code, user!), t.toast_crew_joined)}
             disabled={busy !== null || code.length !== 6}
             className="shrink-0 rounded-lg bg-zinc-900 px-4 text-sm text-white disabled:opacity-50"
           >
@@ -222,7 +231,7 @@ function CrewOnboarding({ user, onDone }: { user: User; onDone: () => void }) {
             onClick={() =>
               run(
                 "create",
-                () => createCrew(name.trim(), region as CrewRegionCode, user),
+                () => createCrew(name.trim(), region as CrewRegionCode, user!),
                 t.toast_crew_created,
               )
             }
@@ -322,7 +331,7 @@ function CrewDiscoveryCard({
 }
 
 /** 크루 발견 — 시도 지역 필터 + 리치 카드(썸네일·지역·정기런 요약), 10개 단위 더보기. 비회원도 조회 가능. */
-function CrewDiscovery({ user }: { user: User }) {
+function CrewDiscovery({ user }: { user: User | null }) {
   const { t, locale } = useLocale();
   const [region, setRegion] = useState<CrewRegionCode | "">("");
   const [regionSheetOpen, setRegionSheetOpen] = useState(false);
@@ -575,15 +584,21 @@ function todayIso(): string {
 }
 
 /** 크루 설정 진입 톱니바퀴 — 페이지 제목("크루") 오른쪽에 붙는다. */
-function CrewSettingsGear() {
+function CrewSettingsGear({ pendingCount }: { pendingCount: number }) {
   const { t } = useLocale();
+  const badgeLabel = pendingCount > 99 ? "99+" : String(pendingCount);
   return (
     <button
       type="button"
       aria-label={t.crew_settings_btn}
       onClick={() => nativeNavigate("/crew/settings")}
-      className="shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+      className="relative shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
     >
+      {pendingCount > 0 ? (
+        <span className="absolute -right-1 -top-1 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white">
+          {badgeLabel}
+        </span>
+      ) : null}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
         <circle cx="12" cy="12" r="3" />
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
@@ -1133,7 +1148,7 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   );
 }
 
-function CrewContent({ user }: { user: User }) {
+function CrewContent({ user }: { user: User | null }) {
   const { data, isLoading, error, mutate } = useMyCrew(user);
 
   if (error) {
@@ -1149,6 +1164,9 @@ function CrewContent({ user }: { user: User }) {
         <SkeletonLines count={3} />
       </Card>
     );
+  }
+  if (!user) {
+    return <CrewOnboarding user={null} onDone={() => {}} />;
   }
   if (!data) return null;
 
@@ -1167,12 +1185,15 @@ function CrewContent({ user }: { user: User }) {
 }
 
 export default function CrewPage() {
-  const { user, loading } = useRequireAuth("/crew");
+  const { user, loading } = useAuthUser();
   const { t } = useLocale();
   // 제목 옆 톱니바퀴 노출 판단용 — CrewContent와 같은 SWR 키라 중복 요청 없음.
   const { data } = useMyCrew(user ?? null);
+  const isLeader = Boolean(data?.crew?.isLeader);
+  const { data: joinRequests } = useLeaderJoinRequests(user ?? null, isLeader);
+  const pendingJoinRequestCount = isLeader ? (joinRequests?.length ?? 0) : 0;
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <PageLayout title={t.crew_title}>
         <LoadingCard />
@@ -1183,9 +1204,9 @@ export default function CrewPage() {
   return (
     <PageLayout
       title={t.crew_title}
-      titleSuffix={data?.crew ? <CrewSettingsGear /> : undefined}
+      titleSuffix={data?.crew ? <CrewSettingsGear pendingCount={pendingJoinRequestCount} /> : undefined}
     >
-      <CrewContent user={user} />
+      <CrewContent user={user ?? null} />
     </PageLayout>
   );
 }
