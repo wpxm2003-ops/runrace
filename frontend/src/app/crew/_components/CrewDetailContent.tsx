@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -117,9 +117,24 @@ function ImageViewer({
 }) {
   const { t } = useLocale();
   const [index, setIndex] = useState(initialIndex);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   useNativeBack(onClose);
   const imageUrl = imageUrls[index] ?? imageUrls[0];
   const hasMany = imageUrls.length > 1;
+  const showPrevious = () => setIndex((cur) => (cur - 1 + imageUrls.length) % imageUrls.length);
+  const showNext = () => setIndex((cur) => (cur + 1) % imageUrls.length);
+
+  function onTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    if (!hasMany || !touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx > 0) showPrevious();
+    else showNext();
+  }
 
   return (
     <div
@@ -127,7 +142,15 @@ function ImageViewer({
       role="presentation"
       onClick={onClose}
     >
-      <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="relative w-full max-w-3xl touch-pan-y"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => {
+          const touch = e.touches[0];
+          if (touch) touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+        }}
+        onTouchEnd={onTouchEnd}
+      >
         <button
           type="button"
           onClick={onClose}
@@ -145,7 +168,7 @@ function ImageViewer({
           <>
             <button
               type="button"
-              onClick={() => setIndex((cur) => (cur - 1 + imageUrls.length) % imageUrls.length)}
+              onClick={showPrevious}
               aria-label="Previous image"
               className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-xl text-white"
             >
@@ -153,7 +176,7 @@ function ImageViewer({
             </button>
             <button
               type="button"
-              onClick={() => setIndex((cur) => (cur + 1) % imageUrls.length)}
+              onClick={showNext}
               aria-label="Next image"
               className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-xl text-white"
             >
