@@ -30,7 +30,7 @@ import { nativeNavigate } from "@/lib/nativeNav";
 import { crewDetailHref, parseCrewId, parseCrewIdFromPath } from "@/lib/crewRoute";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
-import { formatDate, weekdayLabels } from "@/lib/format";
+import { formatDate, formatDateOnly, weekdayLabels } from "@/lib/format";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { toast } from "sonner";
 
@@ -306,7 +306,11 @@ export default function CrewDetailContent() {
                 : ""}
             </div>
             <div className="mt-0.5 text-[11px] text-zinc-400">
-              {t.crew_detail_created_label(formatDate(detail.createdAt, locale))}
+              {t.crew_detail_created_label(
+                detail.foundedAt
+                  ? formatDateOnly(detail.foundedAt, locale)
+                  : formatDate(detail.createdAt, locale),
+              )}
             </div>
 
             <div className="mt-4">

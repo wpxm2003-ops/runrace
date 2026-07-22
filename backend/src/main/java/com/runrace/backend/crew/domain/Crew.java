@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -81,6 +82,10 @@ public class Crew {
   @Column(name = "meetup_time", length = 30)
   private String meetupTime;
 
+  /** 실제 크루 창설일(선택). null이면 상세 화면에 createdAt을 대신 표시한다. */
+  @Column(name = "founded_at")
+  private LocalDate foundedAt;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -103,7 +108,7 @@ public class Crew {
    */
   public void updateProfile(
       String region, String imageUrl, String imageUrlsJson, String intro,
-      String meetupPlace, String meetupDays, String meetupTime) {
+      String meetupPlace, String meetupDays, String meetupTime, LocalDate foundedAt) {
     this.region = region;
     this.imageUrl = imageUrl;
     this.imageUrlsJson = imageUrlsJson;
@@ -111,6 +116,7 @@ public class Crew {
     this.meetupPlace = meetupPlace;
     this.meetupDays = meetupDays;
     this.meetupTime = meetupTime;
+    this.foundedAt = foundedAt;
   }
 
   /** 리더 승계 — 리더 탈퇴(계정 익명화) 시 가장 오래된 멤버에게 넘긴다. */

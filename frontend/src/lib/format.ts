@@ -118,3 +118,13 @@ export function monthDayLabel(iso: string, locale: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(locale, { month: "long", day: "numeric" });
 }
+
+/** "YYYY-MM-DD" → locale 순서의 숫자 날짜(연·월·일). formatDate와 출력형태는 같지만 date-only 입력 전용(TZ 이슈 없음). */
+export function formatDateOnly(iso: string, locale: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(locale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}

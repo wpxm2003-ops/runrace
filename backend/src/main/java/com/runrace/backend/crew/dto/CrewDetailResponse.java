@@ -1,5 +1,6 @@
 package com.runrace.backend.crew.dto;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -20,6 +21,7 @@ public record CrewDetailResponse(
     int[] meetupDays,
     String meetupTime,
     OffsetDateTime createdAt,
+    LocalDate foundedAt,
     String leaderNickname,
     boolean isFull,
     String myApplicationStatus,

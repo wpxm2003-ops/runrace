@@ -243,7 +243,7 @@ public class CrewService {
         profileImageUrls(crew), crew.getIntro(),
         memberCount, crew.getMaxMembers(),
         crew.getMeetupPlace(), parseMeetupDaysCsv(crew.getMeetupDays()), crew.getMeetupTime(),
-        crew.getCreatedAt(), crew.getLeader().getNickname(),
+        crew.getCreatedAt(), crew.getFoundedAt(), crew.getLeader().getNickname(),
         memberCount >= crew.getMaxMembers(), myApplicationStatus, inCooldown);
   }
 
@@ -366,13 +366,13 @@ public class CrewService {
   }
 
   /**
-   * 발견 프로필 수정(리더 전용) — 지역·이미지·소개·정기런. 전부 선택(지역 제외)이라 null이면 그 필드는 비운다.
+   * 발견 프로필 수정(리더 전용) — 지역·이미지·소개·정기런·창설일. 전부 선택(지역 제외)이라 null이면 그 필드는 비운다.
    * meetupDays는 요일 인덱스 배열(월=0…일=6, 0~7개, 중복·범위밖 무시) → CSV로 정규화.
    */
   @Transactional
   public void updateProfile(
       UUID meId, long crewId, String rawRegion, String rawImageUrl, List<String> rawImageUrls, String rawIntro,
-      String rawMeetupPlace, int[] meetupDays, String rawMeetupTime) {
+      String rawMeetupPlace, int[] meetupDays, String rawMeetupTime, LocalDate rawFoundedAt) {
     Crew crew = requireLeader(meId, crewId);
     String region = validateRegion(rawRegion);
     List<String> imageUrls = validateImageUrls(rawImageUrls, rawImageUrl);
@@ -382,9 +382,10 @@ public class CrewService {
     String meetupPlace = validateBoundedText(rawMeetupPlace, MEETUP_PLACE_MAX, "invalid_meetup_place");
     String meetupTime = validateBoundedText(rawMeetupTime, MEETUP_TIME_MAX, "invalid_meetup_time");
     String meetupDaysCsv = normalizeMeetupDays(meetupDays);
+    LocalDate foundedAt = validateFoundedAt(rawFoundedAt);
 
     List<String> previousImageUrls = profileImageUrls(crew);
-    crew.updateProfile(region, imageUrl, imageUrlsJson, intro, meetupPlace, meetupDaysCsv, meetupTime);
+    crew.updateProfile(region, imageUrl, imageUrlsJson, intro, meetupPlace, meetupDaysCsv, meetupTime, foundedAt);
     crewRepository.save(crew);
 
     for (String previous : previousImageUrls) {
@@ -629,6 +630,17 @@ public class CrewService {
       throw ApiException.badRequest(errorCode);
     }
     return text;
+  }
+
+  /** 창설일 검증 — 선택값(null=미입력, createdAt으로 대체 표시). 미래 날짜만 막는다. */
+  private LocalDate validateFoundedAt(LocalDate raw) {
+    if (raw == null) {
+      return null;
+    }
+    if (raw.isAfter(LocalDate.now(KST))) {
+      throw ApiException.badRequest("invalid_founded_at");
+    }
+    return raw;
   }
 
   /** 지역 코드 검증 — 생성·프로필수정 둘 다 필수(빈 값 불허, updateProfile도 항상 유효 지역을 유지). */

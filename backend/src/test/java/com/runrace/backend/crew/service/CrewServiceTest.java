@@ -264,6 +264,38 @@ class CrewServiceTest {
       assertEquals(java.math.BigDecimal.valueOf(100), c.getWeekGoalKm());
       verify(crewRepository).save(c);
     }
+
+    @Test void 창설일이_미래면_invalid_founded_at() {
+      Crew c = crew(meId);
+      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      java.time.LocalDate tomorrow = java.time.LocalDate.now(com.runrace.backend.common.KstTime.ZONE).plusDays(1);
+
+      ApiException ex = assertThrows(ApiException.class, () -> service.updateProfile(
+          meId, 1L, "SEOUL", null, null, null, null, null, null, tomorrow));
+
+      assertEquals("invalid_founded_at", ex.code());
+    }
+
+    @Test void 창설일이_오늘이거나_과거면_저장() {
+      Crew c = crew(meId);
+      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      java.time.LocalDate today = java.time.LocalDate.now(com.runrace.backend.common.KstTime.ZONE);
+
+      service.updateProfile(meId, 1L, "SEOUL", null, null, null, null, null, null, today);
+
+      assertEquals(today, c.getFoundedAt());
+      verify(crewRepository).save(c);
+    }
+
+    @Test void 창설일_생략하면_null유지() {
+      Crew c = crew(meId);
+      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+
+      service.updateProfile(meId, 1L, "SEOUL", null, null, null, null, null, null, null);
+
+      assertEquals(null, c.getFoundedAt());
+      verify(crewRepository).save(c);
+    }
   }
 
   // ── 발견 목록(지역 필터) ─────────────────────────────────────────────────

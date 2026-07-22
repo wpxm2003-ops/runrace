@@ -19,7 +19,7 @@ import { CrewRegionPicker, type CrewRegionOption } from "./CrewRegionPicker";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n";
-import { weekdayLabels } from "@/lib/format";
+import { weekdayLabels, todayIso } from "@/lib/format";
 import { toast } from "sonner";
 
 /**
@@ -37,6 +37,7 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
   const [meetupPlace, setMeetupPlace] = useState("");
   const [meetupDays, setMeetupDays] = useState<number[]>([]);
   const [meetupTime, setMeetupTime] = useState("");
+  const [foundedAt, setFoundedAt] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
     setMeetupPlace(detail.meetupPlace ?? "");
     setMeetupDays(detail.meetupDays);
     setMeetupTime(detail.meetupTime ?? "");
+    setFoundedAt(detail.foundedAt ?? "");
     setInitialized(true);
   }, [detail, initialized]);
 
@@ -91,6 +93,7 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
           meetupPlace: meetupPlace.trim() || null,
           meetupDays,
           meetupTime: meetupTime.trim() || null,
+          foundedAt: foundedAt || null,
         },
         user,
       );
@@ -105,7 +108,7 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
           [
             { codes: ["invalid_region"], message: t.crew_err_invalid_region },
             {
-              codes: ["invalid_image_url", "invalid_intro", "invalid_meetup"],
+              codes: ["invalid_image_url", "invalid_intro", "invalid_meetup", "invalid_founded_at"],
               message: t.crew_err_profile_invalid,
             },
           ],
@@ -248,6 +251,18 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
         maxLength={30}
         className="mt-1.5 w-full"
       />
+      <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-founded">
+        {t.crew_profile_founded_label}
+      </label>
+      <TextInput
+        id="crew-profile-founded"
+        type="date"
+        value={foundedAt}
+        max={todayIso()}
+        onChange={(e) => setFoundedAt(e.target.value)}
+        className="mt-1.5 w-full"
+      />
+      <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_founded_hint}</p>
       {actionError ? <p className="mt-3 text-xs text-red-600">{actionError}</p> : null}
       <button
         type="button"

@@ -145,6 +145,8 @@ export type CrewDetail = {
   meetupDays: number[];
   meetupTime: string | null;
   createdAt: string;
+  /** 실제 크루 창설일(선택, "YYYY-MM-DD"). null이면 상세 화면에 createdAt을 대신 표시한다. */
+  foundedAt: string | null;
   leaderNickname: string | null;
   isFull: boolean;
   /** 로그인 + 이 크루에 대기중 신청이 있을 때만 "PENDING", 그 외 null. */
@@ -153,7 +155,7 @@ export type CrewDetail = {
   inCooldown: boolean;
 };
 
-/** 크루 발견 프로필(리더 전용 수정) — 지역(필수)·이미지·소개·정기런(전부 선택). */
+/** 크루 발견 프로필(리더 전용 수정) — 지역(필수)·이미지·소개·정기런·창설일(전부 선택). */
 export type CrewProfileBody = {
   region: CrewRegion;
   imageUrl: string | null;
@@ -162,6 +164,7 @@ export type CrewProfileBody = {
   meetupPlace: string | null;
   meetupDays: number[];
   meetupTime: string | null;
+  foundedAt: string | null;
 };
 
 /** 리더 인박스 한 줄 — 대기중 가입신청. */
