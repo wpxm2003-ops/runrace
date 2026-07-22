@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { usePersonalBests, useTrainingPlan, saveTrainingPlan, cancelTrainingPlan } from "@/lib/api";
@@ -446,11 +447,7 @@ function TrainingContent({ user }: { user: User | null }) {
                         >
                           {tag}
                         </span>
-                        {isToday ? (
-                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                            {t.nsm_today}
-                          </span>
-                        ) : null}
+                        {isToday ? <Badge tone="emerald">{t.nsm_today}</Badge> : null}
                       </div>
                       <div className="mt-0.5 text-[11px] text-zinc-500">{sub}</div>
                     </div>

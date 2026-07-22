@@ -3,6 +3,7 @@
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
 import {
@@ -16,6 +17,7 @@ import {
   nudgeMember,
   useChallengeDetail,
   useHeadToHead,
+  mapErrorMessage,
   reportAndDisplay,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
@@ -164,9 +166,11 @@ export default function ChallengeDetailContent() {
       await mutate();
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) {
-        setActionError(
-          String(e).includes("not_crew_member") ? t.crew_err_not_crew_member : reportAndDisplay(e),
-        );
+        setActionError(mapErrorMessage(
+          e,
+          [{ codes: ["not_crew_member"], message: t.crew_err_not_crew_member }],
+          () => reportAndDisplay(e),
+        ));
       }
     } finally {
       setJoining(false);
@@ -312,9 +316,7 @@ export default function ChallengeDetailContent() {
             </div>
             {detail.crewName ? (
               <div className="mt-1.5">
-                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                  {t.detail_crew_badge(detail.crewName)}
-                </span>
+                <Badge tone="emerald">{t.detail_crew_badge(detail.crewName)}</Badge>
               </div>
             ) : null}
             <div className="mt-2 text-sm text-zinc-600">

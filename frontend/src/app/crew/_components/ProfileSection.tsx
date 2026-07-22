@@ -99,16 +99,17 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
       onSaved();
     } catch (e) {
       if (!handleAuthFailure(e, "/crew/settings")) {
-        const msg = String(e);
-        setActionError(
-          msg.includes("invalid_region")
-            ? t.crew_err_invalid_region
-            : msg.includes("invalid_image_url") ||
-                msg.includes("invalid_intro") ||
-                msg.includes("invalid_meetup")
-              ? t.crew_err_profile_invalid
-              : (toDisplayError(e) ?? t.error_occurred),
-        );
+        setActionError(mapErrorMessage(
+          e,
+          [
+            { codes: ["invalid_region"], message: t.crew_err_invalid_region },
+            {
+              codes: ["invalid_image_url", "invalid_intro", "invalid_meetup"],
+              message: t.crew_err_profile_invalid,
+            },
+          ],
+          () => toDisplayError(e) ?? t.error_occurred,
+        ));
       }
     } finally {
       setSaving(false);

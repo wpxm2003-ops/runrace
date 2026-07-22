@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { User } from "firebase/auth";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import {
   crewNudge,
@@ -163,11 +164,7 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-sm font-medium text-zinc-900">{r.title}</span>
-                        {r.isMember ? (
-                          <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                            {t.races_joined}
-                          </span>
-                        ) : null}
+                        {r.isMember ? <Badge tone="emerald">{t.races_joined}</Badge> : null}
                       </div>
                       <div className="mt-0.5 text-[11px] text-zinc-500">
                         {t.races_goal_members(formatGoalDistance(r.goalKm, unit), r.memberCount)}

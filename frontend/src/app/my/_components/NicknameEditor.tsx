@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { User } from "firebase/auth";
-import { invalidateAfterNicknameChange } from "@/lib/api";
+import { invalidateAfterNicknameChange, mapErrorMessage } from "@/lib/api";
 import { containsForbiddenText, stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { updateNickname } from "@/lib/api/auth";
 import { useLocale } from "@/lib/i18n";
@@ -57,14 +57,14 @@ export function NicknameEditor({ user, nickname, loading }: Props) {
       setEditing(false);
       toast.success(t.toast_nickname_saved);
     } catch (e) {
-      const msg = String(e);
-      if (msg.includes("nickname_taken")) {
-        setNicknameError(t.my_nickname_taken);
-      } else if (msg.includes("invalid_nickname_chars")) {
-        setNicknameError(t.my_nickname_invalid_chars);
-      } else {
-        setNicknameError(t.error_occurred);
-      }
+      setNicknameError(mapErrorMessage(
+        e,
+        [
+          { codes: ["nickname_taken"], message: t.my_nickname_taken },
+          { codes: ["invalid_nickname_chars"], message: t.my_nickname_invalid_chars },
+        ],
+        () => t.error_occurred,
+      ));
     } finally {
       setSaving(false);
     }

@@ -14,6 +14,7 @@ import {
   useMyCrew,
   invalidateCrewMatches,
   toDisplayError,
+  mapErrorMessage,
   reportClientError,
 } from "@/lib/api";
 import type { CrewMatchDetail, CrewMatchRosterRow } from "@/lib/api/types";
@@ -125,9 +126,11 @@ function MatchContent({ matchId, user }: { matchId: number; user: User }) {
     return (
       <Card>
         <p className="py-4 text-center text-sm text-zinc-600">
-          {String(error).includes("not_participant") || String(error).includes("match_not_found")
-            ? t.crew_match_err_not_found
-            : (toDisplayError(error) ?? t.error_occurred)}
+          {mapErrorMessage(
+            error,
+            [{ codes: ["not_participant", "match_not_found"], message: t.crew_match_err_not_found }],
+            () => toDisplayError(error) ?? t.error_occurred,
+          )}
         </p>
         <button
           type="button"
@@ -170,16 +173,15 @@ function MatchContent({ matchId, user }: { matchId: number; user: User }) {
         kind: "action",
       });
       if (!handleAuthFailure(e, `/crew/match?id=${matchId}`)) {
-        const msg = String(e);
-        toast.error(
-          msg.includes("match_expired")
-            ? t.crew_match_err_expired
-            : msg.includes("invalid_roster") || msg.includes("roster_not_member")
-              ? t.crew_match_err_roster
-              : msg.includes("opponent_busy") || msg.includes("match_already_active")
-                ? t.crew_match_err_busy_mine
-                : (toDisplayError(e) ?? t.error_occurred),
-        );
+        toast.error(mapErrorMessage(
+          e,
+          [
+            { codes: ["match_expired"], message: t.crew_match_err_expired },
+            { codes: ["invalid_roster", "roster_not_member"], message: t.crew_match_err_roster },
+            { codes: ["opponent_busy", "match_already_active"], message: t.crew_match_err_busy_mine },
+          ],
+          () => toDisplayError(e) ?? t.error_occurred,
+        ));
       }
       setBusy(false);
     }

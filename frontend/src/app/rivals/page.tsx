@@ -4,10 +4,11 @@ import { useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import { addRival, removeRival, useRivals, toDisplayError, reportClientError, reportAndDisplay } from "@/lib/api";
+import { addRival, removeRival, useRivals, toDisplayError, mapErrorMessage, reportClientError, reportAndDisplay } from "@/lib/api";
 import type { RivalRow } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
@@ -66,11 +67,15 @@ function RivalsContent({ user }: { user: User }) {
   const [previewOpen, setPreviewOpen] = useState(false);
 
   function mapAddError(e: unknown): string {
-    const msg = String(e);
-    if (msg.includes("user_not_found")) return t.rival_error_not_found;
-    if (msg.includes("cannot_add_self")) return t.rival_error_self;
-    if (msg.includes("already_rival")) return t.rival_error_already;
-    return toDisplayError(e) ?? t.error_occurred;
+    return mapErrorMessage(
+      e,
+      [
+        { codes: ["user_not_found"], message: t.rival_error_not_found },
+        { codes: ["cannot_add_self"], message: t.rival_error_self },
+        { codes: ["already_rival"], message: t.rival_error_already },
+      ],
+      () => toDisplayError(e) ?? t.error_occurred,
+    );
   }
 
   async function onAdd() {
@@ -130,7 +135,7 @@ function RivalsContent({ user }: { user: User }) {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-semibold text-amber-900">씩씩한여우6720</span>
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">{t.rival_label}</span>
+                        <Badge tone="amber">{t.rival_label}</Badge>
                       </div>
                       <div className="mt-0.5 text-[11px] font-medium text-amber-700">3승 2패</div>
                     </div>
@@ -150,7 +155,7 @@ function RivalsContent({ user }: { user: User }) {
                     <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-500">2</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-semibold text-emerald-900">느린곰5495</span>
-                      <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">{t.me_label}</span>
+                      <Badge tone="emerald">{t.me_label}</Badge>
                     </div>
                   </div>
                   <div className="shrink-0 text-right">

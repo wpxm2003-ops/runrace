@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
-import { updateCrew, toDisplayError } from "@/lib/api";
+import { updateCrew, toDisplayError, mapErrorMessage } from "@/lib/api";
 import type { CrewView } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
@@ -48,16 +48,15 @@ export function EditSection({ crew, user, onSaved }: { crew: CrewView; user: Use
       nativeNavigate("/crew", { replace: true });
     } catch (e) {
       if (!handleAuthFailure(e, "/crew/settings")) {
-        const msg = String(e);
-        setActionError(
-          msg.includes("crew_name_taken")
-            ? t.crew_err_name_taken
-            : msg.includes("invalid_crew_name")
-              ? t.crew_err_name_invalid
-              : msg.includes("invalid_week_goal")
-                ? t.crew_err_goal_invalid
-                : (toDisplayError(e) ?? t.error_occurred),
-        );
+        setActionError(mapErrorMessage(
+          e,
+          [
+            { codes: ["crew_name_taken"], message: t.crew_err_name_taken },
+            { codes: ["invalid_crew_name"], message: t.crew_err_name_invalid },
+            { codes: ["invalid_week_goal"], message: t.crew_err_goal_invalid },
+          ],
+          () => toDisplayError(e) ?? t.error_occurred,
+        ));
       }
     } finally {
       setSaving(false);
