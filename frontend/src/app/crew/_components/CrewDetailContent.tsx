@@ -7,6 +7,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { Button } from "@/app/_components/ui/Button";
+import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import {
   applyToCrew,
   cancelJoinRequest,
@@ -54,55 +55,43 @@ function ApplyModal({
 }) {
   const { t } = useLocale();
   const [message, setMessage] = useState("");
-  useNativeBack(onClose);
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-zinc-900">
-            {t.crew_detail_apply_modal_title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.cancel}
-            className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
-          >
-            ✕
-          </button>
-        </div>
-        <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-apply-message">
-          {t.crew_detail_apply_message_label}
-        </label>
-        <textarea
-          id="crew-apply-message"
-          value={message}
-          onChange={(e) => setMessage(stripForbiddenText(e.target.value).slice(0, MESSAGE_MAX))}
-          placeholder={t.crew_detail_apply_message_placeholder}
-          maxLength={MESSAGE_MAX}
-          rows={3}
-          className="mt-1.5 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-        />
+    <BottomSheet onClose={onClose} panelClassName="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-zinc-900">
+          {t.crew_detail_apply_modal_title}
+        </h2>
         <button
           type="button"
-          disabled={submitting}
-          onClick={() => onSubmit(message.trim())}
-          className="mt-4 h-11 w-full rounded-xl bg-zinc-900 text-sm text-white disabled:opacity-50"
+          onClick={onClose}
+          aria-label={t.cancel}
+          className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
         >
-          {submitting ? t.crew_detail_apply_busy : t.crew_detail_apply_submit_btn}
+          ✕
         </button>
       </div>
-    </div>
+      <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-apply-message">
+        {t.crew_detail_apply_message_label}
+      </label>
+      <textarea
+        id="crew-apply-message"
+        value={message}
+        onChange={(e) => setMessage(stripForbiddenText(e.target.value).slice(0, MESSAGE_MAX))}
+        placeholder={t.crew_detail_apply_message_placeholder}
+        maxLength={MESSAGE_MAX}
+        rows={3}
+        className="mt-1.5 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+      />
+      <button
+        type="button"
+        disabled={submitting}
+        onClick={() => onSubmit(message.trim())}
+        className="mt-4 h-11 w-full rounded-xl bg-zinc-900 text-sm text-white disabled:opacity-50"
+      >
+        {submitting ? t.crew_detail_apply_busy : t.crew_detail_apply_submit_btn}
+      </button>
+    </BottomSheet>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ShoeFormBody, ShoeRow } from "@/lib/api/types";
+import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { goalInputFromKm, metersFromInput } from "@/lib/units";
 import { handleAuthFailure } from "@/lib/auth";
@@ -55,9 +56,7 @@ export function ShoeFormSheet({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Android 백버튼 / ESC로 닫기
-  useNativeBack(onClose);
-  // 브랜드 시트가 열려 있으면 백버튼은 시트만 닫는다(폼 유지)
+  // 브랜드 시트가 열려 있으면 백버튼은 시트만 닫는다(폼 유지). 메인 시트의 백버튼은 BottomSheet가 소유.
   useNativeBack(() => setBrandOpen(false), brandOpen);
 
   function mapError(e: unknown): string {
@@ -102,17 +101,10 @@ export function ShoeFormSheet({
 
   return (
     <>
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
-      role="presentation"
-      onClick={onClose}
+    <BottomSheet
+      onClose={onClose}
+      panelClassName="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
           <h2 className="text-base font-semibold text-zinc-900">
             {editing ? t.shoe_edit_heading : t.shoe_add_heading}
@@ -207,8 +199,7 @@ export function ShoeFormSheet({
               : editing ? t.shoe_save_button : t.shoe_add_button}
           </button>
         </div>
-      </div>
-    </div>
+    </BottomSheet>
 
     {brandOpen ? (
       <div

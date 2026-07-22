@@ -28,10 +28,10 @@ import {
 import type { CrewView } from "@/lib/api/types";
 import { CREW_REGIONS, crewRegionLabel, type CrewRegionCode } from "@/lib/crewRegion";
 import { CrewRegionPicker, type CrewRegionOption } from "../_components/CrewRegionPicker";
+import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
-import { useNativeBack } from "@/lib/useNativeBack";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
@@ -455,49 +455,37 @@ function RejectModal({
 }) {
   const { t } = useLocale();
   const [reason, setReason] = useState("");
-  useNativeBack(onClose);
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-zinc-900">{t.crew_inbox_reject_modal_title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.cancel}
-            className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
-          >
-            ✕
-          </button>
-        </div>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(stripForbiddenText(e.target.value).slice(0, 100))}
-          placeholder={t.crew_inbox_reject_reason_placeholder}
-          maxLength={100}
-          rows={3}
-          className="mt-4 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-        />
+    <BottomSheet onClose={onClose} panelClassName="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-zinc-900">{t.crew_inbox_reject_modal_title}</h2>
         <button
           type="button"
-          disabled={submitting}
-          onClick={() => onSubmit(reason.trim())}
-          className="mt-4 h-11 w-full rounded-xl bg-zinc-900 text-sm text-white disabled:opacity-50"
+          onClick={onClose}
+          aria-label={t.cancel}
+          className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
         >
-          {submitting ? t.crew_detail_apply_busy : t.crew_inbox_reject_submit_btn}
+          ✕
         </button>
       </div>
-    </div>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(stripForbiddenText(e.target.value).slice(0, 100))}
+        placeholder={t.crew_inbox_reject_reason_placeholder}
+        maxLength={100}
+        rows={3}
+        className="mt-4 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+      />
+      <button
+        type="button"
+        disabled={submitting}
+        onClick={() => onSubmit(reason.trim())}
+        className="mt-4 h-11 w-full rounded-xl bg-zinc-900 text-sm text-white disabled:opacity-50"
+      >
+        {submitting ? t.crew_detail_apply_busy : t.crew_inbox_reject_submit_btn}
+      </button>
+    </BottomSheet>
   );
 }
 

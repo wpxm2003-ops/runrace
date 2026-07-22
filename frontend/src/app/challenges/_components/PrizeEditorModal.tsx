@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import type { PrizeFormItem } from "@/lib/api/types";
 import { uploadPrivateImage, fetchPrizeImageObjectUrl } from "@/lib/api/prizes";
+import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { useLocale } from "@/lib/i18n";
-import { useNativeBack } from "@/lib/useNativeBack";
 
 const NAME_MAX = 60;
 
@@ -76,8 +76,6 @@ export function PrizeEditorModal({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
-
-  useNativeBack(onClose);
 
   // 새로 만든 object URL은 언마운트 시 해제(메모리 누수 방지).
   const previewsRef = useRef<Set<string>>(new Set());
@@ -205,17 +203,10 @@ export function PrizeEditorModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
-      role="presentation"
-      onClick={onClose}
+    <BottomSheet
+      onClose={onClose}
+      panelClassName="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
           <h2 className="text-base font-semibold text-zinc-900">{t.prize_modal_title}</h2>
           <button
@@ -326,7 +317,6 @@ export function PrizeEditorModal({
             {t.prize_done}
           </button>
         </div>
-      </div>
-    </div>
+    </BottomSheet>
   );
 }

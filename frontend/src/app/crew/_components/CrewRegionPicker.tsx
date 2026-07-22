@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useNativeBack } from "@/lib/useNativeBack";
+import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { useLocale } from "@/lib/i18n";
 
 export type CrewRegionOption = {
@@ -47,57 +47,49 @@ export function CrewRegionPickerSheet({
   onClose: () => void;
 }) {
   const { t } = useLocale();
-  useNativeBack(onClose);
 
   return (
-    <div
-      className="fixed inset-0 z-[110] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
-      role="presentation"
-      onClick={onClose}
+    <BottomSheet
+      onClose={onClose}
+      zIndexClass="z-[110]"
+      panelClassName="flex max-h-[72vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="flex max-h-[72vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.close}
-            className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-        <ul role="listbox" className="overflow-y-auto py-2">
-          {options.map((option) => {
-            const selected = option.value === value;
-            return (
-              <li key={option.value}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onClick={() => {
-                    onSelect(option.value);
-                    onClose();
-                  }}
-                  className={`flex w-full items-center justify-between px-5 py-3 text-left text-sm ${
-                    selected ? "font-semibold text-zinc-900" : "text-zinc-700"
-                  } active:bg-zinc-100`}
-                >
-                  <span>{option.label}</span>
-                  {selected ? <CheckIcon /> : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+      <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+        <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t.close}
+          className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
+        >
+          <CloseIcon />
+        </button>
       </div>
-    </div>
+      <ul role="listbox" className="overflow-y-auto py-2">
+        {options.map((option) => {
+          const selected = option.value === value;
+          return (
+            <li key={option.value}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => {
+                  onSelect(option.value);
+                  onClose();
+                }}
+                className={`flex w-full items-center justify-between px-5 py-3 text-left text-sm ${
+                  selected ? "font-semibold text-zinc-900" : "text-zinc-700"
+                } active:bg-zinc-100`}
+              >
+                <span>{option.label}</span>
+                {selected ? <CheckIcon /> : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </BottomSheet>
   );
 }
 
