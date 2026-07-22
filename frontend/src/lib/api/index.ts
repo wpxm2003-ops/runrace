@@ -5,6 +5,7 @@ export * from "./client";
 export * from "./types";
 export * from "./auth";
 export * from "./errors";
+export * from "./errorMap";
 export * from "./challenges";
 export * from "./crews";
 export * from "./prizes";

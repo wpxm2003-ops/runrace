@@ -10,6 +10,7 @@ import {
   useLeaderJoinRequests,
   invalidateMyCrew,
   invalidateLeaderJoinRequests,
+  mapErrorMessage,
   reportAndDisplay,
 } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
@@ -26,11 +27,15 @@ export function JoinRequestInbox({ user, onChanged }: { user: User; onChanged: (
   const [rejecting, setRejecting] = useState(false);
 
   function inboxErrorMessage(e: unknown): string {
-    const msg = String(e);
-    if (msg.includes("request_already_decided")) return t.crew_inbox_err_already_decided;
-    if (msg.includes("applicant_already_in_crew")) return t.crew_inbox_err_applicant_already_in_crew;
-    if (msg.includes("crew_full")) return t.crew_inbox_err_crew_full;
-    return reportAndDisplay(e);
+    return mapErrorMessage(
+      e,
+      [
+        { codes: ["request_already_decided"], message: t.crew_inbox_err_already_decided },
+        { codes: ["applicant_already_in_crew"], message: t.crew_inbox_err_applicant_already_in_crew },
+        { codes: ["crew_full"], message: t.crew_inbox_err_crew_full },
+      ],
+      () => reportAndDisplay(e),
+    );
   }
 
   async function onApprove(requestId: number) {

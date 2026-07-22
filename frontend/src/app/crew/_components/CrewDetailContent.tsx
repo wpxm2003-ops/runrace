@@ -15,6 +15,7 @@ import {
   fetchErrorMessage,
   invalidateCrewDetail,
   invalidateMyApplications,
+  mapErrorMessage,
   reportAndDisplay,
   useCrewDetail,
   useMyApplications,
@@ -35,12 +36,16 @@ import { toast } from "sonner";
 const MESSAGE_MAX = 100;
 
 function applyErrorMessage(e: unknown, t: ReturnType<typeof useLocale>["t"]): string {
-  const msg = String(e);
-  if (msg.includes("already_in_crew")) return t.crew_detail_apply_already_in_crew;
-  if (msg.includes("crew_full")) return t.crew_detail_apply_full;
-  if (msg.includes("apply_cooldown")) return t.crew_detail_apply_cooldown;
-  if (msg.includes("apply_rate_limited")) return t.crew_detail_apply_rate_limited;
-  return reportAndDisplay(e);
+  return mapErrorMessage(
+    e,
+    [
+      { codes: ["already_in_crew"], message: t.crew_detail_apply_already_in_crew },
+      { codes: ["crew_full"], message: t.crew_detail_apply_full },
+      { codes: ["apply_cooldown"], message: t.crew_detail_apply_cooldown },
+      { codes: ["apply_rate_limited"], message: t.crew_detail_apply_rate_limited },
+    ],
+    () => reportAndDisplay(e),
+  );
 }
 
 /** 가입 신청 모달 — 한마디(선택) 입력 후 전송. */

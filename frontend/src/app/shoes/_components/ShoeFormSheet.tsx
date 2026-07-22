@@ -6,7 +6,7 @@ import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { goalInputFromKm, metersFromInput } from "@/lib/units";
 import { handleAuthFailure } from "@/lib/auth";
-import { toDisplayError } from "@/lib/api";
+import { toDisplayError, mapErrorMessage } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
 
@@ -60,9 +60,11 @@ export function ShoeFormSheet({
   useNativeBack(() => setBrandOpen(false), brandOpen);
 
   function mapError(e: unknown): string {
-    const msg = String(e);
-    if (msg.includes("shoe_limit_reached")) return t.shoe_error_limit;
-    return toDisplayError(e) ?? t.error_occurred;
+    return mapErrorMessage(
+      e,
+      [{ codes: ["shoe_limit_reached"], message: t.shoe_error_limit }],
+      () => toDisplayError(e) ?? t.error_occurred,
+    );
   }
 
   async function onSubmit() {

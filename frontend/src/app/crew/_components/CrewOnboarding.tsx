@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
-import { createCrew, joinCrew, toDisplayError, reportClientError } from "@/lib/api";
+import { createCrew, joinCrew, toDisplayError, mapErrorMessage, reportClientError } from "@/lib/api";
 import { CREW_REGIONS, crewRegionLabel, type CrewRegionCode } from "@/lib/crewRegion";
 import { CrewRegionPicker, type CrewRegionOption } from "./CrewRegionPicker";
 import { MyApplicationsSection } from "./MyApplicationsSection";
@@ -19,14 +19,18 @@ function normalizeCode(raw: string): string {
 }
 
 function crewErrorMessage(e: unknown, t: ReturnType<typeof useLocale>["t"]): string {
-  const msg = String(e);
-  if (msg.includes("crew_name_taken")) return t.crew_err_name_taken;
-  if (msg.includes("invalid_crew_name")) return t.crew_err_name_invalid;
-  if (msg.includes("invalid_region")) return t.crew_err_invalid_region;
-  if (msg.includes("already_in_crew")) return t.crew_err_already_in_crew;
-  if (msg.includes("crew_not_found")) return t.crew_err_not_found;
-  if (msg.includes("crew_full")) return t.crew_err_full;
-  return toDisplayError(e) ?? t.error_occurred;
+  return mapErrorMessage(
+    e,
+    [
+      { codes: ["crew_name_taken"], message: t.crew_err_name_taken },
+      { codes: ["invalid_crew_name"], message: t.crew_err_name_invalid },
+      { codes: ["invalid_region"], message: t.crew_err_invalid_region },
+      { codes: ["already_in_crew"], message: t.crew_err_already_in_crew },
+      { codes: ["crew_not_found"], message: t.crew_err_not_found },
+      { codes: ["crew_full"], message: t.crew_err_full },
+    ],
+    () => toDisplayError(e) ?? t.error_occurred,
+  );
 }
 
 /** 크루 없음 — 만들기 / 초대 코드 가입 온보딩. */

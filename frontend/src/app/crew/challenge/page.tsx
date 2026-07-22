@@ -16,6 +16,7 @@ import {
   useCrewSearch,
   invalidateCrewMatches,
   toDisplayError,
+  mapErrorMessage,
   reportClientError,
 } from "@/lib/api";
 import type { CrewSearchItem, CrewView } from "@/lib/api/types";
@@ -36,15 +37,18 @@ const ROSTER_MIN = 2;
 const ROSTER_MAX = 50;
 
 function matchErrorMessage(e: unknown, t: ReturnType<typeof useLocale>["t"]): string {
-  const msg = String(e);
-  if (msg.includes("crew_not_found")) return t.crew_match_err_opponent_not_found;
-  if (msg.includes("cannot_challenge_self")) return t.crew_match_err_self;
-  if (msg.includes("opponent_too_small")) return t.crew_match_err_opponent_small;
-  if (msg.includes("match_already_active")) return t.crew_match_err_busy_mine;
-  if (msg.includes("opponent_busy")) return t.crew_match_err_busy_opponent;
-  if (msg.includes("invalid_roster") || msg.includes("roster_not_member"))
-    return t.crew_match_err_roster;
-  return toDisplayError(e) ?? t.error_occurred;
+  return mapErrorMessage(
+    e,
+    [
+      { codes: ["crew_not_found"], message: t.crew_match_err_opponent_not_found },
+      { codes: ["cannot_challenge_self"], message: t.crew_match_err_self },
+      { codes: ["opponent_too_small"], message: t.crew_match_err_opponent_small },
+      { codes: ["match_already_active"], message: t.crew_match_err_busy_mine },
+      { codes: ["opponent_busy"], message: t.crew_match_err_busy_opponent },
+      { codes: ["invalid_roster", "roster_not_member"], message: t.crew_match_err_roster },
+    ],
+    () => toDisplayError(e) ?? t.error_occurred,
+  );
 }
 
 /**
