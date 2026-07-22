@@ -3,22 +3,20 @@
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
-import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
-import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import {
   disbandCrew,
   leaveCrew,
   useMyCrew,
   invalidateMyCrew,
-  toDisplayError,
   reportAndDisplay,
 } from "@/lib/api";
 import { EditSection } from "../_components/EditSection";
 import { ProfileSection } from "../_components/ProfileSection";
 import { MemberSection } from "../_components/MemberSection";
 import { JoinRequestInbox } from "../_components/JoinRequestInbox";
+import { crewLoadState } from "../_components/CrewLoadState";
 import { handleAuthFailure } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -38,20 +36,8 @@ function SettingsContent({ user }: { user: User }) {
     if (noCrew) nativeNavigate("/crew", { replace: true });
   }, [noCrew]);
 
-  if (error) {
-    return (
-      <Card>
-        <Alert>{toDisplayError(error)}</Alert>
-      </Card>
-    );
-  }
-  if (isLoading && !data) {
-    return (
-      <Card>
-        <SkeletonLines count={3} />
-      </Card>
-    );
-  }
+  const loadState = crewLoadState(error, isLoading, !!data);
+  if (loadState) return loadState;
   if (!data?.crew) return null;
   const crew = data.crew;
 

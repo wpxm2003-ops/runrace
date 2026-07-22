@@ -2,39 +2,20 @@
 
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
-import { Alert } from "@/app/_components/ui/Alert";
-import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
-import { SkeletonLines } from "@/app/_components/ui/Skeleton";
-import {
-  useMyCrew,
-  useLeaderJoinRequests,
-  invalidateMyCrew,
-  toDisplayError,
-} from "@/lib/api";
+import { useMyCrew, useLeaderJoinRequests, invalidateMyCrew } from "@/lib/api";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 import { CrewSettingsGear } from "./_components/CrewSettingsGear";
 import { CrewOnboarding } from "./_components/CrewOnboarding";
 import { CrewHome } from "./_components/CrewHome";
+import { crewLoadState } from "./_components/CrewLoadState";
 
 function CrewContent({ user }: { user: User | null }) {
   const { data, isLoading, error, mutate } = useMyCrew(user);
 
-  if (error) {
-    return (
-      <Card>
-        <Alert>{toDisplayError(error)}</Alert>
-      </Card>
-    );
-  }
-  if (isLoading && !data) {
-    return (
-      <Card>
-        <SkeletonLines count={3} />
-      </Card>
-    );
-  }
+  const loadState = crewLoadState(error, isLoading, !!data);
+  if (loadState) return loadState;
   if (!user) {
     return <CrewOnboarding user={null} onDone={() => {}} />;
   }
