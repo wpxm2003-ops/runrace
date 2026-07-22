@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
@@ -15,6 +15,7 @@ import {
 import { CrewRegionPickerSheet, type CrewRegionOption } from "./CrewRegionPicker";
 import { CrewDiscoveryCard } from "./CrewDiscoveryCard";
 import { RegionChip } from "./RegionChip";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { useLocale } from "@/lib/i18n";
 
 /** 크루 발견 — 시도 지역 필터 + 리치 카드(썸네일·지역·정기런 요약), 10개 단위 더보기. 비회원도 조회 가능. */
@@ -22,7 +23,7 @@ export function CrewDiscovery({ user }: { user: User | null }) {
   const { t, locale } = useLocale();
   const [region, setRegion] = useState<CrewRegionCode | "">("");
   const [regionSheetOpen, setRegionSheetOpen] = useState(false);
-  const { data, size, setSize, isLoading, error } = useCrewDiscoveryInfinite(region, user);
+  const { data, size, setSize, isLoading, isValidating, error } = useCrewDiscoveryInfinite(region, user);
   const featuredRegions = [...CREW_DISCOVERY_FEATURED_REGIONS];
   const featuredSet = new Set<string>(featuredRegions);
   const selectedOutsideFeatured = region !== "" && !featuredSet.has(region);
@@ -37,23 +38,11 @@ export function CrewDiscovery({ user }: { user: User | null }) {
   const lastPage = data?.[data.length - 1];
   const hasMore = lastPage?.hasMore ?? false;
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useInfiniteScroll({ hasNext: hasMore, isValidating, setSize, size });
 
   useEffect(() => {
     setSize(1);
   }, [region, setSize]);
-
-  useEffect(() => {
-    const node = loadMoreRef.current;
-    if (!node || !hasMore || isLoadingMore) return;
-    const observer = new IntersectionObserver((entries) => {
-      const [entry] = entries;
-      if (!entry?.isIntersecting) return;
-      void setSize((current) => current + 1);
-    }, { rootMargin: "160px 0px" });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, setSize]);
 
   return (
     <Card className="mt-4">
