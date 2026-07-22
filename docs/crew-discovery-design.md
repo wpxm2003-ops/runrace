@@ -69,7 +69,7 @@ create index idx_join_request_user_status on crew_join_request (user_id, status)
 - **쿨다운**: 별도 컬럼 없이 `(crew_id, user_id)`의 최근 REJECTED `decided_at`이 24h 이내면 신청 차단.
 
 ### 3.3 지역 코드 (시도 17 + 온라인 + 기타)
-`SEOUL BUSAN DAEGU INCHEON GWANGJU DAEJEON ULSAN SEJONG GYEONGGI GANGWON CHUNGBUK CHUNGNAM JEONBUK JEONNAM GYEONGBUK GYEONGNAM JEJU` + `ONLINE`(온라인/전국) + `ETC`(기타·백필용).
+`SEOUL BUSAN DAEGU INCHEON GWANGJU DAEJEON ULSAN SEJONG GYEONGGI_SOUTH GYEONGGI_NORTH GANGWON CHUNGBUK CHUNGNAM JEONBUK JEONNAM GYEONGBUK GYEONGNAM JEJU` + `ONLINE`(온라인/전국) + `ETC`(기타·백필용). 경기도만 남/북 2분할(인구 1위 + 한강 생활권 분리) — 나머지는 시도 레벨.
 - 저장은 코드, 표시는 프론트 라벨맵(ko 정본). en은 로마자, ja/zh/es는 en 폴백(지역은 한국 특화라 비-ko 사용 드묾).
 
 ## 4. 신청 생명주기 (상태 머신)
@@ -122,7 +122,7 @@ create index idx_join_request_user_status on crew_join_request (user_id, status)
 ## 6. 화면
 
 ### 6.1 발견 목록 (crew/page.tsx 개편)
-- 상단 **지역 필터 칩**(가로 스크롤): 전체 · 서울 · 경기 · … · 제주 · 온라인 · 기타
+- 상단 **지역 필터 칩**(가로 스크롤): 전체 · 서울 · 경기남부 · 경기북부 · … · 제주 · 온라인 · 기타
 - 이름 검색창
 - **카드**: 좌측 정사각 썸네일 64px(없으면 크루명 이니셜+색 플레이스홀더) + 우측 [크루명 · 지역뱃지 · N/정원명 · 정기런 요약줄(있으면)] → 탭 시 상세
 - 정렬: 기본 **인원 많은 순**(활성 크루 우선) — §7 결정

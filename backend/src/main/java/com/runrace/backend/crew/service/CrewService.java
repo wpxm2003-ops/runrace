@@ -73,7 +73,7 @@ public class CrewService {
   /** 시도 지역 코드 — 발견 목록 필터·크루 프로필의 유효값 화이트리스트. ETC=기타(백필 sentinel), ONLINE=온라인/전국. */
   static final Set<String> VALID_REGIONS = Set.of(
       "SEOUL", "BUSAN", "DAEGU", "INCHEON", "GWANGJU", "DAEJEON", "ULSAN", "SEJONG",
-      "GYEONGGI", "GANGWON", "CHUNGBUK", "CHUNGNAM", "JEONBUK", "JEONNAM",
+      "GYEONGGI_SOUTH", "GYEONGGI_NORTH", "GANGWON", "CHUNGBUK", "CHUNGNAM", "JEONBUK", "JEONNAM",
       "GYEONGBUK", "GYEONGNAM", "JEJU", "ONLINE", "ETC");
 
   /** 주간 보드 경계의 단일 기준 — 기존 운동일 집계와 동일하게 KST를 쓴다. */

@@ -109,7 +109,7 @@ export type CrewSearchItem = {
 /** 시도 지역 코드 — 발견 목록 필터·크루 프로필 공용 화이트리스트. ETC=기타(백필), ONLINE=온라인/전국. */
 export type CrewRegion =
   | "SEOUL" | "BUSAN" | "DAEGU" | "INCHEON" | "GWANGJU" | "DAEJEON" | "ULSAN" | "SEJONG"
-  | "GYEONGGI" | "GANGWON" | "CHUNGBUK" | "CHUNGNAM" | "JEONBUK" | "JEONNAM"
+  | "GYEONGGI_SOUTH" | "GYEONGGI_NORTH" | "GANGWON" | "CHUNGBUK" | "CHUNGNAM" | "JEONBUK" | "JEONNAM"
   | "GYEONGBUK" | "GYEONGNAM" | "JEJU" | "ONLINE" | "ETC";
 
 /** 크루 발견 목록 카드 한 줄(리치) — 지역·이미지·정기런 요약. */
