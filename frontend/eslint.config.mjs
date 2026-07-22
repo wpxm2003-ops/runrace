@@ -24,6 +24,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // cap sync가 빌드 산출물을 복사해 두는 곳 — 소스가 아니라서 lint 대상이 아니다
+    // (이걸 안 걸면 번들 청크에서 가짜 에러 40개+경고 9천개가 lint 결과를 덮는다).
+    "android/**",
   ]),
 ]);
 
