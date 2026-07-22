@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { TextArea, TextInput } from "@/app/_components/ui/TextInput";
 import {
   updateCrewProfile,
   uploadImage,
@@ -195,28 +196,28 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-intro">
         {t.crew_profile_intro_label}
       </label>
-      <textarea
+      <TextArea
         id="crew-profile-intro"
         value={intro}
         onChange={(e) => setIntro(stripForbiddenText(e.target.value).slice(0, 500))}
         placeholder={t.crew_profile_intro_placeholder}
         maxLength={500}
         rows={3}
-        className="mt-1.5 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="mt-1.5 w-full"
       />
       <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_intro_hint}</p>
 
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-meetup-place">
         {t.crew_profile_meetup_place_label}
       </label>
-      <input
+      <TextInput
         id="crew-profile-meetup-place"
         type="text"
         value={meetupPlace}
         onChange={(e) => setMeetupPlace(stripForbiddenText(e.target.value).slice(0, 60))}
         placeholder={t.crew_profile_meetup_place_placeholder}
         maxLength={60}
-        className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="mt-1.5 w-full"
       />
       <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_meetup_days_label}</label>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -238,14 +239,14 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-meetup-time">
         {t.crew_profile_meetup_time_label}
       </label>
-      <input
+      <TextInput
         id="crew-profile-meetup-time"
         type="text"
         value={meetupTime}
         onChange={(e) => setMeetupTime(stripForbiddenText(e.target.value).slice(0, 30))}
         placeholder={t.crew_profile_meetup_time_placeholder}
         maxLength={30}
-        className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="mt-1.5 w-full"
       />
       {actionError ? <p className="mt-3 text-xs text-red-600">{actionError}</p> : null}
       <button

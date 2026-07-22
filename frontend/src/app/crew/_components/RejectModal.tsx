@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { TextArea } from "@/app/_components/ui/TextInput";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { useLocale } from "@/lib/i18n";
 
@@ -31,13 +32,13 @@ export function RejectModal({
           ✕
         </button>
       </div>
-      <textarea
+      <TextArea
         value={reason}
         onChange={(e) => setReason(stripForbiddenText(e.target.value).slice(0, 100))}
         placeholder={t.crew_inbox_reject_reason_placeholder}
         maxLength={100}
         rows={3}
-        className="mt-4 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="mt-4 w-full"
       />
       <button
         type="button"

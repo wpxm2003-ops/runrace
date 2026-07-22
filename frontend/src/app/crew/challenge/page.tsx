@@ -8,6 +8,7 @@ import { Card } from "@/app/_components/ui/Card";
 import { Alert } from "@/app/_components/ui/Alert";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { DateTimePickerSheet } from "@/app/challenges/_components/DateTimePickerSheet";
 import {
   createCrewMatch,
@@ -170,14 +171,14 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
           </div>
         ) : (
           <>
-            <input
+            <TextInput
               id="opponent-search"
               type="text"
               value={search}
               onChange={(e) => setSearch(stripForbiddenText(e.target.value).slice(0, 20))}
               placeholder={t.crew_match_opponent_placeholder}
               maxLength={20}
-              className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+              className="mt-1.5 w-full"
             />
             {/* 검색어를 입력했을 때만 결과를 펼친다 — 크루 수가 늘어도 목록이 항상 떠 있지 않게. */}
             {showResults ? (

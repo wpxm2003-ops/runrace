@@ -6,6 +6,7 @@ import type { PrizeFormItem } from "@/lib/api/types";
 import { uploadPrivateImage, fetchPrizeImageObjectUrl } from "@/lib/api/prizes";
 import { mapErrorMessage } from "@/lib/api";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { useLocale } from "@/lib/i18n";
 
@@ -235,13 +236,13 @@ export function PrizeEditorModal({
                 </button>
               </div>
 
-              <input
+              <TextInput
                 type="text"
                 value={r.name}
                 onChange={(e) => patch(i, { name: stripForbiddenText(e.target.value).slice(0, NAME_MAX), error: null })}
                 placeholder={t.prize_name_placeholder}
                 maxLength={NAME_MAX}
-                className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                className="mt-2 w-full"
               />
 
               <div className="mt-2 flex items-center gap-3">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { createCrew, joinCrew, toDisplayError, mapErrorMessage, reportClientError } from "@/lib/api";
 import { CREW_REGIONS, crewRegionLabel, type CrewRegionCode } from "@/lib/crewRegion";
 import { CrewRegionPicker, type CrewRegionOption } from "./CrewRegionPicker";
@@ -92,7 +93,7 @@ export function CrewOnboarding({ user, onDone }: { user: User | null; onDone: ()
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_join_heading}</div>
         <div className="mt-3 flex gap-2">
-          <input
+          <TextInput
             type="text"
             value={code}
             onChange={(e) => setCode(normalizeCode(e.target.value))}
@@ -103,7 +104,7 @@ export function CrewOnboarding({ user, onDone }: { user: User | null; onDone: ()
             placeholder={t.crew_join_placeholder}
             maxLength={6}
             autoCapitalize="characters"
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm uppercase tracking-widest focus:border-zinc-500 focus:outline-none"
+            className="min-w-0 flex-1 uppercase tracking-widest"
           />
           <button
             type="button"
@@ -120,14 +121,14 @@ export function CrewOnboarding({ user, onDone }: { user: User | null; onDone: ()
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_create_heading}</div>
         <div className="mt-3 flex flex-col gap-2">
-          <input
+          <TextInput
             type="text"
             value={name}
             onChange={(e) => setName(stripForbiddenText(e.target.value).slice(0, 20))}
             placeholder={t.crew_create_placeholder}
-              maxLength={20}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-            />
+            maxLength={20}
+            className="w-full"
+          />
           <CrewRegionPicker
             value={region}
             options={regionOptions}

@@ -6,6 +6,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { usePersonalBests, useTrainingPlan, saveTrainingPlan, cancelTrainingPlan } from "@/lib/api";
 import type { PersonalBestRow } from "@/lib/api/types";
 import { useAuthUser } from "@/lib/useAuthUser";
@@ -330,13 +331,13 @@ function TrainingContent({ user }: { user: User | null }) {
           </label>
           <label className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-zinc-600">{t.nsm_record_label}</span>
-            <input
+            <TextInput
               type="text"
               inputMode="numeric"
               value={timeStr}
               onChange={(e) => setTimeStr(maskTimeInput(e.target.value))}
               placeholder="22:00"
-              className="w-32 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+              className="w-32"
             />
           </label>
           {error ? <p className="text-xs text-red-600">{error}</p> : null}

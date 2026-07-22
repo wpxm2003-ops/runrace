@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ShoeFormBody, ShoeRow } from "@/lib/api/types";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { SelectSheet } from "@/app/_components/ui/SelectSheet";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { goalInputFromKm, metersFromInput } from "@/lib/units";
 import { handleAuthFailure } from "@/lib/auth";
@@ -134,51 +135,51 @@ export function ShoeFormSheet({
           </div>
 
           {brandSel === OTHER ? (
-            <input
+            <TextInput
               type="text"
               value={customBrand}
               onChange={(e) => setCustomBrand(stripForbiddenText(e.target.value).slice(0, 40))}
               placeholder={t.shoe_brand_custom_ph}
               maxLength={40}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+              className="w-full"
             />
           ) : null}
 
           <label className="block">
             <span className="text-xs font-medium text-zinc-600">{t.shoe_model_label}</span>
-            <input
+            <TextInput
               type="text"
               value={model}
               onChange={(e) => setModel(stripForbiddenText(e.target.value).slice(0, 60))}
               placeholder={t.shoe_model_ph}
               maxLength={60}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+              className="mt-1 w-full"
             />
           </label>
 
           <label className="block">
             <span className="text-xs font-medium text-zinc-600">{t.shoe_nickname_label}</span>
-            <input
+            <TextInput
               type="text"
               value={nickname}
               onChange={(e) => setNickname(stripForbiddenText(e.target.value).slice(0, 40))}
               placeholder={t.shoe_nickname_ph}
               maxLength={40}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+              className="mt-1 w-full"
             />
           </label>
 
           <label className="block">
             <span className="text-xs font-medium text-zinc-600">{t.shoe_target_label}</span>
             <div className="mt-1 flex items-center gap-2">
-              <input
+              <TextInput
                 type="number"
                 inputMode="decimal"
                 min={0}
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
                 placeholder="500"
-                className="w-32 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                className="w-32"
               />
               <span className="text-sm text-zinc-500">{unit}</span>
             </div>

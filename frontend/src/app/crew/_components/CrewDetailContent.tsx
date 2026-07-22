@@ -8,6 +8,7 @@ import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { Button } from "@/app/_components/ui/Button";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { TextArea } from "@/app/_components/ui/TextInput";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import {
   applyToCrew,
@@ -79,14 +80,14 @@ function ApplyModal({
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-apply-message">
         {t.crew_detail_apply_message_label}
       </label>
-      <textarea
+      <TextArea
         id="crew-apply-message"
         value={message}
         onChange={(e) => setMessage(stripForbiddenText(e.target.value).slice(0, MESSAGE_MAX))}
         placeholder={t.crew_detail_apply_message_placeholder}
         maxLength={MESSAGE_MAX}
         rows={3}
-        className="mt-1.5 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="mt-1.5 w-full"
       />
       <button
         type="button"

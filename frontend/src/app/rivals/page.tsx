@@ -8,6 +8,7 @@ import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { addRival, removeRival, useRivals, toDisplayError, mapErrorMessage, reportClientError, reportAndDisplay } from "@/lib/api";
 import type { RivalRow } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
@@ -178,7 +179,7 @@ function RivalsContent({ user }: { user: User }) {
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.rival_add_heading}</div>
         <div className="mt-3 flex gap-2">
-          <input
+          <TextInput
             type="text"
             value={draft}
             onChange={(e) => setDraft(stripForbiddenText(e.target.value).slice(0, 20))}
@@ -187,7 +188,7 @@ function RivalsContent({ user }: { user: User }) {
             }}
             placeholder={t.rival_add_placeholder}
             maxLength={20}
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+            className="min-w-0 flex-1"
           />
           <button
             type="button"

@@ -5,6 +5,7 @@ import type { User } from "firebase/auth";
 import { invalidateAfterNicknameChange, mapErrorMessage } from "@/lib/api";
 import { containsForbiddenText, stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { updateNickname } from "@/lib/api/auth";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -75,13 +76,13 @@ export function NicknameEditor({ user, nickname, loading }: Props) {
       <div className="text-sm text-zinc-500">{t.my_nickname_label}</div>
       {editing ? (
         <div className="mt-1">
-          <input
+          <TextInput
             type="text"
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
             maxLength={20}
             placeholder={t.my_nickname_placeholder}
-            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+            className="w-full"
           />
           {nicknameHint ? (
             <p className="mt-1 text-xs text-zinc-500">{nicknameHint}</p>

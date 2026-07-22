@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
+import { TextInput } from "@/app/_components/ui/TextInput";
 import { updateCrew, toDisplayError, mapErrorMessage } from "@/lib/api";
 import type { CrewView } from "@/lib/api/types";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
@@ -74,26 +75,26 @@ export function EditSection({ crew, user, onSaved }: { crew: CrewView; user: Use
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-notice">
         {t.crew_field_notice}
       </label>
-      <input
+      <TextInput
         id="crew-notice"
         type="text"
         value={notice}
         onChange={(e) => setNotice(stripForbiddenText(e.target.value).slice(0, 100))}
         placeholder={t.crew_field_notice_placeholder}
         maxLength={100}
-        className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="mt-1.5 w-full"
       />
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-goal">
         {t.crew_field_goal}
       </label>
-      <input
+      <TextInput
         id="crew-goal"
         type="text"
         inputMode="decimal"
         value={goal}
         onChange={(e) => setGoal(e.target.value.replace(/[^0-9.]/g, "").slice(0, 7))}
         placeholder={t.crew_field_goal_placeholder}
-        className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="mt-1.5 w-full"
       />
       <p className="mt-1.5 text-xs text-zinc-400">{t.crew_field_goal_hint}</p>
       {actionError ? <p className="mt-2 text-xs text-red-600">{actionError}</p> : null}
