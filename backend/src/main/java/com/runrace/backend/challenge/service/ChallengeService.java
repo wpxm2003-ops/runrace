@@ -17,6 +17,7 @@ import com.runrace.backend.challenge.dto.HeadToHeadRow;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
+import com.runrace.backend.crew.service.CrewGuards;
 import com.runrace.backend.event.ChallengeEndedNoParticipantsEvent;
 import com.runrace.backend.event.ChallengeEvents;
 import com.runrace.backend.rival.repository.RivalRepository;
@@ -92,8 +93,7 @@ public class ChallengeService {
 
     Long crewId = null;
     if (crewOnly) {
-      crewId = crewMemberRepository.findByUserId(principal.userId())
-          .orElseThrow(() -> ApiException.badRequest("not_in_crew"))
+      crewId = CrewGuards.requireMembership(crewMemberRepository, principal.userId())
           .getCrew().getId();
     }
 

@@ -9,6 +9,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
+import com.runrace.backend.crew.service.CrewGuards;
 import com.runrace.backend.event.NudgeEvents;
 import com.runrace.backend.nudge.domain.Nudge;
 import com.runrace.backend.nudge.repository.NudgeRepository;
@@ -87,8 +88,7 @@ public class NudgeService {
       throw ApiException.badRequest("cannot_nudge_self");
     }
 
-    CrewMember mine = crewMemberRepository.findByUserId(senderId)
-        .orElseThrow(() -> ApiException.forbidden("not_in_crew"));
+    CrewMember mine = CrewGuards.requireMembership(crewMemberRepository, senderId);
     CrewMember target = crewMemberRepository.findByUserId(targetUserId)
         .orElseThrow(() -> ApiException.notFound("not_crew_mate"));
     if (!mine.getCrew().getId().equals(target.getCrew().getId())) {
