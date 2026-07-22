@@ -20,7 +20,7 @@ import { CrewRegionPicker, type CrewRegionOption } from "./CrewRegionPicker";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n";
-import { weekdayLabels } from "@/lib/format";
+import { weekdayLabels, toKstDateOnly } from "@/lib/format";
 import { toast } from "sonner";
 
 /**
@@ -56,7 +56,9 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
     setMeetupPlace(detail.meetupPlace ?? "");
     setMeetupDays(detail.meetupDays);
     setMeetupTime(detail.meetupTime ?? "");
-    setFoundedAt(detail.foundedAt ?? "");
+    // 명시적으로 입력한 개설일이 없으면 가입일(createdAt)을 기본값으로 미리 채워둔다 —
+    // 상세 화면 표시값과 동일해서(§ CrewDetailContent) 저장해도 실질 변화는 없다.
+    setFoundedAt(detail.foundedAt ?? toKstDateOnly(detail.createdAt));
     setInitialized(true);
   }, [detail, initialized]);
 

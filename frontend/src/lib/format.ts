@@ -113,6 +113,21 @@ export function todayIso(): string {
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
+/**
+ * datetime ISO(오프셋 포함) → KST 기준 date-only "YYYY-MM-DD".
+ * en-CA locale 포맷이 그대로 ISO 날짜 순서라 파싱 없이 바로 쓴다.
+ * 폼 기본값처럼 "이 시각이 KST로 며칠인지"가 필요할 때 전용(단순 slice(0,10)은
+ * 오프셋이 KST가 아니면 하루 밀릴 수 있어 부정확).
+ */
+export function toKstDateOnly(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
 /** "YYYY-MM-DD" → locale 월·일 표기 (ko "6월 25일", en "June 25"). TZ 이슈 없이 파트로 생성. */
 export function monthDayLabel(iso: string, locale: string): string {
   const [y, m, d] = iso.split("-").map(Number);
