@@ -5,6 +5,7 @@ import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
 import com.runrace.backend.challenge.domain.ChallengePhase;
 import com.runrace.backend.challenge.service.ChallengeService;
+import com.runrace.backend.common.PageParams;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.challenge.service.RaceFinalizationService;
 import com.runrace.backend.common.IsoTime;
@@ -97,9 +98,9 @@ public class ChallengeController {
       @RequestParam(name = "phase", defaultValue = "active") String phase,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
-    size = Math.min(Math.max(size, 1), 50);
+    PageParams.Clamped clamped = PageParams.clamp(page, size);
     Slice<Challenge> slice = challengeService.listCrewRacesPage(
-        principal.userId(), phase, Math.max(page, 0), size);
+        principal.userId(), phase, clamped.page(), clamped.size());
     OffsetDateTime now = OffsetDateTime.now();
     List<Challenge> challenges = slice.getContent();
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
@@ -152,10 +153,10 @@ public class ChallengeController {
       @RequestParam(name = "phase", required = false, defaultValue = "all") String phase,
       @RequestParam(name = "page", required = false, defaultValue = "0") int page,
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-    size = Math.min(Math.max(size, 1), 50);
+    PageParams.Clamped clamped = PageParams.clamp(page, size);
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
     OffsetDateTime now = OffsetDateTime.now();
-    Slice<Challenge> slice = challengeService.listPublicPage(lang, phase, page, size);
+    Slice<Challenge> slice = challengeService.listPublicPage(lang, phase, clamped.page(), clamped.size());
     List<Challenge> challenges = slice.getContent();
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
 
@@ -176,10 +177,10 @@ public class ChallengeController {
       @RequestParam(name = "phase", required = false, defaultValue = "all") String phase,
       @RequestParam(name = "page", required = false, defaultValue = "0") int page,
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-    size = Math.min(Math.max(size, 1), 50);
+    PageParams.Clamped clamped = PageParams.clamp(page, size);
     OffsetDateTime now = OffsetDateTime.now();
     UUID userId = principal.userId();
-    Slice<Challenge> slice = challengeService.listMinePage(userId, phase, page, size);
+    Slice<Challenge> slice = challengeService.listMinePage(userId, phase, clamped.page(), clamped.size());
     List<Challenge> challenges = slice.getContent();
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
     Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);

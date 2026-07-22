@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.common.KstTime;
+import com.runrace.backend.common.PageParams;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewJoinRequest;
 import com.runrace.backend.crew.domain.CrewJoinRequestStatus;
@@ -208,8 +209,9 @@ public class CrewService {
    */
   @Transactional(readOnly = true)
   public List<CrewRepository.CrewDiscoveryRow> discover(String regionCode, int page, int size) {
-    int safePage = Math.max(0, page);
-    int safeSize = Math.min(50, Math.max(1, size));
+    PageParams.Clamped clamped = PageParams.clamp(page, size);
+    int safePage = clamped.page();
+    int safeSize = clamped.size();
     String region = regionCode == null ? "" : regionCode.trim().toUpperCase();
     if (!region.isEmpty() && !VALID_REGIONS.contains(region)) {
       throw ApiException.badRequest("invalid_region");

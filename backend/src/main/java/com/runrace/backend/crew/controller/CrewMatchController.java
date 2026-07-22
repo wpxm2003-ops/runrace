@@ -5,6 +5,7 @@ import com.runrace.backend.crew.dto.AcceptCrewMatchRequest;
 import com.runrace.backend.crew.dto.CreateCrewMatchRequest;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
 import com.runrace.backend.crew.dto.CrewMatchHistoryPage;
+import com.runrace.backend.common.PageParams;
 import com.runrace.backend.crew.dto.MyCrewMatchesResponse;
 import com.runrace.backend.crew.service.CrewMatchService;
 import java.time.OffsetDateTime;
@@ -52,8 +53,8 @@ public class CrewMatchController {
       AuthPrincipal principal,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
-    int safeSize = Math.min(Math.max(size, 1), 50);
-    return ResponseEntity.ok(crewMatchService.history(principal.userId(), page, safeSize));
+    PageParams.Clamped clamped = PageParams.clamp(page, size);
+    return ResponseEntity.ok(crewMatchService.history(principal.userId(), clamped.page(), clamped.size()));
   }
 
   /** 대항전 상세(참가 크루 멤버만). */
