@@ -12,7 +12,7 @@ import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
-/** 리더 전용 — 이름·공지·주간 목표 수정 폼. */
+/** 리더 전용 — 크루 내부 설정(공지·주간 목표) 수정 폼. 크루 이름은 공개 정보(ProfileSection)에 표시. */
 export function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSaved: () => void }) {
   const { t } = useLocale();
   const [notice, setNotice] = useState(crew.notice ?? "");
@@ -65,13 +65,8 @@ export function EditSection({ crew, user, onSaved }: { crew: CrewView; user: Use
   }
 
   return (
-    <Card>
-      <label className="text-sm text-zinc-500" htmlFor="crew-name">
-        {t.crew_field_name}
-      </label>
-      <div id="crew-name" className="mt-1.5 w-full rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
-        {crew.name}
-      </div>
+    <Card className="mt-4">
+      <div className="text-base font-semibold">{t.crew_internal_heading}</div>
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-notice">
         {t.crew_field_notice}
       </label>

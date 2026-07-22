@@ -101,7 +101,7 @@ export function DatePickerSheet({ value, onChange, label, placeholder, yearStart
       <button
         type="button"
         onClick={openSheet}
-        className="mt-1.5 flex h-11 w-full items-center justify-between rounded-lg border border-zinc-300 bg-white px-3 text-left text-sm"
+        className="mt-1.5 flex w-full items-center justify-between rounded-lg border border-zinc-300 bg-white px-3 py-2 text-left text-sm"
       >
         <span style={{ color: displayText ? undefined : "#a1a1aa" }}>{displayText || placeholder}</span>
         <span className="text-zinc-400">▾</span>

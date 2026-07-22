@@ -92,8 +92,8 @@ function SettingsContent({ user }: { user: User }) {
     <>
       {crew.isLeader ? (
         <>
-          <EditSection crew={crew} user={user} onSaved={refresh} />
           <ProfileSection crew={crew} user={user} onSaved={refresh} />
+          <EditSection crew={crew} user={user} onSaved={refresh} />
           <MemberSection crew={crew} user={user} onChanged={refresh} />
           <JoinRequestInbox user={user} onChanged={refresh} />
           <button

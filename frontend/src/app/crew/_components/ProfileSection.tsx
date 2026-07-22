@@ -125,7 +125,7 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
 
   if (!detail) {
     return (
-      <Card className="mt-4">
+      <Card>
         <SkeletonLines count={3} />
       </Card>
     );
@@ -134,21 +134,13 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
   const weekdays = weekdayLabels(locale, true);
 
   return (
-    <Card className="mt-4">
+    <Card>
       <div className="text-base font-semibold">{t.crew_profile_heading}</div>
 
-      <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-region">
-        {t.crew_profile_region_label}
-      </label>
-      <div id="crew-profile-region" className="mt-1.5">
-        <CrewRegionPicker
-          value={region}
-          options={regionOptions}
-          placeholder={t.crew_region_placeholder}
-          title={t.crew_profile_region_label}
-          onChange={(value) => setRegion(value as CrewRegionCode)}
-          disabled={saving}
-        />
+      {/* 크루 이름 — 공개 식별자(생성 시 확정, 읽기 전용) */}
+      <label className="mt-4 block text-sm text-zinc-500">{t.crew_field_name}</label>
+      <div className="mt-1.5 w-full rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
+        {crew.name}
       </div>
 
       <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_image_label}</label>
@@ -213,18 +205,66 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
       />
       <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_intro_hint}</p>
 
-      <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-meetup-place">
-        {t.crew_profile_meetup_place_label}
-      </label>
-      <TextInput
-        id="crew-profile-meetup-place"
-        type="text"
-        value={meetupPlace}
-        onChange={(e) => setMeetupPlace(stripForbiddenText(e.target.value).slice(0, 60))}
-        placeholder={t.crew_profile_meetup_place_placeholder}
-        maxLength={60}
-        className="mt-1.5 w-full"
-      />
+      {/* 지역 · 개설일 — 한 줄 */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm text-zinc-500" htmlFor="crew-profile-region">
+            {t.crew_profile_region_label}
+          </label>
+          <div id="crew-profile-region" className="mt-1.5">
+            <CrewRegionPicker
+              value={region}
+              options={regionOptions}
+              placeholder={t.crew_region_placeholder}
+              title={t.crew_profile_region_label}
+              onChange={(value) => setRegion(value as CrewRegionCode)}
+              disabled={saving}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm text-zinc-500">{t.crew_profile_founded_label}</label>
+          <DatePickerSheet
+            value={foundedAt}
+            onChange={setFoundedAt}
+            label={t.crew_profile_founded_label}
+            placeholder={t.crew_profile_founded_label}
+          />
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_founded_hint}</p>
+
+      {/* 정기런 장소 · 시간 — 한 줄 */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm text-zinc-500" htmlFor="crew-profile-meetup-place">
+            {t.crew_profile_meetup_place_label}
+          </label>
+          <TextInput
+            id="crew-profile-meetup-place"
+            type="text"
+            value={meetupPlace}
+            onChange={(e) => setMeetupPlace(stripForbiddenText(e.target.value).slice(0, 60))}
+            placeholder={t.crew_profile_meetup_place_placeholder}
+            maxLength={60}
+            className="mt-1.5 w-full"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-zinc-500" htmlFor="crew-profile-meetup-time">
+            {t.crew_profile_meetup_time_label}
+          </label>
+          <TextInput
+            id="crew-profile-meetup-time"
+            type="text"
+            value={meetupTime}
+            onChange={(e) => setMeetupTime(stripForbiddenText(e.target.value).slice(0, 30))}
+            placeholder={t.crew_profile_meetup_time_placeholder}
+            maxLength={30}
+            className="mt-1.5 w-full"
+          />
+        </div>
+      </div>
       <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_meetup_days_label}</label>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {weekdays.map((w, i) => (
@@ -242,26 +282,6 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
           </button>
         ))}
       </div>
-      <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-meetup-time">
-        {t.crew_profile_meetup_time_label}
-      </label>
-      <TextInput
-        id="crew-profile-meetup-time"
-        type="text"
-        value={meetupTime}
-        onChange={(e) => setMeetupTime(stripForbiddenText(e.target.value).slice(0, 30))}
-        placeholder={t.crew_profile_meetup_time_placeholder}
-        maxLength={30}
-        className="mt-1.5 w-full"
-      />
-      <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_founded_label}</label>
-      <DatePickerSheet
-        value={foundedAt}
-        onChange={setFoundedAt}
-        label={t.crew_profile_founded_label}
-        placeholder={t.crew_profile_founded_label}
-      />
-      <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_founded_hint}</p>
       {actionError ? <p className="mt-3 text-xs text-red-600">{actionError}</p> : null}
       <button
         type="button"
