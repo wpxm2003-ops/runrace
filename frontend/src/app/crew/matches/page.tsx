@@ -10,29 +10,13 @@ import {
   useMyCrew,
   useMyCrewMatches,
 } from "@/lib/api";
-import type { CrewMatchStatus, CrewMatchSummary } from "@/lib/api/types";
+import type { CrewMatchSummary } from "@/lib/api/types";
 import { formatDateRange } from "@/lib/format";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
-
-function statusLabel(status: CrewMatchStatus, t: ReturnType<typeof useLocale>["t"]): string {
-  switch (status) {
-    case "PENDING": return t.crew_match_status_pending;
-    case "SCHEDULED": return t.crew_match_status_scheduled;
-    case "IN_PROGRESS": return t.races_filter_in_progress;
-    case "ENDED": return t.races_filter_ended;
-    case "DECLINED": return t.crew_match_status_declined;
-    case "EXPIRED": return t.crew_match_status_expired;
-  }
-}
-
-function statusClass(status: CrewMatchStatus): string {
-  if (status === "PENDING" || status === "SCHEDULED") return "bg-amber-100 text-amber-700";
-  if (status === "IN_PROGRESS") return "bg-sky-100 text-sky-700";
-  return "bg-zinc-100 text-zinc-500";
-}
+import { CrewMatchStatusBadge } from "../_components/CrewMatchStatusBadge";
 
 function HistoryRow({ match }: { match: CrewMatchSummary }) {
   const { t, locale } = useLocale();
@@ -57,9 +41,7 @@ function HistoryRow({ match }: { match: CrewMatchSummary }) {
         <span className="truncate text-sm font-medium text-zinc-900">
           {t.crew_match_vs(opponent)}
         </span>
-        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${statusClass(match.status)}`}>
-          {statusLabel(match.status, t)}
-        </span>
+        <CrewMatchStatusBadge status={match.status} />
       </div>
       <div className="mt-1 text-xs text-zinc-500">
         {match.startAt ? formatDateRange(match.startAt, match.endAt, locale) : "-"}

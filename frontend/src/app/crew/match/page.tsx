@@ -26,6 +26,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { toast } from "sonner";
+import { CrewMatchStatusBadge } from "../_components/CrewMatchStatusBadge";
 
 /** "2026-07-15T00:00:00+09:00" → "7.15" */
 function shortDate(iso: string): string {
@@ -204,27 +205,11 @@ function MatchContent({ matchId, user }: { matchId: number; user: User }) {
           </div>
           <div className="mt-0.5 text-[11px] text-zinc-400">{t.crew_match_gps_only}</div>
           <div className="mt-2">
-            <span
-              className={`rounded px-2 py-0.5 text-[11px] font-medium ${
-                detail.status === "IN_PROGRESS"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : detail.status === "PENDING" || detail.status === "SCHEDULED"
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-zinc-100 text-zinc-500"
-              }`}
-            >
-              {detail.status === "PENDING"
-                ? t.crew_match_status_pending
-                : detail.status === "SCHEDULED"
-                  ? t.crew_match_status_scheduled
-                  : detail.status === "IN_PROGRESS"
-                    ? `${t.races_filter_in_progress} · D-${detail.endAt ? daysLeft(detail.endAt) : 0}`
-                    : detail.status === "ENDED"
-                      ? t.races_filter_ended
-                      : detail.status === "DECLINED"
-                        ? t.crew_match_status_declined
-                        : t.crew_match_status_expired}
-            </span>
+            <CrewMatchStatusBadge
+              status={detail.status}
+              size="md"
+              suffix={detail.status === "IN_PROGRESS" ? `D-${detail.endAt ? daysLeft(detail.endAt) : 0}` : undefined}
+            />
           </div>
         </div>
       </Card>
