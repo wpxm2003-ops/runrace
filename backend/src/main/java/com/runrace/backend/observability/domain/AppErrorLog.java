@@ -15,7 +15,7 @@ import org.hibernate.annotations.UuidGenerator;
 
 /** 프론트엔드·백엔드 에러를 한 곳에 모아 Adminer 등으로 조회하기 위한 로그 행. */
 @Entity
-@Table(name = "app_error_log")
+@Table(name = "error_log")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -37,7 +37,7 @@ public class AppErrorLog {
   @Column(name = "context", columnDefinition = "text")
   private String context;
 
-  /** app_user에 대한 soft 참조(FK 없음). 비로그인 보고는 null. */
+  /** users에 대한 soft 참조(FK 없음). 비로그인 보고는 null. */
   @Column(name = "user_id")
   private UUID userId;
 

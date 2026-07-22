@@ -24,7 +24,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * 모든 컨트롤러 예외를 {@code {"error": code, "requestId": ...}} JSON 한 가지 형태로 직렬화한다.
  *
  * <p>도메인 예외는 자신이 가진 상태 코드로, 엔티티 조회 실패는 404로, 그 외 예기치 못한
- * 예외는 스택트레이스를 로그·DB(app_error_log)에 남기고 500으로 응답한다(내부 구현 노출 방지).
+ * 예외는 스택트레이스를 로그·DB(error_log)에 남기고 500으로 응답한다(내부 구현 노출 방지).
  * requestId는 사용자가 본 에러를 로그/DB 행과 연결하는 추적 키다.
  */
 @RestControllerAdvice
@@ -36,7 +36,7 @@ public class ApiExceptionHandler {
 
   public record ApiError(String error, String requestId) {}
 
-  /** 정상적인 비즈니스 플로우로 예상되는 에러 코드 — app_error_log 수집 제외. */
+  /** 정상적인 비즈니스 플로우로 예상되는 에러 코드 — error_log 수집 제외. */
   private static final Set<String> EXPECTED_CODES = Set.of("nudge_daily_limit");
 
   @ExceptionHandler(ApiException.class)

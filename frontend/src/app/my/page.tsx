@@ -102,7 +102,7 @@ function MyRacesSection({ user }: { user: User }) {
   );
 }
 
-/** 푸시 알림 수신 토글 — app_user.push_enabled를 갱신한다. */
+/** 푸시 알림 수신 토글 — users.push_enabled를 갱신한다. */
 function NotificationToggle({ user }: { user: User }) {
   const { t } = useLocale();
   const alert = useAlert();

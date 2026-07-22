@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * 에러를 {@code app_error_log} 테이블에 적재한다.
+ * 에러를 {@code error_log} 테이블에 적재한다.
  *
  * <p>텔레메트리이므로 적재 실패가 원래 요청을 방해하면 안 된다. 모든 메서드는 예외를 삼키고,
  * 트랜잭션을 직접 열지 않아(레포지토리 호출이 자체 트랜잭션을 가짐) 실패 시 깨끗이 롤백된다.

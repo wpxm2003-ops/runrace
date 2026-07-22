@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
  * <ol>
  *   <li>카카오 토큰 엔드포인트에서 authorization code → access token 교환</li>
  *   <li>카카오 사용자 정보 API로 프로필 조회</li>
- *   <li>app_user 테이블에 upsert (firebase_uid = "kakao:{kakaoId}")</li>
+ *   <li>users 테이블에 upsert (firebase_uid = "kakao:{kakaoId}")</li>
  *   <li>Firebase Admin SDK로 Custom Token 발급 → 프론트가 signInWithCustomToken으로 세션 생성</li>
  * </ol>
  */

@@ -50,7 +50,7 @@
 create table crew_join_request (
   id           bigserial   primary key,
   crew_id      bigint      not null references crew(id) on delete cascade,
-  user_id      uuid        not null references app_user(id) on delete cascade,
+  user_id      uuid        not null references users(id) on delete cascade,
   message      varchar(100),                 -- 신청 한마디(선택)
   status       varchar(10) not null default 'PENDING'
                check (status in ('PENDING','APPROVED','REJECTED','CANCELED')),

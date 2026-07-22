@@ -8,7 +8,7 @@ import { useLocale } from "@/lib/i18n";
 import { useAuthUser } from "@/lib/useAuthUser";
 
 /**
- * 로그인 사용자의 주력 언어(app_user.lang_cd)를 현재 UI 언어와 동기화한다.
+ * 로그인 사용자의 주력 언어(users.lang_cd)를 현재 UI 언어와 동기화한다.
  * 서버가 푸시 알림을 수신자 언어로 보낼 때 이 값을 사용한다. best-effort.
  */
 export function LanguageSync() {

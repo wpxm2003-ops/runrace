@@ -28,7 +28,7 @@ public interface AppUserRepository
    * 신규 가입자 활성화(첫 러닝 유도) 푸시 대상. 가입 후 정확히 N일째에만 조회해 1회만 발송한다.
    */
   @Query(value = """
-      select u.id from app_user u
+      select u.id from users u
       where (u.created_at at time zone 'Asia/Seoul')::date = :signupDate
         and not exists (select 1 from workout_session w where w.user_id = u.id)
       """, nativeQuery = true)

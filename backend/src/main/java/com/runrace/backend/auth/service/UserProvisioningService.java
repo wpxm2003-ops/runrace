@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 로그인 시 app_user 프로비저닝(upsert)을 한곳에서 처리한다.
+ * 로그인 시 users 프로비저닝(upsert)을 한곳에서 처리한다.
  * Firebase·Kakao 등 인증 경로가 공통으로 사용하며, 신규 사용자에게 생성 시각·고유 닉네임을 부여한다.
  */
 @Service

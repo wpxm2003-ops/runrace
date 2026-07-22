@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
-@Table(name = "app_user")
+@Table(name = "users")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
