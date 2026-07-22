@@ -244,7 +244,7 @@ export const translations = {
     crew_recap_card_title: (name: string) => `${name} 주간 결산`,
     crew_recap_card_members: (n: number) => `${n}명`,
     crew_races_heading: "크루 레이스",
-    crew_race_create_btn: "레이스 만들기",
+    crew_race_create_btn: "등록",
     crew_races_view_all: "전체보기",
     crew_races_empty: "아직 크루 레이스가 없어요. 크루원끼리만 겨루는 첫 레이스를 열어보세요!",
     crew_heatmap_heading: "크루 잔디",
