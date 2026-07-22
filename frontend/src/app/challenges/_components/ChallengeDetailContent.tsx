@@ -428,7 +428,7 @@ export default function ChallengeDetailContent() {
       )}
       {expandedImageUrl ? (
         <ImageLightbox
-          src={expandedImageUrl}
+          imageUrls={[expandedImageUrl]}
           alt={t.indoor_field_image}
           onClose={() => setExpandedImageUrl(null)}
         />
