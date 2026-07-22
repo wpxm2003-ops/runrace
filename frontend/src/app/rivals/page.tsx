@@ -7,7 +7,7 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
-import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { AsyncList } from "@/app/_components/ui/AsyncList";
 import { TextInput } from "@/app/_components/ui/TextInput";
 import { addRival, removeRival, useRivals, toDisplayError, mapErrorMessage, reportClientError, reportAndDisplay } from "@/lib/api";
 import type { RivalRow } from "@/lib/api/types";
@@ -206,22 +206,26 @@ function RivalsContent({ user }: { user: User }) {
         <div className="text-base font-semibold">{t.rival_list_heading}</div>
         {error ? <Alert className="mt-3">{toDisplayError(error)}</Alert> : null}
         <div className="mt-3">
-          {isLoading && !rivals ? (
-            <SkeletonLines count={2} />
-          ) : !rivals || rivals.length === 0 ? (
-            <div className="text-sm text-zinc-600">{t.rival_empty}</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {rivals.map((r) => (
-                <RivalListRow
-                  key={r.rivalUserId}
-                  rival={r}
-                  onRemove={onRemove}
-                  removing={removingId === r.rivalUserId}
-                />
-              ))}
-            </div>
-          )}
+          <AsyncList
+            isLoading={isLoading}
+            data={rivals}
+            isEmpty={(d) => d.length === 0}
+            emptyMessage={t.rival_empty}
+            skeletonCount={2}
+          >
+            {(rivals) => (
+              <div className="flex flex-col gap-2">
+                {rivals.map((r) => (
+                  <RivalListRow
+                    key={r.rivalUserId}
+                    rival={r}
+                    onRemove={onRemove}
+                    removing={removingId === r.rivalUserId}
+                  />
+                ))}
+              </div>
+            )}
+          </AsyncList>
         </div>
       </Card>
     </PageLayout>

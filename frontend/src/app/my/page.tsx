@@ -6,7 +6,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
-import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { AsyncList } from "@/app/_components/ui/AsyncList";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { NavRowButton } from "@/app/_components/NavRowButton";
 import { NicknameEditor } from "@/app/my/_components/NicknameEditor";
@@ -209,18 +209,22 @@ function MyPageContent({ user }: { user: User }) {
         <div className="text-base font-semibold">{t.my_records_all_time}</div>
         {summaryError ? <Alert className="mt-3">{String(summaryError)}</Alert> : null}
         <div className="mt-3">
-          {summaryLoading && !summary ? (
-            <SkeletonLines count={3} />
-          ) : !summary || summary.workoutCount === 0 ? (
-            <div className="text-sm text-zinc-600">{t.my_records_empty}</div>
-          ) : (
-            <WorkoutAggregateStats
-              stats={summary}
-              showWorkoutDays
-              totalLabels
-              maxStreakDays={summary.maxStreakDays}
-            />
-          )}
+          <AsyncList
+            isLoading={summaryLoading}
+            data={summary}
+            isEmpty={(d) => d.workoutCount === 0}
+            emptyMessage={t.my_records_empty}
+            skeletonCount={3}
+          >
+            {(summary) => (
+              <WorkoutAggregateStats
+                stats={summary}
+                showWorkoutDays
+                totalLabels
+                maxStreakDays={summary.maxStreakDays}
+              />
+            )}
+          </AsyncList>
         </div>
       </Card>
 

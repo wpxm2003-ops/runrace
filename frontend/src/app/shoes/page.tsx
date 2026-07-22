@@ -6,7 +6,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
-import { SkeletonLines } from "@/app/_components/ui/Skeleton";
+import { AsyncList } from "@/app/_components/ui/AsyncList";
 import {
   activateShoe,
   createShoe,
@@ -221,24 +221,28 @@ function ShoesContent({ user }: { user: User }) {
         {error ? <Alert className="mt-3">{toDisplayError(error)}</Alert> : null}
         {actionError ? <Alert className="mt-3">{actionError}</Alert> : null}
         <div className="mt-3">
-          {isLoading && !shoes ? (
-            <SkeletonLines count={2} />
-          ) : !shoes || shoes.length === 0 ? (
-            <div className="text-sm text-zinc-600">{t.shoe_empty}</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {shoes.map((s) => (
-                <ShoeListRow
-                  key={s.id}
-                  shoe={s}
-                  onActivate={onActivate}
-                  onEdit={openEdit}
-                  onDelete={onDelete}
-                  busy={busyId === s.id}
-                />
-              ))}
-            </div>
-          )}
+          <AsyncList
+            isLoading={isLoading}
+            data={shoes}
+            isEmpty={(d) => d.length === 0}
+            emptyMessage={t.shoe_empty}
+            skeletonCount={2}
+          >
+            {(shoes) => (
+              <div className="flex flex-col gap-2">
+                {shoes.map((s) => (
+                  <ShoeListRow
+                    key={s.id}
+                    shoe={s}
+                    onActivate={onActivate}
+                    onEdit={openEdit}
+                    onDelete={onDelete}
+                    busy={busyId === s.id}
+                  />
+                ))}
+              </div>
+            )}
+          </AsyncList>
         </div>
       </Card>
 
