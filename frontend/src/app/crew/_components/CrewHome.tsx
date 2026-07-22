@@ -7,33 +7,30 @@ import { Card } from "@/app/_components/ui/Card";
 import {
   crewNudge,
   toDisplayError,
-  useCrewRecap,
   useCrewInsights,
   useCrewRaces,
 } from "@/lib/api";
 import type { CrewView } from "@/lib/api/types";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { formatGoalDistance } from "@/lib/units";
-import { formatDateRange, shortMonthDay } from "@/lib/format";
+import { formatDateRange } from "@/lib/format";
 import { handleAuthFailure } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { toast } from "sonner";
-import { StatTile } from "./StatTile";
 import { CrewMatchSection } from "./CrewMatchSection";
 import { BoardRow } from "./BoardRow";
 import { HeatmapGrid } from "./HeatmapGrid";
 import { CrewDiscovery } from "./CrewDiscovery";
 
-/** 크루 홈 — 헤더 + 이번 주 보드(스탯·목표·넛지) + 대항전/레이스 + 회고(잔디·결산·명전) + 둘러보기. */
+/** 크루 홈 — 헤더 + 이번 주 보드(목표·넛지) + 잔디 + 대항전/레이스 + 명예의 전당 + 둘러보기. */
 export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
   const [nudgingId, setNudgingId] = useState<string | null>(null);
-  const { data: recap } = useCrewRecap(user, true);
   const { data: insights } = useCrewInsights(user, true);
   const { data: races } = useCrewRaces(user, true);
 
@@ -238,60 +235,6 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           )}
         </div>
       </Card>
-
-      {/* 지난주 결산 — 기록이 있던 주만 노출 */}
-      {recap && recap.totalRuns > 0 ? (
-        <Card className="mt-4">
-          <div>
-            <div className="min-w-0">
-              <div className="text-base font-semibold">{t.crew_recap_heading}</div>
-              <div className="mt-0.5 text-xs text-zinc-400">
-                {shortMonthDay(recap.weekStartDate)} ~ {shortMonthDay(recap.weekEndDate)}
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-zinc-50 px-2 py-3">
-            <StatTile
-              label={t.crew_recap_mvp}
-              value={recap.mvpNickname ?? "-"}
-              tone={recap.mvpNickname ? "green" : undefined}
-            />
-            <StatTile
-              label={t.crew_recap_total_distance}
-              value={formatDistance(recap.totalDistanceM, unit)}
-            />
-            <StatTile
-              label={t.crew_recap_participants}
-              value={String(recap.participantCount ?? 0)}
-            />
-          </div>
-          {/* 배포 틈에 옛 백엔드 응답(leaders 없음)을 읽어도 죽지 않게 방어 */}
-          {(recap.leaders ?? []).length > 0 ? (
-            <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 bg-white">
-              {(recap.leaders ?? []).map((leader, index) => (
-                <div
-                  key={`${leader.rank}-${leader.nickname ?? "unknown"}`}
-                  className={`flex items-center justify-between gap-3 px-4 py-3 ${
-                    index > 0 ? "border-t border-zinc-100" : ""
-                  }`}
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="inline-flex shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">
-                      {t.prize_rank_label(leader.rank)}
-                    </span>
-                    <span className="truncate text-sm font-medium text-zinc-900">
-                      {leader.nickname ?? t.no_name}
-                    </span>
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums text-zinc-900">
-                    {formatDistance(leader.distanceM, unit)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </Card>
-      ) : null}
 
       {/* 명예의 전당 — 월별 MVP 히스토리(완결된 달만) */}
       {insights && (insights.hallOfFame ?? []).length > 0 ? (
