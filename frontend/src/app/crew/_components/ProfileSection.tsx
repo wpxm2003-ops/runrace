@@ -5,6 +5,7 @@ import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { TextArea, TextInput } from "@/app/_components/ui/TextInput";
+import { DatePickerSheet } from "@/app/_components/ui/DatePickerSheet";
 import {
   updateCrewProfile,
   uploadImage,
@@ -19,7 +20,7 @@ import { CrewRegionPicker, type CrewRegionOption } from "./CrewRegionPicker";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n";
-import { weekdayLabels, todayIso } from "@/lib/format";
+import { weekdayLabels } from "@/lib/format";
 import { toast } from "sonner";
 
 /**
@@ -251,16 +252,12 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
         maxLength={30}
         className="mt-1.5 w-full"
       />
-      <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-profile-founded">
-        {t.crew_profile_founded_label}
-      </label>
-      <TextInput
-        id="crew-profile-founded"
-        type="date"
+      <label className="mt-4 block text-sm text-zinc-500">{t.crew_profile_founded_label}</label>
+      <DatePickerSheet
         value={foundedAt}
-        max={todayIso()}
-        onChange={(e) => setFoundedAt(e.target.value)}
-        className="mt-1.5 w-full"
+        onChange={setFoundedAt}
+        label={t.crew_profile_founded_label}
+        placeholder={t.crew_profile_founded_label}
       />
       <p className="mt-1 text-xs text-zinc-400">{t.crew_profile_founded_hint}</p>
       {actionError ? <p className="mt-3 text-xs text-red-600">{actionError}</p> : null}
