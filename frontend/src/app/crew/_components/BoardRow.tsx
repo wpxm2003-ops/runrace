@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/app/_components/ui/Badge";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -50,16 +51,8 @@ export function BoardRow({
           <span className="truncate text-sm font-medium text-zinc-900">
             {nickname ?? t.no_name}
           </span>
-          {isLeader ? (
-            <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-              {t.crew_leader_badge}
-            </span>
-          ) : null}
-          {isMe ? (
-            <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-              {t.crew_me_badge}
-            </span>
-          ) : null}
+          {isLeader ? <Badge tone="amber">{t.crew_leader_badge}</Badge> : null}
+          {isMe ? <Badge tone="emerald">{t.crew_me_badge}</Badge> : null}
         </div>
         <div className="shrink-0 text-right">
           {idle ? (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { User } from "firebase/auth";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { kickCrewMember, reportAndDisplay } from "@/lib/api";
 import type { CrewView } from "@/lib/api/types";
@@ -50,16 +51,8 @@ export function MemberSection({ crew, user, onChanged }: { crew: CrewView; user:
               <span className="truncate text-sm font-medium text-zinc-900">
                 {m.nickname ?? t.no_name}
               </span>
-              {m.isLeader ? (
-                <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                  {t.crew_leader_badge}
-                </span>
-              ) : null}
-              {m.isMe ? (
-                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                  {t.crew_me_badge}
-                </span>
-              ) : null}
+              {m.isLeader ? <Badge tone="amber">{t.crew_leader_badge}</Badge> : null}
+              {m.isMe ? <Badge tone="emerald">{t.crew_me_badge}</Badge> : null}
             </div>
             {!m.isMe ? (
               <button

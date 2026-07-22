@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/app/_components/ui/Badge";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { setChallengePreview } from "@/lib/challengePreview";
@@ -35,9 +36,7 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
         <div className="flex min-w-0 items-center gap-1.5">
           <div className="truncate text-sm font-medium">{c.title}</div>
           {showJoinedBadge && c.isMember ? (
-            <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-              {c.phase === "ENDED" ? t.races_joined_done : t.races_joined}
-            </span>
+            <Badge tone="emerald">{c.phase === "ENDED" ? t.races_joined_done : t.races_joined}</Badge>
           ) : null}
         </div>
         <ChallengePhaseBadge

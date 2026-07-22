@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import {
@@ -100,11 +101,7 @@ function RosterList({ title, rows }: { title: string; rows: CrewMatchRosterRow[]
           <div key={r.userId} className="flex items-center justify-between gap-3 py-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-sm text-zinc-900">{r.nickname ?? t.no_name}</span>
-              {r.isMe ? (
-                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                  {t.crew_me_badge}
-                </span>
-              ) : null}
+              {r.isMe ? <Badge tone="emerald">{t.crew_me_badge}</Badge> : null}
             </div>
             <span className="shrink-0 text-sm font-medium tabular-nums text-zinc-700">
               {formatDistance(r.distanceM, unit)}

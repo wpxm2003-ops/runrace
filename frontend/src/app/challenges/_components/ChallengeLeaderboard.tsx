@@ -2,6 +2,7 @@
 
 import { memo, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -98,13 +99,9 @@ const MemberRow = memo(function MemberRow({
                 {m.nickname ?? t.no_name}
               </span>
               {isMe ? (
-                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                  {t.me_label}
-                </span>
+                <Badge tone="emerald">{t.me_label}</Badge>
               ) : isRival ? (
-                <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                  {t.rival_label}
-                </span>
+                <Badge tone="amber">{t.rival_label}</Badge>
               ) : null}
             </div>
             {m.finished ? (

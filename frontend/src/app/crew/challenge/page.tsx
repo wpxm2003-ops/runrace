@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { Alert } from "@/app/_components/ui/Alert";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
@@ -263,11 +264,7 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
                   <span className="truncate text-sm font-medium text-zinc-900">
                     {m.nickname ?? t.no_name}
                   </span>
-                  {m.isMe ? (
-                    <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                      {t.crew_me_badge}
-                    </span>
-                  ) : null}
+                  {m.isMe ? <Badge tone="emerald">{t.crew_me_badge}</Badge> : null}
                 </div>
               </button>
             );
