@@ -13,11 +13,13 @@ export function ImageLightbox({
   initialIndex = 0,
   alt = "",
   onClose,
+  zIndexClass = "z-[100]",
 }: {
   imageUrls: string[];
   initialIndex?: number;
   alt?: string;
   onClose: () => void;
+  zIndexClass?: string;
 }) {
   const { t } = useLocale();
   const [index, setIndex] = useState(initialIndex);
@@ -42,7 +44,7 @@ export function ImageLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+      className={`fixed inset-0 ${zIndexClass} flex items-center justify-center bg-black/80 p-4`}
       role="presentation"
       onClick={onClose}
     >

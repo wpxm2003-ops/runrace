@@ -8,7 +8,7 @@ import { usePrizes, invalidatePrizes } from "@/lib/api/hooks";
 import { fetchPrizeImageObjectUrl } from "@/lib/api/prizes";
 import { handleAuthFailure } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n";
-import { useNativeBack } from "@/lib/useNativeBack";
+import { ImageLightbox } from "@/app/_components/ImageLightbox";
 
 /**
  * 레이스 상세의 경품 섹션.
@@ -119,36 +119,14 @@ export function ChallengePrizes({
         </ul>
       ) : null}
 
-      {viewerUrl ? <GifticonViewer url={viewerUrl} onClose={() => setViewerUrl(null)} /> : null}
-    </div>
-  );
-}
-
-/** 기프티콘 전체화면 뷰어. */
-function GifticonViewer({ url, onClose }: { url: string; onClose: () => void }) {
-  const { t } = useLocale();
-  useNativeBack(onClose);
-  return (
-    <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={t.prize_close}
-        className="absolute right-4 top-4 rounded-lg bg-white/15 px-3 py-1.5 text-sm text-white"
-      >
-        ✕
-      </button>
-      <img
-        src={url}
-        alt={t.prize_viewer_alt}
-        className="max-h-full max-w-full rounded-xl object-contain"
-        onClick={(e) => e.stopPropagation()}
-      />
+      {viewerUrl ? (
+        <ImageLightbox
+          imageUrls={[viewerUrl]}
+          alt={t.prize_viewer_alt}
+          onClose={() => setViewerUrl(null)}
+          zIndexClass="z-[120]"
+        />
+      ) : null}
     </div>
   );
 }
