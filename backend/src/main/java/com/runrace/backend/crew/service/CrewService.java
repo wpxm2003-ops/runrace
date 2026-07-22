@@ -3,6 +3,7 @@ package com.runrace.backend.crew.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewJoinRequest;
@@ -76,8 +77,6 @@ public class CrewService {
 
   /** 주간 보드 경계의 단일 기준 — 기존 운동일 집계와 동일하게 KST를 쓴다. */
   private static final ZoneId KST = KstTime.ZONE;
-  /** 프론트 stripForbiddenText와 동일한 금지 문자 집합. */
-  private static final char[] FORBIDDEN_CHARS = {'\'', '"', ';', '\\', '`', '<', '>'};
   /** 초대 코드 문자 — 혼동되는 I·L·O·0·1 제외. */
   private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   private static final int CODE_LEN = 6;
@@ -745,12 +744,7 @@ public class CrewService {
   }
 
   private static boolean containsForbiddenChar(String value) {
-    for (char c : FORBIDDEN_CHARS) {
-      if (value.indexOf(c) >= 0) {
-        return true;
-      }
-    }
-    return false;
+    return ForbiddenTextChars.containsForbidden(value);
   }
 
   /** 고유 초대 코드 생성 — 31^6(≈9억) 공간이라 충돌은 사실상 없지만 방어적으로 재시도한다. */

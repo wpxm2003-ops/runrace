@@ -91,6 +91,13 @@ class CrewServiceTest {
       assertEquals("invalid_crew_name", ex.code());
     }
 
+    @Test void 제어문자_포함이면_invalid_crew_name() {
+      // ForbiddenTextChars(공유 유틸)로 교체 후 새로 막힌 케이스 — 프론트 stripForbiddenText는
+      // 이미 제어문자를 걸러내므로 정상 UI 경로에선 발생하지 않고, API 직접호출 방어용.
+      ApiException ex = assertThrows(ApiException.class, () -> service.create(meId, "달밤\t크루", "SEOUL"));
+      assertEquals("invalid_crew_name", ex.code());
+    }
+
     @Test void 이미_크루_소속이면_already_in_crew() {
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(true);
       ApiException ex = assertThrows(ApiException.class, () -> service.create(meId, "달밤크루", "SEOUL"));
