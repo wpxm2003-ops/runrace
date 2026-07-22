@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 테스트 전용 로그 레벨. 여러 테스트가 "한 건 실패해도 격리됨"을 검증하려고 일부러
+     예외를 유발하는데, 그 경로의 log.warn(..., e)이 스택트레이스와 함께 콘솔에 찍혀
+     Surefire 리포트를 읽기 어렵게 만든다. 프로덕션 로깅(application.yml)은 그대로 둔다. -->
+<configuration>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} -- %msg%n</pattern>
+    </encoder>
+  </appender>
+  <root level="ERROR">
+    <appender-ref ref="CONSOLE" />
+  </root>
+</configuration>
