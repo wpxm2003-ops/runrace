@@ -11,6 +11,7 @@ import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.domain.IndoorRunApproval;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.service.CrewMatchService;
 import com.runrace.backend.event.WorkoutEvents;
 import com.runrace.backend.shoe.service.ShoeService;
@@ -221,7 +222,7 @@ public class WorkoutService {
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
   }
 
-  private static final ZoneId LIST_ZONE = ZoneId.of("Asia/Seoul");
+  private static final ZoneId LIST_ZONE = KstTime.ZONE;
 
   @Transactional(readOnly = true)
   public WorkoutSummaryResponse summaryForUser(UUID userId) {

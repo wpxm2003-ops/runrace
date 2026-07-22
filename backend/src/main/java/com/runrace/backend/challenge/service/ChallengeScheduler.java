@@ -1,6 +1,7 @@
 package com.runrace.backend.challenge.service;
 
 import com.runrace.backend.challenge.repository.ChallengeRepository;
+import com.runrace.backend.common.KstTime;
 import com.runrace.backend.observability.service.ErrorLogService;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -28,7 +29,7 @@ import org.springframework.stereotype.Component;
 public class ChallengeScheduler {
   private static final Logger log = LoggerFactory.getLogger(ChallengeScheduler.class);
 
-  private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+  private static final ZoneId KST = KstTime.ZONE;
   /** 온램프 레이스 정원 — 상한(MAX_MEMBERS_LIMIT)과 동일하게 넉넉히. */
   private static final int OPEN_RACE_MAX_MEMBERS = 50;
   /** 주말(2일) 목표. */

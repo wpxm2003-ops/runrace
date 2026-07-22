@@ -1,5 +1,6 @@
 package com.runrace.backend.workout.service;
 
+import com.runrace.backend.common.KstTime;
 import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.push.service.PushService;
@@ -36,7 +37,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ReengagementScheduler {
   private static final Logger log = LoggerFactory.getLogger(ReengagementScheduler.class);
-  private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+  private static final ZoneId KST = KstTime.ZONE;
   /** 운동 유도 푸시 탭 시 실내러닝 등록 화면으로 보낸다. */
   private static final String LINK_INDOOR = "/workout/indoor";
   /** 스트릭 위험 알림을 보낼 최소 연속일(짧은 연속은 알림 가치가 낮아 제외). */

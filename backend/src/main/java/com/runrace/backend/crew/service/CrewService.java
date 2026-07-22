@@ -3,6 +3,7 @@ package com.runrace.backend.crew.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewJoinRequest;
 import com.runrace.backend.crew.domain.CrewJoinRequestStatus;
@@ -74,7 +75,7 @@ public class CrewService {
       "GYEONGBUK", "GYEONGNAM", "JEJU", "ONLINE", "ETC");
 
   /** 주간 보드 경계의 단일 기준 — 기존 운동일 집계와 동일하게 KST를 쓴다. */
-  private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+  private static final ZoneId KST = KstTime.ZONE;
   /** 프론트 stripForbiddenText와 동일한 금지 문자 집합. */
   private static final char[] FORBIDDEN_CHARS = {'\'', '"', ';', '\\', '`', '<', '>'};
   /** 초대 코드 문자 — 혼동되는 I·L·O·0·1 제외. */
@@ -587,8 +588,7 @@ public class CrewService {
   }
 
   private CrewMember requireMembership(UUID meId) {
-    return crewMemberRepository.findByUserId(meId)
-        .orElseThrow(() -> ApiException.notFound("not_in_crew"));
+    return CrewGuards.requireMembership(crewMemberRepository, meId);
   }
 
   private Crew requireLeader(UUID meId, long crewId) {

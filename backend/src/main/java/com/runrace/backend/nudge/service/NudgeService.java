@@ -6,6 +6,7 @@ import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.service.ChallengeService;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.event.NudgeEvents;
@@ -32,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NudgeService {
   /** 프리셋 문구 개수 — messages.properties의 nudge.preset.0 ~ nudge.preset.{N-1}. */
   private static final int PRESET_COUNT = 4;
-  private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+  private static final ZoneId KST = KstTime.ZONE;
 
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;

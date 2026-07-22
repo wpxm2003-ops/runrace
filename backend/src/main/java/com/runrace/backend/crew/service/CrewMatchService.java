@@ -547,8 +547,7 @@ public class CrewMatchService {
   }
 
   private CrewMember requireMembership(UUID meId) {
-    return crewMemberRepository.findByUserId(meId)
-        .orElseThrow(() -> ApiException.notFound("not_in_crew"));
+    return CrewGuards.requireMembership(crewMemberRepository, meId);
   }
 
   /** 내 크루를 리더 자격으로 가져온다(도전장 발송·수락·거절·취소 공통 게이트). */
