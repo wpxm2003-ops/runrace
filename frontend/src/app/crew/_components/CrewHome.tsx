@@ -67,7 +67,7 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
     try {
       await crewNudge(targetUserId, variant, user);
       setNudgedIds((prev) => new Set(prev).add(targetUserId));
-      toast.success(t.nudge_sent);
+      toast.success(t.nudge_sent(t.nudge_presets[variant]));
     } catch (e) {
       const msg = String(e);
       if (msg.includes("nudge_daily_limit")) {
