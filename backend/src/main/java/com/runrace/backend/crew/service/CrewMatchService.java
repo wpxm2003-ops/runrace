@@ -2,6 +2,7 @@ package com.runrace.backend.crew.service;
 
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.common.PageParams;
 import com.runrace.backend.common.RaceRules;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMatch;
@@ -232,8 +233,9 @@ public class CrewMatchService {
   public CrewMatchHistoryPage history(UUID meId, int page, int size) {
     Long crewId = requireMembership(meId).getCrew().getId();
     OffsetDateTime now = OffsetDateTime.now();
+    PageParams.Clamped clamped = PageParams.clamp(page, size);
     var slice = crewMatchRepository.findHistoryByCrewId(
-        crewId, PageRequest.of(Math.max(page, 0), size));
+        crewId, PageRequest.of(clamped.page(), clamped.size()));
     List<CrewMatchSummary> items = slice.getContent().stream()
         .map(match -> {
           finalizeIfNeeded(match, now);
