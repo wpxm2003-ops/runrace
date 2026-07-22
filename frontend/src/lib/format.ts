@@ -89,3 +89,32 @@ export function isSameLocalDay(a: string, b: string): boolean {
 export function toDateTimeInputValue(iso: string): string {
   return toDateTimeLocal(new Date(iso));
 }
+
+/**
+ * "2026-07-06" → "7.6" — 날짜만 있는 ISO date 문자열 전용(파트 분리라 TZ 이슈 없음).
+ * 시각까지 있는 ISO datetime 문자열에는 쓰지 말 것(예: 크루 대항전 startAt/endAt은
+ * `new Date(iso)` 기반 별도 로컬 shortDate를 그대로 둔다 — 입력 형태가 다르다).
+ */
+export function shortMonthDay(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return `${Number(m)}.${Number(d)}`;
+}
+
+/** "YYYY-MM-DD" 기준 n일 뒤 ISO date. 잔디 그리드 셀 날짜 계산용. */
+export function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+}
+
+/** 오늘 날짜(로컬 타임존 기준) ISO date. */
+export function todayIso(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
+
+/** "YYYY-MM-DD" → locale 월·일 표기 (ko "6월 25일", en "June 25"). TZ 이슈 없이 파트로 생성. */
+export function monthDayLabel(iso: string, locale: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { month: "long", day: "numeric" });
+}

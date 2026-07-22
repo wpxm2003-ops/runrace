@@ -6,6 +6,7 @@ import { formatDistance } from "@/lib/units";
 import type { DistanceUnit } from "@/lib/units";
 import { track } from "@/lib/analytics";
 import { CARD_W, CARD_H, captureAndSaveCard } from "@/lib/storyCard";
+import { shortMonthDay } from "@/lib/format";
 import type { CrewRecap } from "@/lib/api/types";
 import type { Translations } from "@/lib/i18n/translations";
 
@@ -23,12 +24,6 @@ const COLOR = {
 
 const FONT =
   'ui-sans-serif, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-
-/** "2026-07-06" → "7.6" — 카드에 쓰는 짧은 날짜. */
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split("-");
-  return `${Number(m)}.${Number(d)}`;
-}
 
 export function CrewRecapCard({
   crewName,
@@ -109,7 +104,7 @@ export function CrewRecapCard({
             {t.crew_recap_card_title(crewName)}
           </div>
           <div style={{ marginTop: 20, fontSize: 42, color: COLOR.gray }}>
-            {shortDate(recap.weekStartDate)} – {shortDate(recap.weekEndDate)} ·{" "}
+            {shortMonthDay(recap.weekStartDate)} – {shortMonthDay(recap.weekEndDate)} ·{" "}
             {t.crew_recap_card_members(memberCount)}
           </div>
 

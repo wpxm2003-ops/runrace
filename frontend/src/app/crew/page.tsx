@@ -48,7 +48,14 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
-import { formatDateRange, weekdayLabels } from "@/lib/format";
+import {
+  addDaysIso,
+  formatDateRange,
+  monthDayLabel,
+  shortMonthDay,
+  todayIso,
+  weekdayLabels,
+} from "@/lib/format";
 import { toast } from "sonner";
 
 /** 초대 코드 입력 정규화 — 대문자 6자(코드 알파벳과 동일 폭). */
@@ -560,28 +567,6 @@ function StatTile({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
-/** "2026-07-06" → "7.6" */
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split("-");
-  return `${Number(m)}.${Number(d)}`;
-}
-
-/** "YYYY-MM-DD" 기준 n일 뒤 ISO date. 잔디 그리드 셀 날짜 계산용. */
-function addDaysIso(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${dt.getFullYear()}-${mm}-${dd}`;
-}
-
-function todayIso(): string {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${mm}-${dd}`;
-}
-
 /** 크루 설정 진입 톱니바퀴 — 페이지 제목("크루") 오른쪽에 붙는다. */
 function CrewSettingsGear({ pendingCount }: { pendingCount: number }) {
   const { t } = useLocale();
@@ -740,12 +725,6 @@ function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boolean })
       )}
     </Card>
   );
-}
-
-/** "YYYY-MM-DD" → locale 월·일 표기 (ko "6월 25일", en "June 25"). TZ 이슈 없이 파트로 생성. */
-function monthDayLabel(iso: string, locale: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(locale, { month: "long", day: "numeric" });
 }
 
 /**
@@ -1064,7 +1043,7 @@ function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
             <div className="min-w-0">
               <div className="text-base font-semibold">{t.crew_recap_heading}</div>
               <div className="mt-0.5 text-xs text-zinc-400">
-                {shortDate(recap.weekStartDate)} ~ {shortDate(recap.weekEndDate)}
+                {shortMonthDay(recap.weekStartDate)} ~ {shortMonthDay(recap.weekEndDate)}
               </div>
             </div>
           </div>
