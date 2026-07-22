@@ -17,6 +17,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class CrewMatchNotifications {
   private final PushService pushService;
 
+  private static String matchLink(long matchId) {
+    return "/crew/match?id=" + matchId;
+  }
+
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onChallengeReceived(CrewMatchEvents.ChallengeReceived event) {
     pushService.sendLocalized(
@@ -24,7 +28,7 @@ public class CrewMatchNotifications {
         "crew.match.challenge.title",
         "crew.match.challenge.body",
         event.challengerCrewName(),
-        "/crew/match?id=" + event.matchId());
+        matchLink(event.matchId()));
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -35,7 +39,7 @@ public class CrewMatchNotifications {
           "crew.match.confirmed.title",
           "crew.match.confirmed.body",
           receiver.opponentCrewName(),
-          "/crew/match?id=" + event.matchId());
+          matchLink(event.matchId()));
     }
   }
 
@@ -52,7 +56,7 @@ public class CrewMatchNotifications {
           "crew.match.ended.title",
           bodyKey,
           receiver.opponentCrewName(),
-          "/crew/match?id=" + event.matchId());
+          matchLink(event.matchId()));
     }
   }
 
@@ -64,7 +68,7 @@ public class CrewMatchNotifications {
           "crew.match.overtake.title",
           "crew.match.overtake.body",
           event.overtakerCrewName(),
-          "/crew/match?id=" + event.matchId());
+          matchLink(event.matchId()));
     }
   }
 
@@ -75,6 +79,6 @@ public class CrewMatchNotifications {
         "crew.match.declined.title",
         "crew.match.declined.body",
         event.opponentCrewName(),
-        "/crew/match?id=" + event.matchId());
+        matchLink(event.matchId()));
   }
 }

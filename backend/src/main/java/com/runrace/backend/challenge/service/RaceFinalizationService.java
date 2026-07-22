@@ -4,7 +4,7 @@ import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
-import com.runrace.backend.event.ChallengeEndedEvent;
+import com.runrace.backend.event.ChallengeEvents.ChallengeEndedEvent;
 import com.runrace.backend.user.domain.AppUser;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

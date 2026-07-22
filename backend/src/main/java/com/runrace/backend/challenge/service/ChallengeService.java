@@ -18,7 +18,7 @@ import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.crew.service.CrewGuards;
-import com.runrace.backend.event.ChallengeEndedNoParticipantsEvent;
+import com.runrace.backend.event.ChallengeEvents.ChallengeEndedNoParticipantsEvent;
 import com.runrace.backend.event.ChallengeEvents;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;

@@ -1,13 +1,12 @@
 package com.runrace.backend.notification;
 
-import com.runrace.backend.event.ChallengeEndedEvent;
-import com.runrace.backend.event.ChallengeEndedNoParticipantsEvent;
 import com.runrace.backend.event.ChallengeEvents;
-import com.runrace.backend.event.MilestoneReachedEvent;
-import com.runrace.backend.event.RankOvertakeEvent;
+import com.runrace.backend.event.ChallengeEvents.ChallengeEndedEvent;
+import com.runrace.backend.event.ChallengeEvents.ChallengeEndedNoParticipantsEvent;
+import com.runrace.backend.event.ChallengeEvents.MilestoneReachedEvent;
+import com.runrace.backend.event.ChallengeEvents.RankOvertakeEvent;
 import com.runrace.backend.push.service.PushService;
 import com.runrace.backend.upload.ImageUploadService;
-import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -36,7 +35,7 @@ public class ChallengeNotifications {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onMilestoneReached(MilestoneReachedEvent event) {
     // 변형은 이벤트당 한 번만 골라(=모두 같은 문구) 각 수신자의 언어로 렌더링한다.
-    String bodyKey = "challenge.milestone50." + ThreadLocalRandom.current().nextInt(VARIANTS);
+    String bodyKey = NotificationVariants.randomKey("challenge.milestone50.", VARIANTS);
     String link = challengeLink(event.challengeId());
     event.otherMemberIds().forEach(userId ->
         pushService.sendLocalized(
@@ -71,7 +70,7 @@ public class ChallengeNotifications {
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onRankOvertake(RankOvertakeEvent event) {
-    String bodyKey = "challenge.overtake." + ThreadLocalRandom.current().nextInt(VARIANTS);
+    String bodyKey = NotificationVariants.randomKey("challenge.overtake.", VARIANTS);
     String link = challengeLink(event.challengeId());
     event.overtakenUserIds().forEach(userId ->
         pushService.sendLocalized(

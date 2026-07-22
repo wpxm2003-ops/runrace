@@ -6,7 +6,6 @@ import com.runrace.backend.push.service.PushService;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.upload.ImageUploadService;
 import java.time.OffsetDateTime;
-import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -52,7 +51,7 @@ public class WorkoutNotifications {
     String distanceKm = String.format("%.1f", event.distanceM() / 1000.0);
     String pushType = "rival_workout:" + event.userId();
     OffsetDateTime todayStart = OffsetDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-    String bodyKey = "rival.workout." + ThreadLocalRandom.current().nextInt(RIVAL_VARIANTS);
+    String bodyKey = NotificationVariants.randomKey("rival.workout.", RIVAL_VARIANTS);
 
     for (var userId : toNotify) {
       if (systemPushHistoryRepository.existsByUserIdAndPushTypeAndSentAtAfter(userId, pushType, todayStart)) {
