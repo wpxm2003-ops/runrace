@@ -38,10 +38,6 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const { data: races } = useCrewRaces(user, true);
 
   const weekTotalM = crew.members.reduce((sum, m) => sum + m.weekDistanceM, 0);
-  const myRow = crew.members.find((m) => m.isMe);
-  const deltaM = weekTotalM - crew.lastWeekSameTimeDistanceM;
-  const myShare =
-    weekTotalM > 0 && myRow ? Math.round((myRow.weekDistanceM / weekTotalM) * 100) : null;
   const goalM = crew.weekGoalKm != null ? crew.weekGoalKm * 1000 : null;
   const goalAchievers = goalM != null
     ? crew.members.filter((member) => member.weekDistanceM >= goalM).length
@@ -91,6 +87,9 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
             <div className="mt-0.5 text-xs text-zinc-500">
               {t.crew_member_count(crew.members.length, crew.maxMembers)}
             </div>
+            <div className="mt-0.5 text-[11px] text-zinc-400">
+              {t.crew_stat_all_time} · {formatDistance(crew.allTimeDistanceM, unit)}
+            </div>
           </div>
           {crew.isLeader ? (
             <button
@@ -112,7 +111,7 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
         ) : null}
       </Card>
 
-      {/* 이번 주 보드 — 크루원이 매일 확인하는 핵심(총거리·인사이트·목표·멤버 넛지)이라 최상단. */}
+      {/* 이번 주 보드 — 크루원이 매일 확인하는 핵심(총거리·목표·멤버 넛지)이라 최상단. */}
       <Card className="mt-4">
         <div className="flex items-baseline justify-between">
           <div className="text-base font-semibold">{t.crew_week_heading}</div>
@@ -122,16 +121,6 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
               {formatDistance(weekTotalM, unit)}
             </span>
           </div>
-        </div>
-        {/* 인사이트 — 지난주 이맘때 대비 / 내 기여율 / 함께 달린 누적 (구 헤더 카드에서 이동) */}
-        <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-zinc-50 px-2 py-3">
-          <StatTile
-            label={t.crew_stat_vs_last_week}
-            value={`${deltaM >= 0 ? "+" : "-"}${formatDistance(Math.abs(deltaM), unit)}`}
-            tone={deltaM > 0 ? "green" : undefined}
-          />
-          <StatTile label={t.crew_stat_my_share} value={myShare != null ? `${myShare}%` : "—"} />
-          <StatTile label={t.crew_stat_all_time} value={formatDistance(crew.allTimeDistanceM, unit)} />
         </div>
         {/* 공통 개인 목표를 달성한 크루원 비율 (리더가 설정한 경우만) */}
         {goalM != null ? (
@@ -171,6 +160,19 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           ))}
         </div>
       </Card>
+
+      {/* 크루 잔디 — 최근 5주 활동 히트맵 (이번 주 보드 바로 아래) */}
+      {insights ? (
+        <Card className="mt-4">
+          <div className="flex items-baseline justify-between">
+            <div className="text-base font-semibold">{t.crew_heatmap_heading}</div>
+            <div className="text-xs text-zinc-400">{t.crew_heatmap_caption}</div>
+          </div>
+          <div className="mt-3">
+            <HeatmapGrid insights={insights} />
+          </div>
+        </Card>
+      ) : null}
 
       {/* 크루 대항전 — 다른 크루와의 총거리전 */}
       <CrewMatchSection user={user} isLeader={crew.isLeader} />
@@ -236,19 +238,6 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           )}
         </div>
       </Card>
-
-      {/* 크루 잔디 — 최근 5주 활동 히트맵 */}
-      {insights ? (
-        <Card className="mt-4">
-          <div className="flex items-baseline justify-between">
-            <div className="text-base font-semibold">{t.crew_heatmap_heading}</div>
-            <div className="text-xs text-zinc-400">{t.crew_heatmap_caption}</div>
-          </div>
-          <div className="mt-3">
-            <HeatmapGrid insights={insights} />
-          </div>
-        </Card>
-      ) : null}
 
       {/* 지난주 결산 — 기록이 있던 주만 노출 */}
       {recap && recap.totalRuns > 0 ? (
