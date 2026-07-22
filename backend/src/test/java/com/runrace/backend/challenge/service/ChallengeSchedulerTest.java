@@ -1,19 +1,42 @@
 package com.runrace.backend.challenge.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.service.ChallengeScheduler.OnrampWindow;
+import com.runrace.backend.observability.service.ErrorLogService;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 /** 온램프 공개 레이스 회차 계산 — 요일 엇갈리기가 "항상 모집 중인 레이스"를 보장하는지 검증. */
+@ExtendWith(MockitoExtension.class)
 class ChallengeSchedulerTest {
+
+  @Mock ChallengeRepository challengeRepository;
+  @Mock ChallengeService challengeService;
+  @Mock ErrorLogService errorLogService;
+
+  @InjectMocks ChallengeScheduler scheduler;
 
   // 2026-07-20(월) ~ 2026-07-26(일) 한 주를 기준으로 검증한다.
   private static final LocalDate MON = LocalDate.of(2026, 7, 20);
@@ -128,6 +151,71 @@ class ChallengeSchedulerTest {
         OnrampWindow w = ChallengeScheduler.nextOnrampWindow(MON.plusDays(i));
         assertTrue(w.label().equals("주말") || w.label().equals("평일"));
       }
+    }
+  }
+
+  // ── sweepRaceLifecycle ───────────────────────────────────────────
+
+  @Nested class SweepRaceLifecycle {
+    @Test void 대상없으면_아무것도안함() {
+      when(challengeRepository.findStartedNotEndedIds(any())).thenReturn(List.of());
+
+      scheduler.sweepRaceLifecycle();
+
+      verify(challengeService, never()).processRaceLifecycle(any(), any());
+    }
+
+    @Test void 대상마다_독립처리() {
+      when(challengeRepository.findStartedNotEndedIds(any())).thenReturn(List.of(1L, 2L));
+
+      scheduler.sweepRaceLifecycle();
+
+      verify(challengeService).processRaceLifecycle(eq(1L), any());
+      verify(challengeService).processRaceLifecycle(eq(2L), any());
+    }
+
+    @Test void 한건_예외나도_나머지는_계속처리되고_에러로그남음() {
+      when(challengeRepository.findStartedNotEndedIds(any())).thenReturn(List.of(1L, 2L));
+      doThrow(new RuntimeException("boom")).when(challengeService).processRaceLifecycle(eq(1L), any());
+
+      assertDoesNotThrow(() -> scheduler.sweepRaceLifecycle());
+
+      verify(challengeService).processRaceLifecycle(eq(2L), any());
+      verify(errorLogService).recordServiceError(
+          eq("scheduler"), eq("RuntimeException"), eq("boom"), any(), eq("challengeId=1"));
+    }
+  }
+
+  // ── ensureOpenPublicRace ─────────────────────────────────────────
+
+  @Nested class EnsureOpenPublicRace {
+    @Test void 이미모집중인공개레이스있으면_생성안함() {
+      when(challengeRepository.existsOpenPublicRace(any())).thenReturn(true);
+
+      scheduler.ensureOpenPublicRace();
+
+      verify(challengeService, never()).createOfficialRace(any(), any(), any(), anyInt(), any(), any());
+    }
+
+    @Test void 없으면_운영자계정으로_새회차생성() {
+      when(challengeRepository.existsOpenPublicRace(any())).thenReturn(false);
+
+      scheduler.ensureOpenPublicRace();
+
+      verify(challengeService).createOfficialRace(
+          eq(UUID.fromString("662963bb-41f8-4180-92de-ecf02a8b3ba7")),
+          any(), any(), eq(50), any(), any());
+    }
+
+    @Test void 생성중_예외나면_에러로그기록하고_전파안함() {
+      when(challengeRepository.existsOpenPublicRace(any())).thenReturn(false);
+      when(challengeService.createOfficialRace(any(), any(), any(), anyInt(), any(), any()))
+          .thenThrow(new RuntimeException("fail"));
+
+      assertDoesNotThrow(() -> scheduler.ensureOpenPublicRace());
+
+      verify(errorLogService).recordServiceError(
+          eq("scheduler"), eq("RuntimeException"), eq("fail"), any(), eq("ensureOpenPublicRace"));
     }
   }
 }
