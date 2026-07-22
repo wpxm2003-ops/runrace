@@ -87,6 +87,16 @@ const LIVE_CONFIG = {
   ...SWR_ERROR_RETRY,
 };
 
+/** useSWRInfinite 목록 훅 5곳 공용 — 필터/언어 변경 시 setSize(1)로 재시작, persistSize로 스크롤 복원 유지. */
+const SWR_INFINITE_CONFIG = {
+  revalidateFirstPage: true,
+  revalidateOnFocus: true,
+  keepPreviousData: true,
+  persistSize: true,
+  dedupingInterval: 0,
+  ...SWR_ERROR_RETRY,
+};
+
 // ── 레이스 목록 ────────────────────────────────────────────────────────────────
 /**
  * 공개 API이지만 로그인 여부에 따라 isOwner 필드가 달라지므로 userId를 키에 포함한다.
@@ -121,15 +131,8 @@ export function useChallengeListInfinite(
         page: key[4] as number,
         size: PUBLIC_PAGE_SIZE,
       }),
-    {
-      revalidateFirstPage: true,
-      revalidateOnFocus: true,
-      keepPreviousData: true,
-      // 인증 복원 등으로 키가 바뀌어도 불러온 페이지 수를 유지해 스크롤 복원이 깨지지 않게 한다.
-      persistSize: true,
-      dedupingInterval: 0,
-      ...SWR_ERROR_RETRY,
-    },
+    // 인증 복원 등으로 키가 바뀌어도 persistSize로 불러온 페이지 수를 유지해 스크롤 복원이 깨지지 않게 한다.
+    SWR_INFINITE_CONFIG,
   );
 }
 
@@ -147,14 +150,7 @@ export function useMyChallengeListInfinite(user: User | null, phase: string) {
         page: key[3] as number,
         size: PUBLIC_PAGE_SIZE,
       }),
-    {
-      revalidateFirstPage: true,
-      revalidateOnFocus: true,
-      keepPreviousData: true,
-      persistSize: true,
-      dedupingInterval: 0,
-      ...SWR_ERROR_RETRY,
-    },
+    SWR_INFINITE_CONFIG,
   );
 }
 
@@ -335,14 +331,7 @@ export function useCrewRaceListInfinite(user: User | null, phase: string) {
       page: key[3] as number,
       size: DEFAULT_PAGE_SIZE,
     }),
-    {
-      revalidateFirstPage: true,
-      revalidateOnFocus: true,
-      keepPreviousData: true,
-      persistSize: true,
-      dedupingInterval: 0,
-      ...SWR_ERROR_RETRY,
-    },
+    SWR_INFINITE_CONFIG,
   );
 }
 
@@ -368,14 +357,7 @@ export function useCrewMatchHistoryInfinite(user: User | null) {
       return ["crew-match-history", user.uid, index] as const;
     },
     (key) => fetchCrewMatchHistory(key[2] as number, user!),
-    {
-      revalidateFirstPage: true,
-      revalidateOnFocus: true,
-      keepPreviousData: true,
-      persistSize: true,
-      dedupingInterval: 0,
-      ...SWR_ERROR_RETRY,
-    },
+    SWR_INFINITE_CONFIG,
   );
 }
 
@@ -412,14 +394,7 @@ export function useCrewDiscoveryInfinite(region: CrewRegion | "", user: User | n
       return ["crew-discovery", region, index] as const;
     },
     (key) => fetchCrewDiscovery(key[1] as CrewRegion | "", key[2] as number, user),
-    {
-      revalidateFirstPage: true,
-      revalidateOnFocus: false,
-      keepPreviousData: true,
-      persistSize: true,
-      dedupingInterval: 0,
-      ...SWR_ERROR_RETRY,
-    },
+    { ...SWR_INFINITE_CONFIG, revalidateOnFocus: false },
   );
 }
 
