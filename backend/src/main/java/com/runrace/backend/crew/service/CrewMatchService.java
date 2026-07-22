@@ -201,9 +201,7 @@ public class CrewMatchService {
     List<CrewMatchSummary> sent = new ArrayList<>();
     for (CrewMatch m : crewMatchRepository.findActiveByCrewId(crewId, now)) {
       // 기간이 끝난 ACCEPTED는 여기서 lazy 확정 → lastEnded로 흘러가게 한다.
-      if (m.getStatus() == CrewMatch.Status.ACCEPTED && !m.isEnded()
-          && !now.isBefore(m.getEndAt())) {
-        finalizeEnded(m);
+      if (finalizeIfNeeded(m, now)) {
         continue;
       }
       CrewMatchSummary summary = toSummary(m, crewId, now);
@@ -238,10 +236,7 @@ public class CrewMatchService {
         crewId, PageRequest.of(Math.max(page, 0), size));
     List<CrewMatchSummary> items = slice.getContent().stream()
         .map(match -> {
-          if (match.getStatus() == CrewMatch.Status.ACCEPTED && !match.isEnded()
-              && !now.isBefore(match.getEndAt())) {
-            finalizeEnded(match);
-          }
+          finalizeIfNeeded(match, now);
           return toSummary(match, crewId, now);
         })
         .toList();
@@ -259,10 +254,7 @@ public class CrewMatchService {
     }
 
     OffsetDateTime now = OffsetDateTime.now();
-    if (match.getStatus() == CrewMatch.Status.ACCEPTED && !match.isEnded()
-        && !now.isBefore(match.getEndAt())) {
-      finalizeEnded(match);
-    }
+    finalizeIfNeeded(match, now);
 
     List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(matchId);
     Map<UUID, Long> byUser = memberDistances(match, rosters, now);
@@ -320,6 +312,16 @@ public class CrewMatchService {
   public boolean finalizeIfTimeEnded(long matchId, OffsetDateTime now) {
     CrewMatch match = crewMatchRepository.findByIdWithCrews(matchId).orElse(null);
     if (match == null) return false; // 그사이 삭제됐으면 건너뜀
+    return finalizeIfNeeded(match, now);
+  }
+
+  /**
+   * ACCEPTED인데 기간이 끝난 매치를 조회/스케줄러 시점에 지연 확정한다. 확정했으면 true.
+   * myMatches/history/detail(조회 시점)과 finalizeIfTimeEnded(스케줄러)가 공유 —
+   * endAt은 nullable 컬럼이라 null 체크를 반드시 거친다(스케줄러 쪽엔 원래 있었고, 조회 3곳은
+   * 없어서 이론상 NPE 여지가 있었음 — 통합하며 전부 안전한 쪽으로 맞춤).
+   */
+  private boolean finalizeIfNeeded(CrewMatch match, OffsetDateTime now) {
     if (match.getStatus() != CrewMatch.Status.ACCEPTED || match.isEnded()) return false;
     if (match.getEndAt() == null || now.isBefore(match.getEndAt())) return false;
     finalizeEnded(match);
