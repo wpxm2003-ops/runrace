@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ShoeFormBody, ShoeRow } from "@/lib/api/types";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { SelectSheet } from "@/app/_components/ui/SelectSheet";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { goalInputFromKm, metersFromInput } from "@/lib/units";
 import { handleAuthFailure } from "@/lib/auth";
@@ -202,36 +203,14 @@ export function ShoeFormSheet({
     </BottomSheet>
 
     {brandOpen ? (
-      <BottomSheet
+      <SelectSheet
+        value={brandSel}
+        options={brandOptions.map((b) => ({ value: b, label: b === OTHER ? t.shoe_brand_other : b }))}
+        onSelect={setBrandSel}
         onClose={() => setBrandOpen(false)}
         zIndexClass="z-[110]"
         panelClassName="max-h-[70vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white py-2 shadow-xl sm:rounded-2xl"
-      >
-        <ul role="listbox">
-          {brandOptions.map((b) => {
-            const selected = brandSel === b;
-            return (
-              <li key={b}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onClick={() => {
-                    setBrandSel(b);
-                    setBrandOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between px-5 py-3 text-left text-sm ${
-                    selected ? "font-semibold text-zinc-900" : "text-zinc-700"
-                  } active:bg-zinc-100`}
-                >
-                  <span>{b === OTHER ? t.shoe_brand_other : b}</span>
-                  {selected ? <span className="text-zinc-900">✓</span> : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </BottomSheet>
+      />
     ) : null}
     </>
   );
