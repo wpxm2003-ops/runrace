@@ -8,7 +8,6 @@ import { goalInputFromKm, metersFromInput } from "@/lib/units";
 import { handleAuthFailure } from "@/lib/auth";
 import { toDisplayError, mapErrorMessage } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
-import { useNativeBack } from "@/lib/useNativeBack";
 
 /** 브랜드 프리셋(고유명사라 비번역). 그 외는 직접 입력. */
 const BRANDS = [
@@ -56,8 +55,7 @@ export function ShoeFormSheet({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 브랜드 시트가 열려 있으면 백버튼은 시트만 닫는다(폼 유지). 메인 시트의 백버튼은 BottomSheet가 소유.
-  useNativeBack(() => setBrandOpen(false), brandOpen);
+  // 백버튼은 두 BottomSheet가 각자 소유 — 인터셉터가 LIFO 스택이라 브랜드 시트(나중 마운트)가 먼저 닫힌다(폼 유지).
 
   function mapError(e: unknown): string {
     return mapErrorMessage(
@@ -204,16 +202,12 @@ export function ShoeFormSheet({
     </BottomSheet>
 
     {brandOpen ? (
-      <div
-        className="fixed inset-0 z-[110] flex items-end justify-center bg-black/45 sm:items-center"
-        role="presentation"
-        onClick={() => setBrandOpen(false)}
+      <BottomSheet
+        onClose={() => setBrandOpen(false)}
+        zIndexClass="z-[110]"
+        panelClassName="max-h-[70vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white py-2 shadow-xl sm:rounded-2xl"
       >
-        <ul
-          role="listbox"
-          className="max-h-[70vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white py-2 shadow-xl sm:rounded-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <ul role="listbox">
           {brandOptions.map((b) => {
             const selected = brandSel === b;
             return (
@@ -237,7 +231,7 @@ export function ShoeFormSheet({
             );
           })}
         </ul>
-      </div>
+      </BottomSheet>
     ) : null}
     </>
   );
