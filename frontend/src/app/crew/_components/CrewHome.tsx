@@ -27,7 +27,7 @@ import { BoardRow } from "./BoardRow";
 import { HeatmapGrid } from "./HeatmapGrid";
 import { CrewDiscovery } from "./CrewDiscovery";
 
-/** 크루 홈 — 크루 정보 + 인사이트 스탯 + 이번 주 보드(목표·넛지) + 지난주 결산. */
+/** 크루 홈 — 헤더 + 이번 주 보드(스탯·목표·넛지) + 대항전/레이스 + 회고(잔디·결산·명전) + 둘러보기. */
 export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -83,6 +83,7 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
 
   return (
     <>
+      {/* 헤더 — 크루명·인원·공지·초대(리더). 인사이트 스탯은 아래 이번 주 보드로 이동. */}
       <Card>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -109,7 +110,20 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
             <span className="text-sm text-zinc-700">{crew.notice}</span>
           </div>
         ) : null}
-        {/* 인사이트 — 지난주 이맘때 대비 / 내 기여율 / 함께 달린 누적 */}
+      </Card>
+
+      {/* 이번 주 보드 — 크루원이 매일 확인하는 핵심(총거리·인사이트·목표·멤버 넛지)이라 최상단. */}
+      <Card className="mt-4">
+        <div className="flex items-baseline justify-between">
+          <div className="text-base font-semibold">{t.crew_week_heading}</div>
+          <div className="text-sm text-zinc-500">
+            {t.crew_week_total_label}{" "}
+            <span className="font-semibold tabular-nums text-zinc-900">
+              {formatDistance(weekTotalM, unit)}
+            </span>
+          </div>
+        </div>
+        {/* 인사이트 — 지난주 이맘때 대비 / 내 기여율 / 함께 달린 누적 (구 헤더 카드에서 이동) */}
         <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-zinc-50 px-2 py-3">
           <StatTile
             label={t.crew_stat_vs_last_week}
@@ -118,6 +132,43 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           />
           <StatTile label={t.crew_stat_my_share} value={myShare != null ? `${myShare}%` : "—"} />
           <StatTile label={t.crew_stat_all_time} value={formatDistance(crew.allTimeDistanceM, unit)} />
+        </div>
+        {/* 공통 개인 목표를 달성한 크루원 비율 (리더가 설정한 경우만) */}
+        {goalM != null ? (
+          <div className="mt-3 rounded-xl bg-zinc-50 p-3">
+            <div className="flex items-baseline justify-between gap-2 text-xs">
+              <span className="font-medium text-zinc-600">{t.crew_goal_label}</span>
+              <span className={goalAchievers === crew.members.length ? "font-semibold text-emerald-600" : "tabular-nums text-zinc-500"}>
+                {t.crew_goal_achievers(goalAchievers, crew.members.length)}
+              </span>
+            </div>
+            <div className="mt-1 text-[11px] text-zinc-400">
+              {t.crew_goal_per_member(formatDistance(goalM, unit))}
+            </div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+              <div
+                className={`h-full rounded-full transition-all ${goalAchievers === crew.members.length ? "bg-emerald-500" : "bg-zinc-900"}`}
+                style={{ width: `${crewGoalPercent}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+        <div className="mt-2 divide-y divide-zinc-100">
+          {crew.members.map((m, i) => (
+            <BoardRow
+              key={m.userId}
+              rank={i + 1}
+              nickname={m.nickname}
+              isLeader={m.isLeader}
+              isMe={m.isMe}
+              weekDistanceM={m.weekDistanceM}
+              weekRuns={m.weekRuns}
+              goalM={goalM}
+              onNudge={(variant) => onNudge(m.userId, variant)}
+              nudged={nudgedIds.has(m.userId)}
+              nudging={nudgingId === m.userId}
+            />
+          ))}
         </div>
       </Card>
 
@@ -183,55 +234,6 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
               })}
             </div>
           )}
-        </div>
-      </Card>
-
-      <Card className="mt-4">
-        <div className="flex items-baseline justify-between">
-          <div className="text-base font-semibold">{t.crew_week_heading}</div>
-          <div className="text-sm text-zinc-500">
-            {t.crew_week_total_label}{" "}
-            <span className="font-semibold tabular-nums text-zinc-900">
-              {formatDistance(weekTotalM, unit)}
-            </span>
-          </div>
-        </div>
-        {/* 공통 개인 목표를 달성한 크루원 비율 (리더가 설정한 경우만) */}
-        {goalM != null ? (
-          <div className="mt-3 rounded-xl bg-zinc-50 p-3">
-            <div className="flex items-baseline justify-between gap-2 text-xs">
-              <span className="font-medium text-zinc-600">{t.crew_goal_label}</span>
-              <span className={goalAchievers === crew.members.length ? "font-semibold text-emerald-600" : "tabular-nums text-zinc-500"}>
-                {t.crew_goal_achievers(goalAchievers, crew.members.length)}
-              </span>
-            </div>
-            <div className="mt-1 text-[11px] text-zinc-400">
-              {t.crew_goal_per_member(formatDistance(goalM, unit))}
-            </div>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
-              <div
-                className={`h-full rounded-full transition-all ${goalAchievers === crew.members.length ? "bg-emerald-500" : "bg-zinc-900"}`}
-                style={{ width: `${crewGoalPercent}%` }}
-              />
-            </div>
-          </div>
-        ) : null}
-        <div className="mt-2 divide-y divide-zinc-100">
-          {crew.members.map((m, i) => (
-            <BoardRow
-              key={m.userId}
-              rank={i + 1}
-              nickname={m.nickname}
-              isLeader={m.isLeader}
-              isMe={m.isMe}
-              weekDistanceM={m.weekDistanceM}
-              weekRuns={m.weekRuns}
-              goalM={goalM}
-              onNudge={(variant) => onNudge(m.userId, variant)}
-              nudged={nudgedIds.has(m.userId)}
-              nudging={nudgingId === m.userId}
-            />
-          ))}
         </div>
       </Card>
 
