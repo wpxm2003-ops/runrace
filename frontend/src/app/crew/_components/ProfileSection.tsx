@@ -10,6 +10,7 @@ import {
   useCrewDetail,
   invalidateCrewDetail,
   toDisplayError,
+  mapErrorMessage,
 } from "@/lib/api";
 import type { CrewView } from "@/lib/api/types";
 import { CREW_REGIONS, crewRegionLabel, type CrewRegionCode } from "@/lib/crewRegion";
@@ -68,7 +69,7 @@ export function ProfileSection({ crew, user, onSaved }: { crew: CrewView; user: 
       const url = await uploadImage(file, user);
       setImageUrls((cur) => [...cur, url].slice(0, 4));
     } catch (e) {
-      toast.error(String(e).includes("upload_too_large") ? t.upload_too_large : t.error_occurred);
+      toast.error(mapErrorMessage(e, [{ codes: ["upload_too_large"], message: t.upload_too_large }], () => t.error_occurred));
     } finally {
       setUploading(false);
     }

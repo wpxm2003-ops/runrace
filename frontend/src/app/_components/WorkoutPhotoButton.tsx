@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
 import { Button } from "@/app/_components/ui/Button";
-import { updateWorkoutImage, uploadImage, patchWorkoutDetailImage } from "@/lib/api";
+import { updateWorkoutImage, uploadImage, patchWorkoutDetailImage, mapErrorMessage } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
 
@@ -54,7 +54,7 @@ export function WorkoutPhotoButton({
       patchWorkoutDetailImage(workoutId, user.uid, newUrl);
       toast.success(t.photo_saved);
     } catch (err) {
-      toast.error(String(err).includes("upload_too_large") ? t.upload_too_large : t.error_occurred);
+      toast.error(mapErrorMessage(err, [{ codes: ["upload_too_large"], message: t.upload_too_large }], () => t.error_occurred));
     } finally {
       setBusy(false);
     }

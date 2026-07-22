@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import type { PrizeFormItem } from "@/lib/api/types";
 import { uploadPrivateImage, fetchPrizeImageObjectUrl } from "@/lib/api/prizes";
+import { mapErrorMessage } from "@/lib/api";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { useLocale } from "@/lib/i18n";
@@ -154,10 +155,9 @@ export function PrizeEditorModal({
         }),
       );
     } catch (e) {
-      const msg = String(e);
       patch(i, {
         uploading: false,
-        error: msg.includes("upload_too_large") ? t.prize_err_too_large : t.prize_err_upload,
+        error: mapErrorMessage(e, [{ codes: ["upload_too_large"], message: t.prize_err_too_large }], () => t.prize_err_upload),
       });
     }
   }

@@ -5,7 +5,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { ImageUploadField, type ImageFieldState } from "@/app/workout/indoor/_components/ImageUploadField";
 import { DurationField } from "@/app/workout/indoor/_components/DurationField";
-import { createIndoorRun, uploadImage } from "@/lib/api";
+import { createIndoorRun, uploadImage, mapErrorMessage } from "@/lib/api";
 import { track, distanceBucket } from "@/lib/analytics";
 import { withRetry } from "@/lib/retry";
 import { workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
@@ -94,10 +94,11 @@ export default function IndoorRunPage() {
       nativeNavigate(`/workouts/${res.id}`);
     } catch (e) {
       // 2차 방어: 업로드 용량 초과는 전용 안내, 그 외엔 친절 안내(폼 그대로 → 다시 제출이 곧 재시도)
-      const msg =
-        e instanceof Error && e.message === "upload_too_large"
-          ? t.upload_too_large
-          : t.workout_save_failed;
+      const msg = mapErrorMessage(
+        e,
+        [{ codes: ["upload_too_large"], message: t.upload_too_large }],
+        () => t.workout_save_failed,
+      );
       setSubmitError(msg);
       setSubmitting(false);
     }
