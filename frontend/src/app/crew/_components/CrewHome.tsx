@@ -25,7 +25,7 @@ import { BoardRow } from "./BoardRow";
 import { HeatmapGrid } from "./HeatmapGrid";
 import { CrewDiscovery } from "./CrewDiscovery";
 
-/** 크루 홈 — 헤더 + 이번 달 보드(목표·넛지) + 잔디 + 대항전/레이스 + 명예의 전당 + 둘러보기. */
+/** 크루 홈 — 헤더 + 이번 달 보드(목표·넛지) + 잔디 + 레이스/대항전 + 명예의 전당 + 둘러보기. */
 export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -173,10 +173,7 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
         </Card>
       ) : null}
 
-      {/* 크루 대항전 — 다른 크루와의 총거리전 */}
-      <CrewMatchSection user={user} isLeader={crew.isLeader} />
-
-      {/* 크루 레이스 — 크루원끼리만 겨루는 내부 레이스 */}
+      {/* 크루 레이스 — 크루원끼리만 겨루는 내부 레이스(대항전보다 먼저: 진입장벽 없이 바로 뛸 수 있는 쪽이 우선) */}
       <Card className="mt-4">
         <div className="flex items-center justify-between gap-3">
           <div className="text-base font-semibold">{t.crew_races_heading}</div>
@@ -237,6 +234,9 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
           )}
         </div>
       </Card>
+
+      {/* 크루 대항전 — 다른 크루와의 총거리전 */}
+      <CrewMatchSection user={user} isLeader={crew.isLeader} />
 
       {/* 명예의 전당 — 월별 MVP 히스토리(완결된 달만) */}
       {insights && (insights.hallOfFame ?? []).length > 0 ? (
