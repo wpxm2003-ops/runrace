@@ -1,5 +1,6 @@
 "use client";
 
+import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
@@ -22,6 +23,7 @@ import { ShareButton } from "@/app/_components/ShareButton";
 import { WorkoutPhotoButton } from "@/app/_components/WorkoutPhotoButton";
 import { ElevationSection } from "./ElevationSection";
 import { KmSplitSection } from "./KmSplitSection";
+import type { WorkoutDetail } from "@/lib/api/types";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -59,6 +61,56 @@ function TrashIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
       <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function WorkoutActions({
+  user,
+  workoutId,
+  detail,
+  deleting,
+  onShare,
+  onDelete,
+}: {
+  user: User | null | undefined;
+  workoutId: number | null;
+  detail: WorkoutDetail;
+  deleting: boolean;
+  onShare: () => Promise<"shared" | "copied" | void> | Promise<void>;
+  onDelete: () => void;
+}) {
+  const { t } = useLocale();
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <ShareButton onShare={onShare} className={ACTION_ICON_CLASS} ariaLabel={t.share_btn}>
+        <ShareIcon />
+      </ShareButton>
+      {user && workoutId ? (
+        <>
+          <WorkoutPhotoButton
+            key={workoutId}
+            workoutId={workoutId}
+            imageUrl={detail.imageUrl ?? null}
+            user={user}
+            className={ACTION_ICON_CLASS}
+            ariaLabel={detail.imageUrl ? t.photo_view_btn : t.photo_save_btn}
+          >
+            <PhotoIcon />
+          </WorkoutPhotoButton>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={onDelete}
+            className={`${ACTION_ICON_CLASS} text-red-600`}
+            aria-label={t.workout_delete_btn}
+            title={t.workout_delete_btn}
+          >
+            <TrashIcon />
+          </button>
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -107,35 +159,14 @@ export default function WorkoutDetailContent() {
   }
 
   const pageActions = detail ? (
-    <div className="flex items-center gap-1.5">
-      <ShareButton onShare={onShare} className={ACTION_ICON_CLASS} ariaLabel={t.share_btn}>
-        <ShareIcon />
-      </ShareButton>
-      {user && id ? (
-        <>
-          <WorkoutPhotoButton
-            key={id}
-            workoutId={id}
-            imageUrl={detail.imageUrl ?? null}
-            user={user}
-            className={ACTION_ICON_CLASS}
-            ariaLabel={detail.imageUrl ? t.photo_view_btn : t.photo_save_btn}
-          >
-            <PhotoIcon />
-          </WorkoutPhotoButton>
-          <button
-            type="button"
-            disabled={deleting}
-            onClick={onDelete}
-            className={`${ACTION_ICON_CLASS} text-red-600`}
-            aria-label={t.workout_delete_btn}
-            title={t.workout_delete_btn}
-          >
-            <TrashIcon />
-          </button>
-        </>
-      ) : null}
-    </div>
+    <WorkoutActions
+      user={user}
+      workoutId={id}
+      detail={detail}
+      deleting={deleting}
+      onShare={onShare}
+      onDelete={onDelete}
+    />
   ) : null;
 
   const error = firstErrorMessage(deleteError, fetchErrorMessage(fetchError, t.workout_not_found));

@@ -13,11 +13,12 @@ export function crewLoadState(
   isLoading: boolean,
   hasData: boolean,
   skeletonCount = 3,
+  errorMessage = toDisplayError(error),
 ): ReactNode | null {
   if (error) {
     return (
       <Card>
-        <Alert>{toDisplayError(error)}</Alert>
+        <Alert>{errorMessage}</Alert>
       </Card>
     );
   }

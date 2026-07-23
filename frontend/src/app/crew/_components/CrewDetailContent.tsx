@@ -3,9 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
-import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { Button } from "@/app/_components/ui/Button";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
 import { TextArea } from "@/app/_components/ui/TextInput";
@@ -32,6 +30,7 @@ import { useAuthUser } from "@/lib/useAuthUser";
 import { useLocale } from "@/lib/i18n";
 import { formatDate, formatDateOnly, weekdayLabels } from "@/lib/format";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
+import { crewLoadState } from "./CrewLoadState";
 import { toast } from "sonner";
 
 const MESSAGE_MAX = 100;
@@ -189,6 +188,56 @@ function ApplyCta({
   );
 }
 
+function CrewIntroCard({ detail }: { detail: CrewDetail }) {
+  const { t } = useLocale();
+
+  return (
+    <Card className="mt-4">
+      <div className="text-base font-semibold">{t.crew_detail_intro_heading}</div>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+        {detail.intro || t.crew_detail_intro_empty}
+      </p>
+    </Card>
+  );
+}
+
+function CrewMeetupCard({ detail, weekdays }: { detail: CrewDetail; weekdays: string[] }) {
+  const { t } = useLocale();
+  const hasMeetupInfo = Boolean(
+    detail.meetupPlace || detail.meetupDays.length > 0 || detail.meetupTime,
+  );
+
+  return (
+    <Card className="mt-4">
+      <div className="text-base font-semibold">{t.crew_detail_meetup_heading}</div>
+      {hasMeetupInfo ? (
+        <div className="mt-2 flex flex-col gap-1.5 text-sm text-zinc-700">
+          {detail.meetupPlace ? (
+            <div>
+              <span className="mr-1.5 text-zinc-400">{t.crew_detail_meetup_place_label}</span>
+              {detail.meetupPlace}
+            </div>
+          ) : null}
+          {detail.meetupDays.length > 0 ? (
+            <div>
+              <span className="mr-1.5 text-zinc-400">{t.crew_detail_meetup_days_label}</span>
+              {detail.meetupDays.map((d) => weekdays[d]).join(", ")}
+            </div>
+          ) : null}
+          {detail.meetupTime ? (
+            <div>
+              <span className="mr-1.5 text-zinc-400">{t.crew_detail_meetup_time_label}</span>
+              {detail.meetupTime}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-zinc-500">{t.crew_detail_meetup_empty}</p>
+      )}
+    </Card>
+  );
+}
+
 export default function CrewDetailContent() {
   const { user } = useAuthUser();
   const { t, locale } = useLocale();
@@ -212,6 +261,7 @@ export default function CrewDetailContent() {
   const [canceling, setCanceling] = useState(false);
 
   const errorMsg = firstErrorMessage(fetchErrorMessage(error, t.crew_detail_not_found));
+  const loadState = crewLoadState(detail ? null : error, isLoading, !!detail, 4, errorMsg);
   const myCrew = myCrewData?.crew ?? null;
   const isOwnCrew = Boolean(myCrew && detail && myCrew.id === detail.id);
   const inOtherCrew = Boolean(myCrew && detail && myCrew.id !== detail.id);
@@ -253,21 +303,12 @@ export default function CrewDetailContent() {
   }
 
   const weekdays = weekdayLabels(locale, true);
-  const hasMeetupInfo = Boolean(
-    detail && (detail.meetupPlace || detail.meetupDays.length > 0 || detail.meetupTime),
-  );
   const imageUrls = detail ? (detail.imageUrls?.length ? detail.imageUrls : detail.imageUrl ? [detail.imageUrl] : []) : [];
 
   return (
     <PageLayout title={detail?.name ?? t.crew_title}>
-      {isLoading && !detail ? (
-        <Card>
-          <SkeletonLines count={4} />
-        </Card>
-      ) : errorMsg && !detail ? (
-        <Card>
-          <Alert>{errorMsg}</Alert>
-        </Card>
+      {loadState ? (
+        loadState
       ) : !detail ? null : (
         <>
           <Card>
@@ -327,40 +368,8 @@ export default function CrewDetailContent() {
             </div>
           </Card>
 
-          <Card className="mt-4">
-            <div className="text-base font-semibold">{t.crew_detail_intro_heading}</div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
-              {detail.intro || t.crew_detail_intro_empty}
-            </p>
-          </Card>
-
-          <Card className="mt-4">
-            <div className="text-base font-semibold">{t.crew_detail_meetup_heading}</div>
-            {hasMeetupInfo ? (
-              <div className="mt-2 flex flex-col gap-1.5 text-sm text-zinc-700">
-                {detail.meetupPlace ? (
-                  <div>
-                    <span className="mr-1.5 text-zinc-400">{t.crew_detail_meetup_place_label}</span>
-                    {detail.meetupPlace}
-                  </div>
-                ) : null}
-                {detail.meetupDays.length > 0 ? (
-                  <div>
-                    <span className="mr-1.5 text-zinc-400">{t.crew_detail_meetup_days_label}</span>
-                    {detail.meetupDays.map((d) => weekdays[d]).join(", ")}
-                  </div>
-                ) : null}
-                {detail.meetupTime ? (
-                  <div>
-                    <span className="mr-1.5 text-zinc-400">{t.crew_detail_meetup_time_label}</span>
-                    {detail.meetupTime}
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-zinc-500">{t.crew_detail_meetup_empty}</p>
-            )}
-          </Card>
+          <CrewIntroCard detail={detail} />
+          <CrewMeetupCard detail={detail} weekdays={weekdays} />
         </>
       )}
 
