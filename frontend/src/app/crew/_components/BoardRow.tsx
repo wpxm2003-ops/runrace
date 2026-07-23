@@ -40,7 +40,7 @@ export function BoardRow({
   const idle = weekDistanceM === 0;
   const goalPercent = goalM != null ? Math.min(100, Math.round((weekDistanceM / goalM) * 100)) : null;
   const goalReached = goalM != null && weekDistanceM >= goalM;
-  const showNudge = idle && !isMe && onNudge;
+  const showNudge = !isMe && onNudge;
   return (
     <div className={`py-2.5 ${idle && !showNudge ? "opacity-50" : ""}`}>
       <div className="flex items-center justify-between gap-3">
