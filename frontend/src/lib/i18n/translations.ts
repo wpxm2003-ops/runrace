@@ -804,6 +804,7 @@ export const translations = {
     ghost_result_tied: "무승부 — 거의 동시에 도착했어요!",
     ghost_result_slower: (sec: number) => `${sec}초 늦었다 — 다음엔 앞서보자`,
     ghost_result_overlap: (distanceLabel: string) => `같이 뛴 ${distanceLabel} 구간 기준`,
+    ghost_nsm_cta: (sec: number) => `${sec}초를 줄이는 훈련 시작하기 →`,
 
     // ── 운동 완료 ─────────────────────────
     celebration_title: "운동 완료!",
@@ -1676,6 +1677,7 @@ export const translations = {
     ghost_result_tied: "It's a tie — you finished almost together!",
     ghost_result_slower: (sec: number) => `${sec}s slower — get it next time`,
     ghost_result_overlap: (distanceLabel: string) => `Over the ${distanceLabel} you both covered`,
+    ghost_nsm_cta: (sec: number) => `Start training to close the ${sec}s gap →`,
 
     // ── 운동 완료 ─────────────────────────
     celebration_title: "Workout Done!",
@@ -2548,6 +2550,7 @@ export const translations = {
     ghost_result_tied: "Empate — ¡llegaron casi al mismo tiempo!",
     ghost_result_slower: (sec: number) => `${sec}s más lento — la próxima lo logras`,
     ghost_result_overlap: (distanceLabel: string) => `En los ${distanceLabel} que ambos recorrieron`,
+    ghost_nsm_cta: (sec: number) => `Entrena para recortar esos ${sec}s →`,
 
     // ── Entrenamiento completado ──────────
     celebration_title: "¡Entrenamiento completado!",
@@ -3420,6 +3423,7 @@ export const translations = {
     ghost_result_tied: "引き分け — ほぼ同時にゴールしました！",
     ghost_result_slower: (sec: number) => `${sec}秒遅かった — 次はリベンジ`,
     ghost_result_overlap: (distanceLabel: string) => `お互い走った${distanceLabel}区間の記録`,
+    ghost_nsm_cta: (sec: number) => `${sec}秒を縮めるトレーニングを始める →`,
 
     // ── 運動完了 ──────────────────────────
     celebration_title: "運動完了！",
@@ -4291,6 +4295,7 @@ export const translations = {
     ghost_result_tied: "平局 — 几乎同时到达！",
     ghost_result_slower: (sec: number) => `慢了${sec}秒 — 下次翻盘`,
     ghost_result_overlap: (distanceLabel: string) => `以共同跑过的${distanceLabel}为准`,
+    ghost_nsm_cta: (sec: number) => `开始训练，追回这${sec}秒 →`,
 
     // ── 运动完成 ──────────────────────────
     celebration_title: "运动完成！",

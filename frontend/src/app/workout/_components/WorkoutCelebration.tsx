@@ -6,6 +6,8 @@ import { formatDistance, formatPace, formatPaceSecPerUnit } from "@/lib/units";
 import { formatDuration } from "@/lib/workoutTrack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { markNsmCtaShown } from "@/lib/nsmCta";
+import { track } from "@/lib/analytics";
 import type { PersonalBest } from "@/lib/api/types";
 import type { GhostRaceResult } from "@/lib/ghostRace";
 
@@ -19,6 +21,8 @@ type WorkoutCelebrationProps = {
   personalBest?: PersonalBest | null;
   ghostResult?: GhostRaceResult | null;
   ghostLabel?: string | null;
+  /** 고스트 패배 시 NSM 훈련 제안 — 게이트(접전·연패·7일 캡·플랜 없음)는 호출부에서 통과된 값. */
+  showNsmCta?: boolean;
   saving?: boolean;
   onConfirm: () => void;
 };
@@ -37,6 +41,7 @@ export function WorkoutCelebration({
   personalBest = null,
   ghostResult = null,
   ghostLabel = null,
+  showNsmCta = false,
   saving = false,
   onConfirm,
 }: WorkoutCelebrationProps) {
@@ -58,6 +63,22 @@ export function WorkoutCelebration({
     onConfirm();
     nativeNavigate(`/workouts/${recordId}`);
   };
+
+  const goTraining = () => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    void track("nsm_cta_click");
+    onConfirm();
+    nativeNavigate("/training");
+  };
+
+  // 실제로 화면에 뜬 순간에만 7일 캡을 소비한다(저장 실패로 모달이 안 뜨면 캡 유지).
+  const nsmCtaVisible = showNsmCta && ghostResult != null && ghostLabel != null;
+  useEffect(() => {
+    if (!nsmCtaVisible) return;
+    markNsmCtaShown();
+    void track("nsm_cta_shown");
+  }, [nsmCtaVisible]);
 
   useEffect(() => {
     if (saving) return;
@@ -160,6 +181,15 @@ export function WorkoutCelebration({
                     : t.ghost_result_slower(deltaSec)}
               </p>
               <p className="mt-0.5 text-xs text-violet-500">{t.ghost_result_overlap(overlapLabel)}</p>
+              {nsmCtaVisible && !faster && !tied ? (
+                <button
+                  type="button"
+                  onClick={goTraining}
+                  className="mt-2 w-full rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white hover:bg-violet-700"
+                >
+                  {t.ghost_nsm_cta(deltaSec)}
+                </button>
+              ) : null}
             </div>
           );
         })()}

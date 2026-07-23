@@ -12,6 +12,7 @@ import {
   saveGhostSelection,
 } from "@/lib/workoutPersistence";
 import { weeklyPlan, nsmTodayIndex, type NsmSession } from "@/lib/nsm";
+import { isGhostLoss, recordGhostLossStreak, shouldShowNsmCta } from "@/lib/nsmCta";
 import { NsmSessionGuide } from "@/app/workout/_components/NsmSessionGuide";
 import { clearNsmProgress } from "@/lib/nsmSessionProgress";
 import { track, distanceBucket } from "@/lib/analytics";
@@ -54,12 +55,14 @@ type CelebrationState = {
   personalBest: PersonalBest | null;
   ghostResult: GhostRaceResult | null;
   ghostLabel: string | null;
+  showNsmCta: boolean;
 };
 
 type PendingSave = {
   snapshot: WorkoutFinishSnapshot;
   ghostResult: GhostRaceResult | null;
   ghostLabel: string | null;
+  showNsmCta: boolean;
 };
 
 export default function WorkoutPage() {
@@ -158,6 +161,7 @@ export default function WorkoutPage() {
       snapshot: WorkoutFinishSnapshot,
       ghostResult: GhostRaceResult | null,
       ghostLabel: string | null,
+      showNsmCta: boolean,
     ) => {
       if (!user) return;
       setSaveError(null);
@@ -198,11 +202,12 @@ export default function WorkoutPage() {
           personalBest: res.personalBest ?? null,
           ghostResult,
           ghostLabel,
+          showNsmCta,
         });
       } catch {
         // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
         setSaveError(t.workout_save_failed);
-        setPendingSave({ snapshot, ghostResult, ghostLabel });
+        setPendingSave({ snapshot, ghostResult, ghostLabel, showNsmCta });
       } finally {
         setSaving(false);
       }
@@ -238,14 +243,22 @@ export default function WorkoutPage() {
     }
     const ghostResult = ghost ? computeGhostRaceResult(snapshot.path, ghost.path) : null;
     const ghostLabel = ghost?.label ?? null;
+    // 연패 장부 갱신(승·무는 리셋) + NSM CTA 판정 — 게이트 규칙(접전·연패·7일 캡)은 nsmCta.ts가 소유.
+    // trainingPlan이 undefined(미로딩·조회 실패)면 플랜 보유로 간주 — 플랜 있는 유저에게 잘못 노출하는 쪽보다 안 보여주는 쪽으로 실패.
+    const lossStreak =
+      ghost && ghostResult ? recordGhostLossStreak(ghost.id, isGhostLoss(ghostResult)) : 0;
+    const showNsmCta =
+      ghostResult != null &&
+      shouldShowNsmCta({ hasPlan: trainingPlan !== null, result: ghostResult, lossStreak });
     setGhost(null); // 유령은 매 런마다 새로 고른다(등록형 라이벌 아님)
-    await saveSnapshot(snapshot, ghostResult, ghostLabel);
+    await saveSnapshot(snapshot, ghostResult, ghostLabel, showNsmCta);
   }, [
     session,
     user,
     saveSnapshot,
     confirm,
     ghost,
+    trainingPlan,
     t.workout_no_route,
     t.workout_save_empty_title,
     t.workout_save_empty_message,
@@ -276,6 +289,7 @@ export default function WorkoutPage() {
           personalBest={celebration.personalBest}
           ghostResult={celebration.ghostResult}
           ghostLabel={celebration.ghostLabel}
+          showNsmCta={celebration.showNsmCta}
           saving={saving}
           onConfirm={() => {}}
         />
@@ -417,7 +431,14 @@ export default function WorkoutPage() {
           {pendingSave ? (
             <button
               type="button"
-              onClick={() => saveSnapshot(pendingSave.snapshot, pendingSave.ghostResult, pendingSave.ghostLabel)}
+              onClick={() =>
+                saveSnapshot(
+                  pendingSave.snapshot,
+                  pendingSave.ghostResult,
+                  pendingSave.ghostLabel,
+                  pendingSave.showNsmCta,
+                )
+              }
               disabled={saving}
               className="mb-3 h-11 w-full rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-50"
             >
