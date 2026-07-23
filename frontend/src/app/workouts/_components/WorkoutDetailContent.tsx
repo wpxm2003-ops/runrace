@@ -173,7 +173,7 @@ export default function WorkoutDetailContent() {
           {detail.path.length > 0 ? (
             <>
               <div className="mt-4">
-                <ElevationSection path={detail.path} unit={unit} />
+                <ElevationSection path={detail.path} />
               </div>
               <div className="mt-4">
                 <KmSplitSection
