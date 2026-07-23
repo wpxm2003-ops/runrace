@@ -27,6 +27,7 @@ public class RaceFinalizationService {
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final PrizeDrawingService prizeDrawingService;
 
   /**
    * 레이스 결과 순위: 완주자 우선(완주 시각 빠른 순) → 미완주는 누적 km 내림차순.
@@ -129,6 +130,7 @@ public class RaceFinalizationService {
     if (anyRan(members)) {
       assignFinalRanks(members);
     }
+    prizeDrawingService.drawIfNeeded(challenge, members);
     challengeRepository.save(challenge);
     eventPublisher.publishEvent(new ChallengeEndedEvent(
         challenge.getId(),

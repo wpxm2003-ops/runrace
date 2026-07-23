@@ -341,6 +341,17 @@ export type PrizeRow = {
   name: string;
   hasImage: boolean;
   viewed: boolean;
+  awardType: PrizeAwardType;
+};
+
+export type PrizeAwardType = "RANK" | "RANDOM_FINISHER";
+
+export type PrizeResult = {
+  awardType: PrizeAwardType;
+  status: "BEFORE_END" | "NOT_ELIGIBLE" | "NOT_WINNER" | "WINNER";
+  prizeRank: number | null;
+  prizeName: string | null;
+  hasImage: boolean;
 };
 
 /** 경품 저장 항목 — 등수·경품명(필수)·이미지 비공개 키(선택). */

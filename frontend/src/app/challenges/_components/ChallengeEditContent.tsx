@@ -19,7 +19,7 @@ import { goalInputFromKm } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { toast } from "sonner";
 import { useRouteId } from "@/lib/useRouteId";
-import type { PrizeFormItem } from "@/lib/api/types";
+import type { PrizeAwardType, PrizeFormItem } from "@/lib/api/types";
 import { useEffect, useRef, useState } from "react";
 
 export default function ChallengeEditContent() {
@@ -34,6 +34,7 @@ export default function ChallengeEditContent() {
   // 경품
   const [stakeOpen, setStakeOpen] = useState(false);
   const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
+  const [prizeAwardType, setPrizeAwardType] = useState<PrizeAwardType>("RANK");
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
   const [prizesModified, setPrizesModified] = useState(false);
@@ -83,6 +84,7 @@ export default function ChallengeEditContent() {
       keepImageFromRank: row.hasImage ? row.rank : null,
     }));
     setPrizes(items);
+    if (prizeData[0]?.awardType) setPrizeAwardType(prizeData[0].awardType);
     if (items.length > 0) setPrizeOpen(true);
   }, [prizeData]);
 
@@ -110,7 +112,7 @@ export default function ChallengeEditContent() {
       await updateChallenge(id, form.getPayload(), user);
       if (prizesModified) {
         try {
-          await savePrizes(id, prizes, user);
+          await savePrizes(id, prizes, prizeAwardType, user);
           invalidatePrizes(id);
         } catch {
           toast.error(t.prize_save_failed);
@@ -150,6 +152,7 @@ export default function ChallengeEditContent() {
         extraSection={
           <PrizeAccordionSection
             prizes={prizes}
+            awardType={prizeAwardType}
             maxRank={maxRank}
             open={prizeOpen}
             onToggle={() => setPrizeOpen((v) => !v)}
@@ -168,10 +171,12 @@ export default function ChallengeEditContent() {
       {prizeModalOpen && user ? (
         <PrizeEditorModal
           prizes={prizes}
+          awardType={prizeAwardType}
           maxRank={maxRank}
           user={user}
           challengeId={id ?? undefined}
           onSave={(items) => { setPrizes(items); setPrizesModified(true); }}
+          onAwardTypeChange={(type) => { setPrizeAwardType(type); setPrizesModified(true); }}
           onClose={() => setPrizeModalOpen(false)}
         />
       ) : null}

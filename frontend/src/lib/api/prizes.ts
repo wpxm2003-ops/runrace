@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 import { ApiError } from "./apiError";
 import { apiFetch, apiUrl, publicFetch, uploadMultipart } from "./client";
-import type { PrizeFormItem, PrizeRow } from "./types";
+import type { PrizeAwardType, PrizeFormItem, PrizeResult, PrizeRow } from "./types";
 
 /** 경품 목록(전체 공개). 생성자면 imageKey 포함. */
 export function fetchPrizes(challengeId: number, user: User | null) {
@@ -9,15 +9,27 @@ export function fetchPrizes(challengeId: number, user: User | null) {
 }
 
 /** 경품 저장(전체 교체) — 생성자·시작 전만. 빈 배열 = 전체 삭제. */
-export function savePrizes(challengeId: number, prizes: PrizeFormItem[], user: User) {
-  const body = prizes.map((p) => ({
-    rank: p.rank,
-    name: p.name,
-    imageKey: p.imageKey,
-    keepImage: p.keepImage ?? false,
-    keepImageFromRank: p.keepImageFromRank ?? null,
-  }));
+export function savePrizes(
+  challengeId: number,
+  prizes: PrizeFormItem[],
+  awardType: PrizeAwardType,
+  user: User,
+) {
+  const body = {
+    awardType,
+    prizes: prizes.map((p) => ({
+      rank: p.rank,
+      name: p.name,
+      imageKey: p.imageKey,
+      keepImage: p.keepImage ?? false,
+      keepImageFromRank: p.keepImageFromRank ?? null,
+    })),
+  };
   return apiFetch<void>(`/api/challenges/${challengeId}/prizes`, { method: "PUT", user, body });
+}
+
+export function fetchMyPrizeResult(challengeId: number, user: User) {
+  return apiFetch<PrizeResult>(`/api/challenges/${challengeId}/prizes/result`, { user });
 }
 
 /** 비공개 이미지(기프티콘) 업로드 → 객체 키 반환(공개 URL 아님). */

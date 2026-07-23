@@ -6,4 +6,7 @@ package com.runrace.backend.challenge.dto;
  * 추후 불투명 핸들 방식으로 재설계.
  * @param viewed 당첨자가 기프티콘을 열람했는지(수령 표시).
  */
-public record PrizeRow(int rank, String name, boolean hasImage, boolean viewed) {}
+import com.runrace.backend.challenge.domain.PrizeAwardType;
+
+public record PrizeRow(
+    int rank, String name, boolean hasImage, boolean viewed, PrizeAwardType awardType) {}

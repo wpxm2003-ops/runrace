@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
-import type { PrizeFormItem } from "@/lib/api/types";
+import type { PrizeAwardType, PrizeFormItem } from "@/lib/api/types";
 import { uploadPrivateImage, fetchPrizeImageObjectUrl } from "@/lib/api/prizes";
 import { mapErrorMessage } from "@/lib/api";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
@@ -57,19 +57,23 @@ function toRow(p: PrizeFormItem): Row {
  */
 export function PrizeEditorModal({
   prizes,
+  awardType,
   maxRank,
   user,
   challengeId,
   onSave,
+  onAwardTypeChange,
   onClose,
 }: {
   prizes: PrizeFormItem[];
+  awardType: PrizeAwardType;
   /** 등록 가능한 최대 등수(= min(정원, 10)). */
   maxRank: number;
   user: User;
   /** 수정 시 레이스 id — 있으면 기존 경품 이미지를 미리보기로 불러온다(생성 시엔 없음). */
   challengeId?: number;
   onSave: (prizes: PrizeFormItem[]) => void;
+  onAwardTypeChange: (awardType: PrizeAwardType) => void;
   onClose: () => void;
 }) {
   const { t } = useLocale();
@@ -221,12 +225,28 @@ export function PrizeEditorModal({
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4">
+          <div className="grid grid-cols-2 rounded-lg bg-zinc-100 p-1">
+            {(["RANK", "RANDOM_FINISHER"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => onAwardTypeChange(type)}
+                className={`rounded-md px-2 py-2 text-sm font-medium ${
+                  awardType === type ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+                }`}
+              >
+                {type === "RANK" ? t.prize_award_rank : t.prize_award_random}
+              </button>
+            ))}
+          </div>
           <p className="text-[12px] leading-relaxed text-zinc-500">{t.prize_modal_hint}</p>
 
           {rows.map((r, i) => (
             <div key={i} className="rounded-xl border border-zinc-200 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-zinc-900">{t.prize_rank_label(i + 1)}</span>
+                <span className="text-sm font-semibold text-zinc-900">
+                  {awardType === "RANK" ? t.prize_rank_label(i + 1) : t.prize_item_label(i + 1)}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeRow(i)}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { PrizeFormItem } from "@/lib/api/types";
+import type { PrizeAwardType, PrizeFormItem } from "@/lib/api/types";
 import { useLocale } from "@/lib/i18n";
 import { AccordionRow } from "./AccordionRow";
 
@@ -10,6 +10,7 @@ import { AccordionRow } from "./AccordionRow";
  */
 export function PrizeAccordionSection({
   prizes,
+  awardType,
   maxRank,
   open,
   onToggle,
@@ -18,6 +19,7 @@ export function PrizeAccordionSection({
   disabledHint,
 }: {
   prizes: PrizeFormItem[];
+  awardType: PrizeAwardType;
   maxRank: number;
   open: boolean;
   onToggle: () => void;
@@ -36,12 +38,16 @@ export function PrizeAccordionSection({
       disabled={disabled}
       disabledHint={disabledHint}
     >
-      <p className="text-[11px] leading-relaxed text-zinc-400">{t.prize_section_hint(maxRank)}</p>
+      <p className="text-[11px] leading-relaxed text-zinc-400">
+        {awardType === "RANK" ? t.prize_section_hint(maxRank) : t.prize_random_hint}
+      </p>
       {prizes.length > 0 ? (
         <ul className="mt-2 space-y-1">
           {prizes.map((p) => (
             <li key={p.rank} className="flex items-center gap-2 text-sm text-zinc-700">
-              <span className="font-semibold text-zinc-900">{t.prize_rank_label(p.rank)}</span>
+              <span className="font-semibold text-zinc-900">
+                {awardType === "RANK" ? t.prize_rank_label(p.rank) : t.prize_item_label(p.rank)}
+              </span>
               <span className="min-w-0 flex-1 truncate">{p.name}</span>
               {p.imageKey || p.keepImage ? (
                 <span className="shrink-0 text-[10px] text-emerald-600">{t.prize_has_image_badge}</span>

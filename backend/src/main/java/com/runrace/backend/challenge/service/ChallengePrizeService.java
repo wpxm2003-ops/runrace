@@ -5,6 +5,7 @@ import com.runrace.backend.challenge.domain.ChallengeMember;
 import com.runrace.backend.challenge.domain.ChallengePrize;
 import com.runrace.backend.challenge.dto.PrizeItemRequest;
 import com.runrace.backend.challenge.dto.PrizeRow;
+import com.runrace.backend.challenge.domain.PrizeAwardType;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengePrizeRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
@@ -44,15 +45,21 @@ public class ChallengePrizeService {
   /** 경품 목록 — 경품명·이미지 유무·수령 여부만. S3 키는 절대 반환하지 않는다. */
   @Transactional(readOnly = true)
   public List<PrizeRow> list(Long challengeId) {
-    requireChallenge(challengeId);
+    PrizeAwardType awardType = requireChallenge(challengeId).getPrizeAwardType();
     return prizeRepository.findByChallengeIdOrderByRank(challengeId).stream()
-        .map(p -> new PrizeRow(p.getRank(), p.getName(), p.getImageKey() != null, p.getViewedAt() != null))
+        .map(p -> new PrizeRow(
+            p.getRank(),
+            p.getName(),
+            p.getImageKey() != null,
+            p.getViewedAt() != null,
+            awardType))
         .toList();
   }
 
   /** 경품 저장(전체 교체) — 생성자만, 레이스 시작 전만. 빈 목록 = 경품 전체 삭제. */
   @Transactional
-  public void save(UUID userId, Long challengeId, List<PrizeItemRequest> items) {
+  public void save(
+      UUID userId, Long challengeId, PrizeAwardType awardType, List<PrizeItemRequest> items) {
     Challenge challenge = requireChallenge(challengeId);
     if (!challenge.isOwner(userId)) {
       throw ApiException.forbidden("not_creator");
@@ -60,6 +67,8 @@ public class ChallengePrizeService {
     if (!OffsetDateTime.now().isBefore(challenge.getStartAt())) {
       throw ApiException.badRequest("race_started");
     }
+    challenge.setPrizeAwardType(awardType);
+    challengeRepository.save(challenge);
 
     List<ChallengePrize> existing = prizeRepository.findByChallengeIdOrderByRank(challengeId);
 
@@ -145,8 +154,11 @@ public class ChallengePrizeService {
     }
     ChallengeMember member = challengeMemberRepository.findByChallengeIdAndUserId(challengeId, userId)
         .orElseThrow(() -> ApiException.forbidden("not_a_member"));
-    if (member.getFinalRank() == null || member.getFinalRank() != rank) {
-      throw ApiException.forbidden("not_your_rank");
+    boolean ownsPrize = challenge.getPrizeAwardType() == PrizeAwardType.RANDOM_FINISHER
+        ? userId.equals(prize.getWinnerUserId())
+        : member.getFinalRank() != null && member.getFinalRank() == rank;
+    if (!ownsPrize) {
+      throw ApiException.forbidden("not_your_prize");
     }
     if (prize.getViewedAt() == null) {
       prize.markViewed();

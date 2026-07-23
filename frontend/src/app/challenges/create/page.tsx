@@ -10,7 +10,7 @@ import {
 } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
 import { createChallenge, invalidateChallengeLists, invalidateCrewRaces, savePrizes, useActiveCount } from "@/lib/api";
-import type { PrizeFormItem } from "@/lib/api/types";
+import type { PrizeAwardType, PrizeFormItem } from "@/lib/api/types";
 import { PrizeEditorModal } from "@/app/challenges/_components/PrizeEditorModal";
 import { PrizeAccordionSection } from "@/app/challenges/_components/PrizeAccordionSection";
 import { minStartAtLocal, plusDaysLocal, prizeMaxRank } from "@/lib/challengeForm";
@@ -30,6 +30,7 @@ export default function CreateChallengePage() {
   const { unit } = useUnit();
   const [submitting, setSubmitting] = useState(false);
   const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
+  const [prizeAwardType, setPrizeAwardType] = useState<PrizeAwardType>("RANK");
   const [stakeOpen, setStakeOpen] = useState(false);
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
@@ -91,7 +92,7 @@ export default function CreateChallengePage() {
       // 경품은 레이스 생성 후 별도 저장. 실패해도 레이스 생성은 유지하고 경고만.
       if (prizes.length > 0) {
         try {
-          await savePrizes(created.id, prizes, user);
+          await savePrizes(created.id, prizes, prizeAwardType, user);
         } catch {
           toast.error(t.prize_save_failed);
         }
@@ -163,6 +164,7 @@ export default function CreateChallengePage() {
         extraSection={
           <PrizeAccordionSection
             prizes={prizes}
+            awardType={prizeAwardType}
             maxRank={maxRank}
             open={prizeOpen}
             onToggle={() => setPrizeOpen((v) => !v)}
@@ -182,9 +184,11 @@ export default function CreateChallengePage() {
       {prizeModalOpen && user ? (
         <PrizeEditorModal
           prizes={prizes}
+          awardType={prizeAwardType}
           maxRank={maxRank}
           user={user}
           onSave={setPrizes}
+          onAwardTypeChange={setPrizeAwardType}
           onClose={() => setPrizeModalOpen(false)}
         />
       ) : null}

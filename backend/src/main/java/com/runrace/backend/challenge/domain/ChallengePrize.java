@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,6 +40,9 @@ public class ChallengePrize {
   @Column(name = "viewed_at")
   private OffsetDateTime viewedAt;
 
+  @Column(name = "winner_user_id")
+  private UUID winnerUserId;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -54,5 +58,11 @@ public class ChallengePrize {
 
   public void markViewed() {
     if (this.viewedAt == null) this.viewedAt = OffsetDateTime.now();
+  }
+
+  public void assignWinner(UUID userId) {
+    if (this.winnerUserId == null) {
+      this.winnerUserId = userId;
+    }
   }
 }

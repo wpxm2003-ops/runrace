@@ -7,6 +7,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -59,6 +61,14 @@ public class Challenge {
   @Builder.Default
   @Column(name = "is_ended", nullable = false)
   private boolean isEnded = false;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "prize_award_type", nullable = false, length = 20)
+  private PrizeAwardType prizeAwardType = PrizeAwardType.RANK;
+
+  @Column(name = "prize_drawn_at")
+  private OffsetDateTime prizeDrawnAt;
 
   /** 생성 시점 작성자 UI 언어로 고정. 공개 목록 언어별 필터에 사용한다(번역 아님). */
   @Builder.Default
@@ -117,5 +127,16 @@ public class Challenge {
   /** 레이스 종료 상태를 초기화한다(운동 삭제·되돌림용). */
   public void resetEnded() {
     this.isEnded = false;
+  }
+
+  public void setPrizeAwardType(PrizeAwardType prizeAwardType) {
+    this.prizeAwardType = prizeAwardType == null ? PrizeAwardType.RANK : prizeAwardType;
+    this.prizeDrawnAt = null;
+  }
+
+  public void markPrizeDrawn() {
+    if (this.prizeDrawnAt == null) {
+      this.prizeDrawnAt = OffsetDateTime.now();
+    }
   }
 }
