@@ -48,6 +48,20 @@ import { getStoredAuthUid } from "@/lib/accessToken";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+const ACTION_ICON_CLASS =
+  "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 disabled:opacity-50";
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.6 10.7 15.4 6.3M8.6 13.3l6.8 4.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** 실내러닝 승인 대기·거부 카드 묶음의 공통 껍데기(제목 + 안내 + 카드 목록). */
 function ApprovalSection({
   heading,
@@ -227,16 +241,21 @@ export default function ChallengeDetailContent() {
     [user, id, t],
   );
 
-  async function onShare() {
+  const onShare = useCallback(async () => {
     if (!detail || id == null) return;
     const { shareLink } = await import("@/lib/shareCard");
     const text = `🏃 ${formatGoalDistance(detail.goalKm, unit)} · 👥 ${detail.memberCount}명`;
     return shareLink(`${getAppUrl()}/api/share/challenges/${id}`, detail.title, text);
-  }
+  }, [detail, id, unit]);
 
   const pageActions = useMemo(
     () => (
-      <>
+      <div className="flex items-center gap-1.5">
+        {detail && id != null ? (
+          <ShareButton onShare={onShare} className={ACTION_ICON_CLASS} ariaLabel={t.share_btn}>
+            <ShareIcon />
+          </ShareButton>
+        ) : null}
         {detail?.showManage ? (
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen((v) => !v)}
@@ -251,9 +270,9 @@ export default function ChallengeDetailContent() {
             ) : null}
           </div>
         ) : null}
-      </>
+      </div>
     ),
-    [detail?.showManage, menuOpen, id, t, onEditClick, onDelete],
+    [detail, menuOpen, id, onShare, t, onEditClick, onDelete],
   );
 
   return (
@@ -423,9 +442,6 @@ export default function ChallengeDetailContent() {
             </div>
           ) : null}
 
-          <div className="mt-4">
-            <ShareButton onShare={onShare} variant="secondary" className="h-11 w-full" />
-          </div>
         </>
       )}
       {expandedImageUrl ? (
