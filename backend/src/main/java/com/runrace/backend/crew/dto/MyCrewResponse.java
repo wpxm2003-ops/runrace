@@ -8,8 +8,7 @@ import java.util.UUID;
 public record MyCrewResponse(CrewView crew) {
 
   /**
-   * 크루 정보 + 주간 보드(멤버별 이번 주 거리·횟수, 거리 내림차순).
-   * lastWeekSameTimeDistanceM: 지난주 같은 경과 시점까지의 크루 합계(요일 공정 비교).
+   * 크루 정보 + 월간 보드(멤버별 이번 달 거리·횟수, 거리 내림차순).
    * allTimeDistanceM: 멤버별 가입 이후 운동 합산(함께 달린 누적).
    */
   public record CrewView(
@@ -19,8 +18,7 @@ public record MyCrewResponse(CrewView crew) {
       String joinCode,
       boolean isLeader,
       int maxMembers,
-      BigDecimal weekGoalKm,
-      long lastWeekSameTimeDistanceM,
+      BigDecimal monthGoalKm,
       long allTimeDistanceM,
       List<CrewMemberRow> members) {}
 
@@ -29,6 +27,6 @@ public record MyCrewResponse(CrewView crew) {
       String nickname,
       boolean isLeader,
       boolean isMe,
-      long weekDistanceM,
-      int weekRuns) {}
+      long monthDistanceM,
+      int monthRuns) {}
 }

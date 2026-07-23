@@ -50,9 +50,9 @@ public class Crew {
   @Column(name = "max_members", nullable = false)
   private int maxMembers;
 
-  /** 크루원 1인당 주간 목표 거리(km) — 매주 반복 적용. null이면 목표 없음. */
-  @Column(name = "week_goal_km", precision = 10, scale = 3)
-  private BigDecimal weekGoalKm;
+  /** 크루원 1인당 월간 목표 거리(km) — 매달 반복 적용. null이면 목표 없음. */
+  @Column(name = "month_goal_km", precision = 10, scale = 3)
+  private BigDecimal monthGoalKm;
 
   /** 시도 지역 코드(SEOUL/BUSAN/.../ONLINE/ETC) — 발견 목록 필터 기준. 생성 시 필수, 기존 크루는 ETC 백필. */
   @Builder.Default
@@ -96,10 +96,10 @@ public class Crew {
     return userId != null && leader.getId().equals(userId);
   }
 
-  /** 이름·공지·주간 목표 수정(리더 전용 경로에서만 호출). */
-  public void updateInfo(String notice, BigDecimal weekGoalKm) {
+  /** 이름·공지·월간 목표 수정(리더 전용 경로에서만 호출). */
+  public void updateInfo(String notice, BigDecimal monthGoalKm) {
     this.notice = notice;
-    this.weekGoalKm = weekGoalKm;
+    this.monthGoalKm = monthGoalKm;
   }
 
   /**

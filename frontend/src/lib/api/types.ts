@@ -57,14 +57,14 @@ export type RivalRow = {
 };
 
 // ── 크루(crew) ────────────────────────────────────────────────────
-/** 주간 보드 한 줄 — 이번 주(KST 월요일 시작) 거리·횟수. 서버가 거리 내림차순으로 정렬해 준다. */
+/** 월간 보드 한 줄 — 이번 달(KST 1일 시작) 거리·횟수. 서버가 거리 내림차순으로 정렬해 준다. */
 export type CrewMemberRow = {
   userId: string;
   nickname: string | null;
   isLeader: boolean;
   isMe: boolean;
-  weekDistanceM: number;
-  weekRuns: number;
+  monthDistanceM: number;
+  monthRuns: number;
 };
 
 export type CrewView = {
@@ -74,10 +74,8 @@ export type CrewView = {
   joinCode: string;
   isLeader: boolean;
   maxMembers: number;
-  /** 크루원 1인당 주간 목표(km). null이면 목표 없음. */
-  weekGoalKm: number | null;
-  /** 지난주 같은 경과 시점까지의 크루 합계(m) — "지난주 이맘때 대비"용. */
-  lastWeekSameTimeDistanceM: number;
+  /** 크루원 1인당 월간 목표(km). null이면 목표 없음. */
+  monthGoalKm: number | null;
   /** 멤버별 가입 이후 운동 합산(m) — 함께 달린 누적. */
   allTimeDistanceM: number;
   members: CrewMemberRow[];
@@ -90,7 +88,7 @@ export type MyCrewResponse = {
 
 /** 크루 잔디 + 명예의 전당 — 크루 홈 부가 콘텐츠. */
 export type CrewInsights = {
-  /** 잔디 그리드 시작일(월요일, ISO date) — 5주(지난 4주 + 이번 주). */
+  /** 잔디 그리드 시작일(이번 달 1일, ISO date) — 캘린더 월 기준이라 매달 그리드 모양이 다르다. */
   heatmapFrom: string;
   memberCount: number;
   /** 기록 있는 날만 담김(빈 날은 프론트가 0으로 채움). nicknames는 가입 순 최대 10명. */

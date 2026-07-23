@@ -13,7 +13,7 @@ import {
 import type { CrewView } from "@/lib/api/types";
 import { challengeDetailHref } from "@/lib/challengeRoute";
 import { formatGoalDistance } from "@/lib/units";
-import { formatDateRange } from "@/lib/format";
+import { formatDateRange, monthOnlyLabel } from "@/lib/format";
 import { handleAuthFailure } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
@@ -25,7 +25,7 @@ import { BoardRow } from "./BoardRow";
 import { HeatmapGrid } from "./HeatmapGrid";
 import { CrewDiscovery } from "./CrewDiscovery";
 
-/** 크루 홈 — 헤더 + 이번 주 보드(목표·넛지) + 잔디 + 대항전/레이스 + 명예의 전당 + 둘러보기. */
+/** 크루 홈 — 헤더 + 이번 달 보드(목표·넛지) + 잔디 + 대항전/레이스 + 명예의 전당 + 둘러보기. */
 export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
@@ -34,10 +34,10 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
   const { data: insights } = useCrewInsights(user, true);
   const { data: races } = useCrewRaces(user, true);
 
-  const weekTotalM = crew.members.reduce((sum, m) => sum + m.weekDistanceM, 0);
-  const goalM = crew.weekGoalKm != null ? crew.weekGoalKm * 1000 : null;
+  const monthTotalM = crew.members.reduce((sum, m) => sum + m.monthDistanceM, 0);
+  const goalM = crew.monthGoalKm != null ? crew.monthGoalKm * 1000 : null;
   const goalAchievers = goalM != null
-    ? crew.members.filter((member) => member.weekDistanceM >= goalM).length
+    ? crew.members.filter((member) => member.monthDistanceM >= goalM).length
     : 0;
   const crewGoalPercent = crew.members.length > 0
     ? Math.round((goalAchievers / crew.members.length) * 100)
@@ -108,14 +108,14 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
         ) : null}
       </Card>
 
-      {/* 이번 주 보드 — 크루원이 매일 확인하는 핵심(총거리·목표·멤버 넛지)이라 최상단. */}
+      {/* 이번 달 보드 — 크루원이 매일 확인하는 핵심(총거리·목표·멤버 넛지)이라 최상단. */}
       <Card className="mt-4">
         <div className="flex items-baseline justify-between">
-          <div className="text-base font-semibold">{t.crew_week_heading}</div>
+          <div className="text-base font-semibold">{t.crew_month_heading}</div>
           <div className="text-sm text-zinc-500">
-            {t.crew_week_total_label}{" "}
+            {t.crew_month_total_label}{" "}
             <span className="font-semibold tabular-nums text-zinc-900">
-              {formatDistance(weekTotalM, unit)}
+              {formatDistance(monthTotalM, unit)}
             </span>
           </div>
         </div>
@@ -147,8 +147,8 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
               nickname={m.nickname}
               isLeader={m.isLeader}
               isMe={m.isMe}
-              weekDistanceM={m.weekDistanceM}
-              weekRuns={m.weekRuns}
+              monthDistanceM={m.monthDistanceM}
+              monthRuns={m.monthRuns}
               goalM={goalM}
               onNudge={(variant) => onNudge(m.userId, variant)}
               nudged={nudgedIds.has(m.userId)}
@@ -158,12 +158,14 @@ export function CrewHome({ crew, user }: { crew: CrewView; user: User }) {
         </div>
       </Card>
 
-      {/* 크루 잔디 — 최근 5주 활동 히트맵 (이번 주 보드 바로 아래) */}
+      {/* 크루 잔디 — 이번 달 캘린더 히트맵(달마다 모양이 달라짐, 이번 달 보드 바로 아래) */}
       {insights ? (
         <Card className="mt-4">
           <div className="flex items-baseline justify-between">
             <div className="text-base font-semibold">{t.crew_heatmap_heading}</div>
-            <div className="text-xs text-zinc-400">{t.crew_heatmap_caption}</div>
+            <div className="text-xs text-zinc-400">
+              {monthOnlyLabel(insights.heatmapFrom, locale)}
+            </div>
           </div>
           <div className="mt-3">
             <HeatmapGrid insights={insights} />

@@ -134,6 +134,12 @@ export function monthDayLabel(iso: string, locale: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(locale, { month: "long", day: "numeric" });
 }
 
+/** "YYYY-MM-01" → locale 월 표기(ko "7월", en "July"). 캘린더 월 잔디 캡션 전용(연도 없이 월만). */
+export function monthOnlyLabel(iso: string, locale: string): string {
+  const [y, m] = iso.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: "long" });
+}
+
 /** "YYYY-MM-DD" → locale 순서의 숫자 날짜(연·월·일). formatDate와 출력형태는 같지만 date-only 입력 전용(TZ 이슈 없음). */
 export function formatDateOnly(iso: string, locale: string): string {
   const [y, m, d] = iso.split("-").map(Number);

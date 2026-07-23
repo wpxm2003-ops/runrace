@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import type { CrewInsights } from "@/lib/api/types";
-import { addDaysIso, monthDayLabel, todayIso, weekdayLabels } from "@/lib/format";
+import { monthDayLabel, pad2, todayIso, weekdayLabels } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 
+type Cell = { date: string; runners: number; nicknames: (string | null)[]; future: boolean };
+
 /**
- * 크루 잔디 — 최근 5주(월~일) 날짜별 뛴 멤버를 깃허브 잔디 스타일로.
+ * 크루 잔디 — 이번 달(캘린더 월) 날짜별 뛴 멤버를 깃허브 잔디 스타일로.
+ * 달마다 실제 일수·시작 요일이 달라 그리드 모양이 자연히 다르다(고정 롤링 윈도우가 아님).
+ * 1일 앞은 요일 정렬을 위한 빈 칸(달력처럼)이고, 주 수는 4~6주로 가변이다.
  * 모바일(WebView)엔 호버가 없으므로 칸을 탭하면 그리드 아래에 날짜·뛴 멤버 닉네임을 보여준다.
  */
 export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
@@ -15,8 +19,19 @@ export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
   const byDate = new Map((insights.heatmap ?? []).map((d) => [d.date, d]));
   const today = todayIso();
   const weekdays = weekdayLabels(locale, true);
-  const cells = Array.from({ length: 35 }, (_, i) => {
-    const date = addDaysIso(insights.heatmapFrom, i);
+
+  // heatmapFrom = 이번 달 1일. 요일 정렬용 선행 빈 칸 + 실제 일수를 7의 배수로 맞춘다.
+  const [y, m] = insights.heatmapFrom.split("-").map(Number);
+  const firstWeekday = (new Date(y, m - 1, 1).getDay() + 6) % 7; // Mon=0…Sun=6
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+  const cells: (Cell | null)[] = Array.from({ length: totalCells }, (_, i) => {
+    const dayNum = i - firstWeekday + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) {
+      return null; // 이번 달 밖 — 달력 정렬용 빈 칸(전월 말·다음달 초)
+    }
+    const date = `${y}-${pad2(m)}-${pad2(dayNum)}`;
     const day = byDate.get(date);
     return {
       date,
@@ -34,7 +49,7 @@ export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
     return "bg-emerald-600";
   }
 
-  const selectedCell = selected ? cells.find((c) => c.date === selected) : null;
+  const selectedCell = selected ? (cells.find((c) => c?.date === selected) ?? null) : null;
   // 서버가 최대 10명까지만 보내므로 넘치는 인원은 "외 n명"으로 표기
   const overflow = selectedCell ? selectedCell.runners - selectedCell.nicknames.length : 0;
 
@@ -48,9 +63,9 @@ export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {cells.map((c) =>
-          c.future ? (
-            <div key={c.date} className="h-5 rounded bg-transparent" />
+        {cells.map((c, i) =>
+          !c || c.future ? (
+            <div key={c?.date ?? `blank-${i}`} className="h-5 rounded bg-transparent" />
           ) : (
             <button
               key={c.date}

@@ -36,10 +36,10 @@ export function leaveCrew(user: User) {
   return apiFetch<void>("/api/crews/leave", { method: "POST", user });
 }
 
-/** 이름·공지·주간 목표 수정(리더 전용). */
+/** 공지·월간 목표 수정(리더 전용). */
 export function updateCrew(
   crewId: number,
-  body: { notice: string | null; weekGoalKm: number | null },
+  body: { notice: string | null; monthGoalKm: number | null },
   user: User,
 ) {
   return apiFetch<void>(`/api/crews/${crewId}`, { method: "PATCH", user, body });

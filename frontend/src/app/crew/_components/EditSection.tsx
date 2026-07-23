@@ -12,24 +12,24 @@ import { nativeNavigate } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
-/** 리더 전용 — 크루 내부 설정(공지·주간 목표) 수정 폼. 크루 이름은 공개 정보(ProfileSection)에 표시. */
+/** 리더 전용 — 크루 내부 설정(공지·월간 목표) 수정 폼. 크루 이름은 공개 정보(ProfileSection)에 표시. */
 export function EditSection({ crew, user, onSaved }: { crew: CrewView; user: User; onSaved: () => void }) {
   const { t } = useLocale();
   const [notice, setNotice] = useState(crew.notice ?? "");
-  const [goal, setGoal] = useState(crew.weekGoalKm != null ? String(crew.weekGoalKm) : "");
+  const [goal, setGoal] = useState(crew.monthGoalKm != null ? String(crew.monthGoalKm) : "");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // 백그라운드 재검증으로 crew 값이 갱신되면 편집 전 초기값도 따라가게 한다(편집 중엔 유지).
   useEffect(() => {
     setNotice(crew.notice ?? "");
-    setGoal(crew.weekGoalKm != null ? String(crew.weekGoalKm) : "");
+    setGoal(crew.monthGoalKm != null ? String(crew.monthGoalKm) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crew.id]);
 
   async function onSave() {
     if (saving) return;
-    // 주간 목표 — 비우면 목표 없음, 값이 있으면 1~9,999 검증(서버와 동일 규칙).
+    // 월간 목표 — 비우면 목표 없음, 값이 있으면 1~9,999 검증(서버와 동일 규칙).
     const goalRaw = goal.trim();
     const goalKm = goalRaw === "" ? null : Number(goalRaw);
     if (goalKm != null && (!Number.isFinite(goalKm) || goalKm < 1 || goalKm > 9999)) {
@@ -41,7 +41,7 @@ export function EditSection({ crew, user, onSaved }: { crew: CrewView; user: Use
     try {
       await updateCrew(
         crew.id,
-        { notice: notice.trim() || null, weekGoalKm: goalKm },
+        { notice: notice.trim() || null, monthGoalKm: goalKm },
         user,
       );
       toast.success(t.toast_crew_saved);
@@ -54,7 +54,7 @@ export function EditSection({ crew, user, onSaved }: { crew: CrewView; user: Use
           [
             { codes: ["crew_name_taken"], message: t.crew_err_name_taken },
             { codes: ["invalid_crew_name"], message: t.crew_err_name_invalid },
-            { codes: ["invalid_week_goal"], message: t.crew_err_goal_invalid },
+            { codes: ["invalid_month_goal"], message: t.crew_err_goal_invalid },
           ],
           () => toDisplayError(e) ?? t.error_occurred,
         ));

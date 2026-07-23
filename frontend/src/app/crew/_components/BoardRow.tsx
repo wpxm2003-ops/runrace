@@ -8,7 +8,7 @@ import { useUnit } from "@/lib/UnitContext";
 import { toast } from "sonner";
 
 /**
- * 주간 보드 한 줄 — 순위·닉네임(리더/나 뱃지)·거리·횟수. 0km는 흐리게 + 콕 찌르기(레이스 넛지 UI 패턴).
+ * 월간 보드 한 줄 — 순위·닉네임(리더/나 뱃지)·거리·횟수. 0km는 흐리게 + 콕 찌르기(레이스 넛지 UI 패턴).
  * 프리셋 칩은 행 안에서 인라인 확장(ChallengeLeaderboard와 동일 인터랙션).
  */
 export function BoardRow({
@@ -16,8 +16,8 @@ export function BoardRow({
   nickname,
   isLeader,
   isMe,
-  weekDistanceM,
-  weekRuns,
+  monthDistanceM,
+  monthRuns,
   goalM,
   onNudge,
   nudged,
@@ -27,8 +27,8 @@ export function BoardRow({
   nickname: string | null;
   isLeader: boolean;
   isMe: boolean;
-  weekDistanceM: number;
-  weekRuns: number;
+  monthDistanceM: number;
+  monthRuns: number;
   goalM: number | null;
   onNudge?: (variant: number) => void;
   nudged: boolean;
@@ -37,9 +37,9 @@ export function BoardRow({
   const { t } = useLocale();
   const { unit } = useUnit();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const idle = weekDistanceM === 0;
-  const goalPercent = goalM != null ? Math.min(100, Math.round((weekDistanceM / goalM) * 100)) : null;
-  const goalReached = goalM != null && weekDistanceM >= goalM;
+  const idle = monthDistanceM === 0;
+  const goalPercent = goalM != null ? Math.min(100, Math.round((monthDistanceM / goalM) * 100)) : null;
+  const goalReached = goalM != null && monthDistanceM >= goalM;
   const showNudge = !isMe && onNudge;
   return (
     <div className={`py-2.5 ${idle && !showNudge ? "opacity-50" : ""}`}>
@@ -60,9 +60,9 @@ export function BoardRow({
           ) : (
             <>
               <span className="text-sm font-semibold tabular-nums text-zinc-900">
-                {formatDistance(weekDistanceM, unit)}
+                {formatDistance(monthDistanceM, unit)}
               </span>
-              <span className="ml-1.5 text-xs text-zinc-400">{t.crew_week_runs(weekRuns)}</span>
+              <span className="ml-1.5 text-xs text-zinc-400">{t.crew_month_runs(monthRuns)}</span>
             </>
           )}
         </div>
@@ -74,7 +74,7 @@ export function BoardRow({
               {goalReached ? t.crew_member_goal_reached : t.crew_member_goal_progress(goalPercent ?? 0)}
             </span>
             <span className="tabular-nums text-zinc-400">
-              {formatDistance(weekDistanceM, unit)} / {formatDistance(goalM, unit)}
+              {formatDistance(monthDistanceM, unit)} / {formatDistance(goalM, unit)}
             </span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-100">

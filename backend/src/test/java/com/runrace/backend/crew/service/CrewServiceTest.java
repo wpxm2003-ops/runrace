@@ -247,21 +247,21 @@ class CrewServiceTest {
       assertEquals("토요일 7시 반포", c.getNotice());
     }
 
-    @Test void 주간목표_범위_밖이면_invalid_week_goal() {
+    @Test void 월간목표_범위_밖이면_invalid_month_goal() {
       Crew c = crew(meId);
       when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
       ApiException ex = assertThrows(ApiException.class,
           () -> service.update(meId, 1L, null, java.math.BigDecimal.valueOf(10000)));
-      assertEquals("invalid_week_goal", ex.code());
+      assertEquals("invalid_month_goal", ex.code());
     }
 
-    @Test void 주간목표_정상값은_저장() {
+    @Test void 월간목표_정상값은_저장() {
       Crew c = crew(meId);
       when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
 
       service.update(meId, 1L, null, java.math.BigDecimal.valueOf(100));
 
-      assertEquals(java.math.BigDecimal.valueOf(100), c.getWeekGoalKm());
+      assertEquals(java.math.BigDecimal.valueOf(100), c.getMonthGoalKm());
       verify(crewRepository).save(c);
     }
 

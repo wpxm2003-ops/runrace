@@ -48,8 +48,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 크루(C0) — 생성·가입(초대 코드)·주간 보드·리더 관리.
- * 주간 보드는 별도 집계 테이블 없이 {@code workout_session}을 주 시작(KST 월요일) 이후로 합산한다.
+ * 크루(C0) — 생성·가입(초대 코드)·월간 보드·리더 관리.
+ * 월간 보드는 별도 집계 테이블 없이 {@code workout_session}을 이번 달 시작(KST 1일) 이후로 합산한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -76,7 +76,7 @@ public class CrewService {
       "GYEONGGI_SOUTH", "GYEONGGI_NORTH", "GANGWON", "CHUNGBUK", "CHUNGNAM", "JEONBUK", "JEONNAM",
       "GYEONGBUK", "GYEONGNAM", "JEJU", "ONLINE", "ETC");
 
-  /** 주간 보드 경계의 단일 기준 — 기존 운동일 집계와 동일하게 KST를 쓴다. */
+  /** 월간 보드 경계의 단일 기준 — 기존 운동일 집계와 동일하게 KST를 쓴다. */
   private static final ZoneId KST = KstTime.ZONE;
   /** 초대 코드 문자 — 혼동되는 I·L·O·0·1 제외. */
   private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -93,7 +93,7 @@ public class CrewService {
 
   // ── 조회 ──────────────────────────────────────────────────────
 
-  /** 내 크루 홈 — 크루 정보 + 주간 보드(이번 주 거리 내림차순) + 인사이트 스탯. 미소속이면 crew=null. */
+  /** 내 크루 홈 — 크루 정보 + 월간 보드(이번 달 거리 내림차순) + 인사이트 스탯. 미소속이면 crew=null. */
   @Transactional(readOnly = true)
   public MyCrewResponse myCrew(UUID meId) {
     Optional<CrewMember> membership = crewMemberRepository.findByUserId(meId);
@@ -103,21 +103,12 @@ public class CrewService {
     Crew crew = membership.get().getCrew();
     List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
 
-    OffsetDateTime now = OffsetDateTime.now();
-    OffsetDateTime weekStart = weekStartKst();
+    OffsetDateTime monthStart = monthStartKst();
     Map<UUID, long[]> agg = new HashMap<>();
     // 가입 이후 기록만 집계 — 가입 전 과거 운동이 크루 보드·잔디에 새어 들어오지 않게 한다.
-    for (var row : crewMemberRepository.sumMemberDistanceSince(crew.getId(), weekStart)) {
+    for (var row : crewMemberRepository.sumMemberDistanceSince(crew.getId(), monthStart)) {
       agg.put(row.getUserId(), new long[] {row.getDistanceM(), row.getRuns()});
     }
-
-    // 지난주 같은 경과 시점까지의 크루 합계 — "지난주 이맘때 대비"의 공정 비교 기준.
-    OffsetDateTime lastWeekStart = weekStart.minusDays(7);
-    OffsetDateTime lastWeekSameTime = lastWeekStart.plus(java.time.Duration.between(weekStart, now));
-    long lastWeekSum = crewMemberRepository
-        .sumMemberDistanceBetween(crew.getId(), lastWeekStart, lastWeekSameTime).stream()
-        .mapToLong(CrewMemberRepository.MemberDistanceAgg::getDistanceM)
-        .sum();
 
     long allTime = crewMemberRepository.sumMemberDistanceSinceJoin(crew.getId());
 
@@ -129,14 +120,14 @@ public class CrewService {
               u.getId(), u.getNickname(), crew.isLeader(u.getId()), u.getId().equals(meId),
               a[0], (int) a[1]);
         })
-        // 주간 거리 내림차순, 동률(0km 포함)은 가입 순 유지(stream 정렬은 stable)
-        .sorted(Comparator.comparingLong(CrewMemberRow::weekDistanceM).reversed())
+        // 월간 거리 내림차순, 동률(0km 포함)은 가입 순 유지(stream 정렬은 stable)
+        .sorted(Comparator.comparingLong(CrewMemberRow::monthDistanceM).reversed())
         .toList();
 
     return new MyCrewResponse(new CrewView(
         crew.getId(), crew.getName(), crew.getNotice(), crew.getJoinCode(),
-        crew.isLeader(meId), crew.getMaxMembers(), crew.getWeekGoalKm(),
-        lastWeekSum, allTime, rows));
+        crew.isLeader(meId), crew.getMaxMembers(), crew.getMonthGoalKm(),
+        allTime, rows));
   }
 
   /** 지난주(월~일 완결 주) 결산 — 홈 결산 섹션 + 공유 카드용. */
@@ -259,8 +250,9 @@ public class CrewService {
       nicknames.put(m.getUser().getId(), m.getUser().getNickname());
     }
 
-    // 잔디 — 지난 4주 + 이번 주(월요일 시작 5줄 그리드). 날짜별 뛴 멤버 닉네임(가입 순, 최대 10명).
-    OffsetDateTime heatmapFrom = weekStartKst().minusDays(28);
+    // 잔디 — 이번 달(캘린더 월 1일 시작). 날짜별 뛴 멤버 닉네임(가입 순, 최대 10명).
+    // 달마다 실제 날짜 수·시작 요일이 달라 매달 그리드 모양이 자연히 달라진다(고정 윈도우가 아님).
+    OffsetDateTime heatmapFrom = monthStartKst();
     Map<LocalDate, Set<UUID>> runnersByDay = new HashMap<>();
     for (var row : crewMemberRepository.findDailyRunners(crew.getId(), heatmapFrom)) {
       runnersByDay.computeIfAbsent(row.getDay(), k -> new HashSet<>()).add(row.getUserId());
@@ -356,12 +348,12 @@ public class CrewService {
 
   // ── 리더 관리 ─────────────────────────────────────────────────
 
-  /** 이름·공지·주간 목표 수정(리더 전용). */
+  /** 이름·공지·월간 목표 수정(리더 전용). */
   @Transactional
-  public void update(UUID meId, long crewId, String rawNotice, BigDecimal weekGoalKm) {
+  public void update(UUID meId, long crewId, String rawNotice, BigDecimal monthGoalKm) {
     Crew crew = requireLeader(meId, crewId);
     String notice = validateNotice(rawNotice);
-    crew.updateInfo(notice, validateWeekGoal(weekGoalKm));
+    crew.updateInfo(notice, validateMonthGoal(monthGoalKm));
     crewRepository.save(crew);
   }
 
@@ -574,7 +566,13 @@ public class CrewService {
 
   // ── 내부 헬퍼 ─────────────────────────────────────────────────
 
-  /** 이번 주 시작(KST 월요일 00:00). 크루 보드 집계의 하한 경계. */
+  /** 이번 달 시작(KST 1일 00:00). 크루 보드·잔디 집계의 하한 경계. */
+  private static OffsetDateTime monthStartKst() {
+    LocalDate firstOfMonth = LocalDate.now(KST).withDayOfMonth(1);
+    return firstOfMonth.atStartOfDay(KST).toOffsetDateTime();
+  }
+
+  /** 이번 주 시작(KST 월요일 00:00). {@link #recap}(지난주 결산)만 쓰는 주간 경계 — 보드·잔디는 월간(monthStartKst). */
   private static OffsetDateTime weekStartKst() {
     LocalDate monday = LocalDate.now(KST).with(DayOfWeek.MONDAY);
     return monday.atStartOfDay(KST).toOffsetDateTime();
@@ -745,16 +743,16 @@ public class CrewService {
     }
   }
 
-  /** 주간 목표 검증 — null(목표 없음) 또는 1~9,999km. */
-  private static BigDecimal validateWeekGoal(BigDecimal weekGoalKm) {
-    if (weekGoalKm == null) {
+  /** 월간 목표 검증 — null(목표 없음) 또는 1~9,999km. */
+  private static BigDecimal validateMonthGoal(BigDecimal monthGoalKm) {
+    if (monthGoalKm == null) {
       return null;
     }
-    if (weekGoalKm.compareTo(BigDecimal.ONE) < 0
-        || weekGoalKm.compareTo(BigDecimal.valueOf(9999)) > 0) {
-      throw ApiException.badRequest("invalid_week_goal");
+    if (monthGoalKm.compareTo(BigDecimal.ONE) < 0
+        || monthGoalKm.compareTo(BigDecimal.valueOf(9999)) > 0) {
+      throw ApiException.badRequest("invalid_month_goal");
     }
-    return weekGoalKm;
+    return monthGoalKm;
   }
 
   private static boolean containsForbiddenChar(String value) {

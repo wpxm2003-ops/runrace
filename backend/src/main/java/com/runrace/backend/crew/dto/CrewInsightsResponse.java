@@ -7,7 +7,7 @@ import java.util.List;
  * heatmap은 기록이 있는 날만 담는다(빈 날은 프론트가 0으로 채움).
  */
 public record CrewInsightsResponse(
-    /** 잔디 그리드 시작일(월요일, ISO date) — 5주(지난 4주 + 이번 주). */
+    /** 잔디 그리드 시작일(이번 달 1일, ISO date) — 캘린더 월 기준이라 매달 그리드 모양이 다르다. */
     String heatmapFrom,
     int memberCount,
     List<DayCell> heatmap,

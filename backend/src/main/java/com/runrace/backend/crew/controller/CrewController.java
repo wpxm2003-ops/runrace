@@ -127,7 +127,7 @@ public class CrewController {
   @PatchMapping("/{id}")
   public ResponseEntity<Void> update(
       AuthPrincipal principal, @PathVariable("id") long id, @RequestBody UpdateCrewRequest body) {
-    crewService.update(principal.userId(), id, body.notice(), body.weekGoalKm());
+    crewService.update(principal.userId(), id, body.notice(), body.monthGoalKm());
     return ResponseEntity.noContent().build();
   }
 

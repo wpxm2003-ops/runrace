@@ -45,7 +45,7 @@ public interface CrewMemberRepository extends JpaRepository<CrewMember, Long> {
   List<DailyRunnerRow> findDailyRunners(
       @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
 
-  /** 멤버별 {@code from} 이후 거리·횟수 — 가입 이후 기록만(주간 보드). */
+  /** 멤버별 {@code from} 이후 거리·횟수 — 가입 이후 기록만(월간 보드). */
   @Query(value = """
       select w.user_id as "userId", sum(w.distance_m) as "distanceM", count(*) as "runs"
       from workout_session w
@@ -56,7 +56,7 @@ public interface CrewMemberRepository extends JpaRepository<CrewMember, Long> {
   List<MemberDistanceAgg> sumMemberDistanceSince(
       @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
 
-  /** 멤버별 [from, to) 거리·횟수 — 가입 이후 기록만(지난주 대비·결산). */
+  /** 멤버별 [from, to) 거리·횟수 — 가입 이후 기록만(지난주 결산 등 기간 조회). */
   @Query(value = """
       select w.user_id as "userId", sum(w.distance_m) as "distanceM", count(*) as "runs"
       from workout_session w
