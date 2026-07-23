@@ -14,8 +14,10 @@ export const CREW_DISCOVERY_FEATURED_REGIONS = [
   "SEOUL",
   "GYEONGGI_SOUTH",
   "GYEONGGI_NORTH",
-  "INCHEON",
+  "DAEJEON",
+  "DAEGU",
   "BUSAN",
+  "JEJU",
 ] as const;
 
 export type CrewRegionCode = (typeof CREW_REGIONS)[number];
