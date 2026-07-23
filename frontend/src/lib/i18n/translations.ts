@@ -782,7 +782,7 @@ export const translations = {
 
     // ── 고스트 레이스 ─────────────────────
     ghost_chip_label: "고스트 레이스",
-    ghost_chip_subtitle: "유령과 달려봐요 — 뛴 만큼만 비교해요, 거리 목표는 없어요.",
+    ghost_chip_subtitle: "과거의 '나'와 경쟁해보세요 지도에 유령과 현재의 내가 같이 표시되어요!\n뛴 만큼만 비교해요, 거리 목표는 없어요.",
     ghost_chip_selected: (label: string) => `${label}와 대결 중`,
     ghost_change: "변경",
     ghost_clear: "해제",
@@ -1654,7 +1654,7 @@ export const translations = {
 
     // ── 고스트 레이스 ─────────────────────
     ghost_chip_label: "Race a ghost",
-    ghost_chip_subtitle: "Only the distance you both cover counts — no finish line.",
+    ghost_chip_subtitle: "Race against your past self — your ghost and you show side by side on the map!\nOnly the distance you both cover counts, no distance goal.",
     ghost_chip_selected: (label: string) => `Racing ${label}`,
     ghost_change: "Change",
     ghost_clear: "Clear",
@@ -2526,7 +2526,7 @@ export const translations = {
 
     // ── Carrera fantasma ──────────────────
     ghost_chip_label: "Correr contra un fantasma",
-    ghost_chip_subtitle: "Solo cuenta la distancia que ambos recorrieron — sin meta.",
+    ghost_chip_subtitle: "Compite contra tu yo del pasado: tu fantasma y tú aparecéis juntos en el mapa.\nSolo cuenta la distancia que ambos recorréis, sin meta de distancia.",
     ghost_chip_selected: (label: string) => `Compitiendo contra ${label}`,
     ghost_change: "Cambiar",
     ghost_clear: "Quitar",
@@ -3398,7 +3398,7 @@ export const translations = {
 
     // ── ゴーストレース ─────────────────────
     ghost_chip_label: "ゴーストと走る",
-    ghost_chip_subtitle: "お互い走った分だけ比較します。ゴールはありません。",
+    ghost_chip_subtitle: "過去の自分と競争しましょう。マップにゴーストと現在の自分が一緒に表示されます！\nお互い走った分だけ比較します。距離目標はありません。",
     ghost_chip_selected: (label: string) => `${label}と対決中`,
     ghost_change: "変更",
     ghost_clear: "解除",
@@ -4269,7 +4269,7 @@ export const translations = {
 
     // ── 幽灵竞速 ───────────────────────────
     ghost_chip_label: "和幽灵赛跑",
-    ghost_chip_subtitle: "只比较双方都跑过的距离，没有终点线。",
+    ghost_chip_subtitle: "和过去的自己较量吧，地图上会同时显示幽灵和现在的你！\n只比较双方都跑过的距离，没有距离目标。",
     ghost_chip_selected: (label: string) => `正在与${label}对决`,
     ghost_change: "更换",
     ghost_clear: "取消",

@@ -136,7 +136,7 @@ export function GhostPicker({ open, onClose, onSelect, user }: Props) {
         <div className="py-3 text-center text-sm font-medium text-zinc-600">
           {t.ghost_picker_title}
         </div>
-        <p className="mb-4 text-center text-xs text-zinc-400">{t.ghost_chip_subtitle}</p>
+        <p className="mb-4 whitespace-pre-line text-center text-xs text-zinc-400">{t.ghost_chip_subtitle}</p>
 
         {error ? <p className="mb-3 text-center text-xs text-red-600">{error}</p> : null}
 
