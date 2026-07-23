@@ -120,6 +120,7 @@ export function CrewOnboarding({ user, onDone }: { user: User | null; onDone: ()
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_create_heading}</div>
+        <p className="mt-1 text-xs text-zinc-400">{t.crew_create_hint}</p>
         <div className="mt-3 flex flex-col gap-2">
           <TextInput
             type="text"
