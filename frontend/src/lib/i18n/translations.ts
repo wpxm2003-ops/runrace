@@ -169,7 +169,7 @@ export const translations = {
     // ── 크루 ──────────────────────────────
     crew_title: "크루",
     crew_manage: "내 크루",
-    crew_home_card_desc: "크루원들의 이번 주 기록이 한 화면에 — 다른 크루와 대항전까지",
+    crew_home_card_desc: "따로 달려도 한 팀 — 크루원들의 이번 주 러닝이 한 화면에",
     crew_onboard_intro: "크루를 만들거나 초대 코드로 가입해 보세요. 크루원들의 이번 주 러닝 기록이 한 화면에 모이고, 다른 크루와 대항전으로 겨뤄볼 수도 있어요.",
     crew_create_heading: "크루 만들기",
     crew_create_hint: "2~5명의 '우리가족크루'처럼 소규모로 시작해도 좋아요.",
@@ -1041,7 +1041,7 @@ export const translations = {
     // ── Crew ──────────────────────────────
     crew_title: "Crew",
     crew_manage: "My crew",
-    crew_home_card_desc: "Your crew's weekly runs in one place — plus matches against other crews",
+    crew_home_card_desc: "One team, even apart — your crew's runs this week on one board",
     crew_onboard_intro: "Create a crew or join with an invite code. Everyone's runs this week come together on one board, and you can even take on other crews in a match.",
     crew_create_heading: "Create a crew",
     crew_create_hint: "Small crews are great too — start a 2–5 person crew like 'Family Runners.'",
@@ -1913,7 +1913,7 @@ export const translations = {
     // ── Crew ──────────────────────────────
     crew_title: "Crew",
     crew_manage: "Mi crew",
-    crew_home_card_desc: "Los kilómetros semanales de tu crew en un solo lugar — y duelos contra otros crews",
+    crew_home_card_desc: "Un equipo aunque corráis por separado — las carreras de tu crew esta semana en un tablero",
     crew_onboard_intro: "Crea un crew o únete con un código de invitación. Las carreras de la semana de todos se reúnen en un tablero, y hasta puedes competir contra otros crews en un duelo.",
     crew_create_heading: "Crear un crew",
     crew_create_hint: "Los crews pequeños también molan: empieza con 2 a 5 personas, como 'Familia Runner'.",
@@ -2785,7 +2785,7 @@ export const translations = {
     // ── クルー ─────────────────────────────
     crew_title: "クルー",
     crew_manage: "マイクルー",
-    crew_home_card_desc: "クルー全員の今週の記録をひと目で — 他クルーとの対抗戦も",
+    crew_home_card_desc: "別々に走っても一つのチーム — クルーの今週のランがひとつのボードに",
     crew_onboard_intro: "クルーを作るか、招待コードで参加しましょう。メンバー全員の今週のランがひとつのボードに集まり、他のクルーと対抗戦で競うこともできます。",
     crew_create_heading: "クルーを作る",
     crew_create_hint: "2〜5人の「家族クルー」みたいな少人数で始めてもOKです。",
@@ -3657,7 +3657,7 @@ export const translations = {
     // ── 跑团 ──────────────────────────────
     crew_title: "跑团",
     crew_manage: "我的跑团",
-    crew_home_card_desc: "跑团成员本周记录一目了然 — 还能与其他跑团对抗",
+    crew_home_card_desc: "各自奔跑，同属一队 — 跑团成员本周跑步记录汇聚一屏",
     crew_onboard_intro: "创建跑团或用邀请码加入。全体成员本周的跑步记录汇聚在同一个看板上，还能与其他跑团进行对抗赛一较高下。",
     crew_create_heading: "创建跑团",
     crew_create_hint: "小团也很好——像'家庭跑团'一样，2~5人也能开始。",
