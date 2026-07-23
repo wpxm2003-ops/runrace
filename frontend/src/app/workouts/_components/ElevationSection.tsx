@@ -11,7 +11,7 @@ const CHART_W = 320;
 const CHART_H = 96;
 const PAD_X = 10;
 const PAD_Y = 10;
-const MIN_DISPLAY_RANGE_M = 30;
+const MIN_DISPLAY_RANGE_M = 20;
 
 function toChartPoints(
   profile: { distanceM: number; elevationM: number }[],
