@@ -10,7 +10,7 @@ type Cell = { date: string; runners: number; nicknames: (string | null)[]; futur
 /**
  * 크루 잔디 — 이번 달(캘린더 월) 날짜별 뛴 멤버를 깃허브 잔디 스타일로.
  * 달마다 실제 일수·시작 요일이 달라 그리드 모양이 자연히 다르다(고정 롤링 윈도우가 아님).
- * 1일 앞은 요일 정렬을 위한 빈 칸(달력처럼)이고, 주 수는 4~6주로 가변이다.
+ * 1일 앞은 요일 정렬을 위한 빈 칸(일요일 시작, 일반 달력 관례)이고, 주 수는 4~6주로 가변이다.
  * 모바일(WebView)엔 호버가 없으므로 칸을 탭하면 그리드 아래에 날짜·뛴 멤버 닉네임을 보여준다.
  */
 export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
@@ -18,11 +18,12 @@ export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
   const [selected, setSelected] = useState<string | null>(null);
   const byDate = new Map((insights.heatmap ?? []).map((d) => [d.date, d]));
   const today = todayIso();
-  const weekdays = weekdayLabels(locale, true);
+  const weekdays = weekdayLabels(locale);
 
   // heatmapFrom = 이번 달 1일. 요일 정렬용 선행 빈 칸 + 실제 일수를 7의 배수로 맞춘다.
+  // 일반 달력 관례대로 일요일 시작 — Date.getDay()가 이미 Sun=0…Sat=6이라 그대로 쓴다.
   const [y, m] = insights.heatmapFrom.split("-").map(Number);
-  const firstWeekday = (new Date(y, m - 1, 1).getDay() + 6) % 7; // Mon=0…Sun=6
+  const firstWeekday = new Date(y, m - 1, 1).getDay(); // Sun=0…Sat=6
   const daysInMonth = new Date(y, m, 0).getDate();
   const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
 
