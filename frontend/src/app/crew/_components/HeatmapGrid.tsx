@@ -11,6 +11,8 @@ type Cell = { date: string; runners: number; nicknames: (string | null)[]; futur
  * 크루 잔디 — 이번 달(캘린더 월) 날짜별 뛴 멤버를 깃허브 잔디 스타일로.
  * 달마다 실제 일수·시작 요일이 달라 그리드 모양이 자연히 다르다(고정 롤링 윈도우가 아님).
  * 1일 앞은 요일 정렬을 위한 빈 칸(일요일 시작, 일반 달력 관례)이고, 주 수는 4~6주로 가변이다.
+ * 이번 달의 미래 날짜도 회색 칸으로 처음부터 다 보여준다(31일이면 31칸 전부) — 아직 안 지난
+ * 날만 눌러도 아무 의미가 없으니 클릭만 막는다(숨기면 달 모양이 날짜가 지날 때마다 자라 보임).
  * 모바일(WebView)엔 호버가 없으므로 칸을 탭하면 그리드 아래에 날짜·뛴 멤버 닉네임을 보여준다.
  */
 export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
@@ -65,8 +67,12 @@ export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
       </div>
       <div className="grid grid-cols-7 gap-1">
         {cells.map((c, i) =>
-          !c || c.future ? (
-            <div key={c?.date ?? `blank-${i}`} className="h-5 rounded bg-transparent" />
+          !c ? (
+            // 이번 달 밖(달력 정렬용 빈 칸) — 진짜로 안 보이게
+            <div key={`blank-${i}`} className="h-5 rounded bg-transparent" />
+          ) : c.future ? (
+            // 이번 달 안이지만 아직 안 지난 날 — 칸은 처음부터 다 보이되 누를 수는 없게
+            <div key={c.date} className="h-5 rounded bg-zinc-100" aria-hidden="true" />
           ) : (
             <button
               key={c.date}
