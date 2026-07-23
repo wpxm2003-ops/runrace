@@ -84,14 +84,11 @@ export function CrewOnboarding({ user, onDone }: { user: User | null; onDone: ()
 
   return (
     <>
-      <Card>
-        <p className="text-sm text-zinc-600">{t.crew_onboard_intro}</p>
-      </Card>
-
       {user ? <MyApplicationsSection user={user} /> : null}
 
       <Card className="mt-4">
         <div className="text-base font-semibold">{t.crew_join_heading}</div>
+        <p className="mt-1 text-xs text-zinc-400">{t.crew_join_hint}</p>
         <div className="mt-3 flex gap-2">
           <TextInput
             type="text"
