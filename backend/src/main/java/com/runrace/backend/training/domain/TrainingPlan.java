@@ -12,7 +12,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** NSM 훈련 플랜 — 사용자당 1개. 주간 스케줄은 threshold + subTDays(sub-T 요일)로 프론트가 결정적 생성. */
+/** NSM 훈련 플랜 — 사용자당 1개. 주간 스케줄은 threshold + subTDays(sub-T 요일) + weeklyBand로 프론트가 결정적 생성. */
 @Entity
 @Table(name = "training_plan")
 @Getter
@@ -45,6 +45,10 @@ public class TrainingPlan {
   @Column(name = "source_time_sec", nullable = false)
   private int sourceTimeSec;
 
+  /** 주간 러닝 볼륨 밴드(0~4). 미지정(레거시)이면 null. */
+  @Column(name = "weekly_band")
+  private Integer weeklyBand;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -53,7 +57,7 @@ public class TrainingPlan {
 
   public static TrainingPlan of(
       UUID userId, double vdot, int thresholdPaceSec, String subTDays,
-      int sourceDistanceM, int sourceTimeSec) {
+      int sourceDistanceM, int sourceTimeSec, Integer weeklyBand) {
     TrainingPlan p = new TrainingPlan();
     p.userId = userId;
     p.vdot = vdot;
@@ -62,6 +66,7 @@ public class TrainingPlan {
     p.sessionsPerWeek = countDays(subTDays);
     p.sourceDistanceM = sourceDistanceM;
     p.sourceTimeSec = sourceTimeSec;
+    p.weeklyBand = weeklyBand;
     p.createdAt = OffsetDateTime.now();
     p.updatedAt = p.createdAt;
     return p;
@@ -69,13 +74,14 @@ public class TrainingPlan {
 
   public void update(
       double vdot, int thresholdPaceSec, String subTDays,
-      int sourceDistanceM, int sourceTimeSec) {
+      int sourceDistanceM, int sourceTimeSec, Integer weeklyBand) {
     this.vdot = vdot;
     this.thresholdPaceSec = thresholdPaceSec;
     this.subTDays = subTDays;
     this.sessionsPerWeek = countDays(subTDays);
     this.sourceDistanceM = sourceDistanceM;
     this.sourceTimeSec = sourceTimeSec;
+    this.weeklyBand = weeklyBand;
     this.updatedAt = OffsetDateTime.now();
   }
 

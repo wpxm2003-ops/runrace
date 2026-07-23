@@ -25,13 +25,17 @@ import {
   nsmTodayIndex,
   isRealisticThreshold,
   hasAdjacentSubTDays,
+  subTDayLimits,
+  clampSubTDaysToBand,
+  isOverBandDose,
   type NsmSession,
+  type NsmVolumeBand,
 } from "@/lib/nsm";
 import { weekdayLabels } from "@/lib/format";
 import { sessionJson } from "@/lib/safeStorage";
 
 // 비로그인 계산 결과가 로그인 리다이렉트로 유실되지 않도록 입력값을 잠시 보관한다(같은 탭 세션 한정).
-type NsmDraft = { distM: number; timeStr: string; subTDays: number[] };
+type NsmDraft = { distM: number; timeStr: string; subTDays: number[]; band?: NsmVolumeBand };
 const nsmDraftStore = sessionJson<NsmDraft>("nsm_calc_draft");
 
 const DISTANCES = [
@@ -71,6 +75,19 @@ function formatTime(sec: number): string {
 function pbTimeSec(pb: PersonalBestRow): number {
   return Math.round((pb.bestPaceSec * pb.distanceM) / 1000);
 }
+function daysSince(iso: string): number {
+  return (Date.now() - new Date(iso).getTime()) / 86400000;
+}
+
+function volumeBandLabel(b: NsmVolumeBand, t: Translations): string {
+  switch (b) {
+    case 0: return t.nsm_volume_band_0;
+    case 1: return t.nsm_volume_band_1;
+    case 2: return t.nsm_volume_band_2;
+    case 3: return t.nsm_volume_band_3;
+    case 4: return t.nsm_volume_band_4;
+  }
+}
 
 function sessionLabel(s: NsmSession, t: Translations): { title: string; sub: string; tag: string } {
   if (s.kind === "EASY") return { title: t.nsm_easy_title, sub: t.nsm_easy_sub, tag: "EASY" };
@@ -101,6 +118,7 @@ function TrainingContent({ user }: { user: User | null }) {
   const [timeStr, setTimeStr] = useState("22:00");
   // sub-T 요일(월=0…일=6). 기본 화·목·토 — 사용자가 자기 일정에 맞게 변경.
   const [subTDays, setSubTDays] = useState<number[]>([1, 3, 5]);
+  const [band, setBand] = useState<NsmVolumeBand | undefined>(undefined);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -120,8 +138,9 @@ function TrainingContent({ user }: { user: User | null }) {
         setSubTDays(draft.subTDays);
         setDistM(draft.distM);
         setTimeStr(draft.timeStr);
+        setBand(draft.band);
         const sec = parseTime(draft.timeStr);
-        if (sec != null && sec > 0) compute(draft.distM, sec, draft.subTDays);
+        if (sec != null && sec > 0) compute(draft.distM, sec, draft.subTDays, draft.band);
       }
       return;
     }
@@ -131,13 +150,15 @@ function TrainingContent({ user }: { user: User | null }) {
     // 오염 행(문자열 "Infinity"/NaN vdot 등) 방어 — 유한값이 아니면 복원 스킵.
     const savedVdot = Number(savedPlan.vdot);
     if (!Number.isFinite(savedVdot) || !Number.isFinite(savedPlan.thresholdPaceSec)) return;
+    const savedBand = (savedPlan.weeklyBand ?? undefined) as NsmVolumeBand | undefined;
     setSubTDays(savedPlan.subTDays);
     setDistM(savedPlan.sourceDistanceM);
     setTimeStr(formatTime(savedPlan.sourceTimeSec));
+    setBand(savedBand);
     setResult({
       vdot: savedVdot,
       threshold: savedPlan.thresholdPaceSec,
-      plan: weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays),
+      plan: weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays, savedBand),
       sourceDistanceM: savedPlan.sourceDistanceM,
       sourceTimeSec: savedPlan.sourceTimeSec,
     });
@@ -145,7 +166,7 @@ function TrainingContent({ user }: { user: User | null }) {
   }, [savedPlan]);
 
   // 계산 성공 시 true. 거리·시간 조합이 비현실적이면 에러 노출 후 false(결과 미표시).
-  function compute(dM: number, sec: number, dys: number[]): boolean {
+  function compute(dM: number, sec: number, dys: number[], b: NsmVolumeBand | undefined = band): boolean {
     const vdot = vdotFromRace(dM, sec);
     const threshold = thresholdPaceSecPerKm(vdot);
     if (!isRealisticThreshold(threshold)) {
@@ -154,7 +175,7 @@ function TrainingContent({ user }: { user: User | null }) {
       return false;
     }
     setError(null);
-    setResult({ vdot, threshold, plan: weeklyPlan(threshold, dys), sourceDistanceM: dM, sourceTimeSec: sec });
+    setResult({ vdot, threshold, plan: weeklyPlan(threshold, dys, b), sourceDistanceM: dM, sourceTimeSec: sec });
     return true;
   }
 
@@ -176,25 +197,33 @@ function TrainingContent({ user }: { user: User | null }) {
     compute(pb.distanceM, sec, subTDays);
   }
 
-  // sub-T 요일 토글 — 2~3개 유지(최소 2, 최대 3).
+  // sub-T 요일 토글 — 밴드별 최소/최대 유지(미지정 시 2~3, 밴드별로 1~3).
   function onToggleDay(d: number) {
+    const { min, max } = subTDayLimits(band);
     let next: number[];
     if (subTDays.includes(d)) {
-      if (subTDays.length <= 2) return;
+      if (subTDays.length <= min) return;
       next = subTDays.filter((x) => x !== d);
     } else {
-      if (subTDays.length >= 3) return;
+      if (subTDays.length >= max) return;
       next = [...subTDays, d].sort((a, b) => a - b);
     }
     setSubTDays(next);
-    if (result) setResult({ ...result, plan: weeklyPlan(result.threshold, next) });
+    if (result) setResult({ ...result, plan: weeklyPlan(result.threshold, next, band) });
+  }
+
+  function onSelectBand(b: NsmVolumeBand) {
+    const nextDays = clampSubTDaysToBand(subTDays, b);
+    setBand(b);
+    setSubTDays(nextDays);
+    if (result) setResult({ ...result, plan: weeklyPlan(result.threshold, nextDays, b) });
   }
 
   async function onSave() {
     if (!result || saving || !user) return;
     setSaving(true);
     try {
-      // 백엔드 계약(2~3개, dedup·정렬)과 동일하게 정규화해 전송 — 프론트/백 상한 정책 일치.
+      // 백엔드 계약(밴드별 1~3개, dedup·정렬)과 동일하게 정규화해 전송 — 프론트/백 상한 정책 일치.
       const normalizedDays = Array.from(new Set(subTDays)).sort((a, b) => a - b).slice(0, 3);
       await saveTrainingPlan(
         {
@@ -203,6 +232,7 @@ function TrainingContent({ user }: { user: User | null }) {
           subTDays: normalizedDays,
           sourceDistanceM: result.sourceDistanceM,
           sourceTimeSec: result.sourceTimeSec,
+          weeklyBand: band,
         },
         user,
       );
@@ -249,15 +279,30 @@ function TrainingContent({ user }: { user: User | null }) {
     savedPlan.thresholdPaceSec === result.threshold &&
     savedPlan.sourceDistanceM === result.sourceDistanceM &&
     savedPlan.sourceTimeSec === result.sourceTimeSec &&
+    (savedPlan.weeklyBand ?? undefined) === band &&
     sortedKey(savedPlan.subTDays) === sortedKey(subTDays);
 
   // "오늘의 세션"은 저장된 활성 플랜에서만 — 계산만 한 미저장 플랜은 미노출.
   const todaySession = savedPlan
-    ? weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays)[nsmTodayIndex()]
+    ? weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays, (savedPlan.weeklyBand ?? undefined) as NsmVolumeBand | undefined)[nsmTodayIndex()]
     : null;
 
   return (
     <PageLayout title={t.nsm_title}>
+      {savedPlan?.updatedAt && daysSince(savedPlan.updatedAt) >= 28 ? (
+        <Card className="border-amber-300 bg-amber-50">
+          <p className="text-xs leading-relaxed text-amber-800">{t.nsm_retest_banner}</p>
+          <button
+            type="button"
+            onClick={() =>
+              document.getElementById("nsm-manual-heading")?.scrollIntoView({ behavior: "smooth", block: "center" })
+            }
+            className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800"
+          >
+            {t.nsm_retest_cta}
+          </button>
+        </Card>
+      ) : null}
       {todaySession ? (
         <Card className="border-zinc-900 bg-zinc-900 text-white">
           <div className="text-xs text-zinc-400">
@@ -309,6 +354,7 @@ function TrainingContent({ user }: { user: User | null }) {
         </Card>
       ) : null}
 
+      <div id="nsm-manual-heading">
       <Card className="mt-4">
         <div className="text-sm font-semibold text-zinc-900">{t.nsm_manual_heading}</div>
         <div className="mt-3 flex flex-col gap-3">
@@ -350,6 +396,26 @@ function TrainingContent({ user }: { user: User | null }) {
           </button>
         </div>
       </Card>
+      </div>
+
+      <Card className="mt-4">
+        <div className="text-xs font-medium text-zinc-600">{t.nsm_volume_heading}</div>
+        <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{t.nsm_volume_hint}</p>
+        <div className="mt-2 flex gap-1.5">
+          {([0, 1, 2, 3, 4] as const).map((b) => (
+            <button
+              key={b}
+              type="button"
+              onClick={() => onSelectBand(b)}
+              className={`h-10 flex-1 rounded-lg border text-xs font-medium ${
+                band === b ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300 bg-white text-zinc-600"
+              }`}
+            >
+              {volumeBandLabel(b, t)}
+            </button>
+          ))}
+        </div>
+      </Card>
 
       <Card className="mt-4">
         <div className="text-xs font-medium text-zinc-600">{t.nsm_subt_days_label}</div>
@@ -376,6 +442,11 @@ function TrainingContent({ user }: { user: User | null }) {
             {t.nsm_subt_adjacent_warning}
           </p>
         ) : null}
+        {result && isOverBandDose(result.plan, band) ? (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+            {t.nsm_dose_warning}
+          </p>
+        ) : null}
       </Card>
 
       {result ? (
@@ -399,7 +470,7 @@ function TrainingContent({ user }: { user: User | null }) {
                 type="button"
                 onClick={() => {
                   // 로그인 리다이렉트로 계산 결과가 유실되지 않게 입력값을 잠시 보관.
-                  nsmDraftStore.set({ distM, timeStr, subTDays });
+                  nsmDraftStore.set({ distM, timeStr, subTDays, band });
                   redirectToLogin("/training");
                 }}
                 className="mt-3 w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white"

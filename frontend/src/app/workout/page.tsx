@@ -11,7 +11,7 @@ import {
   loadGhostSelection,
   saveGhostSelection,
 } from "@/lib/workoutPersistence";
-import { weeklyPlan, nsmTodayIndex, type NsmSession } from "@/lib/nsm";
+import { weeklyPlan, nsmTodayIndex, type NsmSession, type NsmVolumeBand } from "@/lib/nsm";
 import { isGhostLoss, recordGhostLossStreak, shouldShowNsmCta } from "@/lib/nsmCta";
 import { NsmSessionGuide } from "@/app/workout/_components/NsmSessionGuide";
 import { clearNsmProgress } from "@/lib/nsmSessionProgress";
@@ -123,7 +123,11 @@ export default function WorkoutPage() {
   // NSM 자동 인식 — 활성 플랜이 있고 오늘이 sub-T 날이면, 일반 "운동하기"로도 세션 가이드를 띄운다.
   const { data: trainingPlan } = useTrainingPlan(user);
   const liveNsmToday = trainingPlan
-    ? weeklyPlan(trainingPlan.thresholdPaceSec, trainingPlan.subTDays)[nsmTodayIndex()]
+    ? weeklyPlan(
+        trainingPlan.thresholdPaceSec,
+        trainingPlan.subTDays,
+        (trainingPlan.weeklyBand ?? undefined) as NsmVolumeBand | undefined,
+      )[nsmTodayIndex()]
     : null;
   // 러닝 중엔 오늘의 세션을 런 시작 시점 값으로 고정 — 자정을 넘어 nsmTodayIndex가 바뀌어도
   // 가이드가 세션 종류를 바꾸거나 언마운트돼 진행이 끊기지 않게 한다.

@@ -1,15 +1,18 @@
 package com.runrace.backend.training.dto;
 
 import com.runrace.backend.training.domain.TrainingPlan;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 
-/** NSM 플랜 응답. 주간 스케줄은 threshold + subTDays로 프론트가 생성한다. */
+/** NSM 플랜 응답. 주간 스케줄은 threshold + subTDays + weeklyBand로 프론트가 생성한다. */
 public record TrainingPlanResponse(
     double vdot,
     int thresholdPaceSec,
     int[] subTDays,
     int sourceDistanceM,
-    int sourceTimeSec) {
+    int sourceTimeSec,
+    Integer weeklyBand,
+    OffsetDateTime updatedAt) {
 
   public static TrainingPlanResponse from(TrainingPlan p) {
     // 관용 파싱 — 정상 쓰기 경로(normalizeSubTDays)로는 항상 유효 CSV지만, 수동 DB 편집·배치 등으로
@@ -23,6 +26,7 @@ public record TrainingPlanResponse(
             .toArray();
     return new TrainingPlanResponse(
         p.getVdot(), p.getThresholdPaceSec(), days,
-        p.getSourceDistanceM(), p.getSourceTimeSec());
+        p.getSourceDistanceM(), p.getSourceTimeSec(),
+        p.getWeeklyBand(), p.getUpdatedAt());
   }
 }

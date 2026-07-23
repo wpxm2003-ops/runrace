@@ -27,7 +27,12 @@ class TrainingPlanServiceTest {
   private final UUID userId = UUID.randomUUID();
 
   private static TrainingPlanRequest req(double vdot, int threshold, int[] days, int distM, int timeSec) {
-    return new TrainingPlanRequest(vdot, threshold, days, distM, timeSec);
+    return new TrainingPlanRequest(vdot, threshold, days, distM, timeSec, null);
+  }
+
+  private static TrainingPlanRequest reqWithBand(
+      double vdot, int threshold, int[] days, int distM, int timeSec, Integer band) {
+    return new TrainingPlanRequest(vdot, threshold, days, distM, timeSec, band);
   }
 
   private static final int[] OK_DAYS = {1, 3, 5};
@@ -76,6 +81,18 @@ class TrainingPlanServiceTest {
           () -> service.save(userId, req(45, 1000, OK_DAYS, 5000, 1320)));
       assertEquals("invalid_threshold", ex.code());
     }
+
+    @Test void 하한근접_149는_invalid_threshold() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.save(userId, req(45, 149, OK_DAYS, 5000, 1320)));
+      assertEquals("invalid_threshold", ex.code());
+    }
+
+    @Test void 상한근접_601은_invalid_threshold() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.save(userId, req(45, 601, OK_DAYS, 5000, 1320)));
+      assertEquals("invalid_threshold", ex.code());
+    }
   }
 
   @Nested class SourceValidation {
@@ -108,6 +125,43 @@ class TrainingPlanServiceTest {
     @Test void 범위밖_요일이면_invalid_sub_t_days() {
       ApiException ex = assertThrows(ApiException.class,
           () -> service.save(userId, req(45, 280, new int[] {1, 7}, 5000, 1320)));
+      assertEquals("invalid_sub_t_days", ex.code());
+    }
+  }
+
+  @Nested class WeeklyBandValidation {
+    @Test void 밴드0_요일1개면_저장되고_weeklyBand가_저장된다() {
+      when(trainingPlanRepository.findByUserId(userId)).thenReturn(Optional.empty());
+      when(trainingPlanRepository.save(any(TrainingPlan.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      TrainingPlan saved = service.save(userId, reqWithBand(45, 280, new int[] {2}, 5000, 1320, 0));
+
+      assertEquals("2", saved.getSubTDays());
+      assertEquals(1, saved.getSessionsPerWeek());
+      assertEquals(Integer.valueOf(0), saved.getWeeklyBand());
+    }
+
+    @Test void 밴드0_요일2개면_invalid_sub_t_days() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.save(userId, reqWithBand(45, 280, new int[] {1, 3}, 5000, 1320, 0)));
+      assertEquals("invalid_sub_t_days", ex.code());
+    }
+
+    @Test void 밴드4_요일1개면_invalid_sub_t_days() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.save(userId, reqWithBand(45, 280, new int[] {1}, 5000, 1320, 4)));
+      assertEquals("invalid_sub_t_days", ex.code());
+    }
+
+    @Test void 범위밖_밴드면_invalid_weekly_band() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.save(userId, reqWithBand(45, 280, OK_DAYS, 5000, 1320, 5)));
+      assertEquals("invalid_weekly_band", ex.code());
+    }
+
+    @Test void 밴드_미지정이면_기존대로_요일1개는_invalid_sub_t_days() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.save(userId, req(45, 280, new int[] {1}, 5000, 1320)));
       assertEquals("invalid_sub_t_days", ex.code());
     }
   }

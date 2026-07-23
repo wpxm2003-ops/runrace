@@ -154,6 +154,7 @@ export function NsmSessionGuide({
         >
           {t.nsm_guide_start}
         </button>
+        <p className="mt-2 text-[11px] text-zinc-400">{t.nsm_hot_day_note}</p>
       </div>
     );
   }
@@ -196,13 +197,18 @@ export function NsmSessionGuide({
     progressLabel = t.nsm_remain_sec(Math.ceil(remainS));
   }
 
+  const isFinalReps = prog.repIndex >= reps - 2;
   let cue: { text: string; cls: string };
   if (repPace == null) {
     cue = { text: t.nsm_cue_measuring, cls: "text-zinc-500" };
   } else if (repPace < targetPace - 6) {
     cue = { text: t.nsm_cue_too_fast, cls: "text-red-600" };
   } else if (repPace > targetPace + 6) {
-    cue = { text: t.nsm_cue_slow, cls: "text-amber-700" };
+    // 마지막 1~2렙에서 처지는 건 초반 과속의 정상적 신호 — 여기서 "더 빨리"라고 코칭하면
+    // NSM의 피로 관리 원칙(마지막 렙은 무리하지 않기)과 정반대가 된다.
+    cue = isFinalReps
+      ? { text: t.nsm_cue_hold, cls: "text-amber-700" }
+      : { text: t.nsm_cue_slow, cls: "text-amber-700" };
   } else {
     cue = { text: t.nsm_cue_ok, cls: "text-emerald-700" };
   }

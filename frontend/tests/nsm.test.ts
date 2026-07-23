@@ -6,6 +6,10 @@ import {
   weeklyPlan,
   isRealisticThreshold,
   hasAdjacentSubTDays,
+  subTDayLimits,
+  clampSubTDaysToBand,
+  weeklySubTMinutes,
+  isOverBandDose,
 } from "@/lib/nsm";
 
 describe("NSM VDOT 계산", () => {
@@ -163,5 +167,74 @@ describe("NSM 주간 플랜", () => {
     expect(plan.filter((s) => s.isSubT).length).toBe(2);
     expect(plan[1].isSubT).toBe(true);
     expect(plan[5].isSubT).toBe(true);
+  });
+});
+
+describe("NSM 페이스 오프셋(Phase 1 — 커뮤니티 페이스 표 대조)", () => {
+  it("10K 45:00 → SHORT/MEDIUM/LONG 목표 페이스가 정확히 277/285/292초/km", () => {
+    const t = thresholdFromRace(10000, 45 * 60);
+    expect(t).toBe(277);
+    const plan = weeklyPlan(t, [1, 3, 5]);
+    expect(plan.find((s) => s.kind === "SHORT")!.targetPaceSec).toBe(277);
+    expect(plan.find((s) => s.kind === "MEDIUM")!.targetPaceSec).toBe(285);
+    expect(plan.find((s) => s.kind === "LONG")!.targetPaceSec).toBe(292);
+  });
+
+  it("SHORT/LONG은 시간 기반(3분/10분), MEDIUM은 6분 — 세 세션 모두 repUnit이 min", () => {
+    const t = thresholdFromRace(10000, 45 * 60);
+    const plan = weeklyPlan(t, [1, 3, 5]);
+    expect(plan.find((s) => s.kind === "SHORT")!.repAmount).toBe(3);
+    expect(plan.find((s) => s.kind === "MEDIUM")!.repAmount).toBe(6);
+    expect(plan.find((s) => s.kind === "LONG")!.repAmount).toBe(10);
+    expect(plan.filter((s) => s.isSubT).every((s) => s.repUnit === "min")).toBe(true);
+  });
+
+  it("밴드 미지정(레거시) 시 MEDIUM 휴식은 90초(Phase 1 안전 기본값)", () => {
+    const t = thresholdFromRace(10000, 45 * 60);
+    const plan = weeklyPlan(t, [1, 3, 5]);
+    expect(plan.find((s) => s.kind === "MEDIUM")!.restSec).toBe(90);
+  });
+});
+
+describe("NSM 볼륨 밴드(Phase 2)", () => {
+  it("밴드 0(<3h)은 sub-T 요일 1개만 허용하고 렙 수가 6/3/2", () => {
+    const t = thresholdFromRace(5000, 22 * 60);
+    const plan = weeklyPlan(t, [2], 0);
+    expect(plan.filter((s) => s.isSubT)).toHaveLength(1);
+    expect(plan[2].kind).toBe("SHORT");
+    expect(plan[2].reps).toBe(6);
+  });
+
+  it("밴드 4(6-8h+)는 렙 수 10/5/3(기존과 동일)이고 MEDIUM 휴식이 60초", () => {
+    const t = thresholdFromRace(5000, 22 * 60);
+    const plan = weeklyPlan(t, [1, 3, 5], 4);
+    expect(plan.find((s) => s.kind === "SHORT")!.reps).toBe(10);
+    expect(plan.find((s) => s.kind === "MEDIUM")!.reps).toBe(5);
+    expect(plan.find((s) => s.kind === "LONG")!.reps).toBe(3);
+    expect(plan.find((s) => s.kind === "MEDIUM")!.restSec).toBe(60);
+  });
+
+  it("subTDayLimits — 밴드별 최소/최대", () => {
+    expect(subTDayLimits(0)).toEqual({ min: 1, max: 1 });
+    expect(subTDayLimits(2)).toEqual({ min: 2, max: 2 });
+    expect(subTDayLimits(4)).toEqual({ min: 2, max: 3 });
+    expect(subTDayLimits(undefined)).toEqual({ min: 2, max: 3 });
+  });
+
+  it("clampSubTDaysToBand — 초과분은 트림, 부족분은 채운다", () => {
+    expect(clampSubTDaysToBand([1, 3, 5], 0)).toHaveLength(1);
+    expect(clampSubTDaysToBand([2], 2)).toHaveLength(2);
+  });
+
+  it("weeklySubTMinutes — 밴드 4 기본(3일 선택) 합계는 90분", () => {
+    const t = thresholdFromRace(5000, 22 * 60);
+    const plan = weeklyPlan(t, [1, 3, 5], 4);
+    expect(weeklySubTMinutes(plan)).toBe(90);
+  });
+
+  it("isOverBandDose — 밴드 미지정이면 항상 false", () => {
+    const t = thresholdFromRace(5000, 22 * 60);
+    const plan = weeklyPlan(t, [1, 3, 5]);
+    expect(isOverBandDose(plan, undefined)).toBe(false);
   });
 });

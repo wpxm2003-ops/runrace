@@ -504,6 +504,10 @@ export type TrainingPlan = {
   subTDays: number[];
   sourceDistanceM: number;
   sourceTimeSec: number;
+  /** 주간 러닝 볼륨 밴드(0~4). 미지정(레거시 플랜)이면 null/undefined. */
+  weeklyBand?: number | null;
+  /** 응답에서만 채워짐(서버가 설정) — 저장 요청 시엔 보내지 않는다. */
+  updatedAt?: string;
 };
 
 export type CreateWorkoutResponse = {
