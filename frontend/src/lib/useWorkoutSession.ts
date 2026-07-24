@@ -7,7 +7,7 @@ import {
   formatDuration,
   haversineMeters,
   normalizeGpsAccuracyM,
-  pathDistanceMeters,
+  creditedPathDistanceMeters,
   pushAccuracySample,
   shouldAppendPoint,
   type LatLng,
@@ -89,6 +89,13 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   const lastPosTimeRef = useRef<number | null>(null);
   const lastRawPosRef = useRef<LatLng | null>(null);
   const distanceAccumRef = useRef(0);
+  /** 경로에 마지막으로 추가된 점 — 증분 거리 계산용(setState 업데이터 밖에서 유지). */
+  const lastPathPointRef = useRef<LatLng | null>(null);
+  /**
+   * 다음 GPS 포인트를 재정박(거리 0으로 추가)할지.
+   * 일시정지·앱 종료 중 이동을 직선으로 이어 거리에 합산하는 것을 막는다.
+   */
+  const reanchorNextRef = useRef(false);
 
   // ── ref 동기화 ────────────────────────────────────────────────────────────
   useEffect(() => { statusRef.current = status; }, [status]);
@@ -105,6 +112,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     saveWorkout({
       status: status as "running" | "paused",
       path: pathRef.current,
+      distanceM: distanceAccumRef.current,
       runStartedAt: runStartedRef.current,
       pausedAccumMs: pausedAccumRef.current,
       pauseStartedAt: pauseStartedRef.current,
@@ -118,6 +126,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       saveWorkout({
         status: statusRef.current as "running" | "paused",
         path: pathRef.current,
+        distanceM: distanceAccumRef.current,
         runStartedAt: runStartedRef.current,
         pausedAccumMs: pausedAccumRef.current,
         pauseStartedAt: pauseStartedRef.current,
@@ -216,22 +225,24 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       commitRawPosition(point, now);
       if (vehicle.blockPathPoints) return;
 
-      const reanchor = vehicle.reanchorNextPoint;
+      const reanchor = vehicle.reanchorNextPoint || reanchorNextRef.current;
       const pointWithT: LatLng = elapsedMs != null ? { ...point, t: elapsedMs } : point;
 
-      setPath((prev) => {
-        const last = prev[prev.length - 1] ?? null;
-        if (!reanchor && last && !shouldAppendPoint(last, pointWithT)) return prev;
+      // 증분 계산·ref 변이는 업데이터 밖에서 한다 — setState 업데이터는 순수해야 하며
+      // (StrictMode·concurrent 렌더에서 재실행될 수 있음) 안에 부수효과를 두면 거리가
+      // 이중 가산될 수 있다. GPS 콜백은 순차 실행이라 ref 기반 계산이 안전하다.
+      const last = lastPathPointRef.current;
+      if (!reanchor && last && !shouldAppendPoint(last, pointWithT)) return;
 
-        const increment =
-          vehicle.blockDistance || reanchor || !last
-            ? 0
-            : haversineMeters(last, pointWithT);
-        distanceAccumRef.current += increment;
-        const next = [...prev, pointWithT];
-        setDistanceM(distanceAccumRef.current);
-        return next;
-      });
+      const increment =
+        vehicle.blockDistance || reanchor || !last
+          ? 0
+          : haversineMeters(last, pointWithT);
+      distanceAccumRef.current += increment;
+      lastPathPointRef.current = pointWithT;
+      reanchorNextRef.current = false;
+      setPath((prev) => [...prev, pointWithT]);
+      setDistanceM(distanceAccumRef.current);
     },
     [peekSpeedMps, commitRawPosition],
   );
@@ -282,7 +293,13 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     pausedAccumRef.current = saved.pausedAccumMs;
     pathRef.current = saved.path;
     setPath(saved.path);
-    const restoredDistance = pathDistanceMeters(saved.path);
+    lastPathPointRef.current = saved.path[saved.path.length - 1] ?? null;
+    // 복원 후 첫 GPS 포인트는 재정박 — 앱이 죽어있던 동안의 이동을 직선으로 이어
+    // 거리에 합산하지 않는다(120m 넘는 갭은 지도에서 점선으로 표시됨).
+    reanchorNextRef.current = true;
+    // 저장된 라이브 거리를 우선 사용 — 경로 재계산은 안티치트로 차단됐던 구간·추적 끊김을
+    // 직선으로 이어 거리를 부풀린다. 구버전 스냅샷만 갭 제외 재계산으로 폴백.
+    const restoredDistance = saved.distanceM ?? creditedPathDistanceMeters(saved.path);
     distanceAccumRef.current = restoredDistance;
     setDistanceM(restoredDistance);
 
@@ -354,6 +371,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   const start = useCallback(() => {
     setPath([]);
     distanceAccumRef.current = 0;
+    lastPathPointRef.current = null;
+    reanchorNextRef.current = false;
     setDistanceM(0);
     setElapsedSec(0);
     vehicleStateRef.current = resetVehicleState();
@@ -382,9 +401,11 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         };
         setPosition(p);
         // 콜백이 GPS 워치보다 늦게 도착할 수 있다(최대 15초). 이미 워치가 경로를
-        // 쌓기 시작했다면 덮어쓰지 않는다 — 덮어쓰면 초기 포인트가 유실되고
-        // 누적 거리(distanceAccumRef)와 경로가 어긋난다.
-        setPath((prev) => (prev.length > 0 ? prev : [p]));
+        // 쌓기 시작했거나(초기 포인트 유실·거리 어긋남 방지) 그 사이 종료됐다면 시드하지 않는다.
+        if (statusRef.current === "running" && lastPathPointRef.current == null) {
+          lastPathPointRef.current = p;
+          setPath((prev) => (prev.length > 0 ? prev : [p]));
+        }
       },
       (err) => setGeoError(geolocationErrorMessage(err)),
       { enableHighAccuracy: true, timeout: 15000 },
@@ -417,6 +438,11 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     // 치팅 상태 리셋 — 재개 후 새로 측정
     vehicleStateRef.current = resetVehicleState();
     setVehicleTier("normal");
+    // 일시정지 동안의 이동(도보·이동수단)을 정지 전 마지막 점과 직선으로 이어
+    // 거리에 합산하지 않도록 재정박하고, 속도 추정 기준점도 리셋한다.
+    reanchorNextRef.current = true;
+    lastRawPosRef.current = null;
+    lastPosTimeRef.current = null;
     setStatus("running");
     startWatch();
   }, [startWatch]);
@@ -460,6 +486,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     runStartedRef.current = null;
     vehicleStateRef.current = resetVehicleState();
     distanceAccumRef.current = 0;
+    lastPathPointRef.current = null;
+    reanchorNextRef.current = false;
     setStatus("idle");
     setPath([]);
     setDistanceM(0);

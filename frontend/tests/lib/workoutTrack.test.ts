@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeBestSegments,
+  computeKmSplits,
+  creditedPathDistanceMeters,
   estimateCalories,
   evaluateVehicleTier,
   formatDuration,
   pathBoundsKey,
+  pathDistanceMeters,
   splitPathAtGaps,
 } from "@/lib/workoutTrack";
 import type { LatLng, VehicleDetectState } from "@/lib/workoutTrack";
@@ -207,5 +211,77 @@ describe("evaluateVehicleTier — 콜드스타트 예열(첫 양호 fix 전)", (
       { speedMps: null, accuracyM: WEAK, nowMs: 17_000 }, // 16초 지속 → 지하철 확정
     ]);
     expect(r.tier).toBe("confirmed");
+  });
+});
+
+// ── 추적 끊김(갭) 처리 — 지하철·일시정지 이동을 직선으로 이어 거리·PB를 만들지 않는다 ──
+// 위도 0.0009° ≈ 100m(갭 임계 120m 미만), 0.0027° ≈ 300m(임계 초과 = 추적 끊김).
+const STEP_DEG = 0.0009; // ≈ 100.07m
+const GAP_DEG = 0.0027; // ≈ 300.2m
+
+/** latDeg 지점, tSec초의 경로 포인트. */
+function tp(latDeg: number, tSec: number): LatLng {
+  return { lat: latDeg, lng: 0, t: tSec * 1000 };
+}
+
+/**
+ * 600m 러닝(30초/100m) → 300m 추적 끊김(5분여) → 500m 러닝(30초/100m).
+ * A: t 0~180초, 갭 후 B: t 510~660초.
+ */
+function gapPath(): LatLng[] {
+  const path: LatLng[] = [];
+  for (let i = 0; i <= 6; i++) path.push(tp(i * STEP_DEG, i * 30));
+  const bStart = 6 * STEP_DEG + GAP_DEG;
+  for (let j = 1; j <= 6; j++) path.push(tp(bStart + (j - 1) * STEP_DEG, 480 + j * 30));
+  return path;
+}
+
+describe("creditedPathDistanceMeters — 갭 제외 누적 거리", () => {
+  it("120m 초과 구간은 직선으로 잇지 않는다(복원 폴백용)", () => {
+    const path = gapPath();
+    const full = pathDistanceMeters(path);
+    const credited = creditedPathDistanceMeters(path);
+    // 전체 - 갭 제외 = 갭 한 구간(≈300m)
+    expect(full - credited).toBeGreaterThan(295);
+    expect(full - credited).toBeLessThan(305);
+    expect(credited).toBeGreaterThan(1050);
+    expect(credited).toBeLessThan(1150);
+  });
+});
+
+describe("computeKmSplits — 추적 끊김", () => {
+  it("갭 구간은 거리 0으로 취급 — 스플릿이 라이브 거리 집계와 일치한다", () => {
+    const splits = computeKmSplits(gapPath());
+    expect(splits).toHaveLength(2);
+    // 1km 지점은 갭 300m를 빼고 B 구간 끝쪽에서 완성된다(t≈600초).
+    // 갭 거리를 세던 종전엔 갭 도중(t≈300초대)에 완성돼 페이스가 부당하게 빨랐다.
+    expect(splits[0].distanceM).toBe(1000);
+    expect(splits[0].paceSec).toBeGreaterThan(560);
+    expect(splits[0].paceSec).toBeLessThan(640);
+    // 잔여 구간(≈100m)은 순수 러닝 페이스(≈300초/km)로 나온다.
+    expect(splits[1].paceSec).toBeGreaterThan(270);
+    expect(splits[1].paceSec).toBeLessThan(330);
+  });
+});
+
+describe("computeBestSegments — 추적 끊김", () => {
+  it("연속 경로에서는 목표 거리 구간 페이스를 계산한다", () => {
+    // 3km 연속(100m/36초 = 6:00/km)
+    const path: LatLng[] = [];
+    for (let i = 0; i <= 30; i++) path.push(tp(i * STEP_DEG, i * 36));
+    const r = computeBestSegments(path);
+    expect(r["3k"]).toBeGreaterThan(355);
+    expect(r["3k"]).toBeLessThan(365);
+  });
+
+  it("갭을 가로지르는 윈도우로 PB를 만들 수 없다", () => {
+    // 2km 러닝 + 300m 갭(60초 만에 이동 — 탈것) + 2km 러닝.
+    // 갭을 직선으로 이으면 총 4.3km가 되어 3k 최고 구간이 조작되지만,
+    // 연속 구간(각 2km)만으로는 3km 윈도우가 성립하지 않아야 한다.
+    const path: LatLng[] = [];
+    for (let i = 0; i <= 20; i++) path.push(tp(i * STEP_DEG, i * 36));
+    const bStart = 20 * STEP_DEG + GAP_DEG;
+    for (let j = 1; j <= 20; j++) path.push(tp(bStart + (j - 1) * STEP_DEG, 20 * 36 + 60 + j * 36));
+    expect(computeBestSegments(path)).toEqual({});
   });
 });

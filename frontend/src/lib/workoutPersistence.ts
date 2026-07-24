@@ -4,6 +4,12 @@ import { sessionJson } from "./safeStorage";
 export type PersistedWorkout = {
   status: "running" | "paused";
   path: LatLng[];
+  /**
+   * 라이브 누적 거리(안티치트로 가산이 차단된 구간 제외).
+   * 경로에서 재계산하면 차단 구간·추적 끊김이 직선으로 합산돼 부풀므로 값 자체를 저장한다.
+   * 구버전 스냅샷엔 없을 수 있다.
+   */
+  distanceM?: number;
   runStartedAt: number;    // Date.now() when running began
   pausedAccumMs: number;   // total accumulated pause time in ms
   pauseStartedAt: number | null; // timestamp when current pause began

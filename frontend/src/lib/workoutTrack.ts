@@ -36,6 +36,23 @@ export function pathDistanceMeters(points: LatLng[]): number {
   return sum;
 }
 
+/**
+ * 추적 끊김(연속 점 간 gapThresholdM 초과)을 직선으로 잇지 않는 누적 거리.
+ * 세션 복원 시 저장된 거리가 없는 구형 스냅샷의 폴백 — 지하철·앱 종료 중 이동을
+ * 거리에 합산하지 않는다(라이브 집계의 재정박과 같은 취지).
+ */
+export function creditedPathDistanceMeters(
+  points: LatLng[],
+  gapThresholdM: number = MAP_GAP_THRESHOLD_M,
+): number {
+  let sum = 0;
+  for (let i = 1; i < points.length; i++) {
+    const seg = haversineMeters(points[i - 1], points[i]);
+    if (seg <= gapThresholdM) sum += seg;
+  }
+  return sum;
+}
+
 /** 연속 두 점 사이가 이 거리(m)를 넘으면 지도에서 추적 끊김(점선)으로 본다. */
 export const MAP_GAP_THRESHOLD_M = 120;
 
@@ -524,7 +541,10 @@ export function computeKmSplits(path: LatLng[]): KmSplit[] {
   let cumM = 0;
 
   for (let i = 1; i < pts.length; i++) {
-    const seg = haversineMeters(pts[i - 1], pts[i]);
+    const rawSeg = haversineMeters(pts[i - 1], pts[i]);
+    // 추적 끊김(>120m) 구간은 거리 0으로 취급 — 라이브 거리 집계(재정박)와 일치시키고,
+    // 끊김을 직선으로 이어 구간 페이스가 실제보다 빨라지는 것을 막는다(시간은 흐른 대로 반영).
+    const seg = rawSeg > MAP_GAP_THRESHOLD_M ? 0 : rawSeg;
     const tPrev = pts[i - 1].t!;
     const tCurr = pts[i].t!;
     const prevCumM = cumM;
@@ -571,40 +591,59 @@ export function computeBestSegments(path: LatLng[]): Record<string, number> {
   const pts = path.filter((p) => p.t != null);
   if (pts.length < 2) return {};
 
-  const cumDist: number[] = [0];
+  // 추적 끊김(>120m)을 가로지르는 윈도우 금지 — 지하철·일시정지 중 이동을 직선으로 이으면
+  // 비현실적으로 빠른 구간이 만들어져 가짜 PB가 서버에 등록된다(PB→NSM·유령까지 오염).
+  // 끊김 없는 연속 구간별로만 최고 구간을 찾는다.
+  const subpaths: LatLng[][] = [];
+  let run: LatLng[] = [pts[0]];
   for (let i = 1; i < pts.length; i++) {
-    cumDist.push(cumDist[i - 1] + haversineMeters(pts[i - 1], pts[i]));
+    if (haversineMeters(pts[i - 1], pts[i]) > MAP_GAP_THRESHOLD_M) {
+      if (run.length >= 2) subpaths.push(run);
+      run = [pts[i]];
+    } else {
+      run.push(pts[i]);
+    }
   }
-  const totalDist = cumDist[pts.length - 1];
+  if (run.length >= 2) subpaths.push(run);
+
+  const best: Record<string, number> = {};
+
+  for (const sub of subpaths) {
+    const cumDist: number[] = [0];
+    for (let i = 1; i < sub.length; i++) {
+      cumDist.push(cumDist[i - 1] + haversineMeters(sub[i - 1], sub[i]));
+    }
+    const totalDist = cumDist[sub.length - 1];
+
+    for (const { key, m: targetM } of PB_TARGETS) {
+      if (totalDist < targetM) continue;
+
+      let bestPaceSec = best[key] ?? Infinity;
+      let j = 1;
+
+      for (let i = 0; i < sub.length - 1; i++) {
+        if (j <= i) j = i + 1;
+        while (j < sub.length && cumDist[j] - cumDist[i] < targetM) j++;
+        if (j >= sub.length) break;
+
+        const segStart = cumDist[j - 1] - cumDist[i];
+        const segLen = cumDist[j] - cumDist[j - 1];
+        const frac = segLen > 0 ? (targetM - segStart) / segLen : 1;
+        const tAtTarget = sub[j - 1].t! + frac * (sub[j].t! - sub[j - 1].t!);
+
+        const elapsedSec = (tAtTarget - sub[i].t!) / 1000;
+        if (elapsedSec > 0) {
+          const paceSec = elapsedSec / (targetM / 1000);
+          if (paceSec < bestPaceSec) bestPaceSec = paceSec;
+        }
+      }
+
+      if (bestPaceSec !== Infinity) best[key] = bestPaceSec;
+    }
+  }
 
   const result: Record<string, number> = {};
-
-  for (const { key, m: targetM } of PB_TARGETS) {
-    if (totalDist < targetM) continue;
-
-    let bestPaceSec = Infinity;
-    let j = 1;
-
-    for (let i = 0; i < pts.length - 1; i++) {
-      if (j <= i) j = i + 1;
-      while (j < pts.length && cumDist[j] - cumDist[i] < targetM) j++;
-      if (j >= pts.length) break;
-
-      const segStart = cumDist[j - 1] - cumDist[i];
-      const segLen = cumDist[j] - cumDist[j - 1];
-      const frac = segLen > 0 ? (targetM - segStart) / segLen : 1;
-      const tAtTarget = pts[j - 1].t! + frac * (pts[j].t! - pts[j - 1].t!);
-
-      const elapsedSec = (tAtTarget - pts[i].t!) / 1000;
-      if (elapsedSec > 0) {
-        const paceSec = elapsedSec / (targetM / 1000);
-        if (paceSec < bestPaceSec) bestPaceSec = paceSec;
-      }
-    }
-
-    if (bestPaceSec !== Infinity) result[key] = Math.round(bestPaceSec);
-  }
-
+  for (const [key, paceSec] of Object.entries(best)) result[key] = Math.round(paceSec);
   return result;
 }
 
