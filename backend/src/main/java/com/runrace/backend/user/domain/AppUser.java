@@ -44,10 +44,13 @@ public class AppUser {
   @Column(name = "lang_cd", nullable = false, length = 5)
   private String langCd = "ko";
 
-  /** 푸시 알림 수신 선호. 기본 true. 끄면 모든 푸시(이벤트·리텐션)를 보내지 않는다. */
+  /**
+   * 푸시 알림 수신 선호. 기본 false — 알림을 허용해 '첫' 디바이스 토큰이 등록되는 시점에 true로 전환된다
+   * (DeviceTokenService). 끄면 모든 푸시(이벤트·리텐션)를 보내지 않는다.
+   */
   @Builder.Default
   @Column(name = "push_enabled", nullable = false)
-  private boolean pushEnabled = true;
+  private boolean pushEnabled = false;
 
   /** 탈퇴(익명화) 시각. null=정상 회원. 값이 있으면 개인정보가 제거된 탈퇴 계정. */
   @Column(name = "withdrawn_at")

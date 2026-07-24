@@ -7,8 +7,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface AppUserRepository
     extends JpaRepository<AppUser, UUID>, AppUserRepositoryCustom {
@@ -38,4 +40,13 @@ public interface AppUserRepository
   default AppUser getRequired(UUID id) {
     return findById(id).orElseThrow(() -> ApiException.notFound("user_not_found"));
   }
+
+  /**
+   * 푸시 수신 선호를 켠다(첫 디바이스 토큰 등록 시점). 멱등 — 이미 true여도 무해.
+   * upsert가 통짜 트랜잭션이 아니므로(레이스 캐치 유지) 이 갱신은 자체 트랜잭션으로 실행한다.
+   */
+  @Modifying
+  @Transactional
+  @Query("update AppUser u set u.pushEnabled = true where u.id = :id")
+  void enablePush(@Param("id") UUID id);
 }
