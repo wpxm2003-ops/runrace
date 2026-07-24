@@ -467,6 +467,8 @@ export const translations = {
     nsm_subt_days_label: "sub-T 요일 (2~3개)",
     nsm_subt_days_hint: "빡센 날을 직접 골라요. 하루씩 띄우는 걸 추천(예: 화·목·토). 나머지는 이지런으로 자동 채워져요.",
     nsm_subt_adjacent_warning: "빡센 날이 이틀 연속이에요. 회복을 위해 하루씩 띄우는 걸 추천해요.",
+    nsm_min_days_notice: (n: number) =>
+      `이 볼륨은 빡센 날이 최소 ${n}개 필요해요. 요일을 바꾸려면 원하는 요일을 바로 눌러주세요.`,
     nsm_threshold_label: "내 역치 페이스",
     nsm_save_start: "이 플랜으로 시작",
     nsm_saving: "저장 중...",
@@ -1360,6 +1362,8 @@ export const translations = {
     nsm_subt_days_label: "sub-T days (2–3)",
     nsm_subt_days_hint: "Pick your hard days yourself. We recommend spacing them out by a day (e.g. Tue/Thu/Sat). The rest auto-fill with Easy runs.",
     nsm_subt_adjacent_warning: "Two hard days are back-to-back. For recovery, spacing them a day apart is recommended.",
+    nsm_min_days_notice: (n: number) =>
+      `This volume needs at least ${n} hard day${n > 1 ? "s" : ""}. To change days, just tap the day you want.`,
     nsm_threshold_label: "My Threshold pace",
     nsm_save_start: "Start with this plan",
     nsm_saving: "Saving...",
@@ -2253,6 +2257,8 @@ export const translations = {
     nsm_subt_days_label: "Días sub-T (2~3)",
     nsm_subt_days_hint: "Elige tú mismo los días duros. Recomendamos dejar un día de descanso entre ellos (ej.: mar·jue·sáb). El resto se rellena automáticamente con Easy runs.",
     nsm_subt_adjacent_warning: "Dos días duros están seguidos. Para recuperar, se recomienda dejar un día entre ellos.",
+    nsm_min_days_notice: (n: number) =>
+      `Este volumen necesita al menos ${n} ${n > 1 ? "días duros" : "día duro"}. Para cambiar, toca directamente el día que quieras.`,
     nsm_threshold_label: "Mi ritmo de umbral",
     nsm_save_start: "Empezar con este plan",
     nsm_saving: "Guardando...",
@@ -3146,6 +3152,8 @@ export const translations = {
     nsm_subt_days_label: "sub-Tの曜日（2〜3個）",
     nsm_subt_days_hint: "きつい日を自分で選びます。1日ずつ空けるのがおすすめ（例: 火・木・土）。残りはEasy runで自動的に埋まります。",
     nsm_subt_adjacent_warning: "きつい日が2日連続です。回復のため1日空けるのがおすすめです。",
+    nsm_min_days_notice: (n: number) =>
+      `このボリュームではきつい日が最低${n}日必要です。曜日を変えるには、希望の曜日を直接タップしてください。`,
     nsm_threshold_label: "自分の閾値ペース",
     nsm_save_start: "このプランで始める",
     nsm_saving: "保存中...",
@@ -4039,6 +4047,8 @@ export const translations = {
     nsm_subt_days_label: "sub-T 日（2~3 天）",
     nsm_subt_days_hint: "自己挑选高强度日。建议每天间隔一天（例：周二·周四·周六）。其余会自动安排为 Easy run。",
     nsm_subt_adjacent_warning: "有两个高强度日连在一起。为了恢复，建议隔开一天。",
+    nsm_min_days_notice: (n: number) =>
+      `该跑量至少需要 ${n} 个高强度日。想更换请直接点击目标日。`,
     nsm_threshold_label: "我的阈值配速",
     nsm_save_start: "以此计划开始",
     nsm_saving: "保存中...",

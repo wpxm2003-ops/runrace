@@ -118,8 +118,9 @@ function TrainingContent({ user }: { user: User | null }) {
   const [distM, setDistM] = useState(5000);
   const [timeStr, setTimeStr] = useState("22:00");
   // sub-T 요일(월=0…일=6). 기본 화·목·토 — 사용자가 자기 일정에 맞게 변경.
-  const [subTDays, setSubTDays] = useState<number[]>([1, 3, 5]);
-  const [band, setBand] = useState<NsmVolumeBand | undefined>(undefined);
+  // 기본 볼륨은 4~5시간(밴드 2) — 가장 흔한 구간이라 첫 화면부터 선택돼 있게 한다. sub-T 요일도 밴드 2 상한(2개)에 맞춘 화·목.
+  const [subTDays, setSubTDays] = useState<number[]>([1, 3]);
+  const [band, setBand] = useState<NsmVolumeBand | undefined>(2);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -199,15 +200,21 @@ function TrainingContent({ user }: { user: User | null }) {
   }
 
   // sub-T 요일 토글 — 밴드별 최소/최대 유지(미지정 시 2~3, 밴드별로 1~3).
+  // 상한에 찬 상태에서 새 요일을 누르면 가장 먼저 골랐던 요일과 교체한다(고정 개수 밴드에서 먹통 방지).
+  // 교체 대상 판단을 위해 subTDays는 선택 순서를 유지한다 — weeklyPlan·저장 경로가 각자 정렬하므로 안전.
   function onToggleDay(d: number) {
     const { min, max } = subTDayLimits(band);
     let next: number[];
     if (subTDays.includes(d)) {
-      if (subTDays.length <= min) return;
+      if (subTDays.length <= min) {
+        toast(t.nsm_min_days_notice(min));
+        return;
+      }
       next = subTDays.filter((x) => x !== d);
+    } else if (subTDays.length >= max) {
+      next = [...subTDays.slice(1), d];
     } else {
-      if (subTDays.length >= max) return;
-      next = [...subTDays, d].sort((a, b) => a - b);
+      next = [...subTDays, d];
     }
     setSubTDays(next);
     if (result) setResult({ ...result, plan: weeklyPlan(result.threshold, next, band) });
