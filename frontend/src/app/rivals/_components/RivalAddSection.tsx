@@ -7,6 +7,7 @@ import { TextInput } from "@/app/_components/ui/TextInput";
 import { addRival, useRivals, toDisplayError, mapErrorMessage, reportClientError } from "@/lib/api";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -37,6 +38,7 @@ export function RivalAddSection({ user }: { user: User }) {
     setActionError(null);
     try {
       await addRival(nickname, user);
+      void track("rival_added");
       void mutateRivals();
       setDraft("");
       toast.success(t.toast_rival_added);

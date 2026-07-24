@@ -11,6 +11,7 @@ import { MyApplicationsSection } from "./MyApplicationsSection";
 import { CrewDiscovery } from "./CrewDiscovery";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -64,6 +65,7 @@ export function CrewOnboarding({ user, onDone }: { user: User | null; onDone: ()
     if (kind === "create") setCreateError(null);
     try {
       await fn();
+      void track(kind === "create" ? "crew_created" : "crew_joined", kind === "join" ? { method: "code" } : undefined);
       toast.success(successToast);
       onDone();
     } catch (e) {

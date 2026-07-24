@@ -7,6 +7,7 @@ import { crewNudge, toDisplayError } from "@/lib/api";
 import type { CrewView } from "@/lib/api/types";
 import { handleAuthFailure } from "@/lib/auth";
 import { formatDistance } from "@/lib/units";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
     setNudgingId(targetUserId);
     try {
       await crewNudge(targetUserId, variant, user);
+      void track("crew_nudge_sent", { variant });
       setNudgedIds((prev) => new Set(prev).add(targetUserId));
       toast.success(t.nudge_sent(t.nudge_presets[variant]));
     } catch (e) {

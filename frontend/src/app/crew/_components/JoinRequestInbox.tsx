@@ -13,6 +13,7 @@ import {
   mapErrorMessage,
   reportAndDisplay,
 } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
@@ -43,6 +44,7 @@ export function JoinRequestInbox({ user, onChanged }: { user: User; onChanged: (
     setApprovingId(requestId);
     try {
       await approveJoinRequest(requestId, user);
+      void track("crew_join_approved");
       toast.success(t.toast_crew_join_approved);
       onChanged();
     } catch (e) {

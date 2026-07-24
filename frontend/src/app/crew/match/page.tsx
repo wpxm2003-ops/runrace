@@ -22,6 +22,7 @@ import { handleAuthFailure } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
@@ -291,7 +292,10 @@ function MatchContent({ matchId, user }: { matchId: number; user: User }) {
               disabled={busy || selected.size !== detail.rosterSize}
               onClick={() =>
                 run(
-                  () => acceptCrewMatch(detail.id, [...selected], user),
+                  async () => {
+                    await acceptCrewMatch(detail.id, [...selected], user);
+                    void track("crew_match_accepted");
+                  },
                   t.toast_match_accepted,
                 )
               }
@@ -310,7 +314,11 @@ function MatchContent({ matchId, user }: { matchId: number; user: User }) {
                   cancelLabel: t.cancel,
                   destructive: true,
                 });
-                if (ok) void run(() => declineCrewMatch(detail.id, user), t.toast_match_declined, true);
+                if (ok)
+                  void run(async () => {
+                    await declineCrewMatch(detail.id, user);
+                    void track("crew_match_declined");
+                  }, t.toast_match_declined, true);
               }}
               className="mt-2 h-10 w-full rounded-xl text-sm text-zinc-500 hover:bg-zinc-50"
             >

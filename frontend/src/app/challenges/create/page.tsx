@@ -99,7 +99,7 @@ export default function CreateChallengePage() {
       }
       invalidateChallengeLists();
       if (crewMode) invalidateCrewRaces(user.uid);
-      void track("race_created", crewMode ? { crew: true } : undefined);
+      void track("race_created", { crew: crewMode });
       toast.success(t.create_success);
       nativeNavigate(crewMode ? "/crew" : "/challenges");
     } catch (e) {

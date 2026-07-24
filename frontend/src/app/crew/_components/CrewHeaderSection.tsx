@@ -3,6 +3,7 @@
 import { Card } from "@/app/_components/ui/Card";
 import type { CrewView } from "@/lib/api/types";
 import { formatDistance } from "@/lib/units";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ export function CrewHeaderSection({ crew }: { crew: CrewView }) {
     // 받는 사람이 앱 홈의 크루 버튼에서 코드로 직접 가입한다.
     try {
       await navigator.clipboard.writeText(t.crew_invite_copy_text(crew.joinCode));
+      void track("crew_invite_copied");
       toast.success(t.crew_invite_copied);
     } catch {
       toast.error(t.error_occurred);

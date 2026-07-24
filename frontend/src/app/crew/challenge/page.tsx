@@ -31,6 +31,7 @@ import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { handleAuthFailure } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -133,6 +134,7 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
         user,
       );
       invalidateCrewMatches(user.uid);
+      void track("crew_match_sent", { roster_size: selected.size });
       toast.success(t.toast_match_sent);
       nativeNavigate("/crew", { replace: true });
     } catch (e) {

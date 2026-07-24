@@ -27,6 +27,7 @@ import { redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { crewDetailHref, parseCrewId, parseCrewIdFromPath } from "@/lib/crewRoute";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { formatDate, formatDateOnly, weekdayLabels } from "@/lib/format";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
@@ -274,6 +275,7 @@ export default function CrewDetailContent() {
     setSubmitting(true);
     try {
       await applyToCrew(detail.id, message || null, user);
+      void track("crew_join_requested");
       toast.success(t.toast_crew_applied);
       setApplyOpen(false);
       void mutate();

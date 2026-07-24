@@ -14,6 +14,7 @@ import { redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { clearNsmProgress } from "@/lib/nsmSessionProgress";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import type { Translations } from "@/lib/i18n/translations";
 import { toast } from "sonner";
@@ -237,6 +238,7 @@ function TrainingContent({ user }: { user: User | null }) {
         user,
       );
       await mutatePlan();
+      void track("nsm_plan_saved", { weekly_band: band ?? "unknown" });
       toast.success(t.nsm_toast_saved);
     } catch {
       toast.error(t.nsm_toast_save_fail);

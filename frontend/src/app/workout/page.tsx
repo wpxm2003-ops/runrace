@@ -302,7 +302,10 @@ export default function WorkoutPage() {
       <GhostPicker
         open={ghostPickerOpen}
         onClose={() => setGhostPickerOpen(false)}
-        onSelect={setGhost}
+        onSelect={(g) => {
+          setGhost(g);
+          void track("ghost_race_started");
+        }}
         user={user}
       />
 

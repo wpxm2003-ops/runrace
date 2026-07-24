@@ -175,7 +175,7 @@ export default function ChallengeDetailContent() {
     try {
       await joinChallenge(id, user, `/challenges/${id}`);
       invalidateChallengeLists();
-      void track("race_joined", { challengeId: id });
+      void track("race_joined", { challengeId: id, crew: !!detail?.crewName, goal_km: detail?.goalKm ?? 0 });
       toast.success(t.toast_race_joined);
       await mutate();
     } catch (e) {

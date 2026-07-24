@@ -5,6 +5,7 @@ import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
 import { useAlert } from "@/app/_components/ConfirmProvider";
 import { useNotificationSetting, setNotificationSetting } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ export function NotificationToggle({ user }: { user: User }) {
     void mutate({ enabled: next, hasToken }, { revalidate: false }); // 낙관적 업데이트
     try {
       await setNotificationSetting(user, next);
+      void track("push_toggle", { enabled: next });
     } catch {
       void mutate(); // 실패 시 서버 값으로 되돌림
       toast.error(t.error_occurred);
