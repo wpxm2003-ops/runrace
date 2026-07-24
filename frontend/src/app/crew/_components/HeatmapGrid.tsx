@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { CrewInsights } from "@/lib/api/types";
-import { monthDayLabel, pad2, todayIso, weekdayLabels } from "@/lib/format";
+import { monthCalendarCells } from "@/lib/calendarGrid";
+import { monthDayLabel, todayIso, weekdayLabels } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 
 type Cell = { date: string; runners: number; nicknames: (string | null)[]; future: boolean };
@@ -22,26 +23,11 @@ export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
   const today = todayIso();
   const weekdays = weekdayLabels(locale);
 
-  // heatmapFrom = 이번 달 1일. 요일 정렬용 선행 빈 칸 + 실제 일수를 7의 배수로 맞춘다.
-  // 일반 달력 관례대로 일요일 시작 — Date.getDay()가 이미 Sun=0…Sat=6이라 그대로 쓴다.
-  const [y, m] = insights.heatmapFrom.split("-").map(Number);
-  const firstWeekday = new Date(y, m - 1, 1).getDay(); // Sun=0…Sat=6
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
-
-  const cells: (Cell | null)[] = Array.from({ length: totalCells }, (_, i) => {
-    const dayNum = i - firstWeekday + 1;
-    if (dayNum < 1 || dayNum > daysInMonth) {
-      return null; // 이번 달 밖 — 달력 정렬용 빈 칸(전월 말·다음달 초)
-    }
-    const date = `${y}-${pad2(m)}-${pad2(dayNum)}`;
-    const day = byDate.get(date);
-    return {
-      date,
-      runners: day?.runners ?? 0,
-      nicknames: day?.nicknames ?? [],
-      future: date > today,
-    };
+  // heatmapFrom = 이번 달 1일. 그리드 모양 계산(일요일 시작·7의 배수 칸)은 lib으로 추출됨.
+  const cells: (Cell | null)[] = monthCalendarCells(insights.heatmapFrom, today).map((c) => {
+    if (!c) return null;
+    const day = byDate.get(c.date);
+    return { ...c, runners: day?.runners ?? 0, nicknames: day?.nicknames ?? [] };
   });
 
   function cellClass(runners: number): string {
