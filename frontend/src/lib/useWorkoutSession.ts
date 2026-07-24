@@ -58,6 +58,7 @@ function resetVehicleState(): VehicleDetectState {
     lowSpeedSinceMs: null,
     weakGpsSinceMs: null,
     recoveringFromWeakGps: false,
+    hasHadGoodFix: false,
     accuracyRecent: [],
   };
 }
@@ -205,6 +206,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         lowSpeedSinceMs: vehicle.lowSpeedSinceMs,
         weakGpsSinceMs: vehicle.weakGpsSinceMs,
         recoveringFromWeakGps: vehicle.recoveringFromWeakGps,
+        hasHadGoodFix: vehicle.hasHadGoodFix,
         accuracyRecent: vehicle.accuracyRecent,
       };
       setVehicleTier(vehicle.tier);
@@ -310,11 +312,16 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     startWatch();
   }, [startWatch]);
 
-  // ── 초기 위치 획득 (네이티브: GPS→알림 순차 권한 요청 후 실행) ─────────────
+  // ── GPS 예열 (idle 동안 미리 위성 확보) ────────────────────────────────────
+  // 운동 화면에 있는 동안(idle) 고정밀 위치 워치를 돌려 GPS 라디오를 미리 켜둔다.
+  // 시작을 누를 땐 이미 위성이 잡혀 있어, 콜드스타트 지연·초반 정확도 저하로 거리·경로가
+  // 한동안 안 찍히던 문제를 없앤다. running/paused면 녹화 워치가 GPS를 잡으므로 건너뛴다.
   useEffect(() => {
+    if (status !== "idle") return;
     let cancelled = false;
+    let watchId: number | null = null;
 
-    async function init() {
+    async function warmUp() {
       const blocked = geolocationBlockedReason();
       if (blocked) {
         setGeoError(blocked);
@@ -323,22 +330,25 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       if (Capacitor.isNativePlatform()) {
         await waitForNativePermissions();
       }
-      if (cancelled) return;
-      navigator.geolocation.getCurrentPosition(
+      if (cancelled || typeof navigator === "undefined" || !navigator.geolocation) return;
+      watchId = navigator.geolocation.watchPosition(
         (pos) => {
           setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           setGeoError(null);
         },
         (err) => setGeoError(geolocationErrorMessage(err)),
-        { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+        { enableHighAccuracy: true, maximumAge: 1_000, timeout: 30_000 },
       );
     }
 
-    init();
+    warmUp();
     return () => {
       cancelled = true;
+      if (watchId != null && typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
     };
-  }, []);
+  }, [status]);
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
   const start = useCallback(() => {

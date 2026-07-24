@@ -90,36 +90,41 @@ describe("pathBoundsKey", () => {
   });
 });
 
-describe("evaluateVehicleTier — 복귀 시간 분기(치팅 위험별)", () => {
-  function initialState(): VehicleDetectState {
-    return {
-      tier: "normal",
-      suspectHighSinceMs: null,
-      confirmedHighSinceMs: null,
-      lowSpeedSinceMs: null,
-      weakGpsSinceMs: null,
-      recoveringFromWeakGps: false,
-      accuracyRecent: [],
-    };
-  }
+// ── 공용 헬퍼 ────────────────────────────────────────────────────────────────
+type VehicleStep = { speedMps: number | null; accuracyM: number; nowMs: number };
 
-  type Step = { speedMps: number | null; accuracyM: number; nowMs: number };
+const GOOD = 10; // ≤20m → isGpsGood
+const WEAK = 50; // >30m → 즉시 weak
+const RUN = 2; // ≤4m/s → 러닝 저속
 
-  // 결과(VehicleDetectResult)는 state의 상위집합이라 다음 tick의 state로 그대로 넘길 수 있다.
-  function run(steps: Step[]) {
-    let s: VehicleDetectState = initialState();
-    let last = evaluateVehicleTier({ ...steps[0], state: s });
+function vehicleState(hasHadGoodFix: boolean): VehicleDetectState {
+  return {
+    tier: "normal",
+    suspectHighSinceMs: null,
+    confirmedHighSinceMs: null,
+    lowSpeedSinceMs: null,
+    weakGpsSinceMs: null,
+    recoveringFromWeakGps: false,
+    hasHadGoodFix,
+    accuracyRecent: [],
+  };
+}
+
+// 결과(VehicleDetectResult)는 state의 상위집합이라 다음 tick의 state로 그대로 넘길 수 있다.
+function runFrom(hasHadGoodFix: boolean, steps: VehicleStep[]) {
+  let s: VehicleDetectState = vehicleState(hasHadGoodFix);
+  let last = evaluateVehicleTier({ ...steps[0], state: s });
+  s = last;
+  for (let i = 1; i < steps.length; i++) {
+    last = evaluateVehicleTier({ ...steps[i], state: s });
     s = last;
-    for (let i = 1; i < steps.length; i++) {
-      last = evaluateVehicleTier({ ...steps[i], state: s });
-      s = last;
-    }
-    return last;
   }
+  return last;
+}
 
-  const GOOD = 10; // ≤20m → isGpsGood
-  const WEAK = 50; // >30m → 즉시 weak
-  const RUN = 2; // ≤4m/s → 러닝 저속
+describe("evaluateVehicleTier — 복귀 시간 분기(치팅 위험별)", () => {
+  // 이 블록은 러닝 도중(이미 양호 fix를 받은 뒤)의 복귀 타이밍을 검증한다.
+  const run = (steps: VehicleStep[]) => runFrom(true, steps);
 
   it("GPS 끊김(weak) 복귀는 저속·양호 GPS가 2초 지속되면 normal", () => {
     // t0 weak → t1 recovering(빠른 대상) → t3 (2초 경과) normal
@@ -167,5 +172,40 @@ describe("evaluateVehicleTier — 복귀 시간 분기(치팅 위험별)", () =>
     ]);
     expect(r.tier).toBe("recovering");
     expect(r.blockDistance).toBe(true);
+  });
+});
+
+describe("evaluateVehicleTier — 콜드스타트 예열(첫 양호 fix 전)", () => {
+  // 시작 직후 GPS 확보 지연을 지하철/탈것으로 오인해 초반 기록을 통째로 막던 버그 방지.
+  const cold = (steps: VehicleStep[]) => runFrom(false, steps);
+
+  it("예열 중 weak가 15초를 넘겨도 confirmed(탈것)로 승격하지 않는다", () => {
+    const r = cold([
+      { speedMps: null, accuracyM: WEAK, nowMs: 0 },
+      { speedMps: RUN, accuracyM: WEAK, nowMs: 16_000 }, // 16초 경과 — 예열이 아니면 confirmed였을 시점
+    ]);
+    expect(r.tier).toBe("weak_gps");
+    expect(r.hasHadGoodFix).toBe(false);
+  });
+
+  it("첫 양호 fix가 오면 복구 대기 없이 즉시 normal + reanchor로 기록 시작", () => {
+    const r = cold([
+      { speedMps: null, accuracyM: WEAK, nowMs: 0 }, // 예열 weak_gps
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 1000 }, // 첫 양호 fix — 1초 만에 바로 정상
+    ]);
+    expect(r.tier).toBe("normal");
+    expect(r.blockDistance).toBe(false);
+    expect(r.blockPathPoints).toBe(false);
+    expect(r.reanchorNextPoint).toBe(true);
+    expect(r.hasHadGoodFix).toBe(true);
+  });
+
+  it("예열 완료 후에는 지하철 감지가 정상 작동 — mid-run weak는 15초 뒤 confirmed", () => {
+    const r = cold([
+      { speedMps: RUN, accuracyM: GOOD, nowMs: 0 }, // 예열 완료(양호 fix)
+      { speedMps: RUN, accuracyM: WEAK, nowMs: 1000 }, // 이후 GPS 끊김
+      { speedMps: null, accuracyM: WEAK, nowMs: 17_000 }, // 16초 지속 → 지하철 확정
+    ]);
+    expect(r.tier).toBe("confirmed");
   });
 });

@@ -139,6 +139,12 @@ export type VehicleDetectState = {
   weakGpsSinceMs: number | null;
   /** recovering일 때, GPS 끊김만으로 진입했는지(true=탈것 속도 미개입 → 빠른 복귀 허용). */
   recoveringFromWeakGps: boolean;
+  /**
+   * 이번 세션에서 양호한 GPS fix를 한 번이라도 받았는지.
+   * false면 콜드스타트 예열 중 — 나쁜 정확도를 탈것/지하철로 오인해 승격하지 않고,
+   * 첫 양호 fix가 오면 복구 절차 없이 즉시 정상 기록으로 넘어간다.
+   */
+  hasHadGoodFix: boolean;
   accuracyRecent: AccuracySample[];
 };
 
@@ -162,6 +168,7 @@ type VehicleDetectResult = {
   lowSpeedSinceMs: number | null;
   weakGpsSinceMs: number | null;
   recoveringFromWeakGps: boolean;
+  hasHadGoodFix: boolean;
   accuracyRecent: AccuracySample[];
 };
 
@@ -258,6 +265,12 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
   const exitMs = effectiveThreshold(VEHICLE_BAND_EXIT_MS, signals);
   const recoveryMs = RECOVERY_MAX_SPEED_MS;
 
+  // 콜드스타트 예열 상태. weak = 이번 fix가 약한 GPS인지. hasHadGoodFix가 한 번 true가 되면
+  // 이후로는 계속 유지된다. firstGoodFix = 예열 완료로 넘어가는 바로 그 fix.
+  const weak = isGpsWeak(accuracyM, speedMps, accuracyRecent);
+  const hasHadGoodFix = state.hasHadGoodFix || !weak;
+  const firstGoodFix = !weak && !state.hasHadGoodFix;
+
   const result = (
     partial: Partial<VehicleDetectResult> & Pick<VehicleDetectResult, "tier">,
   ): VehicleDetectResult => ({
@@ -273,6 +286,7 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
     lowSpeedSinceMs: partial.lowSpeedSinceMs ?? lowSpeedSinceMs,
     weakGpsSinceMs: partial.weakGpsSinceMs ?? weakGpsSinceMs,
     recoveringFromWeakGps: partial.recoveringFromWeakGps ?? recoveringFromWeakGps,
+    hasHadGoodFix: partial.hasHadGoodFix ?? hasHadGoodFix,
     accuracyRecent: partial.accuracyRecent ?? accuracyRecent,
     tier: partial.tier,
   });
@@ -286,9 +300,14 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
     });
 
   // ── 1) GPS 약함 / No Fix (지하철·터널) ───────────────────────────────────
-  if (isGpsWeak(accuracyM, speedMps, accuracyRecent)) {
+  if (weak) {
     weakGpsSinceMs = weakGpsSinceMs ?? nowMs;
-    if (nowMs - weakGpsSinceMs >= WEAK_GPS_FORCE_CONFIRM_MS) {
+    // 예열 중(첫 양호 fix 전)엔 15초를 넘겨도 탈것으로 승격하지 않는다 — 아직 기록할 러닝이
+    // 없고, 정상적인 콜드스타트 GPS 확보 지연을 지하철로 오인하면 안 된다.
+    if (
+      state.hasHadGoodFix &&
+      nowMs - weakGpsSinceMs >= WEAK_GPS_FORCE_CONFIRM_MS
+    ) {
       return result({
         tier: "confirmed",
         blockDistance: true,
@@ -309,6 +328,21 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
   weakGpsSinceMs = null;
 
   if (tier === "weak_gps") {
+    // 콜드스타트 예열 완료(첫 양호 fix) — 복구 절차 없이 즉시 정상 기록 시작.
+    // 아직 러닝을 기록한 적이 없으므로 복구 대기(5초)로 초반을 더 깎을 이유가 없다.
+    if (firstGoodFix) {
+      return result({
+        tier: "normal",
+        blockDistance: false,
+        blockPathPoints: false,
+        reanchorNextPoint: true,
+        suspectHighSinceMs: null,
+        confirmedHighSinceMs: null,
+        lowSpeedSinceMs: null,
+        weakGpsSinceMs: null,
+        recoveringFromWeakGps: false,
+      });
+    }
     return result({
       tier: "recovering",
       blockDistance: true,
