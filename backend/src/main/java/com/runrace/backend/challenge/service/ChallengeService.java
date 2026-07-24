@@ -431,6 +431,18 @@ public class ChallengeService {
   }
 
   /**
+   * 경품이 등록된 레이스 id 집합 — 목록의 '경품' 뱃지용. 단일 쿼리로 일괄 조회(N+1 방지).
+   * 경품 존재 여부만 노출하며 경품명·이미지는 포함하지 않는다.
+   */
+  @Transactional(readOnly = true)
+  public Set<Long> prizeChallengeIds(List<Long> challengeIds) {
+    if (challengeIds.isEmpty()) {
+      return Set.of();
+    }
+    return Set.copyOf(challengePrizeRepository.findChallengeIdsWithPrize(challengeIds));
+  }
+
+  /**
    * 레이스 반영 운동 목록 — 전체 공개(비참여자·비로그인도 조회 가능).
    * 스칼라 projection이라 GPS 경로(path_json)를 로딩하지 않는다.
    */

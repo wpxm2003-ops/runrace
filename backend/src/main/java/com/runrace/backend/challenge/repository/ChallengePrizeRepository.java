@@ -21,4 +21,8 @@ public interface ChallengePrizeRepository extends JpaRepository<ChallengePrize, 
   @Modifying
   @Query("delete from ChallengePrize p where p.challengeId = :challengeId")
   void deleteByChallengeId(@Param("challengeId") Long challengeId);
+
+  /** 경품이 하나라도 등록된 레이스 id — 목록 '경품' 뱃지용 일괄 조회(레이스별 개별 쿼리 N+1 방지). */
+  @Query("select distinct p.challengeId from ChallengePrize p where p.challengeId in :challengeIds")
+  List<Long> findChallengeIdsWithPrize(@Param("challengeIds") List<Long> challengeIds);
 }

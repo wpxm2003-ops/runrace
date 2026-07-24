@@ -59,8 +59,19 @@ export function CrewRacesSection({ user }: { user: User }) {
                       <span className="truncate text-sm font-medium text-zinc-900">{r.title}</span>
                       {r.isMember ? <Badge tone="emerald">{t.races_joined}</Badge> : null}
                     </div>
-                    <div className="mt-0.5 text-[11px] text-zinc-500">
-                      {t.races_goal_members(formatGoalDistance(r.goalKm, unit), r.memberCount)}
+                    <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-500">
+                      <span>{t.races_goal_members(formatGoalDistance(r.goalKm, unit), r.memberCount)}</span>
+                      {/* 경품 표시 — 목록 아이템과 동일하게 목표·인원 줄에(상태 뱃지와 분리). */}
+                      {r.hasPrize ? (
+                        <span
+                          role="img"
+                          aria-label={t.races_prize_badge}
+                          title={t.races_prize_badge}
+                          className="shrink-0 leading-none"
+                        >
+                          🎁
+                        </span>
+                      ) : null}
                     </div>
                     <div className="mt-0.5 text-[11px] text-zinc-400">
                       {formatDateRange(r.startAt, r.endAt, locale)}

@@ -85,8 +85,9 @@ public class ChallengeController {
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
     Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
     Set<Long> memberIds = challengeService.memberChallengeIds(principal.userId(), ids);
+    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
     List<ChallengeListItem> items = challenges.stream()
-        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds))
+        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds, prizeIds))
         .toList();
     return ResponseEntity.ok(items);
   }
@@ -106,8 +107,9 @@ public class ChallengeController {
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
     Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
     Set<Long> memberIds = challengeService.memberChallengeIds(principal.userId(), ids);
+    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
     List<ChallengeListItem> items = challenges.stream()
-        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds))
+        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds, prizeIds))
         .toList();
     return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
   }
@@ -164,9 +166,10 @@ public class ChallengeController {
     Set<Long> memberIds = userId
         .map(uid -> challengeService.memberChallengeIds(uid, ids))
         .orElse(Set.of());
+    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
 
     List<ChallengeListItem> items = challenges.stream()
-        .map(challenge -> toListItem(challenge, now, userId, memberCounts, memberIds))
+        .map(challenge -> toListItem(challenge, now, userId, memberCounts, memberIds, prizeIds))
         .toList();
     return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
   }
@@ -185,8 +188,9 @@ public class ChallengeController {
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
     Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
     Set<Long> memberIds = Set.copyOf(ids); // 내 레이스는 전부 참여 중
+    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
     List<ChallengeListItem> items = challenges.stream()
-        .map(challenge -> toListItem(challenge, now, Optional.of(userId), memberCounts, memberIds))
+        .map(challenge -> toListItem(challenge, now, Optional.of(userId), memberCounts, memberIds, prizeIds))
         .toList();
     return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
   }
@@ -231,7 +235,8 @@ public class ChallengeController {
       OffsetDateTime now,
       Optional<UUID> currentUserId,
       Map<Long, Long> memberCounts,
-      Set<Long> memberIds) {
+      Set<Long> memberIds,
+      Set<Long> prizeIds) {
     ChallengePhase phase = ChallengePhase.of(challenge, now);
     boolean isOwner = currentUserId.map(challenge::isOwner).orElse(false);
     int memberCount = memberCounts.getOrDefault(challenge.getId(), 0L).intValue();
@@ -245,7 +250,8 @@ public class ChallengeController {
         memberCount,
         IsoTime.format(challenge.getCreatedAt()),
         isOwner,
-        memberIds.contains(challenge.getId()));
+        memberIds.contains(challenge.getId()),
+        prizeIds.contains(challenge.getId()));
   }
 
   private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {

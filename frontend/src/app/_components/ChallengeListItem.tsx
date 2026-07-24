@@ -46,8 +46,19 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
           compact
         />
       </div>
-      <div className="mt-1 text-sm text-zinc-600">
-        {t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}
+      <div className="mt-1 flex items-center gap-1.5 text-sm text-zinc-600">
+        <span>{t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}</span>
+        {/* 경품 표시 — 상태가 아니라 레이스 속성이라 목표·인원 줄에 둔다(제목 줄 혼잡·색 충돌 회피). */}
+        {c.hasPrize ? (
+          <span
+            role="img"
+            aria-label={t.races_prize_badge}
+            title={t.races_prize_badge}
+            className="shrink-0 leading-none"
+          >
+            🎁
+          </span>
+        ) : null}
       </div>
       <div className="mt-1 text-xs text-zinc-500">
         {formatDateRange(c.startAt, c.endAt, locale)}

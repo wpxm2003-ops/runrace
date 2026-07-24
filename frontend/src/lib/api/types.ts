@@ -18,6 +18,8 @@ export type ChallengeListItem = {
   isOwner: boolean;
   /** 로그인 사용자가 이 레이스에 참여 중인지 — 공개 목록의 참여 라벨용. */
   isMember: boolean;
+  /** 경품이 하나라도 걸린 레이스인지 — 목록 '경품' 뱃지용. */
+  hasPrize: boolean;
 };
 
 /** 공개 목록 페이지 응답 (무한스크롤). */

@@ -77,6 +77,7 @@ export const translations = {
     races_filter_active: "예정·진행중",
     races_joined: "참여중",
     races_joined_done: "참여완료",
+    races_prize_badge: "경품",
     races_goal_members: (goal: string, memberCount: number) =>
       `목표 ${goal} · ${memberCount}명 참여`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -523,7 +524,7 @@ export const translations = {
     // ── 경품(prize) ─────────────────────────
     prize_section_title: "🎁 경품 (선택)",
     prize_section_hint: (maxRank: number) =>
-      `1~${maxRank}등 경품을 걸 수 있어요. 경품명은 모두에게 공개되고, 이미지(기프티콘)는 종료 후 해당 등수 당첨자만 봐요.`,
+      `1~${maxRank}등 경품을 걸 수 있어요. 경품명은 모두에게 공개되고, 이미지는 종료 후 해당 등수 당첨자만 봐요.`,
     prize_rank_label: (n: number) => `${n}등`,
     prize_item_label: (n: number) => `경품 ${n}`,
     prize_award_rank: "등수로 지급",
@@ -555,10 +556,10 @@ export const translations = {
     prize_opening: "여는 중…",
     prize_view_again: "경품확인",
     prize_view_gifticon: "경품확인",
-    prize_locked_before_end: "레이스가 끝나면 당첨자에게 기프티콘이 공개돼요 🎁",
+    prize_locked_before_end: "레이스가 끝나면 당첨자에게 경품이 공개돼요 🎁",
     prize_locked_not_winner: (n: number) => `${n}등 당첨자만 열어볼 수 있어요`,
-    prize_load_error: "기프티콘을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
-    prize_viewer_alt: "기프티콘",
+    prize_load_error: "경품 이미지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+    prize_viewer_alt: "경품 이미지",
     prize_login_required: "로그인 후 추첨 결과를 확인할 수 있어요.",
     prize_random_before_end: "레이스 종료 후 완주자 중 추첨해요.",
     prize_random_not_eligible: "목표 거리를 달성하지 못해 추첨 대상이 아니에요.",
@@ -972,6 +973,7 @@ export const translations = {
     races_filter_active: "Upcoming & live",
     races_joined: "Joined",
     races_joined_done: "Completed",
+    races_prize_badge: "Prize",
     races_goal_members: (goal: string, memberCount: number) =>
       `${goal} goal · ${memberCount} joined`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -1418,7 +1420,7 @@ export const translations = {
     // ── 경품(prize) ─────────────────────────
     prize_section_title: "🎁 Prizes (optional)",
     prize_section_hint: (maxRank: number) =>
-      `You can set prizes for ranks 1–${maxRank}. Prize names are public; images (gift cards) are shown only to the matching-rank winner after the race ends.`,
+      `You can set prizes for ranks 1–${maxRank}. Prize names are public; images are shown only to the matching-rank winner after the race ends.`,
     prize_rank_label: (n: number) => `#${n}`,
     prize_item_label: (n: number) => `Prize ${n}`,
     prize_award_rank: "By rank",
@@ -1433,7 +1435,7 @@ export const translations = {
       "Top to bottom = 1st, 2nd, … Prize names are public; images are visible only to the matching-rank winner after the race ends.",
     prize_close: "Close",
     prize_remove: "Remove",
-    prize_name_placeholder: "Prize name (e.g. Starbucks gift card)",
+    prize_name_placeholder: "Prize name (e.g. Starbucks Americano)",
     prize_image_existing: "Has image",
     prize_uploading: "Uploading…",
     prize_image_replace: "Replace image",
@@ -1449,11 +1451,11 @@ export const translations = {
     prize_view_toggle: (n: number) => `🎁 View prizes (${n})`,
     prize_opening: "Opening…",
     prize_view_again: "View again",
-    prize_view_gifticon: "View gift card",
-    prize_locked_before_end: "Gift cards are revealed to winners after the race ends 🎁",
+    prize_view_gifticon: "View prize",
+    prize_locked_before_end: "Prizes are revealed to winners after the race ends 🎁",
     prize_locked_not_winner: (n: number) => `Only the #${n} winner can open this`,
-    prize_load_error: "Couldn't load the gift card. Please try again shortly.",
-    prize_viewer_alt: "Gift card",
+    prize_load_error: "Couldn't load the prize image. Please try again shortly.",
+    prize_viewer_alt: "Prize image",
     prize_login_required: "Sign in to check your draw result.",
     prize_random_before_end: "The draw starts after the race ends.",
     prize_random_not_eligible: "You did not complete the goal distance and were not eligible.",
@@ -1867,6 +1869,7 @@ export const translations = {
     races_filter_active: "Próximas y en curso",
     races_joined: "Unido",
     races_joined_done: "Completada",
+    races_prize_badge: "Premio",
     races_goal_members: (goal: string, memberCount: number) =>
       `Meta ${goal} · ${memberCount} inscritos`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -2313,7 +2316,7 @@ export const translations = {
     // ── 경품(prize) ─────────────────────────
     prize_section_title: "🎁 Premios (opcional)",
     prize_section_hint: (maxRank: number) =>
-      `Puedes asignar premios del 1.º al ${maxRank}.º puesto. Los nombres son públicos; las imágenes (cupones) solo las ve el ganador de ese puesto al terminar la carrera.`,
+      `Puedes asignar premios del 1.º al ${maxRank}.º puesto. Los nombres son públicos; las imágenes solo las ve el ganador de ese puesto al terminar la carrera.`,
     prize_rank_label: (n: number) => `#${n}`,
     prize_item_label: (n: number) => `Premio ${n}`,
     prize_award_rank: "Por puesto",
@@ -2328,7 +2331,7 @@ export const translations = {
       "De arriba abajo = 1.º, 2.º… Los nombres son públicos; las imágenes solo las ve el ganador de ese puesto al terminar la carrera.",
     prize_close: "Cerrar",
     prize_remove: "Quitar",
-    prize_name_placeholder: "Nombre del premio (p. ej. cupón de Starbucks)",
+    prize_name_placeholder: "Nombre del premio (p. ej. Americano de Starbucks)",
     prize_image_existing: "Con imagen",
     prize_uploading: "Subiendo…",
     prize_image_replace: "Cambiar imagen",
@@ -2344,11 +2347,11 @@ export const translations = {
     prize_view_toggle: (n: number) => `🎁 Ver premios (${n})`,
     prize_opening: "Abriendo…",
     prize_view_again: "Ver de nuevo",
-    prize_view_gifticon: "Ver cupón",
-    prize_locked_before_end: "Los cupones se revelan a los ganadores al terminar la carrera 🎁",
+    prize_view_gifticon: "Ver premio",
+    prize_locked_before_end: "Los premios se revelan a los ganadores al terminar la carrera 🎁",
     prize_locked_not_winner: (n: number) => `Solo el ganador del puesto #${n} puede abrirlo`,
-    prize_load_error: "No se pudo cargar el cupón. Inténtalo de nuevo en un momento.",
-    prize_viewer_alt: "Cupón",
+    prize_load_error: "No se pudo cargar la imagen del premio. Inténtalo de nuevo en un momento.",
+    prize_viewer_alt: "Imagen del premio",
     prize_login_required: "Inicia sesión para consultar el resultado.",
     prize_random_before_end: "El sorteo se realiza al finalizar la carrera.",
     prize_random_not_eligible: "No completaste la distancia objetivo.",
@@ -2762,6 +2765,7 @@ export const translations = {
     races_filter_active: "予定・進行中",
     races_joined: "参加中",
     races_joined_done: "参加完了",
+    races_prize_badge: "景品",
     races_goal_members: (goal: string, memberCount: number) =>
       `目標${goal} · ${memberCount}人参加`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -3208,7 +3212,7 @@ export const translations = {
     // ── 경품(prize) ─────────────────────────
     prize_section_title: "🎁 景品（任意）",
     prize_section_hint: (maxRank: number) =>
-      `1〜${maxRank}位の景品を設定できます。景品名は全員に公開され、画像（ギフト券）はレース終了後、その順位の入賞者だけが見られます。`,
+      `1〜${maxRank}位の景品を設定できます。景品名は全員に公開され、画像はレース終了後、その順位の入賞者だけが見られます。`,
     prize_rank_label: (n: number) => `${n}位`,
     prize_item_label: (n: number) => `景品${n}`,
     prize_award_rank: "順位で配布",
@@ -3223,7 +3227,7 @@ export const translations = {
       "上から1位・2位…の順です。景品名は全員に公開され、画像はレース終了後、その順位の入賞者だけが見られます。",
     prize_close: "閉じる",
     prize_remove: "削除",
-    prize_name_placeholder: "景品名（例：スターバックスのギフト券）",
+    prize_name_placeholder: "景品名（例：スターバックスのアメリカーノ）",
     prize_image_existing: "画像あり",
     prize_uploading: "アップロード中…",
     prize_image_replace: "画像を変更",
@@ -3239,11 +3243,11 @@ export const translations = {
     prize_view_toggle: (n: number) => `🎁 景品を見る（${n}）`,
     prize_opening: "開いています…",
     prize_view_again: "もう一度見る",
-    prize_view_gifticon: "ギフト券を見る",
-    prize_locked_before_end: "ギフト券はレース終了後、入賞者に公開されます 🎁",
+    prize_view_gifticon: "景品を見る",
+    prize_locked_before_end: "景品はレース終了後、入賞者に公開されます 🎁",
     prize_locked_not_winner: (n: number) => `${n}位の入賞者だけが開けます`,
-    prize_load_error: "ギフト券を読み込めませんでした。しばらくしてからお試しください。",
-    prize_viewer_alt: "ギフト券",
+    prize_load_error: "景品画像を読み込めませんでした。しばらくしてからお試しください。",
+    prize_viewer_alt: "景品画像",
     prize_login_required: "ログインすると抽選結果を確認できます。",
     prize_random_before_end: "レース終了後に抽選します。",
     prize_random_not_eligible: "目標距離を達成していないため抽選対象外です。",
@@ -3657,6 +3661,7 @@ export const translations = {
     races_filter_active: "未开始·进行中",
     races_joined: "参与中",
     races_joined_done: "已参与",
+    races_prize_badge: "奖品",
     races_goal_members: (goal: string, memberCount: number) =>
       `目标${goal} · ${memberCount}人参加`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -4103,7 +4108,7 @@ export const translations = {
     // ── 경품(prize) ─────────────────────────
     prize_section_title: "🎁 奖品（可选）",
     prize_section_hint: (maxRank: number) =>
-      `可为第 1~${maxRank} 名设置奖品。奖品名称对所有人公开，图片（礼品券）仅在比赛结束后由对应名次的获奖者查看。`,
+      `可为第 1~${maxRank} 名设置奖品。奖品名称对所有人公开，图片仅在比赛结束后由对应名次的获奖者查看。`,
     prize_rank_label: (n: number) => `第${n}名`,
     prize_item_label: (n: number) => `奖品 ${n}`,
     prize_award_rank: "按名次发放",
@@ -4118,7 +4123,7 @@ export const translations = {
       "从上到下依次为第 1、2 名…… 奖品名称对所有人公开，图片仅在比赛结束后由对应名次的获奖者查看。",
     prize_close: "关闭",
     prize_remove: "删除",
-    prize_name_placeholder: "奖品名称（例如：星巴克礼品券）",
+    prize_name_placeholder: "奖品名称（例如：星巴克美式咖啡）",
     prize_image_existing: "已有图片",
     prize_uploading: "上传中…",
     prize_image_replace: "更换图片",
@@ -4134,11 +4139,11 @@ export const translations = {
     prize_view_toggle: (n: number) => `🎁 查看奖品（${n}）`,
     prize_opening: "正在打开…",
     prize_view_again: "再次查看",
-    prize_view_gifticon: "查看礼品券",
-    prize_locked_before_end: "礼品券将在比赛结束后向获奖者公开 🎁",
+    prize_view_gifticon: "查看奖品",
+    prize_locked_before_end: "奖品将在比赛结束后向获奖者公开 🎁",
     prize_locked_not_winner: (n: number) => `仅第${n}名获奖者可以打开`,
-    prize_load_error: "无法加载礼品券，请稍后重试。",
-    prize_viewer_alt: "礼品券",
+    prize_load_error: "无法加载奖品图片，请稍后重试。",
+    prize_viewer_alt: "奖品图片",
     prize_login_required: "登录后可查看抽奖结果。",
     prize_random_before_end: "比赛结束后进行抽奖。",
     prize_random_not_eligible: "未完成目标距离，不在抽奖范围内。",
