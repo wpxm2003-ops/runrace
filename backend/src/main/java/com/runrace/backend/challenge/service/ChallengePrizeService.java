@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 레이스 등수별 경품 — 등록(생성자·시작 전), 목록(이름 공개), 기프티콘 이미지(종료+해당 등수 게이트).
+ * 레이스 경품 — 등록(생성자·시작 전), 목록(이름 공개), 경품 이미지(종료+당첨 게이트).
  */
 @Service
 @RequiredArgsConstructor
@@ -132,7 +132,7 @@ public class ChallengePrizeService {
   }
 
   /**
-   * 기프티콘 이미지.
+   * 경품 이미지.
    * - 생성자: 자기 레이스 경품 이미지를 편집용으로 언제든 미리볼 수 있다(자기가 올린 것 → 유출 아님). 수령 기록 안 함.
    * - 그 외: 레이스 종료 + 요청자의 final_rank == 경품 등수일 때만. 첫 열람 시 수령(viewed) 기록.
    */

@@ -53,7 +53,7 @@ function toRow(p: PrizeFormItem): Row {
 
 /**
  * 경품 추가/편집 모달("새 창"). N개의 경품을 위→아래 순서대로 1등·2등…으로 등록.
- * 각 경품: 경품명(필수) + 이미지(선택, 기프티콘 비공개 업로드).
+ * 각 경품: 경품명(필수) + 이미지(선택, 비공개 업로드).
  */
 export function PrizeEditorModal({
   prizes,

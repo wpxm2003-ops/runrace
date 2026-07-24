@@ -11,7 +11,7 @@
 |---|---|---|
 | `frontend/src/app/_components/ui/BottomSheet.tsx` | 바텀시트 오버레이+stopPropagation+useNativeBack 소유. zIndexClass/panelClassName은 리터럴로 주입 | 8 (ApplyModal, RejectModal, PrizeEditorModal, ShoeFormSheet 메인, CrewRegionPickerSheet, SelectSheet 경유 2곳) |
 | `frontend/src/app/_components/ui/Badge.tsx` | amber(리더/라이벌)·emerald(나/참여중) 2톤 뱃지 | 13곳 |
-| `frontend/src/app/_components/ImageLightbox.tsx` | 멀티이미지 갤러리 뷰어(스와이프+카운터+useNativeBack+zIndexClass). 단일 이미지면 자동 축퇴 | CrewDetailContent, ChallengeDetailContent, ChallengePrizes(기프티콘, z-120) |
+| `frontend/src/app/_components/ImageLightbox.tsx` | 멀티이미지 갤러리 뷰어(스와이프+카운터+useNativeBack+zIndexClass). 단일 이미지면 자동 축퇴 | CrewDetailContent, ChallengeDetailContent, ChallengePrizes(경품 이미지, z-120) |
 | `frontend/src/lib/api/errorMap.ts` `mapErrorMessage(e, rules, fallback)` | 에러코드→i18n 매핑 루프. **fallback은 반드시 함수**(reportAndDisplay 부수효과 방지) | 16곳 |
 | `frontend/src/lib/format.ts` 추가분 | `shortMonthDay`(date-only 전용)·`addDaysIso`·`todayIso`·`monthDayLabel` | crew 계열 |
 | `frontend/src/lib/api/hooks.ts` `SWR_INFINITE_CONFIG` | useSWRInfinite 공통 옵션(무한스크롤 5훅 전부 사용) | 5 |

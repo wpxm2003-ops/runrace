@@ -32,7 +32,7 @@ public class ImageUploadController {
   }
 
   /**
-   * 비공개 이미지 업로드 (인증 필요) — 기프티콘 등. 공개 URL이 아니라 객체 키만 반환한다.
+   * 비공개 이미지 업로드 (인증 필요) — 경품 이미지 등. 공개 URL이 아니라 객체 키만 반환한다.
    * 반환: { "key": "prizes/xxx.jpg" } — 이후 게이트 엔드포인트로만 열람 가능.
    */
   @PostMapping("/private-image")

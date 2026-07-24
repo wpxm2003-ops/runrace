@@ -38,7 +38,7 @@ export function ChallengePrizes({
   if (!prizes || prizes.length === 0) return null;
   const awardType = prizes[0].awardType;
 
-  async function openGifticon(rank: number) {
+  async function openPrizeImage(rank: number) {
     if (!user) return;
     setLoadingRank(rank);
     try {
@@ -77,7 +77,7 @@ export function ChallengePrizes({
   function onRankPrizeClick(prize: PrizeRow) {
     if (!prize.hasImage) return;
     if (hasEnded && myRank === prize.rank) {
-      void openGifticon(prize.rank);
+      void openPrizeImage(prize.rank);
     } else if (!hasEnded) {
       toast.info(t.prize_locked_before_end);
     } else {
@@ -119,10 +119,10 @@ export function ChallengePrizes({
                 <button
                   type="button"
                   disabled={loadingRank === wonPrize.rank}
-                  onClick={() => void openGifticon(wonPrize.rank)}
+                  onClick={() => void openPrizeImage(wonPrize.rank)}
                   className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
                 >
-                  {loadingRank === wonPrize.rank ? t.prize_opening : t.prize_view_gifticon}
+                  {loadingRank === wonPrize.rank ? t.prize_opening : t.prize_view_image}
                 </button>
               ) : null}
             </div>
@@ -154,7 +154,7 @@ export function ChallengePrizes({
                         ? t.prize_opening
                         : prize.viewed
                           ? t.prize_view_again
-                          : t.prize_view_gifticon
+                          : t.prize_view_image
                       : "잠김"}
                   </button>
                 ) : null}

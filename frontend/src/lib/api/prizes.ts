@@ -32,13 +32,13 @@ export function fetchMyPrizeResult(challengeId: number, user: User) {
   return apiFetch<PrizeResult>(`/api/challenges/${challengeId}/prizes/result`, { user });
 }
 
-/** 비공개 이미지(기프티콘) 업로드 → 객체 키 반환(공개 URL 아님). */
+/** 비공개 이미지(경품) 업로드 → 객체 키 반환(공개 URL 아님). */
 export function uploadPrivateImage(file: File, user: User): Promise<string> {
   return uploadMultipart("/api/uploads/private-image", file, user, "key");
 }
 
 /**
- * 기프티콘 이미지를 인증 fetch로 받아 object URL을 만든다.
+ * 경품 이미지를 인증 fetch로 받아 object URL을 만든다.
  * <img>는 Authorization 헤더를 못 보내므로 blob으로 받아 URL.createObjectURL.
  * 서버가 종료+해당 등수를 검증하므로, 권한 없으면 throw.
  */

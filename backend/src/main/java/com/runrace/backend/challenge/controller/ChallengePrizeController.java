@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 레이스 경품 — 목록(공개)·저장(생성자)·기프티콘 이미지(종료+해당 등수 게이트). */
+/** 레이스 경품 — 목록(공개)·저장(생성자)·경품 이미지(종료+당첨 게이트). */
 @RestController
 @RequestMapping("/api/challenges/{id:" + PathPatterns.ID + "}/prizes")
 @RequiredArgsConstructor
@@ -59,7 +59,7 @@ public class ChallengePrizeController {
     return ResponseEntity.ok(prizeResultService.getMyResult(principal.userId(), id));
   }
 
-  /** 기프티콘 이미지 — 종료 + 해당 등수 당첨자만. 바이트 직접 스트리밍(URL 미노출). */
+  /** 경품 이미지 — 종료 + 해당 등수 당첨자만. 바이트 직접 스트리밍(URL 미노출). */
   @GetMapping("/{rank:" + PathPatterns.ID + "}/image")
   public ResponseEntity<byte[]> image(
       AuthPrincipal principal, @PathVariable("id") Long id, @PathVariable("rank") int rank) {

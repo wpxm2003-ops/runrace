@@ -29,7 +29,7 @@ public class ImageUploadService {
   private final S3Client s3;
   private final String bucket;
   /**
-   * 비공개 객체(기프티콘 등) 전용 버킷. app.aws.s3.private-bucket 미설정 시 공개 버킷으로 폴백한다.
+   * 비공개 객체(경품 이미지 등) 전용 버킷. app.aws.s3.private-bucket 미설정 시 공개 버킷으로 폴백한다.
    * 완전한 비공개를 보장하려면 이 값을 Block Public Access가 켜진 별도 버킷으로 지정한다.
    */
   private final String privateBucket;
@@ -107,7 +107,7 @@ public class ImageUploadService {
     }
   }
 
-  // ── 비공개 업로드(기프티콘 등) — 공개 URL 미발급. 키만 보관하고 게이트 엔드포인트로만 서빙. ──
+  // ── 비공개 업로드(경품 이미지 등) — 공개 URL 미발급. 키만 보관하고 게이트 엔드포인트로만 서빙. ──
   /** 비공개 객체 prefix. 이 prefix의 키는 공개 URL로 노출하지 않는다. */
   private static final String PRIVATE_PREFIX = "prizes/";
 
