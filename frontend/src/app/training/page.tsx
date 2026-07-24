@@ -7,7 +7,13 @@ import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { TextInput } from "@/app/_components/ui/TextInput";
-import { usePersonalBests, useTrainingPlan, saveTrainingPlan, cancelTrainingPlan } from "@/lib/api";
+import {
+  usePersonalBests,
+  useTrainingPlan,
+  useNsmWeeklyProgress,
+  saveTrainingPlan,
+  cancelTrainingPlan,
+} from "@/lib/api";
 import type { PersonalBestRow } from "@/lib/api/types";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { redirectToLogin } from "@/lib/auth";
@@ -113,6 +119,7 @@ function TrainingContent({ user }: { user: User | null }) {
   const confirm = useConfirm();
   const { data: pbs } = usePersonalBests(user);
   const { data: savedPlan, mutate: mutatePlan } = useTrainingPlan(user);
+  const { data: weekly } = useNsmWeeklyProgress(user);
   // 다른 화면에 다녀와도 스크롤 유지 (내정보 탭과 동일 동작)
   usePageScrollRestore("page:training");
 
@@ -338,6 +345,11 @@ function TrainingContent({ user }: { user: User | null }) {
           </button>
           {!todaySession.isSubT ? (
             <p className="mt-2 text-[11px] text-zinc-400">{t.nsm_today_easy_note}</p>
+          ) : null}
+          {weekly && weekly.planned > 0 ? (
+            <p className="mt-2 text-[11px] text-zinc-400">
+              {t.nsm_week_progress(weekly.completed, weekly.planned)}
+            </p>
           ) : null}
         </Card>
       ) : (

@@ -1,8 +1,11 @@
 package com.runrace.backend.training.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.training.dto.NsmSessionLogRequest;
+import com.runrace.backend.training.dto.NsmWeeklyProgressResponse;
 import com.runrace.backend.training.dto.TrainingPlanRequest;
 import com.runrace.backend.training.dto.TrainingPlanResponse;
+import com.runrace.backend.training.service.NsmSessionLogService;
 import com.runrace.backend.training.service.TrainingPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TrainingPlanController {
 
   private final TrainingPlanService trainingPlanService;
+  private final NsmSessionLogService nsmSessionLogService;
 
   /** 내 활성 플랜. 없으면 body=null(200). */
   @GetMapping
@@ -46,5 +50,22 @@ public class TrainingPlanController {
   public ResponseEntity<Void> cancel(AuthPrincipal principal) {
     trainingPlanService.cancel(principal.userId());
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * sub-T 세션 수행 기록 — 런 저장 성공 직후 1회. 같은 운동 기록이면 멱등하게 무시된다.
+   * 수행 시점에만 알 수 있는 사실이라 여기서 놓치면 사후 복원이 불가능하다.
+   */
+  @PostMapping("/sessions")
+  public ResponseEntity<Void> logSession(
+      AuthPrincipal principal, @RequestBody NsmSessionLogRequest body) {
+    nsmSessionLogService.log(principal.userId(), body);
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 이번 주 sub-T 진척(완주 수 / 플랜 목표 횟수). */
+  @GetMapping("/sessions/weekly")
+  public ResponseEntity<NsmWeeklyProgressResponse> weeklyProgress(AuthPrincipal principal) {
+    return ResponseEntity.ok(nsmSessionLogService.weeklyProgress(principal.userId()));
   }
 }

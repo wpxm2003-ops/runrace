@@ -37,7 +37,7 @@ import {
 import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
-import { fetchTrainingPlan } from "./training";
+import { fetchNsmWeeklyProgress, fetchTrainingPlan } from "./training";
 import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear, fetchPersonalBests } from "./workouts";
 import { fetchMe } from "./auth";
 import { fetchNotificationSetting } from "./push";
@@ -491,6 +491,15 @@ export function useTrainingPlan(user: User | null) {
   return useSWR(
     user ? (["training-plan", user.uid] as const) : null,
     () => fetchTrainingPlan(user!),
+    BASE_CONFIG,
+  );
+}
+
+/** 이번 주 sub-T 진척 — NSM 코치 화면의 "이번 주 N/M 완료" 표시용. */
+export function useNsmWeeklyProgress(user: User | null) {
+  return useSWR(
+    user ? (["nsm-weekly-progress", user.uid] as const) : null,
+    () => fetchNsmWeeklyProgress(user!),
     BASE_CONFIG,
   );
 }

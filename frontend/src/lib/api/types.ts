@@ -523,6 +523,28 @@ export type TrainingPlan = {
   updatedAt?: string;
 };
 
+/**
+ * NSM sub-T 세션 수행 기록 — 런 저장 성공 직후 1회 전송.
+ * 수행 시점에만 알 수 있는 값이라(플랜은 upsert라 과거 스케줄이 남지 않음) 여기서 확정 기록한다.
+ */
+export type NsmSessionLogBody = {
+  workoutId: number | null;
+  /** 0=월 … 6=일 */
+  day: number;
+  kind: "SHORT" | "MEDIUM" | "LONG";
+  targetPaceSec: number | null;
+  repsPlanned: number | null;
+  repsDone: number;
+  /** 렙 가이드를 끝까지 완료했는지. false=sub-T 날에 뛰었지만 세션 미완주. */
+  completed: boolean;
+};
+
+/** 이번 주 sub-T 진척(완주 수 / 플랜 목표 횟수). */
+export type NsmWeeklyProgress = {
+  completed: number;
+  planned: number;
+};
+
 export type CreateWorkoutResponse = {
   id: number;
   personalBest: PersonalBest | null;

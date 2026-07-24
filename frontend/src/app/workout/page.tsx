@@ -5,7 +5,8 @@ import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration
 import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
-import { createWorkout, fetchWorkout, useTrainingPlan } from "@/lib/api";
+import { createWorkout, fetchWorkout, logNsmSession, useTrainingPlan } from "@/lib/api";
+import type { NsmSessionLogBody } from "@/lib/api/types";
 import {
   clearGhostSelection,
   loadGhostSelection,
@@ -14,7 +15,7 @@ import {
 import { weeklyPlan, nsmTodayIndex, type NsmSession, type NsmVolumeBand } from "@/lib/nsm";
 import { isGhostLoss, recordGhostLossStreak, shouldShowNsmCta } from "@/lib/nsmCta";
 import { NsmSessionGuide } from "@/app/workout/_components/NsmSessionGuide";
-import { clearNsmProgress } from "@/lib/nsmSessionProgress";
+import { clearNsmProgress, loadNsmProgress } from "@/lib/nsmSessionProgress";
 import { track, distanceBucket } from "@/lib/analytics";
 import { withRetry } from "@/lib/retry";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -63,7 +64,32 @@ type PendingSave = {
   ghostResult: GhostRaceResult | null;
   ghostLabel: string | null;
   showNsmCta: boolean;
+  /** 이 런이 sub-T 세션이었으면 수행 기록(재시도 저장에서도 유실되지 않게 함께 보관). */
+  nsmLog: NsmSessionLogBody | null;
 };
+
+/**
+ * 종료 시점의 sub-T 세션 + 렙 진행상태 → 수행 기록 페이로드.
+ * 진행상태는 clearNsmProgress()로 지워지기 전에만 읽을 수 있고, 플랜은 upsert라 과거 스케줄이
+ * 남지 않는다. 즉 이 순간을 놓치면 "실제로 수행했는지"는 영영 복원할 수 없다.
+ */
+function buildNsmLog(session: NsmSession | null): NsmSessionLogBody | null {
+  if (!session?.isSubT) return null;
+  const reps = session.reps ?? 0;
+  const progress = loadNsmProgress();
+  // 날짜 대신 started로만 판정한다 — 자정을 넘긴 런은 진행상태의 날짜 키가 어제라 날짜 비교가 오히려 틀린다.
+  const started = progress?.started === true;
+  const done = started && progress?.phase === "done";
+  return {
+    workoutId: null, // 저장 성공 후 실제 id로 채운다
+    day: session.day,
+    kind: session.kind as "SHORT" | "MEDIUM" | "LONG",
+    targetPaceSec: session.targetPaceSec ?? null,
+    repsPlanned: session.reps ?? null,
+    repsDone: done ? reps : started ? (progress?.repIndex ?? 0) : 0,
+    completed: done,
+  };
+}
 
 export default function WorkoutPage() {
   const { user, loading } = useRequireAuth("/workout");
@@ -174,6 +200,7 @@ export default function WorkoutPage() {
       ghostResult: GhostRaceResult | null,
       ghostLabel: string | null,
       showNsmCta: boolean,
+      nsmLog: NsmSessionLogBody | null,
     ) => {
       if (!user) return;
       setSaveError(null);
@@ -199,6 +226,10 @@ export default function WorkoutPage() {
           3,
           3000,
         );
+        // sub-T 세션 수행 기록 — best-effort. 실패해도 런 저장은 이미 끝났으므로 흐름을 막지 않는다.
+        if (nsmLog) {
+          void logNsmSession({ ...nsmLog, workoutId: res.id }, user).catch(() => {});
+        }
         const distanceKm = snapshot.distanceM / 1000;
         void track("running_end", {
           distance_km: Math.round(distanceKm * 100) / 100,
@@ -221,7 +252,7 @@ export default function WorkoutPage() {
       } catch {
         // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
         setSaveError(t.workout_save_failed);
-        setPendingSave({ snapshot, ghostResult, ghostLabel, showNsmCta });
+        setPendingSave({ snapshot, ghostResult, ghostLabel, showNsmCta, nsmLog });
       } finally {
         setSaving(false);
       }
@@ -249,6 +280,8 @@ export default function WorkoutPage() {
     }
 
     const snapshot = session.stop();
+    // 반드시 clearNsmProgress()보다 먼저 — 지운 뒤에는 몇 렙을 했는지 알 방법이 없다.
+    const nsmLog = buildNsmLog(nsmToday);
     clearNsmProgress(); // 런 종료 — NSM 렙 진행 정리
     if (!snapshot || snapshot.path.length === 0) {
       setSaveError(t.workout_no_route);
@@ -265,7 +298,7 @@ export default function WorkoutPage() {
       ghostResult != null &&
       shouldShowNsmCta({ hasPlan: trainingPlan !== null, result: ghostResult, lossStreak });
     setGhost(null); // 유령은 매 런마다 새로 고른다(등록형 라이벌 아님)
-    await saveSnapshot(snapshot, ghostResult, ghostLabel, showNsmCta);
+    await saveSnapshot(snapshot, ghostResult, ghostLabel, showNsmCta, nsmLog);
   }, [
     session,
     user,
@@ -273,6 +306,7 @@ export default function WorkoutPage() {
     confirm,
     ghost,
     trainingPlan,
+    nsmToday,
     t.workout_no_route,
     t.workout_save_empty_title,
     t.workout_save_empty_message,
@@ -456,6 +490,7 @@ export default function WorkoutPage() {
                   pendingSave.ghostResult,
                   pendingSave.ghostLabel,
                   pendingSave.showNsmCta,
+                  pendingSave.nsmLog,
                 )
               }
               disabled={saving}
