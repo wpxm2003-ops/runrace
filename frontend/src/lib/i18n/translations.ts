@@ -682,6 +682,8 @@ export const translations = {
     my_notification_label: "푸시 알림",
     my_notification_desc: "레이스 소식과 운동 리마인더를 받아요.",
     push_no_token_message: "최초에 앱 푸시 알림에 동의하지 않아 설정을 변경할 수 없어요. 앱을 재설치한 뒤 알림을 허용해주세요.",
+    push_ios_unavailable_message:
+      "iPhone은 아직 정식 앱을 준비 중이라 지금은 푸시 알림을 받을 수 없어요. 불편을 드려 죄송합니다. 빠르게 준비해서 알림도 챙겨드릴게요. 🙏",
     unit_km: "킬로미터 (km)",
     unit_mi: "마일 (mi)",
     my_unit_pace_hint: "단위를 바꾸면 페이스도 함께 변환됩니다.\n(min/km ↔ min/mi)",
@@ -762,10 +764,6 @@ export const translations = {
       "iPhone 웹앱은 화면을 끄거나 다른 앱으로 가면 GPS 기록이 멈출 수 있어요. 달리는 동안 화면을 켜두고 RunRace를 열어 두세요. 운동 화면의 '화면 잠금'을 켜면 화면은 켜진 채 오터치를 막아줘요(길게 눌러 해제).",
     guide_ios_run_temp_note:
       "지금은 정식 앱 출시 전 임시 안내예요. 앱이 나오면 해결될 부분이니 그때까지 양해 부탁드려요. 불편을 드려 죄송합니다. 🙏",
-    guide_ios_noti_heading: "알림 꼭 켜기 🔔",
-    guide_ios_noti_body:
-      "알림을 켜면 **추월·순위 변동** 같은 레이스의 **재미있는 소식**을 푸시로 받아볼 수 있어요. 홈 화면에 설치한 뒤 로그인하면 권한 요청이 떠요.",
-    guide_ios_noti_emphasis: "알림을 꼭 허용해 주세요! 🔔",
     guide_noti_enable_btn: "알림 설정 확인하기",
     guide_noti_enabling: "요청 중…",
     guide_noti_granted: "알림이 허용됐어요 ✓",
@@ -1577,6 +1575,8 @@ export const translations = {
     my_notification_label: "Push notifications",
     my_notification_desc: "Get race updates and workout reminders.",
     push_no_token_message: "You didn't allow push notifications when you first installed the app, so this can't be changed. Please reinstall the app and allow notifications.",
+    push_ios_unavailable_message:
+      "Push notifications aren't available on iPhone yet — the iOS app is still in the works. Sorry for the inconvenience; we're working to bring them to you soon. 🙏",
     unit_km: "Kilometers (km)",
     unit_mi: "Miles (mi)",
     my_unit_pace_hint: "Pace updates automatically when you switch units.\n(min/km ↔ min/mi)",
@@ -1657,10 +1657,6 @@ export const translations = {
       "On iPhone web apps, GPS tracking can stop if the screen turns off or you switch apps. Keep the screen on and RunRace open while running. Turn on 'Lock screen' on the workout screen to keep the screen on while blocking accidental touches (hold to unlock).",
     guide_ios_run_temp_note:
       "This is a temporary workaround before our native app launches. It'll be resolved once the app is out — thanks for your patience, and sorry for the inconvenience. 🙏",
-    guide_ios_noti_heading: "Turn on notifications 🔔",
-    guide_ios_noti_body:
-      "With notifications on, you'll get **fun race updates** like **overtakes and rank changes** as push. After installing to your Home Screen and signing in, you'll be asked for permission.",
-    guide_ios_noti_emphasis: "Please be sure to allow it! 🔔",
     guide_noti_enable_btn: "Check notification settings",
     guide_noti_enabling: "Requesting…",
     guide_noti_granted: "Notifications enabled ✓",
@@ -2472,6 +2468,8 @@ export const translations = {
     my_notification_label: "Notificaciones push",
     my_notification_desc: "Recibe novedades de carreras y recordatorios.",
     push_no_token_message: "No permitiste las notificaciones push al instalar la app, así que no se puede cambiar. Reinstala la app y permite las notificaciones.",
+    push_ios_unavailable_message:
+      "Las notificaciones push aún no están disponibles en iPhone: la app para iOS está en preparación. Perdona las molestias; trabajamos para traerlas pronto. 🙏",
     unit_km: "Kilómetros (km)",
     unit_mi: "Millas (mi)",
     my_unit_pace_hint: "El ritmo se convierte automáticamente al cambiar la unidad.\n(min/km ↔ min/mi)",
@@ -2552,10 +2550,6 @@ export const translations = {
       "En las web apps de iPhone, el registro GPS puede detenerse si se apaga la pantalla o cambias de app. Mantén la pantalla encendida y RunRace abierto mientras corres. Activa 'Bloquear pantalla' en la pantalla de entrenamiento para mantener la pantalla encendida y evitar toques accidentales (mantén pulsado para desbloquear).",
     guide_ios_run_temp_note:
       "Es una solución temporal hasta que lancemos la app nativa. Se resolverá cuando salga la app. Gracias por tu paciencia y perdona las molestias. 🙏",
-    guide_ios_noti_heading: "Activa las notificaciones 🔔",
-    guide_ios_noti_body:
-      "Con las notificaciones activadas recibirás **novedades divertidas de la carrera** como **adelantamientos y cambios de posición** por push. Tras instalarla en la pantalla de inicio e iniciar sesión, se te pedirá permiso.",
-    guide_ios_noti_emphasis: "¡Asegúrate de permitirlas! 🔔",
     guide_noti_enable_btn: "Comprobar ajustes de notificaciones",
     guide_noti_enabling: "Solicitando…",
     guide_noti_granted: "Notificaciones activadas ✓",
@@ -3367,6 +3361,8 @@ export const translations = {
     my_notification_label: "プッシュ通知",
     my_notification_desc: "レースの最新情報と運動リマインダーを受け取ります。",
     push_no_token_message: "アプリの初回起動時にプッシュ通知を許可しなかったため、設定を変更できません。アプリを再インストールして通知を許可してください。",
+    push_ios_unavailable_message:
+      "iPhoneは正式アプリを準備中のため、現在プッシュ通知を受け取れません。ご不便をおかけして申し訳ありません。早急に対応いたします。🙏",
     unit_km: "キロメートル (km)",
     unit_mi: "マイル (mi)",
     my_unit_pace_hint: "単位を変えるとペースも自動的に換算されます。\n(min/km ↔ min/mi)",
@@ -3447,10 +3443,6 @@ export const translations = {
       "iPhoneのWebアプリは、画面を消したり他のアプリに切り替えるとGPS記録が止まることがあります。走行中は画面を点けたままRunRaceを開いておいてください。運動画面の「画面ロック」をオンにすると、画面を点けたまま誤タッチを防げます（長押しで解除）。",
     guide_ios_run_temp_note:
       "これは正式アプリ公開前の一時的な案内です。アプリが出れば解決しますので、それまでご容赦ください。ご不便をおかけして申し訳ありません。🙏",
-    guide_ios_noti_heading: "通知を必ずオンに 🔔",
-    guide_ios_noti_body:
-      "通知をオンにすると、**追い抜き・順位変動**など、レースの**楽しいお知らせ**をプッシュで受け取れます。ホーム画面に追加してログインすると権限の確認が表示されます。",
-    guide_ios_noti_emphasis: "通知を必ず許可してください！🔔",
     guide_noti_enable_btn: "通知設定を確認する",
     guide_noti_enabling: "リクエスト中…",
     guide_noti_granted: "通知が許可されました ✓",
@@ -4262,6 +4254,8 @@ export const translations = {
     my_notification_label: "推送通知",
     my_notification_desc: "接收比赛动态和运动提醒。",
     push_no_token_message: "首次安装时未允许推送通知，无法更改此设置。请重新安装应用并允许通知。",
+    push_ios_unavailable_message:
+      "iPhone 正式应用仍在准备中，目前无法接收推送通知。抱歉给您带来不便，我们会尽快解决。🙏",
     unit_km: "公里 (km)",
     unit_mi: "英里 (mi)",
     my_unit_pace_hint: "切换单位时，配速也会自动换算。\n(min/km ↔ min/mi)",
@@ -4342,10 +4336,6 @@ export const translations = {
       "iPhone 网页应用在熄屏或切换到其他应用时，GPS 记录可能会中断。跑步时请保持屏幕常亮并打开 RunRace。在运动页面开启「锁定屏幕」可在屏幕常亮的同时防止误触（长按解锁）。",
     guide_ios_run_temp_note:
       "这是正式应用上线前的临时方案。应用发布后即可解决，在此之前敬请谅解，给您带来不便深表歉意。🙏",
-    guide_ios_noti_heading: "请务必开启通知 🔔",
-    guide_ios_noti_body:
-      "开启通知后，你可以通过推送收到**超越、排名变动**等**有趣的比赛消息**。添加到主屏幕并登录后会请求权限。",
-    guide_ios_noti_emphasis: "请务必允许通知！🔔",
     guide_noti_enable_btn: "查看通知设置",
     guide_noti_enabling: "请求中…",
     guide_noti_granted: "已允许通知 ✓",

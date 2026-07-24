@@ -6,6 +6,7 @@ import { Card } from "@/app/_components/ui/Card";
 import { useAlert } from "@/app/_components/ConfirmProvider";
 import { useNotificationSetting, setNotificationSetting } from "@/lib/api";
 import { track } from "@/lib/analytics";
+import { isIosWeb } from "@/lib/nativeNav";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -22,10 +23,11 @@ export function NotificationToggle({ user }: { user: User }) {
   async function onToggle() {
     if (isLoading || saving) return;
     // 토큰이 없으면 상태를 바꾸지 않고 안내만 띄운다(클릭해도 OFF 유지).
+    // iOS 웹/PWA는 푸시 미지원(PWA 알림 제거됨) — 재설치 안내 대신 준비 중 안내를 띄운다.
     if (!hasToken) {
       void alert({
         title: t.my_notification_label,
-        message: t.push_no_token_message,
+        message: isIosWeb() ? t.push_ios_unavailable_message : t.push_no_token_message,
         confirmLabel: t.confirm,
       });
       return;

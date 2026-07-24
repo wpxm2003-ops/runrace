@@ -3,7 +3,6 @@
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { ShareButton } from "@/app/_components/ShareButton";
-import { GuideNotificationSection } from "@/app/guides/_components/GuideNotificationSection";
 import { shareGuide } from "@/lib/appUrl";
 import { useLocale } from "@/lib/i18n";
 
@@ -66,8 +65,6 @@ export default function IosGuidePage() {
         <p className="text-sm leading-relaxed text-zinc-700">{t.guide_ios_run_body}</p>
         <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t.guide_ios_run_temp_note}</p>
       </Section>
-
-      <GuideNotificationSection />
     </PageLayout>
   );
 }
