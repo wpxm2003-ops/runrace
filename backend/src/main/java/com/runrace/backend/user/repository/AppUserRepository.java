@@ -15,6 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 public interface AppUserRepository
     extends JpaRepository<AppUser, UUID>, AppUserRepositoryCustom {
 
+  @Query("select u from AppUser u where u.withdrawnAt is null order by u.createdAt desc")
+  List<AppUser> findRecentActiveUsers(org.springframework.data.domain.Pageable pageable);
+
   Optional<AppUser> findByFirebaseUid(String firebaseUid);
 
   Optional<AppUser> findByEmail(String email);

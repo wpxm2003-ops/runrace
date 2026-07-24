@@ -58,6 +58,10 @@ app:
       bucket: runrace-prod-seoul-2026
 
 runrace:
+  admin:
+    # Comma-separated Firebase UIDs allowed to open /sb.
+    firebase-uids: ${ADMIN_FIREBASE_UIDS:}
+    display-names: ${ADMIN_DISPLAY_NAMES:노광고,방지훈}
   cors:
     allowed-origins: http://localhost:3000,http://127.0.0.1:3000,http://localhost,https://localhost,https://runrace.co.kr,https://www.runrace.co.kr
   auth:

@@ -12,6 +12,28 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long>, WorkoutSessionRepositoryCustom {
+
+  @Query("select w.id as id, w.user.displayName as displayName, w.distanceM as distanceM, "
+      + "w.durationSec as durationSec, w.startedAt as startedAt, w.endedAt as endedAt, "
+      + "w.createdAt as createdAt, w.imageUrl as imageUrl, w.memo as memo "
+      + "from WorkoutSession w "
+      + "where w.user.displayName not in :excludedNames "
+      + "order by w.createdAt desc")
+  List<AdminWorkoutView> findRecentForAdmin(
+      @Param("excludedNames") List<String> excludedNames,
+      org.springframework.data.domain.Pageable pageable);
+
+  interface AdminWorkoutView {
+    Long getId();
+    String getDisplayName();
+    int getDistanceM();
+    int getDurationSec();
+    OffsetDateTime getStartedAt();
+    OffsetDateTime getEndedAt();
+    OffsetDateTime getCreatedAt();
+    String getImageUrl();
+    String getMemo();
+  }
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
   /** 상세 응답용 — 신발(LAZY)을 함께 로드해 트랜잭션 밖에서도 귀속 신발을 노출한다. */
