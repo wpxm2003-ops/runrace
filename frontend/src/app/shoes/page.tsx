@@ -19,6 +19,7 @@ import {
 import type { ShoeFormBody, ShoeRow } from "@/lib/api/types";
 import { handleAuthFailure } from "@/lib/auth";
 import { useRequireAuth } from "@/lib/useRequireAuth";
+import { usePageScrollRestore } from "@/lib/pageStateStore";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatDistanceInt, formatDistanceAmountInt } from "@/lib/units";
@@ -133,6 +134,8 @@ function ShoesContent({ user }: { user: User }) {
   const { unit } = useUnit();
   const confirm = useConfirm();
   const { data: shoes, isLoading, error, mutate } = useShoes(user);
+  // 다른 화면에 다녀와도 스크롤 유지 (내정보 탭과 동일 동작)
+  usePageScrollRestore("page:shoes", shoes?.length ?? 0);
 
   // 모달 상태 — editingShoe=null이면 신규 등록, 값이 있으면 수정.
   const [formOpen, setFormOpen] = useState(false);

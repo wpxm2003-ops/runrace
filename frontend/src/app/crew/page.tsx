@@ -5,6 +5,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { useMyCrew, useLeaderJoinRequests, invalidateMyCrew } from "@/lib/api";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { usePageScrollRestore } from "@/lib/pageStateStore";
 import { useLocale } from "@/lib/i18n";
 import { CrewSettingsGear } from "./_components/CrewSettingsGear";
 import { CrewOnboarding } from "./_components/CrewOnboarding";
@@ -43,6 +44,9 @@ export default function CrewPage() {
   const isLeader = Boolean(data?.crew?.isLeader);
   const { data: joinRequests } = useLeaderJoinRequests(user ?? null, isLeader);
   const pendingJoinRequestCount = isLeader ? (joinRequests?.length ?? 0) : 0;
+
+  // 레이스/대항전 상세에 다녀와도 스크롤·화면 위치 유지 (내정보 탭과 동일 동작)
+  usePageScrollRestore("page:crew", data?.crew?.members.length ?? 0);
 
   if (loading) {
     return (

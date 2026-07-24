@@ -13,6 +13,7 @@ import {
 import type { CrewMatchSummary } from "@/lib/api/types";
 import { formatDateRange } from "@/lib/format";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
+import { usePageScrollRestore } from "@/lib/pageStateStore";
 import { useLocale } from "@/lib/i18n";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -61,6 +62,8 @@ export default function CrewMatchesPage() {
   const { data: crewData } = useMyCrew(user);
   const { data: matchState } = useMyCrewMatches(user, Boolean(user));
   const items = history.data ? history.data.flatMap((page) => page.items) : [];
+  // 대항전 상세에 다녀와도 스크롤 유지 (내정보 탭과 동일 동작)
+  usePageScrollRestore("page:crew/matches", items.length);
   const hasNext = history.data
     ? (history.data[history.data.length - 1]?.hasNext ?? false)
     : false;

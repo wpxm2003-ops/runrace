@@ -59,12 +59,26 @@ export function loadPageState(key: string): PageState {
   return store.get(key) ?? {};
 }
 
-/** 스크롤 복원 대상 경로 → store key */
+/**
+ * 스크롤 복원 대상 경로 → store key.
+ * usePageScrollRestore를 호출하는 페이지와 1:1로 유지할 것 — 여기 등록돼야
+ * nativeNavigate 직전의 최종 스크롤 위치가 저장된다(스크롤 리스너의 보완).
+ * 쿼리로 개별 대상이 갈리는 상세 페이지(/crew/match?id=…)는 키가 섞이므로 제외.
+ */
+const RESTORABLE_PATHS = [
+  "/my",
+  "/challenges",
+  "/records",
+  "/crew",
+  "/crew/races",
+  "/crew/matches",
+  "/rivals",
+  "/shoes",
+  "/training",
+];
+
 export function pageStateKeyFromPath(pathname: string): string | null {
-  if (pathname === "/my") return "page:my";
-  if (pathname === "/challenges") return "page:challenges";
-  if (pathname === "/records") return "page:records";
-  return null;
+  return RESTORABLE_PATHS.includes(pathname) ? `page:${pathname.slice(1)}` : null;
 }
 
 /**

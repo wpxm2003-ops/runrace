@@ -12,6 +12,7 @@ import type { PersonalBestRow } from "@/lib/api/types";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { usePageScrollRestore } from "@/lib/pageStateStore";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { clearNsmProgress } from "@/lib/nsmSessionProgress";
 import { track } from "@/lib/analytics";
@@ -112,6 +113,8 @@ function TrainingContent({ user }: { user: User | null }) {
   const confirm = useConfirm();
   const { data: pbs } = usePersonalBests(user);
   const { data: savedPlan, mutate: mutatePlan } = useTrainingPlan(user);
+  // 다른 화면에 다녀와도 스크롤 유지 (내정보 탭과 동일 동작)
+  usePageScrollRestore("page:training");
 
   const days = weekdayLabels(locale, true);
 
