@@ -1,4 +1,9 @@
-import { haversineMeters, pathDistanceMeters, type LatLng } from "./workoutTrack";
+import {
+  creditedPathDistanceMeters,
+  haversineMeters,
+  MAP_GAP_THRESHOLD_M,
+  type LatLng,
+} from "./workoutTrack";
 
 /**
  * 결과 카드를 보여주기엔 너무 짧게 겹친 구간(노이즈 방지).
@@ -17,6 +22,16 @@ function activePoints(path: LatLng[]): (LatLng & { t: number })[] {
 }
 
 /**
+ * 추적 끊김(>120m) 구간은 거리 0으로 취급 — 내 라이브 거리·스플릿·PB와 동일 규칙.
+ * 유령 쪽만 갭을 직선으로 이으면, 갭 있는 기록(지하철·앱 재시작)이 그 구간을 순간에
+ * "주파"한 것으로 계산돼 이길 수 없는 유령이 된다(공정성 붕괴).
+ */
+function creditedSegMeters(a: LatLng, b: LatLng): number {
+  const seg = haversineMeters(a, b);
+  return seg > MAP_GAP_THRESHOLD_M ? 0 : seg;
+}
+
+/**
  * 경로에 t(시작 후 경과 ms)가 없는 구형 기록을 유령으로 쓸 수 있게, 총 소요시간을
  * 누적 거리에 비례 배분해 t를 합성한다(등속 가정 — 근사치).
  * t가 이미 있는 신형 기록은 그대로 반환한다. 유령 격차·마커·결과 계산이 모두 t에
@@ -26,13 +41,13 @@ export function ensureGhostTimestamps(path: LatLng[], durationSec: number): LatL
   if (path.length < 2 || durationSec <= 0) return path;
   if (activePoints(path).length >= 2) return path;
 
-  const totalM = pathDistanceMeters(path);
+  const totalM = creditedPathDistanceMeters(path);
   if (totalM <= 0) return path;
 
   const totalMs = durationSec * 1000;
   let cum = 0;
   return path.map((p, i) => {
-    if (i > 0) cum += haversineMeters(path[i - 1], path[i]);
+    if (i > 0) cum += creditedSegMeters(path[i - 1], path[i]);
     return { ...p, t: Math.round((cum / totalM) * totalMs) };
   });
 }
@@ -60,18 +75,18 @@ export function ghostDistanceAtElapsed(ghostPath: LatLng[], elapsedMs: number): 
 
   const at = elapsedMs + pts[0].t; // 재정렬된 경과시간 → 기록의 절대 t로 환산
   const lastT = pts[pts.length - 1].t;
-  if (at >= lastT) return pathDistanceMeters(pts);
+  if (at >= lastT) return creditedPathDistanceMeters(pts);
 
   let cum = 0;
   for (let i = 1; i < pts.length; i++) {
     const t0 = pts[i - 1].t;
     const t1 = pts[i].t;
     if (at <= t1) {
-      const segM = haversineMeters(pts[i - 1], pts[i]);
+      const segM = creditedSegMeters(pts[i - 1], pts[i]);
       const frac = t1 > t0 ? (at - t0) / (t1 - t0) : 0;
       return cum + frac * segM;
     }
-    cum += haversineMeters(pts[i - 1], pts[i]);
+    cum += creditedSegMeters(pts[i - 1], pts[i]);
   }
   return cum;
 }
@@ -87,7 +102,7 @@ export function timeAtDistanceMs(path: LatLng[], targetM: number): number | null
 
   let cum = 0;
   for (let i = 1; i < pts.length; i++) {
-    const segM = haversineMeters(pts[i - 1], pts[i]);
+    const segM = creditedSegMeters(pts[i - 1], pts[i]);
     const prevCum = cum;
     cum += segM;
     if (cum >= targetM) {
@@ -157,8 +172,8 @@ export function computeGhostRaceResult(
   myPath: LatLng[],
   ghostPath: LatLng[],
 ): GhostRaceResult | null {
-  const myTotalM = pathDistanceMeters(activePoints(myPath));
-  const ghostTotalM = pathDistanceMeters(activePoints(ghostPath));
+  const myTotalM = creditedPathDistanceMeters(activePoints(myPath));
+  const ghostTotalM = creditedPathDistanceMeters(activePoints(ghostPath));
   const overlapM = Math.min(myTotalM, ghostTotalM);
   if (overlapM < MIN_GHOST_RESULT_OVERLAP_M) return null;
 

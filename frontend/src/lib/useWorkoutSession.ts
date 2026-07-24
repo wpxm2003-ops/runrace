@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   estimateCalories,
   evaluateVehicleTier,
@@ -66,6 +67,7 @@ function resetVehicleState(): VehicleDetectState {
 // ── 메인 훅 ───────────────────────────────────────────────────────────────────
 export function useWorkoutSession(bgNotification?: { title: string; message: string }) {
   const { unit } = useUnit();
+  const pathname = usePathname();
   // ── 기본 상태 ─────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<WorkoutStatus>("idle");
   const [path, setPath] = useState<LatLng[]>([]);
@@ -149,7 +151,15 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   }, []);
 
   // ── GPS 유틸 ──────────────────────────────────────────────────────────────
+  /**
+   * 워처 등록 세대 토큰. 네이티브 addWatcher는 비동기(권한 다이얼로그로 수초 걸릴 수 있음)라,
+   * 등록이 끝나기 전에 pause/stop/재시작이 오면 clearWatch가 멈출 대상이 아직 없다.
+   * 그대로 두면 낡은 워처가 등록 완료 후 영영 살아남는다(배터리·상시 알림 누수).
+   * clearWatch가 세대를 올리고, 등록 완료 시 세대가 달라져 있으면 즉시 자기를 해제한다.
+   */
+  const watchSeqRef = useRef(0);
   const clearWatch = useCallback(() => {
+    watchSeqRef.current++;
     if (stopWatchRef.current) {
       stopWatchRef.current();
       stopWatchRef.current = null;
@@ -255,6 +265,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     }
     setGeoError(null);
     clearWatch();
+    const seq = watchSeqRef.current;
     startBackgroundWatch(
       (coords) => {
         setGeoError(null);
@@ -263,9 +274,22 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       (msg) => setGeoError(msg),
       bgNotification?.title ?? "운동 기록 중",
       bgNotification?.message ?? "RunRace가 백그라운드에서 경로를 기록하고 있습니다.",
-    ).then((stop) => {
-      stopWatchRef.current = stop;
-    });
+    )
+      .then((stop) => {
+        // 등록되는 사이 pause/stop/재시작이 있었으면 이 워처는 낡은 것 — 즉시 해제(누수 방지).
+        if (watchSeqRef.current !== seq) {
+          stop();
+          return;
+        }
+        stopWatchRef.current = stop;
+      })
+      .catch((e: unknown) => {
+        // addWatcher 자체가 실패(플러그인 초기화·권한 거부 reject)하면 기록이 조용히
+        // 시작되지 않는다 — 배너로 드러내 사용자가 알 수 있게 한다.
+        if (watchSeqRef.current === seq) {
+          setGeoError(e instanceof Error ? e.message : String(e));
+        }
+      });
   }, [appendPosition, clearWatch, bgNotification?.title, bgNotification?.message]);
 
   // ── 타이머 ────────────────────────────────────────────────────────────────
@@ -329,12 +353,14 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     startWatch();
   }, [startWatch]);
 
-  // ── GPS 예열 (idle 동안 미리 위성 확보) ────────────────────────────────────
+  // ── GPS 예열 (운동 화면 idle 동안 미리 위성 확보) ──────────────────────────
   // 운동 화면에 있는 동안(idle) 고정밀 위치 워치를 돌려 GPS 라디오를 미리 켜둔다.
   // 시작을 누를 땐 이미 위성이 잡혀 있어, 콜드스타트 지연·초반 정확도 저하로 거리·경로가
   // 한동안 안 찍히던 문제를 없앤다. running/paused면 녹화 워치가 GPS를 잡으므로 건너뛴다.
+  // 이 훅은 앱 전역 프로바이더(AppShell)에 마운트되므로 반드시 /workout에서만 예열한다 —
+  // 안 그러면 홈·크루 등 모든 화면에서 GPS가 상시 켜져 배터리를 소모한다.
   useEffect(() => {
-    if (status !== "idle") return;
+    if (status !== "idle" || pathname !== "/workout") return;
     let cancelled = false;
     let watchId: number | null = null;
 
@@ -365,7 +391,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, [status]);
+  }, [status, pathname]);
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
   const start = useCallback(() => {

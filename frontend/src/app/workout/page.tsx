@@ -38,7 +38,7 @@ import {
 } from "@/lib/ghostRace";
 import { useWakeLock } from "@/lib/useWakeLock";
 import { isIosWeb } from "@/lib/nativeNav";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
   ssr: false,
@@ -89,14 +89,22 @@ export default function WorkoutPage() {
   // 같이 얼어붙는다 — 레이스답게 내가 멈춰도 유령은 계속 달리고, 일시정지에만 함께 멈춘다.
   const myElapsedMs = session.status === "idle" ? 0 : session.elapsedSec * 1000;
   const ghostTotalMs = useMemo(() => (ghost ? ghostTotalDurationMs(ghost.path) : 0), [ghost]);
-  const ghostFinished = ghost != null && myElapsedMs >= ghostTotalMs;
+  // ghostTotalMs가 0인 퇴화 유령(타임스탬프 합성 실패 등)이 시작부터 "완주" 처리되는 것 방지.
+  const ghostFinished = ghost != null && ghostTotalMs > 0 && myElapsedMs >= ghostTotalMs;
   const ghostGapM = useMemo(() => {
     if (!ghost) return null;
     return session.distanceM - ghostDistanceAtElapsed(ghost.path, myElapsedMs);
   }, [ghost, myElapsedMs, session.distanceM]);
 
   // 유령 선택을 러닝 본체와 별개로 저장 — id만 저장해두고, 값이 바뀔 때마다 동기화.
+  // 첫 실행(마운트)은 건너뛴다 — 초기 ghost는 항상 null이라, 여기서 지워버리면 아래
+  // 복원 effect가 읽기도 전에 저장된 선택이 사라져 복원 기능이 통째로 죽는다.
+  const ghostSyncReadyRef = useRef(false);
   useEffect(() => {
+    if (!ghostSyncReadyRef.current) {
+      ghostSyncReadyRef.current = true;
+      return;
+    }
     if (ghost) saveGhostSelection(ghost.id);
     else clearGhostSelection();
   }, [ghost]);
@@ -199,7 +207,9 @@ export default function WorkoutPage() {
           calories: snapshot.calories ?? 0,
         });
         void track("record_saved", { distance_bucket: distanceBucket(distanceKm) });
-        setPendingSave(null);
+        // 방금 저장한 것이 보관 중이던 그 스냅샷일 때만 비운다 — 새 런의 저장 성공이
+        // 이전에 실패해 보관해둔 다른 런을 폐기하면 그 기록은 영구 유실된다.
+        setPendingSave((prev) => (prev && prev.snapshot === snapshot ? null : prev));
         setCelebration({
           recordId: res.id,
           snapshot,
@@ -434,8 +444,10 @@ export default function WorkoutPage() {
               </button>
             )
           ) : null}
-          {saveError ? <Alert className="mb-3">{saveError}</Alert> : null}
-          {pendingSave ? (
+          {/* 저장 실패 안내·재시도는 새 런이 진행 중이 아닐 때만 — 러닝 중 재시도를 누르면
+              saving이 현재 런의 종료 버튼을 잠그고, 성공 축하 모달이 런 위로 덮인다. */}
+          {!active && saveError ? <Alert className="mb-3">{saveError}</Alert> : null}
+          {!active && pendingSave ? (
             <button
               type="button"
               onClick={() =>

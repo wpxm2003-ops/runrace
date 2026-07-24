@@ -234,3 +234,50 @@ describe("computeGhostRaceResult", () => {
     expect(computeGhostRaceResult(short, short)).toBeNull();
   });
 });
+
+// ── 추적 끊김(갭) 공정성 — 유령의 갭(지하철·앱 재시작)을 직선 거리로 인정하지 않는다 ──
+describe("고스트 갭 처리", () => {
+  /**
+   * 555m 러닝(10초/111m) + 333m 갭(10초 만에 이동 — 비현실) + 222m 러닝.
+   * 갭을 인정하면 유령 총거리 ≈1111m·갭 구간 순간이동, 제외하면 ≈778m.
+   */
+  function gapGhost(): LatLng[] {
+    const a = straightPath(6, 10_000); // t 0~50s, ≈555m
+    const bStart = 5 * 0.001 + 0.003;
+    const b = [0, 1, 2].map((i) => ({
+      lat: bStart + i * 0.001,
+      lng: 0,
+      t: 60_000 + i * 10_000,
+    }));
+    return [...a, ...b];
+  }
+
+  it("유령 총거리는 갭을 제외한다(내 라이브 거리와 동일 규칙)", () => {
+    const total = ghostDistanceAtElapsed(gapGhost(), 999_999);
+    expect(total).toBeGreaterThan(760);
+    expect(total).toBeLessThan(800); // 갭 포함이면 ≈1111
+  });
+
+  it("갭 시간창 동안 유령 거리는 늘지 않는다(순간이동 금지)", () => {
+    const path = gapGhost();
+    const before = ghostDistanceAtElapsed(path, 50_000); // 갭 직전
+    const during = ghostDistanceAtElapsed(path, 59_000); // 갭 한가운데
+    expect(during).toBeCloseTo(before, 5);
+  });
+
+  it("timeAtDistanceMs가 갭 너머 거리를 갭 통과 시간으로 앞당기지 않는다", () => {
+    // 600m 지점은 갭(50~60초) 이후의 실주행 구간에서 도달해야 한다.
+    const t = timeAtDistanceMs(gapGhost(), 600);
+    expect(t).not.toBeNull();
+    expect(t!).toBeGreaterThan(60_000);
+  });
+
+  it("computeGhostRaceResult의 유령 총거리도 갭 제외 기준", () => {
+    const me = straightPath(8, 10_000); // ≈778m 연속 주행
+    const result = computeGhostRaceResult(me, gapGhost());
+    expect(result).not.toBeNull();
+    // overlap = min(내 778, 유령 갭제외 778) ≈ 778 — 갭 포함(1111)이었다면 내 거리가 하한이 됨
+    expect(result!.overlapDistanceM).toBeLessThan(800);
+    expect(result!.overlapDistanceM).toBeGreaterThan(760);
+  });
+});
