@@ -1,8 +1,10 @@
 package com.runrace.backend.workout.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
@@ -141,19 +143,31 @@ class WorkoutServiceTest {
       assertEquals("time_range_invalid", ex.code());
     }
 
-    @Test void 고스트_id와_결과는_함께_입력해야_한다() {
-      ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(300), 300, 1000, 100, null,
-              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), 1L, null));
-      assertEquals("ghost_result_invalid", ex.code());
+    @Test void 고스트_id와_결과가_짝이_아니면_부수_정보를_무효로_본다() {
+      assertFalse(WorkoutService.isGhostRacePayloadValid(1L, null));
     }
 
-    @Test void 고스트_겹친_거리가_500m_미만이면_거부한다() {
+    @Test void 고스트_겹친_거리가_500m_미만이면_부수_정보를_무효로_본다() {
       GhostRaceResultDto result = new GhostRaceResultDto(499.9, 300_000, 290_000, 10_000);
-      ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(300), 300, 1000, 100, null,
-              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), 1L, result));
-      assertEquals("ghost_result_invalid", ex.code());
+      assertFalse(WorkoutService.isGhostRacePayloadValid(1L, result));
+    }
+
+    @Test void 고스트_delta는_1초_이내_반올림_오차를_허용한다() {
+      GhostRaceResultDto result =
+          new GhostRaceResultDto(2_345.67, 900_122, 710_178, 189_943);
+      assertTrue(WorkoutService.isGhostRacePayloadValid(1L, result));
+    }
+
+    @Test void 고스트_delta가_1초를_넘게_어긋나면_부수_정보를_무효로_본다() {
+      GhostRaceResultDto result =
+          new GhostRaceResultDto(2_345.67, 900_122, 710_178, 188_943);
+      assertFalse(WorkoutService.isGhostRacePayloadValid(1L, result));
+    }
+
+    @Test void 고스트_delta의_long_극단값을_거부한다() {
+      GhostRaceResultDto result =
+          new GhostRaceResultDto(2_345.67, 900_122, 710_178, Long.MIN_VALUE);
+      assertFalse(WorkoutService.isGhostRacePayloadValid(1L, result));
     }
   }
 }

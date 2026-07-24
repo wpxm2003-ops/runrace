@@ -51,6 +51,8 @@ public class WorkoutService {
   private static final int MAX_CALORIES = 100_000;
   private static final int MAX_PATH_POINTS = 100_000;
   private static final int MIN_GHOST_OVERLAP_M = 500;
+  private static final long GHOST_DELTA_TOLERANCE_MS = 1_000;
+  private static final long MAX_GHOST_TIME_MS = MAX_DURATION_SEC * 1_000L;
 
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
@@ -98,7 +100,7 @@ public class WorkoutService {
     if (startedAt == null || endedAt == null || !endedAt.isAfter(startedAt)) {
       throw ApiException.badRequest("time_range_invalid");
     }
-    validateGhostRace(principal.userId(), ghostWorkoutId, ghostResult);
+    GhostRaceData ghostRace = resolveGhostRace(principal.userId(), ghostWorkoutId, ghostResult);
 
     AppUser user = appUserRepository.getRequired(principal.userId());
     WorkoutSession saved = workoutSessionRepository.save(WorkoutSession.builder()
@@ -110,8 +112,8 @@ public class WorkoutService {
         .calories(calories)
         .avgPaceSecPerKm(avgPaceSecPerKm)
         .pathJson(toJson(path))
-        .ghostWorkoutId(ghostWorkoutId)
-        .ghostResultJson(ghostResult == null ? null : toGhostResultJson(ghostResult))
+        .ghostWorkoutId(ghostRace.workoutId())
+        .ghostResultJson(ghostRace.resultJson())
         .createdAt(OffsetDateTime.now())
         .build());
 
@@ -366,36 +368,45 @@ public class WorkoutService {
     }
   }
 
-  private String toGhostResultJson(GhostRaceResultDto result) {
+  /**
+   * 고스트 정보는 운동의 부수 데이터다. 값이 잘못됐거나 원본 기록이 사라졌다면 고스트 정보만 버리고
+   * 본 운동 저장은 계속한다.
+   */
+  private GhostRaceData resolveGhostRace(
+      UUID userId, Long ghostWorkoutId, GhostRaceResultDto result) {
+    if (ghostWorkoutId == null && result == null) return GhostRaceData.EMPTY;
+    if (!isGhostRacePayloadValid(ghostWorkoutId, result)) return GhostRaceData.EMPTY;
+
+    WorkoutSession ghost = workoutSessionRepository
+        .findByIdAndUserId(ghostWorkoutId, userId)
+        .orElse(null);
+    if (ghost == null || ghost.getWorkoutType() != WorkoutType.GPS) return GhostRaceData.EMPTY;
+
     try {
-      return objectMapper.writeValueAsString(result);
+      return new GhostRaceData(ghostWorkoutId, objectMapper.writeValueAsString(result));
     } catch (JsonProcessingException e) {
-      throw new IllegalStateException("ghost_result_encode_failed", e);
+      return GhostRaceData.EMPTY;
     }
   }
 
-  private void validateGhostRace(
-      UUID userId, Long ghostWorkoutId, GhostRaceResultDto result) {
-    if (ghostWorkoutId == null && result == null) return;
-    if (ghostWorkoutId == null || ghostWorkoutId <= 0 || result == null) {
-      throw ApiException.badRequest("ghost_result_invalid");
-    }
+  static boolean isGhostRacePayloadValid(Long ghostWorkoutId, GhostRaceResultDto result) {
+    if (ghostWorkoutId == null || ghostWorkoutId <= 0 || result == null) return false;
     if (!Double.isFinite(result.overlapDistanceM())
         || result.overlapDistanceM() < MIN_GHOST_OVERLAP_M
         || result.overlapDistanceM() > MAX_DISTANCE_M
         || result.myTimeMs() <= 0
-        || result.myTimeMs() > MAX_DURATION_SEC * 1000L
+        || result.myTimeMs() > MAX_GHOST_TIME_MS
         || result.ghostTimeMs() <= 0
-        || result.ghostTimeMs() > MAX_DURATION_SEC * 1000L
-        || result.deltaMs() != result.myTimeMs() - result.ghostTimeMs()) {
-      throw ApiException.badRequest("ghost_result_invalid");
-    }
-    WorkoutSession ghost = workoutSessionRepository
-        .findByIdAndUserId(ghostWorkoutId, userId)
-        .orElseThrow(() -> ApiException.badRequest("ghost_workout_invalid"));
-    if (ghost.getWorkoutType() != WorkoutType.GPS) {
-      throw ApiException.badRequest("ghost_workout_invalid");
-    }
+        || result.ghostTimeMs() > MAX_GHOST_TIME_MS
+        || result.deltaMs() < -MAX_GHOST_TIME_MS
+        || result.deltaMs() > MAX_GHOST_TIME_MS
+        || Math.abs(result.deltaMs() - (result.myTimeMs() - result.ghostTimeMs()))
+            > GHOST_DELTA_TOLERANCE_MS) return false;
+    return true;
+  }
+
+  private record GhostRaceData(Long workoutId, String resultJson) {
+    private static final GhostRaceData EMPTY = new GhostRaceData(null, null);
   }
 
   /** 저장 직전 좌표를 6자리로 반올림한다(거리·페이스는 클라이언트 계산값을 쓰므로 영향 없음). */

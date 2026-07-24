@@ -5,7 +5,7 @@ import {
   type LatLng,
 } from "./workoutTrack";
 
-/** Minimum shared distance required for a meaningful ghost race result. */
+/** 의미 있는 고스트 레이스 결과로 인정할 최소 공통 주행 거리. */
 export const MIN_GHOST_RESULT_OVERLAP_M = 500;
 
 /**
@@ -160,6 +160,18 @@ export type GhostRaceResult = {
   /** 음수면 내가 더 빠름. */
   deltaMs: number;
 };
+
+/** 서버 저장용 시간값을 정수로 맞추고 시간 차이의 등식도 함께 보장한다. */
+export function normalizeGhostRaceResult(result: GhostRaceResult): GhostRaceResult {
+  const myTimeMs = Math.round(result.myTimeMs);
+  const ghostTimeMs = Math.round(result.ghostTimeMs);
+  return {
+    overlapDistanceM: result.overlapDistanceM,
+    myTimeMs,
+    ghostTimeMs,
+    deltaMs: myTimeMs - ghostTimeMs,
+  };
+}
 
 /**
  * 거리 목표(결승선) 없이, 둘 다 뛴 만큼(overlap)만 기준으로 시간을 비교한다.

@@ -7,6 +7,7 @@ import {
   ghostPositionAtElapsed,
   ghostTotalDurationMs,
   ghostTrailAtElapsed,
+  normalizeGhostRaceResult,
   timeAtDistanceMs,
 } from "@/lib/ghostRace";
 
@@ -226,12 +227,27 @@ describe("computeGhostRaceResult", () => {
   });
 
   it("겹치는 구간이 너무 짧으면 null", () => {
-    // 0.003 degrees is about 333m, below MIN_GHOST_RESULT_OVERLAP_M (500m).
+    // 위도 0.003도는 약 333m라 최소 공통 주행 거리(500m)보다 짧다.
     const short: LatLng[] = [
       { lat: 0, lng: 0, t: 0 },
       { lat: 0.003, lng: 0, t: 10_000 },
     ];
     expect(computeGhostRaceResult(short, short)).toBeNull();
+  });
+});
+
+describe("normalizeGhostRaceResult", () => {
+  it("소수 보간 시간을 정수화한 뒤 delta 등식을 보장한다", () => {
+    const result = normalizeGhostRaceResult({
+      overlapDistanceM: 2_345.67,
+      myTimeMs: 900_122.9999999999,
+      ghostTimeMs: 710_178.2580645167,
+      deltaMs: 189_944.74193548318,
+    });
+
+    expect(Number.isInteger(result.myTimeMs)).toBe(true);
+    expect(Number.isInteger(result.ghostTimeMs)).toBe(true);
+    expect(result.deltaMs).toBe(result.myTimeMs - result.ghostTimeMs);
   });
 });
 

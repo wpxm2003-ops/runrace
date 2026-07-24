@@ -35,6 +35,7 @@ import {
   ensureGhostTimestamps,
   ghostDistanceAtElapsed,
   ghostTotalDurationMs,
+  normalizeGhostRaceResult,
   type GhostRaceResult,
 } from "@/lib/ghostRace";
 import { useWakeLock } from "@/lib/useWakeLock";
@@ -210,6 +211,7 @@ export default function WorkoutPage() {
       try {
         // 1차 방어: 3초 간격 3회 자동 재시도 (서버 재시작·네트워크 깜빡임 흡수)
         const bestSegments = computeBestSegments(snapshot.path);
+        const persistedGhostResult = ghostResult ? normalizeGhostRaceResult(ghostResult) : null;
         const res = await withRetry(
           () =>
             createWorkout(
@@ -223,7 +225,7 @@ export default function WorkoutPage() {
                 path: snapshot.path,
                 bestSegments,
                 ghostWorkoutId,
-                ghostResult,
+                ghostResult: persistedGhostResult,
               },
               user,
             ),
