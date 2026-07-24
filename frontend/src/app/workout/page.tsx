@@ -61,6 +61,7 @@ type CelebrationState = {
 
 type PendingSave = {
   snapshot: WorkoutFinishSnapshot;
+  ghostWorkoutId: number | null;
   ghostResult: GhostRaceResult | null;
   ghostLabel: string | null;
   showNsmCta: boolean;
@@ -197,6 +198,7 @@ export default function WorkoutPage() {
   const saveSnapshot = useCallback(
     async (
       snapshot: WorkoutFinishSnapshot,
+      ghostWorkoutId: number | null,
       ghostResult: GhostRaceResult | null,
       ghostLabel: string | null,
       showNsmCta: boolean,
@@ -220,6 +222,8 @@ export default function WorkoutPage() {
                 avgPaceSecPerKm: snapshot.avgPaceSecPerKm,
                 path: snapshot.path,
                 bestSegments,
+                ghostWorkoutId,
+                ghostResult,
               },
               user,
             ),
@@ -238,6 +242,15 @@ export default function WorkoutPage() {
           calories: snapshot.calories ?? 0,
         });
         void track("record_saved", { distance_bucket: distanceBucket(distanceKm) });
+        if (ghostWorkoutId != null && ghostResult != null) {
+          const deltaSec = Math.round(ghostResult.deltaMs / 1000);
+          void track("ghost_race_completed", {
+            ghost_workout_id: ghostWorkoutId,
+            result: deltaSec === 0 ? "tie" : deltaSec < 0 ? "win" : "loss",
+            delta_sec: deltaSec,
+            overlap_m: Math.round(ghostResult.overlapDistanceM),
+          });
+        }
         // 방금 저장한 것이 보관 중이던 그 스냅샷일 때만 비운다 — 새 런의 저장 성공이
         // 이전에 실패해 보관해둔 다른 런을 폐기하면 그 기록은 영구 유실된다.
         setPendingSave((prev) => (prev && prev.snapshot === snapshot ? null : prev));
@@ -252,7 +265,14 @@ export default function WorkoutPage() {
       } catch {
         // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
         setSaveError(t.workout_save_failed);
-        setPendingSave({ snapshot, ghostResult, ghostLabel, showNsmCta, nsmLog });
+        setPendingSave({
+          snapshot,
+          ghostWorkoutId,
+          ghostResult,
+          ghostLabel,
+          showNsmCta,
+          nsmLog,
+        });
       } finally {
         setSaving(false);
       }
@@ -298,7 +318,14 @@ export default function WorkoutPage() {
       ghostResult != null &&
       shouldShowNsmCta({ hasPlan: trainingPlan !== null, result: ghostResult, lossStreak });
     setGhost(null); // 유령은 매 런마다 새로 고른다(등록형 라이벌 아님)
-    await saveSnapshot(snapshot, ghostResult, ghostLabel, showNsmCta, nsmLog);
+    await saveSnapshot(
+      snapshot,
+      ghostResult ? (ghost?.id ?? null) : null,
+      ghostResult,
+      ghostLabel,
+      showNsmCta,
+      nsmLog,
+    );
   }, [
     session,
     user,
@@ -487,6 +514,7 @@ export default function WorkoutPage() {
               onClick={() =>
                 saveSnapshot(
                   pendingSave.snapshot,
+                  pendingSave.ghostWorkoutId,
                   pendingSave.ghostResult,
                   pendingSave.ghostLabel,
                   pendingSave.showNsmCta,

@@ -58,7 +58,9 @@ public class WorkoutController {
             body.distanceM(),
             body.calories(),
             body.avgPaceSecPerKm(),
-            path);
+            path,
+            body.ghostWorkoutId(),
+            body.ghostResult());
     var pb = body.bestSegments() != null
         ? personalBestService.evaluate(principal.userId(), session.getId(), body.bestSegments()).orElse(null)
         : null;

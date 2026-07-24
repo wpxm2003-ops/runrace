@@ -20,6 +20,7 @@ import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
+import com.runrace.backend.workout.dto.GhostRaceResultDto;
 import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.PreviousWorkoutDto;
 import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
@@ -49,6 +50,7 @@ public class WorkoutService {
   private static final int MAX_DURATION_SEC = 36 * 3600; // 36h
   private static final int MAX_CALORIES = 100_000;
   private static final int MAX_PATH_POINTS = 100_000;
+  private static final int MIN_GHOST_OVERLAP_M = 500;
 
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
@@ -71,7 +73,9 @@ public class WorkoutService {
       int distanceM,
       int calories,
       Integer avgPaceSecPerKm,
-      List<PathPoint> path
+      List<PathPoint> path,
+      Long ghostWorkoutId,
+      GhostRaceResultDto ghostResult
   ) {
     if (durationSec < 1 || durationSec > MAX_DURATION_SEC) {
       throw ApiException.badRequest("duration_invalid");
@@ -94,6 +98,7 @@ public class WorkoutService {
     if (startedAt == null || endedAt == null || !endedAt.isAfter(startedAt)) {
       throw ApiException.badRequest("time_range_invalid");
     }
+    validateGhostRace(principal.userId(), ghostWorkoutId, ghostResult);
 
     AppUser user = appUserRepository.getRequired(principal.userId());
     WorkoutSession saved = workoutSessionRepository.save(WorkoutSession.builder()
@@ -105,6 +110,8 @@ public class WorkoutService {
         .calories(calories)
         .avgPaceSecPerKm(avgPaceSecPerKm)
         .pathJson(toJson(path))
+        .ghostWorkoutId(ghostWorkoutId)
+        .ghostResultJson(ghostResult == null ? null : toGhostResultJson(ghostResult))
         .createdAt(OffsetDateTime.now())
         .build());
 
@@ -356,6 +363,38 @@ public class WorkoutService {
       return objectMapper.writeValueAsString(roundCoords(path));
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("path_json_encode_failed", e);
+    }
+  }
+
+  private String toGhostResultJson(GhostRaceResultDto result) {
+    try {
+      return objectMapper.writeValueAsString(result);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("ghost_result_encode_failed", e);
+    }
+  }
+
+  private void validateGhostRace(
+      UUID userId, Long ghostWorkoutId, GhostRaceResultDto result) {
+    if (ghostWorkoutId == null && result == null) return;
+    if (ghostWorkoutId == null || ghostWorkoutId <= 0 || result == null) {
+      throw ApiException.badRequest("ghost_result_invalid");
+    }
+    if (!Double.isFinite(result.overlapDistanceM())
+        || result.overlapDistanceM() < MIN_GHOST_OVERLAP_M
+        || result.overlapDistanceM() > MAX_DISTANCE_M
+        || result.myTimeMs() <= 0
+        || result.myTimeMs() > MAX_DURATION_SEC * 1000L
+        || result.ghostTimeMs() <= 0
+        || result.ghostTimeMs() > MAX_DURATION_SEC * 1000L
+        || result.deltaMs() != result.myTimeMs() - result.ghostTimeMs()) {
+      throw ApiException.badRequest("ghost_result_invalid");
+    }
+    WorkoutSession ghost = workoutSessionRepository
+        .findByIdAndUserId(ghostWorkoutId, userId)
+        .orElseThrow(() -> ApiException.badRequest("ghost_workout_invalid"));
+    if (ghost.getWorkoutType() != WorkoutType.GPS) {
+      throw ApiException.badRequest("ghost_workout_invalid");
     }
   }
 

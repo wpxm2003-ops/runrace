@@ -5,11 +5,8 @@ import {
   type LatLng,
 } from "./workoutTrack";
 
-/**
- * 결과 카드를 보여주기엔 너무 짧게 겹친 구간(노이즈 방지).
- * 테스트 편의를 위해 임시로 50m까지 완화해둔 상태 — 안정화 후 200m로 되돌릴 것.
- */
-export const MIN_GHOST_RESULT_OVERLAP_M = 50;
+/** Minimum shared distance required for a meaningful ghost race result. */
+export const MIN_GHOST_RESULT_OVERLAP_M = 500;
 
 /**
  * 유령 후보 최소 거리 — 결과 판정 최소 겹침과 같게 둔다.

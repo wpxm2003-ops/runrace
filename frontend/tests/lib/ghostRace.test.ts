@@ -219,17 +219,17 @@ describe("computeGhostRaceResult", () => {
 
   it("유령이 더 길면 내 총거리까지만 비교", () => {
     const ghost = straightPath(10, 10_000);
-    const me = straightPath(4, 10_000);
+    const me = straightPath(6, 10_000);
     const result = computeGhostRaceResult(me, ghost);
     expect(result).not.toBeNull();
     expect(result!.overlapDistanceM).toBeCloseTo(cumulativeAt(me, me.length - 1), 5);
   });
 
   it("겹치는 구간이 너무 짧으면 null", () => {
-    // 0.0003° ≈ 33m — MIN_GHOST_RESULT_OVERLAP_M(50m) 미만
+    // 0.003 degrees is about 333m, below MIN_GHOST_RESULT_OVERLAP_M (500m).
     const short: LatLng[] = [
       { lat: 0, lng: 0, t: 0 },
-      { lat: 0.0003, lng: 0, t: 10_000 },
+      { lat: 0.003, lng: 0, t: 10_000 },
     ];
     expect(computeGhostRaceResult(short, short)).toBeNull();
   });

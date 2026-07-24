@@ -11,4 +11,6 @@ public record CreateWorkoutRequest(
     int calories,
     Integer avgPaceSecPerKm,
     List<PathPointDto> path,
-    Map<String, Integer> bestSegments) {}
+    Map<String, Integer> bestSegments,
+    Long ghostWorkoutId,
+    GhostRaceResultDto ghostResult) {}

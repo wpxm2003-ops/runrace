@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.workout.dto.GhostRaceResultDto;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -117,27 +118,42 @@ class WorkoutServiceTest {
 
     @Test void duration_0이면_duration_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(1), 0, 1000, 100, null, java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null))));
+          () -> service.create(p, T, T.plusSeconds(1), 0, 1000, 100, null, java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), null, null));
       assertEquals("duration_invalid", ex.code());
     }
 
     @Test void 경로_비어있으면_path_empty() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, java.util.List.of()));
+          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, java.util.List.of(), null, null));
       assertEquals("path_empty", ex.code());
     }
 
     @Test void 경로_null이면_path_empty() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, null));
+          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, null, null, null));
       assertEquals("path_empty", ex.code());
     }
 
     @Test void 종료가_시작보다_이전이면_time_range_invalid() {
       ApiException ex = assertThrows(ApiException.class,
           () -> service.create(p, T, T.minusSeconds(1), 300, 1000, 100, null,
-              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null))));
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), null, null));
       assertEquals("time_range_invalid", ex.code());
+    }
+
+    @Test void 고스트_id와_결과는_함께_입력해야_한다() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(300), 300, 1000, 100, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), 1L, null));
+      assertEquals("ghost_result_invalid", ex.code());
+    }
+
+    @Test void 고스트_겹친_거리가_500m_미만이면_거부한다() {
+      GhostRaceResultDto result = new GhostRaceResultDto(499.9, 300_000, 290_000, 10_000);
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(300), 300, 1000, 100, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), 1L, result));
+      assertEquals("ghost_result_invalid", ex.code());
     }
   }
 }

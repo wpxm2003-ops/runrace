@@ -73,6 +73,13 @@ public class WorkoutSession {
   @Column(name = "memo", length = 500)
   private String memo;
 
+  @Column(name = "ghost_workout_id")
+  private Long ghostWorkoutId;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "ghost_result")
+  private String ghostResultJson;
+
   /** 이 러닝을 신은 신발(귀속). 신발 삭제 시 FK가 null로 풀린다. */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "shoe_id")

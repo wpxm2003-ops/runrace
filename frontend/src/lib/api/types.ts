@@ -454,6 +454,13 @@ export type WorkoutCreateBody = {
   avgPaceSecPerKm: number | null;
   path: LatLng[];
   bestSegments: Record<string, number>;
+  ghostWorkoutId: number | null;
+  ghostResult: {
+    overlapDistanceM: number;
+    myTimeMs: number;
+    ghostTimeMs: number;
+    deltaMs: number;
+  } | null;
 };
 
 export type IndoorRunCreateBody = {
