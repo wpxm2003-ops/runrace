@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   onComplete: () => void;
@@ -11,21 +11,22 @@ const TOTAL_MS = 3 * STEP_MS; // 2700ms
 
 export function WorkoutCountdown({ onComplete }: Props) {
   const [step, setStep] = useState<number>(3);
+  const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
-    let current = 3;
-    const tick = () => {
-      current -= 1;
-      setStep(current);
-      if (current <= 0) {
-        setTimeout(onComplete, STEP_MS);
-      } else {
-        setTimeout(tick, STEP_MS);
-      }
-    };
-    const timer = setTimeout(tick, STEP_MS);
-    return () => clearTimeout(timer);
+    onCompleteRef.current = onComplete;
   }, [onComplete]);
+
+  useEffect(() => {
+    const timers = [
+      window.setTimeout(() => setStep(2), STEP_MS),
+      window.setTimeout(() => setStep(1), 2 * STEP_MS),
+      window.setTimeout(() => setStep(0), 3 * STEP_MS),
+      window.setTimeout(() => onCompleteRef.current(), 4 * STEP_MS),
+    ];
+
+    return () => timers.forEach(window.clearTimeout);
+  }, []);
 
   const isGo = step === 0;
 
