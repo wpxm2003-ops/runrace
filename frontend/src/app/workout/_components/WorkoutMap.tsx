@@ -8,7 +8,7 @@ export type WorkoutMapProps = {
   path: LatLng[];
   position: LatLng | null;
   follow: boolean;
-  /** 유령 레이스 — 카카오 지도에서만 렌더링(라이벌·크루 확장 전까지 한국 시장 우선). */
+  /** 유령 레이스 — 카카오·Mapbox 지도 모두 동일하게 렌더링한다. */
   ghostPath?: LatLng[] | null;
   ghostElapsedMs?: number;
 };

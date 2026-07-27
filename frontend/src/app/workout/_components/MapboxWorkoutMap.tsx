@@ -21,7 +21,6 @@ const SOURCE_IDS = {
   position: "workout-position",
   ghostRoute: "ghost-route",
   ghostTrail: "ghost-trail",
-  ghostPosition: "ghost-position",
 } as const;
 
 type WorkoutMapProps = {
@@ -38,7 +37,8 @@ type MapData = {
   position: FeatureCollection<Point>;
   ghostRoute: FeatureCollection<LineString>;
   ghostTrail: FeatureCollection<LineString>;
-  ghostPosition: FeatureCollection<Point>;
+  /** 유령 현재 위치 — HTML 마커(👻)로 그리므로 GeoJSON 소스가 아니다. */
+  ghostPoint: LatLng | null;
 };
 
 function coordinates(point: LatLng): [number, number] {
@@ -79,16 +79,15 @@ function addMapData(map: mapboxgl.Map, data: MapData) {
   map.addSource(SOURCE_IDS.ghostRoute, { type: "geojson", data: data.ghostRoute });
   map.addSource(SOURCE_IDS.ghostTrail, { type: "geojson", data: data.ghostTrail });
   map.addSource(SOURCE_IDS.position, { type: "geojson", data: data.position });
-  map.addSource(SOURCE_IDS.ghostPosition, { type: "geojson", data: data.ghostPosition });
 
   map.addLayer({
     id: SOURCE_IDS.ghostRoute,
     type: "line",
     source: SOURCE_IDS.ghostRoute,
     paint: {
-      "line-color": "#7c3aed",
+      "line-color": "#8b5cf6",
       "line-width": 3,
-      "line-opacity": 0.42,
+      "line-opacity": 0.25,
       "line-dasharray": [2, 2],
     },
   });
@@ -96,7 +95,7 @@ function addMapData(map: mapboxgl.Map, data: MapData) {
     id: SOURCE_IDS.ghostTrail,
     type: "line",
     source: SOURCE_IDS.ghostTrail,
-    paint: { "line-color": "#7c3aed", "line-width": 5, "line-opacity": 0.9 },
+    paint: { "line-color": "#8b5cf6", "line-width": 4, "line-opacity": 0.75 },
   });
   map.addLayer({
     id: SOURCE_IDS.route,
@@ -116,17 +115,6 @@ function addMapData(map: mapboxgl.Map, data: MapData) {
     },
   });
   map.addLayer({
-    id: SOURCE_IDS.ghostPosition,
-    type: "circle",
-    source: SOURCE_IDS.ghostPosition,
-    paint: {
-      "circle-radius": 7,
-      "circle-color": "#7c3aed",
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 3,
-    },
-  });
-  map.addLayer({
     id: SOURCE_IDS.position,
     type: "circle",
     source: SOURCE_IDS.position,
@@ -141,9 +129,46 @@ function addMapData(map: mapboxgl.Map, data: MapData) {
 
 function updateMapData(map: mapboxgl.Map, data: MapData) {
   if (!map.loaded()) return;
-  for (const [key, sourceId] of Object.entries(SOURCE_IDS)) {
-    (map.getSource(sourceId) as GeoJSONSource | undefined)?.setData(data[key as keyof MapData]);
+  for (const key of Object.keys(SOURCE_IDS) as (keyof typeof SOURCE_IDS)[]) {
+    (map.getSource(SOURCE_IDS[key]) as GeoJSONSource | undefined)?.setData(data[key]);
   }
+}
+
+/** 카카오 지도의 유령 오버레이(👻)와 동일한 모양의 HTML 마커 요소. */
+function createGhostMarkerElement() {
+  const el = document.createElement("div");
+  el.style.cssText =
+    "width:22px;height:22px;border-radius:50%;background:rgba(139,92,246,0.35);" +
+    "border:2px dashed #8b5cf6;display:flex;align-items:center;justify-content:center;font-size:11px;";
+  el.textContent = "👻";
+  return el;
+}
+
+function syncGhostMarker(
+  map: mapboxgl.Map,
+  markerRef: { current: mapboxgl.Marker | null },
+  point: LatLng | null,
+) {
+  if (!point) {
+    markerRef.current?.remove();
+    markerRef.current = null;
+    return;
+  }
+  if (!markerRef.current) {
+    markerRef.current = new mapboxgl.Marker({ element: createGhostMarkerElement() });
+    markerRef.current.setLngLat(coordinates(point)).addTo(map);
+    return;
+  }
+  markerRef.current.setLngLat(coordinates(point));
+}
+
+function fitPathBounds(map: mapboxgl.Map, path: LatLng[]) {
+  if (path.length < 2) return;
+  const bounds = path.reduce(
+    (nextBounds, point) => nextBounds.extend(coordinates(point)),
+    new mapboxgl.LngLatBounds(coordinates(path[0]), coordinates(path[0])),
+  );
+  map.fitBounds(bounds, { padding: 36, duration: 0 });
 }
 
 export default function MapboxWorkoutMap({
@@ -155,6 +180,7 @@ export default function MapboxWorkoutMap({
 }: WorkoutMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const ghostMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const latestDataRef = useRef<MapData | null>(null);
   const latestViewportRef = useRef({ path, position, follow });
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim();
@@ -176,7 +202,7 @@ export default function MapboxWorkoutMap({
       position: pointCollection(position),
       ghostRoute: lineCollection(ghostPath ? [ghostPath] : []),
       ghostTrail: lineCollection([currentGhostTrail]),
-      ghostPosition: pointCollection(currentGhostPosition),
+      ghostPoint: currentGhostPosition,
     };
   }, [path, position, ghostPath, ghostElapsedMs]);
 
@@ -205,18 +231,12 @@ export default function MapboxWorkoutMap({
     map.on("load", () => {
       if (!latestDataRef.current) return;
       addMapData(map, latestDataRef.current);
+      syncGhostMarker(map, ghostMarkerRef, latestDataRef.current.ghostPoint);
       const viewport = latestViewportRef.current;
       if (viewport.follow && viewport.position) {
         map.jumpTo({ center: coordinates(viewport.position), zoom: DEFAULT_ZOOM });
       } else if (viewport.path.length >= 2) {
-        const bounds = viewport.path.reduce(
-          (nextBounds, point) => nextBounds.extend(coordinates(point)),
-          new mapboxgl.LngLatBounds(
-            coordinates(viewport.path[0]),
-            coordinates(viewport.path[0]),
-          ),
-        );
-        map.fitBounds(bounds, { padding: 36, duration: 0 });
+        fitPathBounds(map, viewport.path);
       }
       map.resize();
     });
@@ -224,20 +244,30 @@ export default function MapboxWorkoutMap({
     const parent = containerRef.current.parentElement;
     const observer =
       parent && typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => map.resize())
+        ? new ResizeObserver(() => {
+            map.resize();
+            // 카드 레이아웃 확정 등으로 크기가 바뀌어도 전체 경로가 계속 보이게 (카카오와 동일)
+            const viewport = latestViewportRef.current;
+            if (!viewport.follow && viewport.path.length >= 2) {
+              fitPathBounds(map, viewport.path);
+            }
+          })
         : null;
     if (parent) observer?.observe(parent);
 
     return () => {
       observer?.disconnect();
       map.remove();
+      ghostMarkerRef.current = null;
       mapRef.current = null;
     };
   }, [token]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map) updateMapData(map, data);
+    if (!map) return;
+    updateMapData(map, data);
+    if (map.loaded()) syncGhostMarker(map, ghostMarkerRef, data.ghostPoint);
   }, [data]);
 
   useEffect(() => {
@@ -255,12 +285,7 @@ export default function MapboxWorkoutMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || follow || path.length < 2 || !map.loaded()) return;
-
-    const bounds = path.reduce(
-      (nextBounds, point) => nextBounds.extend(coordinates(point)),
-      new mapboxgl.LngLatBounds(coordinates(path[0]), coordinates(path[0])),
-    );
-    map.fitBounds(bounds, { padding: 36, duration: 0 });
+    fitPathBounds(map, path);
     map.resize();
   }, [boundsKey, follow, path]);
 
