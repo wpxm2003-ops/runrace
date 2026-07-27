@@ -20,9 +20,24 @@ export type AdminWorkout = {
   hasMemo: boolean;
 };
 
+export type AdminFeedback = {
+  id: number;
+  userDisplayName: string | null;
+  type: "IDEA" | "INCONVENIENCE" | "BUG" | "ETC";
+  title: string;
+  content: string;
+  imageUrls: string[];
+  status: "OPEN" | "CHECKING" | "DONE" | "CLOSED";
+  pageUrl: string | null;
+  userAgent: string | null;
+  appVersion: string | null;
+  createdAt: string;
+};
+
 export type AdminDashboard = {
   members: AdminMember[];
   workouts: AdminWorkout[];
+  feedback: AdminFeedback[];
 };
 
 export function getAdminDashboard(user: User) {

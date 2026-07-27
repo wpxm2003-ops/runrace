@@ -17,3 +17,4 @@ export * from "./workouts";
 export * from "./hooks";
 export * from "./push";
 export * from "./admin";
+export * from "./feedback";

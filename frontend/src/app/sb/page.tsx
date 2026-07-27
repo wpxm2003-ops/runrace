@@ -16,6 +16,13 @@ const dateTime = (value: string) =>
 
 const distance = (meters: number) => `${(meters / 1000).toFixed(2)} km`;
 
+const feedbackTypeLabel = {
+  IDEA: "개선 아이디어",
+  INCONVENIENCE: "불편한 점",
+  BUG: "오류 신고",
+  ETC: "기타",
+} as const;
+
 const duration = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -106,7 +113,7 @@ export default function AdminDashboardPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <section className="mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
           <div><h2 className="font-semibold text-zinc-900">최근 운동기록</h2><p className="mt-1 text-xs text-zinc-400">노광고 · 방지훈 기록 제외 · 생성일 기준 최신 10개</p></div>
           <span className="text-sm tabular-nums text-zinc-400">{dashboard.workouts.length}개</span>
@@ -121,6 +128,59 @@ export default function AdminDashboardPage() {
             </tbody>
           </table>
         </div>
+      </section>
+      <section className="mb-8 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+          <div>
+            <h2 className="font-semibold text-zinc-900">사용자 의견</h2>
+            <p className="mt-1 text-xs text-zinc-400">최근 제출된 의견 30건</p>
+          </div>
+          <span className="text-sm tabular-nums text-zinc-400">{dashboard.feedback.length}건</span>
+        </div>
+        {dashboard.feedback.length === 0 ? (
+          <EmptyState>아직 제출된 의견이 없습니다.</EmptyState>
+        ) : (
+          <div className="divide-y divide-zinc-100">
+            {dashboard.feedback.map((item) => (
+              <article key={item.id} className="px-5 py-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
+                    {feedbackTypeLabel[item.type]}
+                  </span>
+                  <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                    {item.status}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                  <span>작성자: {item.userDisplayName || "(이름 없음)"}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{dateTime(item.createdAt)}</span>
+                </div>
+                <h3 className="mt-3 font-semibold text-zinc-950">{item.title}</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">{item.content}</p>
+                {item.imageUrls.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {item.imageUrls.map((url, index) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block h-24 w-24 overflow-hidden rounded-lg bg-zinc-100"
+                      >
+                        <img
+                          src={url}
+                          alt={`${item.title} 첨부 이미지 ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

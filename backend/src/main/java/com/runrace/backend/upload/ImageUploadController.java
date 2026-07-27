@@ -31,6 +31,29 @@ public class ImageUploadController {
     return ResponseEntity.ok(new ImageUploadResponse(url));
   }
 
+  @PostMapping("/feedback-image")
+  public ResponseEntity<ImageUploadResponse> uploadFeedbackImage(
+      AuthPrincipal principal,
+      @RequestParam("file") MultipartFile file) {
+    if (file.isEmpty()) {
+      throw ApiException.badRequest("file_empty");
+    }
+    if (file.getSize() > 5L * 1024 * 1024) {
+      throw ApiException.badRequest("upload_too_large");
+    }
+    String contentType = file.getContentType();
+    if (contentType == null || !java.util.Set.of(
+        "image/jpeg", "image/png", "image/webp").contains(contentType.toLowerCase())) {
+      throw ApiException.badRequest("upload_invalid_type");
+    }
+    String filename = file.getOriginalFilename();
+    if (filename == null
+        || !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|webp)$")) {
+      throw ApiException.badRequest("upload_invalid_type");
+    }
+    return ResponseEntity.ok(new ImageUploadResponse(imageUploadService.store(file)));
+  }
+
   /**
    * 비공개 이미지 업로드 (인증 필요) — 경품 이미지 등. 공개 URL이 아니라 객체 키만 반환한다.
    * 반환: { "key": "prizes/xxx.jpg" } — 이후 게이트 엔드포인트로만 열람 가능.

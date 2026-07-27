@@ -98,6 +98,10 @@ export default function Home() {
             <div className="text-base font-semibold">{t.guide_list_title}</div>
             <div className="mt-1 text-sm text-zinc-600">{t.home_guide_card_desc}</div>
           </Link>
+          <Link href="/feedback" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
+            <div className="text-base font-semibold text-zinc-900">{t.feedback_home_title}</div>
+            <p className="mt-1 text-sm text-zinc-600">{t.feedback_home_desc}</p>
+          </Link>
         </div>
       </div>
     </PageLayout>

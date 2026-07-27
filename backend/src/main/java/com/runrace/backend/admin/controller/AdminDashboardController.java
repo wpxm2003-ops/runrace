@@ -1,8 +1,12 @@
 package com.runrace.backend.admin.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.feedback.domain.Feedback;
+import com.runrace.backend.feedback.repository.FeedbackRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
@@ -25,6 +29,8 @@ public class AdminDashboardController {
 
   private final AppUserRepository appUserRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
+  private final FeedbackRepository feedbackRepository;
+  private final ObjectMapper objectMapper;
 
   @Value("${runrace.admin.firebase-uids:}")
   private String adminFirebaseUids;
@@ -44,7 +50,11 @@ public class AdminDashboardController {
         .findRecentForAdmin(EXCLUDED_DISPLAY_NAMES, pageable).stream()
         .map(WorkoutRow::from)
         .toList();
-    return new DashboardResponse(members, workouts);
+    List<FeedbackRow> feedback = feedbackRepository
+        .findAllByOrderByCreatedAtDesc(PageRequest.of(0, 30)).stream()
+        .map(this::toFeedbackRow)
+        .toList();
+    return new DashboardResponse(members, workouts, feedback);
   }
 
   private void ensureAdmin(AuthPrincipal principal) {
@@ -69,7 +79,8 @@ public class AdminDashboardController {
         .collect(Collectors.toSet());
   }
 
-  public record DashboardResponse(List<MemberRow> members, List<WorkoutRow> workouts) {}
+  public record DashboardResponse(
+      List<MemberRow> members, List<WorkoutRow> workouts, List<FeedbackRow> feedback) {}
 
   public record MemberRow(
       String displayName, String provider, boolean pushEnabled, String createdAt) {
@@ -101,5 +112,40 @@ public class AdminDashboardController {
           workout.getImageUrl() != null && !workout.getImageUrl().isBlank(),
           workout.getMemo() != null && !workout.getMemo().isBlank());
     }
+  }
+
+  public record FeedbackRow(
+      Long id,
+      String userDisplayName,
+      String type,
+      String title,
+      String content,
+      List<String> imageUrls,
+      String status,
+      String pageUrl,
+      String userAgent,
+      String appVersion,
+      String createdAt) {}
+
+  private FeedbackRow toFeedbackRow(Feedback feedback) {
+    List<String> imageUrls;
+    try {
+      imageUrls = objectMapper.readValue(
+          feedback.getImageUrlsJson(), new TypeReference<List<String>>() {});
+    } catch (Exception ignored) {
+      imageUrls = List.of();
+    }
+    return new FeedbackRow(
+        feedback.getId(),
+        feedback.getUserDisplayName(),
+        feedback.getType(),
+        feedback.getTitle(),
+        feedback.getContent(),
+        imageUrls,
+        feedback.getStatus(),
+        feedback.getPageUrl(),
+        feedback.getUserAgent(),
+        feedback.getAppVersion(),
+        IsoTime.format(feedback.getCreatedAt()));
   }
 }
