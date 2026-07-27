@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useLocale } from "@/lib/i18n";
-import { ToolsCta } from "./ToolsCta";
 
 export default function ToolsIndexContent() {
   const { t } = useLocale();
@@ -25,7 +24,6 @@ export default function ToolsIndexContent() {
           <div className="mt-1 text-sm text-zinc-600">{t.nsm_home_desc}</div>
         </Link>
       </div>
-      <ToolsCta />
     </PageLayout>
   );
 }

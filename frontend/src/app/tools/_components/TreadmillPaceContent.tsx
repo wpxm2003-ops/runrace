@@ -5,7 +5,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { useLocale } from "@/lib/i18n";
 import { formatPaceSecPerUnit } from "@/lib/units";
 import { finishSecFromPace, formatHms, mphFromKmh, paceSecFromSpeedKmh } from "@/lib/paceMath";
-import { ToolsCta, ToolsMoreLink } from "./ToolsCta";
+import { ToolsMoreLink } from "./ToolsMoreLink";
 
 /** SEO용 정적 환산표 구간: 5.0~16.0 km/h, 0.5 간격. */
 const TABLE_SPEEDS_KMH = Array.from({ length: 23 }, (_, i) => 5 + i * 0.5);
@@ -107,7 +107,6 @@ export default function TreadmillPaceContent() {
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.tm_guide_body}</p>
       </section>
 
-      <ToolsCta />
       <ToolsMoreLink />
     </PageLayout>
   );

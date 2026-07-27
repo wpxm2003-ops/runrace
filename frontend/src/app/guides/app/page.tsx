@@ -13,9 +13,12 @@ export default function AppGuidePage() {
 
   const sections = [
     { h: t.guide_app_s1_h, b: t.guide_app_s1_b },
-    { h: t.guide_app_s2_h, b: t.guide_app_s2_b },
-    { h: t.guide_app_s3_h, b: t.guide_app_s3_b },
     { h: t.guide_app_s5_h, b: t.guide_app_s5_b },
+    { h: t.guide_app_s2_h, b: t.guide_app_s2_b },
+    { h: t.guide_app_s6_h, b: t.guide_app_s6_b },
+    { h: t.guide_app_s3_h, b: t.guide_app_s3_b },
+    { h: t.guide_app_s7_h, b: t.guide_app_s7_b },
+    { h: t.guide_app_s8_h, b: t.guide_app_s8_b },
   ];
 
   const onShare = () => shareGuide("/guides/app", t.guide_app_title);

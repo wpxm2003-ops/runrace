@@ -13,7 +13,7 @@ import {
   speedKmhFromPaceSec,
   splitPointsKm,
 } from "@/lib/paceMath";
-import { ToolsCta, ToolsMoreLink } from "./ToolsCta";
+import { ToolsMoreLink } from "./ToolsMoreLink";
 
 type DistKey = keyof typeof RACE_DISTANCES_KM | "custom";
 type Mode = "time2pace" | "pace2time";
@@ -278,7 +278,6 @@ export default function PaceCalculatorContent() {
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.pace_guide_body}</p>
       </section>
 
-      <ToolsCta />
       <ToolsMoreLink />
     </PageLayout>
   );

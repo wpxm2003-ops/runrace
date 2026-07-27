@@ -308,8 +308,10 @@ function TrainingContent({ user }: { user: User | null }) {
 
   return (
     <PageLayout title={t.nsm_title}>
+      <NsmIntroCard />
+
       {savedPlan?.updatedAt && daysSince(savedPlan.updatedAt) >= 28 ? (
-        <Card className="border-amber-300 bg-amber-50">
+        <Card className="mt-4 border-amber-300 bg-amber-50">
           <p className="text-xs leading-relaxed text-amber-800">{t.nsm_retest_banner}</p>
           <button
             type="button"
@@ -323,7 +325,7 @@ function TrainingContent({ user }: { user: User | null }) {
         </Card>
       ) : null}
       {todaySession ? (
-        <Card className="border-zinc-900 bg-zinc-900 text-white">
+        <Card className="mt-4 border-zinc-900 bg-zinc-900 text-white">
           <div className="text-xs text-zinc-400">
             {t.nsm_today} ({days[nsmTodayIndex()]}) {t.nsm_session}
           </div>
@@ -352,11 +354,7 @@ function TrainingContent({ user }: { user: User | null }) {
             </p>
           ) : null}
         </Card>
-      ) : (
-        <Card>
-          <p className="text-xs leading-relaxed text-zinc-500">{t.nsm_intro}</p>
-        </Card>
-      )}
+      ) : null}
 
       {pbs && pbs.length > 0 ? (
         <Card className="mt-4">
@@ -566,20 +564,19 @@ function TrainingContent({ user }: { user: User | null }) {
           {t.nsm_cancel_btn}
         </button>
       ) : null}
-      <NsmSeoSection />
     </PageLayout>
   );
 }
 
 /** NSM 소개(정적 콘텐츠). auth 로딩 분기에도 렌더해 프리렌더 HTML에 검색용 본문이 담기게 한다. */
-function NsmSeoSection() {
+function NsmIntroCard() {
   const { t } = useLocale();
   return (
-    <section className="mt-6">
-      <h2 className="text-base font-semibold">{t.nsm_seo_title}</h2>
+    <Card>
+      <h2 className="text-base font-semibold text-zinc-900">{t.nsm_seo_title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.nsm_seo_body1}</p>
       <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.nsm_seo_body2}</p>
-    </section>
+    </Card>
   );
 }
 
@@ -591,8 +588,10 @@ export default function TrainingPage() {
   if (loading) {
     return (
       <PageLayout title={t.nsm_title}>
-        <LoadingCard />
-        <NsmSeoSection />
+        <NsmIntroCard />
+        <div className="mt-4">
+          <LoadingCard />
+        </div>
       </PageLayout>
     );
   }

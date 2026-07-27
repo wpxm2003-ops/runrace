@@ -750,7 +750,7 @@ export const translations = {
     run_lock_hold: "길게 눌러 해제",
     ios_run_notice: "아이폰은 달리는 동안 화면을 켜두고 앱을 유지하세요. 화면을 잠그면 기록이 멈출 수 있어요.",
     guide_list_title: "이용 가이드",
-    home_guide_card_desc: "iPhone 설치 · 이용 방법",
+    home_guide_card_desc: "최신 기능 · iPhone 설치 · 이용 방법",
     guide_ios_title: "iPhone 이용 가이드",
     guide_ios_card_desc: "설치 · 사용법",
     guide_ios_intro:
@@ -778,25 +778,34 @@ export const translations = {
     guide_noti_unsupported: "이 환경에서는 알림을 사용할 수 없어요.",
     guide_noti_login: "로그인 후 알림을 허용할 수 있어요.",
     guide_app_title: "RunRace 이용 가이드",
-    guide_app_card_desc: "이런 걸 할 수 있어요",
+    guide_app_card_desc: "기록 · 레이스 · 크루 · 훈련 사용법",
     guide_app_intro:
-      "RunRace는 혼자 뛰는 러닝을 친구와의 '레이스'로 바꿔주는 앱이에요. 기록하고, 겨루고, 약 올리고, 설욕하세요. 🏃",
-    guide_app_s1_h: "🏃 러닝머신도, 야외도 기록해요",
+      "RunRace의 최신 기능을 한 번에 살펴보세요. 러닝 기록부터 친구·크루와의 대결, 맞춤 훈련과 장비 관리까지 모두 연결돼 있어요. 🏃",
+    guide_app_s1_h: "🏃 야외·실내 러닝을 기록해요",
     guide_app_s1_b:
-      "러닝머신으로 뛴 실내 러닝도 직접 입력하면 야외 기록과 똑같이 쌓여요. 날씨가 안 좋거나 헬스장에서 뛴 날도 걱정 없죠 — 비 오는 날에도 연속 운동 기록이 끊기지 않고, 이번 달 거리도 빠짐없이 이어집니다. 야외 러닝은 GPS로 거리·시간·페이스가 자동으로 기록되고요.",
+      "하단의 '운동'에서 야외 러닝을 시작하면 GPS로 거리·시간·페이스와 경로를 기록해요. 러닝머신 운동은 '실내 운동'에서 거리와 시간을 직접 입력하면 같은 기록과 통계에 합산됩니다.",
     guide_app_s2_h: "🏁 친구와 레이스해요",
     guide_app_s2_b:
-      "목표 거리를 정해 방을 만들고 친구를 초대하세요. 하루 만에 끝내는 짧은 대결도, 다이어트 삼아 '먼저 100km 달성하기' 같은 장기 내기도 자유로워요. 먼저 목표에 도달하면 우승, 실시간 리더보드로 순위를 확인해요.",
-    guide_app_s3_h: "⚔️ 라이벌과 겨뤄요",
+      "레이스 탭에서 공개 레이스에 참가하거나 목표 거리·기간·인원을 정해 직접 만들 수 있어요. 내기나 경품도 설정할 수 있고, 진행 중에는 순위와 거리 차이를 실시간으로 확인합니다.",
+    guide_app_s3_h: "⚔️ 라이벌과 전적을 쌓아요",
     guide_app_s3_b:
-      "마음에 둔 상대를 라이벌로 등록하면 진행 중인 레이스부터 종료된 레이스까지 그 상대와의 전적(승·패)이 보여요. 아깝게 진 상대를 다음 레이스에서 설욕하세요.",
+      "닉네임으로 상대를 라이벌에 등록하면 함께 참가한 레이스의 승·패와 승률을 모아볼 수 있어요. 내정보의 톱니바퀴에서 '라이벌 관리'로 들어가 추가하거나 해제하세요.",
     guide_app_s4_h: "👊 약 올리고, 알림 받아요",
     guide_app_s4_b:
       "같은 레이스 참가자를 '콕 찌르기'로 독려하거나 약 올려요. **추월·순위 변동**은 물론, **연속 기록이 끊길 위기**일 때도 **푸시 알림**으로 챙겨드려요.",
     guide_app_s4_emphasis: "알림을 꼭 허용해 주세요! 🔔",
     guide_app_s5_h: "📊 내 기록을 모아봐요",
     guide_app_s5_b:
-      "달린 기록이 달력과 통계로 쌓여요. 이번 달 거리·운동 횟수는 물론, 연속 운동일, 요일별 패턴, 이달의 최고 기록, 지난달과의 비교까지 한눈에 확인해요.",
+      "기록 탭의 달력에서 날짜별 운동을 열고 경로·사진·구간 기록을 확인하거나 공유할 수 있어요. 내정보에서는 총 거리·시간·칼로리·운동일과 연속 운동 기록, 참가한 레이스를 한눈에 봅니다.",
+    guide_app_s6_h: "👥 크루를 만들고 함께 달려요",
+    guide_app_s6_b:
+      "크루를 만들거나 초대 코드로 가입하면 주간 보드와 활동 히트맵에서 멤버 기록을 함께 볼 수 있어요. 크루 전용 레이스를 열고 다른 크루에 대항전을 신청해 팀으로 겨뤄보세요.",
+    guide_app_s7_h: "🧭 NSM 코치로 훈련해요",
+    guide_app_s7_b:
+      "최근 5K·10K·하프 기록과 주간 운동량을 입력하면 역치 페이스와 노르웨이식 주간 스케줄을 계산해요. 플랜을 저장하면 오늘의 세션이 운동 화면과 연결되고, Sub-T 반복 구간도 안내받을 수 있어요.",
+    guide_app_s8_h: "⚙️ 내 설정과 장비를 관리해요",
+    guide_app_s8_b:
+      "내정보 제목 옆 톱니바퀴에서 닉네임, 거리 단위, 푸시 알림을 바꾸세요. 신발장에 러닝화를 등록하고 활성 신발을 지정하면 이후 운동 기록에 자동으로 연결됩니다.",
     stat_total_days: "총 운동일",
     stat_days_unit: "일",
     stat_max_streak: "최장 연속일",
@@ -935,9 +944,6 @@ export const translations = {
     tools_pace_card_desc: "목표 시간 ↔ 페이스 변환, 구간 통과 시간",
     tools_tm_card_title: "트레드밀 속도 변환",
     tools_tm_card_desc: "km/h ↔ 페이스(min/km) ↔ mph 환산표",
-    tools_cta_title: "기록은 RunRace가 자동으로",
-    tools_cta_desc: "GPS 러닝 기록·페이스 분석, 친구·크루와의 거리 대결까지 무료로.",
-    tools_cta_btn: "RunRace 시작하기",
     tools_more: "다른 계산기 보기",
     pace_title: "러닝 페이스 계산기",
     pace_intro: "거리와 목표 시간(또는 페이스)을 넣으면 필요한 페이스·예상 완주 시간·구간 통과 시간을 계산해요.",
@@ -1738,7 +1744,7 @@ export const translations = {
     run_lock_hold: "Hold to unlock",
     ios_run_notice: "On iPhone, keep the screen on and the app open while running. Locking the screen can stop tracking.",
     guide_list_title: "User guide",
-    home_guide_card_desc: "iPhone setup · how to use",
+    home_guide_card_desc: "Latest features · iPhone setup · how to use",
     guide_ios_title: "iPhone guide",
     guide_ios_card_desc: "Install · usage",
     guide_ios_intro:
@@ -1785,6 +1791,15 @@ export const translations = {
     guide_app_s5_h: "📊 Collect your stats",
     guide_app_s5_b:
       "Your runs build up in a calendar and stats. See this month's distance and run count, plus your running streak, weekly patterns, monthly bests, and a comparison with last month — all at a glance.",
+    guide_app_s6_h: "👥 Run together as a crew",
+    guide_app_s6_b:
+      "Create a crew or join with an invite code to share a weekly board and activity heatmap. Host members-only races or challenge another crew and compete as a team.",
+    guide_app_s7_h: "🧭 Train with the NSM coach",
+    guide_app_s7_b:
+      "Enter a recent 5K, 10K, or half-marathon result and your weekly volume to calculate threshold pace and a Norwegian-style weekly plan. Save it to see today's session and guided Sub-T reps in the workout screen.",
+    guide_app_s8_h: "⚙️ Manage settings and shoes",
+    guide_app_s8_b:
+      "Use the gear beside the Profile title to update your nickname, distance unit, and push notifications. Add shoes and choose an active pair to attach it automatically to future workouts.",
     stat_total_days: "Active days",
     stat_days_unit: " days",
     stat_max_streak: "Best streak",
@@ -1923,9 +1938,6 @@ export const translations = {
     tools_pace_card_desc: "Convert goal time ↔ pace, with split times",
     tools_tm_card_title: "Treadmill Speed Converter",
     tools_tm_card_desc: "km/h ↔ pace (min/km) ↔ mph chart",
-    tools_cta_title: "Let RunRace do the tracking",
-    tools_cta_desc: "GPS run tracking, pace stats, and distance battles with friends — free.",
-    tools_cta_btn: "Start with RunRace",
     tools_more: "More calculators",
     pace_title: "Running Pace Calculator",
     pace_intro: "Enter a distance and a goal time (or pace) to get the required pace, expected finish time, and split times.",
@@ -2726,7 +2738,7 @@ export const translations = {
     run_lock_hold: "Mantén para desbloquear",
     ios_run_notice: "En iPhone, mantén la pantalla encendida y la app abierta mientras corres. Bloquear la pantalla puede detener el registro.",
     guide_list_title: "Guía de uso",
-    home_guide_card_desc: "Instalación en iPhone · uso",
+    home_guide_card_desc: "Funciones actuales · instalación en iPhone · uso",
     guide_ios_title: "Guía para iPhone",
     guide_ios_card_desc: "Instalación · uso",
     guide_ios_intro:
@@ -2773,6 +2785,15 @@ export const translations = {
     guide_app_s5_h: "📊 Reúne tus estadísticas",
     guide_app_s5_b:
       "Tus carreras se acumulan en un calendario y estadísticas. Mira la distancia y el número de carreras del mes, además de tu racha, patrones por día, tus mejores marcas del mes y la comparación con el mes pasado, todo de un vistazo.",
+    guide_app_s6_h: "👥 Corre en equipo con un crew",
+    guide_app_s6_b:
+      "Crea un crew o únete con un código de invitación para compartir la tabla semanal y el mapa de actividad. Organiza carreras privadas o desafía a otro crew y compite en equipo.",
+    guide_app_s7_h: "🧭 Entrena con el coach NSM",
+    guide_app_s7_b:
+      "Introduce una marca reciente de 5K, 10K o media maratón y tu volumen semanal para calcular el ritmo de umbral y un plan noruego. Guárdalo para ver la sesión de hoy y seguir las repeticiones Sub-T.",
+    guide_app_s8_h: "⚙️ Gestiona ajustes y zapatillas",
+    guide_app_s8_b:
+      "Usa el engranaje junto al título del perfil para cambiar apodo, unidad de distancia y notificaciones. Registra tus zapatillas y elige el par activo para vincularlo automáticamente a futuros entrenamientos.",
     stat_total_days: "Días activos",
     stat_days_unit: " días",
     stat_max_streak: "Racha máx.",
@@ -2911,9 +2932,6 @@ export const translations = {
     tools_pace_card_desc: "Convierte tiempo objetivo ↔ ritmo, con parciales",
     tools_tm_card_title: "Conversor de cinta de correr",
     tools_tm_card_desc: "Tabla km/h ↔ ritmo (min/km) ↔ mph",
-    tools_cta_title: "Deja el registro a RunRace",
-    tools_cta_desc: "Registro GPS, análisis de ritmo y duelos de distancia con amigos — gratis.",
-    tools_cta_btn: "Empezar con RunRace",
     tools_more: "Más calculadoras",
     pace_title: "Calculadora de ritmo de running",
     pace_intro: "Introduce una distancia y un tiempo objetivo (o ritmo) para obtener el ritmo necesario, el tiempo final estimado y los parciales.",
@@ -3714,7 +3732,7 @@ export const translations = {
     run_lock_hold: "長押しで解除",
     ios_run_notice: "iPhoneでは走行中は画面を点けたままアプリを開いておいてください。画面をロックすると記録が止まることがあります。",
     guide_list_title: "利用ガイド",
-    home_guide_card_desc: "iPhoneのセットアップ · 使い方",
+    home_guide_card_desc: "最新機能 · iPhoneのセットアップ · 使い方",
     guide_ios_title: "iPhone 利用ガイド",
     guide_ios_card_desc: "インストール・使い方",
     guide_ios_intro:
@@ -3761,6 +3779,15 @@ export const translations = {
     guide_app_s5_h: "📊 記録をためる",
     guide_app_s5_b:
       "走った記録がカレンダーと統計にたまります。今月の距離・回数はもちろん、連続ラン日数、曜日別パターン、今月のベスト記録、先月との比較までひと目で確認できます。",
+    guide_app_s6_h: "👥 クルーで一緒に走る",
+    guide_app_s6_b:
+      "クルーを作成するか招待コードで参加すると、週間ボードと活動ヒートマップを共有できます。メンバー限定レースを開いたり、他のクルーに対抗戦を申し込んでチームで競えます。",
+    guide_app_s7_h: "🧭 NSMコーチでトレーニング",
+    guide_app_s7_b:
+      "最近の5K・10K・ハーフの記録と週間走行量から、閾値ペースとノルウェー式の週間プランを計算します。保存すると今日のセッションやSub-Tの反復ガイドを運動画面で確認できます。",
+    guide_app_s8_h: "⚙️ 設定とシューズを管理",
+    guide_app_s8_b:
+      "マイページのタイトル横にある歯車から、ニックネーム・距離単位・プッシュ通知を変更できます。シューズを登録して使用中の一足を選ぶと、以後の運動記録に自動で紐づきます。",
     stat_total_days: "運動日数",
     stat_days_unit: "日",
     stat_max_streak: "最長連続日",
@@ -3899,9 +3926,6 @@ export const translations = {
     tools_pace_card_desc: "目標タイム ↔ ペース変換、通過タイムも",
     tools_tm_card_title: "トレッドミル速度変換",
     tools_tm_card_desc: "km/h ↔ ペース(min/km) ↔ mph 早見表",
-    tools_cta_title: "記録はRunRaceにおまかせ",
-    tools_cta_desc: "GPSラン記録・ペース分析、友達との距離バトルまで無料で。",
-    tools_cta_btn: "RunRaceをはじめる",
     tools_more: "ほかの計算ツール",
     pace_title: "ランニングペース計算機",
     pace_intro: "距離と目標タイム(またはペース)を入力すると、必要ペース・予想フィニッシュタイム・通過タイムを計算します。",
@@ -4702,7 +4726,7 @@ export const translations = {
     run_lock_hold: "长按解锁",
     ios_run_notice: "在 iPhone 上跑步时请保持屏幕常亮并打开应用。锁屏可能会中断记录。",
     guide_list_title: "使用指南",
-    home_guide_card_desc: "iPhone 安装 · 使用方法",
+    home_guide_card_desc: "最新功能 · iPhone 安装 · 使用方法",
     guide_ios_title: "iPhone 使用指南",
     guide_ios_card_desc: "安装 · 使用",
     guide_ios_intro:
@@ -4748,6 +4772,15 @@ export const translations = {
     guide_app_s5_h: "📊 汇总你的数据",
     guide_app_s5_b:
       "跑步记录会汇集成日历和统计。本月距离和次数自不必说，连续跑步天数、每周规律、本月最佳记录、与上月的对比都能一眼查看。",
+    guide_app_s6_h: "👥 和跑团一起跑",
+    guide_app_s6_b:
+      "创建跑团或使用邀请码加入后，可以共享周榜和活动热力图。还能发起成员专属比赛，或向其他跑团发起对抗赛，以团队身份竞争。",
+    guide_app_s7_h: "🧭 跟着 NSM 教练训练",
+    guide_app_s7_b:
+      "输入最近的 5K、10K 或半马成绩和周跑量，即可计算阈值配速与挪威式周计划。保存后可在运动页面查看今日训练，并获得 Sub-T 重复组提示。",
+    guide_app_s8_h: "⚙️ 管理设置和跑鞋",
+    guide_app_s8_b:
+      "点击“我的”标题旁的齿轮，可修改昵称、距离单位和推送通知。将跑鞋加入鞋柜并设为当前使用，之后的运动记录会自动关联。",
     stat_total_days: "运动天数",
     stat_days_unit: "天",
     stat_max_streak: "最长连续日",
@@ -4886,9 +4919,6 @@ export const translations = {
     tools_pace_card_desc: "目标时间 ↔ 配速换算，含分段通过时间",
     tools_tm_card_title: "跑步机速度换算",
     tools_tm_card_desc: "km/h ↔ 配速(min/km) ↔ mph 对照表",
-    tools_cta_title: "记录交给 RunRace",
-    tools_cta_desc: "GPS 跑步记录、配速分析，还能和朋友比拼距离，完全免费。",
-    tools_cta_btn: "开始使用 RunRace",
     tools_more: "更多计算工具",
     pace_title: "跑步配速计算器",
     pace_intro: "输入距离和目标时间(或配速)，即可计算所需配速、预计完赛时间和分段通过时间。",
