@@ -40,7 +40,6 @@ function MySettingsContent({ user }: { user: User }) {
       <NotificationToggle user={user} />
 
       <NavRowButton title={t.shoe_manage} onClick={() => nativeNavigate("/shoes")} className="mt-4" />
-      <NavRowButton title={t.rival_manage} onClick={() => nativeNavigate("/rivals")} className="mt-4" />
     </>
   );
 }

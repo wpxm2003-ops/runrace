@@ -1,6 +1,7 @@
 "use client";
 
 import type { User } from "firebase/auth";
+import { NavRowButton } from "@/app/_components/NavRowButton";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
@@ -11,6 +12,7 @@ import { useMe } from "@/lib/api";
 import { deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
+import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 
@@ -33,6 +35,8 @@ function MyPageContent({ user }: { user: User }) {
           </div>
         </div>
       </Card>
+
+      <NavRowButton title={t.rival_manage} onClick={() => nativeNavigate("/rivals")} className="mt-4" />
 
       <WorkoutSummarySection user={user} />
 
