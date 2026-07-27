@@ -116,7 +116,7 @@ export function BottomNav() {
         label: t.nav_profile,
         href: myHref,
         icon: ICONS.my,
-        isActive: (p) => p === "/login" || p === "/my",
+        isActive: (p) => p === "/login" || p === "/my" || p.startsWith("/my/"),
       },
     ],
     [t, myHref],

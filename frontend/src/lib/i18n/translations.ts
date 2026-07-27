@@ -605,6 +605,8 @@ export const translations = {
 
     // ── 내 정보 ───────────────────────────
     my_title: "내정보",
+    my_settings_btn: "내정보 설정",
+    my_settings_title: "내정보 설정",
     my_account_label: "로그인 계정",
     my_nickname_label: "닉네임",
     my_nickname_edit: "변경",
@@ -1591,6 +1593,8 @@ export const translations = {
 
     // ── 내 정보 ───────────────────────────
     my_title: "Profile",
+    my_settings_btn: "Profile settings",
+    my_settings_title: "Profile settings",
     my_account_label: "Signed in as",
     my_nickname_label: "Nickname",
     my_nickname_edit: "Edit",
@@ -2577,6 +2581,8 @@ export const translations = {
 
     // ── Perfil ────────────────────────────
     my_title: "Perfil",
+    my_settings_btn: "Ajustes del perfil",
+    my_settings_title: "Ajustes del perfil",
     my_account_label: "Sesión iniciada como",
     my_nickname_label: "Apodo",
     my_nickname_edit: "Editar",
@@ -3563,6 +3569,8 @@ export const translations = {
 
     // ── マイページ ────────────────────────
     my_title: "マイページ",
+    my_settings_btn: "マイページ設定",
+    my_settings_title: "マイページ設定",
     my_account_label: "ログイン中のアカウント",
     my_nickname_label: "ニックネーム",
     my_nickname_edit: "変更",
@@ -4549,6 +4557,8 @@ export const translations = {
 
     // ── 我的 ──────────────────────────────
     my_title: "我的",
+    my_settings_btn: "个人设置",
+    my_settings_title: "个人设置",
     my_account_label: "登录账号",
     my_nickname_label: "昵称",
     my_nickname_edit: "修改",

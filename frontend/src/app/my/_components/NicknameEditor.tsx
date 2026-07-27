@@ -13,9 +13,10 @@ type Props = {
   user: User;
   nickname: string | null | undefined;
   loading: boolean;
+  className?: string;
 };
 
-export function NicknameEditor({ user, nickname, loading }: Props) {
+export function NicknameEditor({ user, nickname, loading, className = "mt-4" }: Props) {
   const { t } = useLocale();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -72,7 +73,7 @@ export function NicknameEditor({ user, nickname, loading }: Props) {
   }
 
   return (
-    <div className="mt-4">
+    <div className={className}>
       <div className="text-sm text-zinc-500">{t.my_nickname_label}</div>
       {editing ? (
         <div className="mt-1">
