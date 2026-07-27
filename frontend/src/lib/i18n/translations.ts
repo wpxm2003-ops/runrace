@@ -980,6 +980,11 @@ export const translations = {
     tm_guide_body: "국내 트레드밀은 대부분 km/h 단위를 쓰고, 미국 제품은 mph를 써요. 야외 러닝과 비슷한 부하를 원하면 경사도를 1% 정도 올리는 걸 흔히 권장해요.",
     home_tools_card_title: "러닝 계산기",
     home_tools_card_desc: "페이스 계산기 · 트레드밀 속도 변환",
+    nsm_seo_title: "노르웨이식 훈련법(NSM)이란?",
+    nsm_seo_body1:
+      "노르웨이식 싱글 훈련(Norwegian Singles Method)은 낮은 강도의 이지 러닝을 기본으로, 일주일에 2~3회 역치(Sub-Threshold) 인터벌을 나눠 넣는 훈련 방식이에요. 한 번에 몰아붙이는 대신 부담 없는 강도를 자주 반복해서, 회복을 해치지 않고 역치 능력을 꾸준히 끌어올리는 게 핵심이에요.",
+    nsm_seo_body2:
+      "NSM 코치는 최근 5K·10K·하프 전력 기록으로 역치 페이스를 추정하고, 요일별 Sub-T 인터벌과 이지 러닝으로 구성된 일주일 스케줄을 자동으로 만들어줘요. 로그인 없이 계산할 수 있고, 저장하면 매일 오늘의 세션을 추천받아요.",
   },
 
   en: {
@@ -1961,6 +1966,11 @@ export const translations = {
     tm_guide_body: "Most treadmills show speed in km/h, while many US models use mph. To mimic outdoor effort, a 1% incline is commonly recommended.",
     home_tools_card_title: "Running Calculators",
     home_tools_card_desc: "Pace calculator · Treadmill speed converter",
+    nsm_seo_title: "What is Norwegian singles training (NSM)?",
+    nsm_seo_body1:
+      "The Norwegian Singles Method builds on easy running, adding 2–3 sub-threshold interval sessions spread across the week. Instead of occasional all-out workouts, you repeat manageable efforts often — steadily raising your threshold without wrecking recovery.",
+    nsm_seo_body2:
+      "NSM Coach estimates your threshold pace from a recent 5K, 10K, or half-marathon effort, then builds a weekly schedule of sub-T intervals and easy runs. You can calculate without signing in; save the plan to get today's session every day.",
   },
 
   es: {
@@ -2942,6 +2952,11 @@ export const translations = {
     tm_guide_body: "La mayoría de las cintas muestran km/h; muchos modelos de EE. UU. usan mph. Para imitar el esfuerzo al aire libre, se suele recomendar una inclinación del 1 %.",
     home_tools_card_title: "Calculadoras de running",
     home_tools_card_desc: "Ritmo · Conversor de cinta",
+    nsm_seo_title: "¿Qué es el entrenamiento noruego (NSM)?",
+    nsm_seo_body1:
+      "El método noruego de singles se basa en rodajes suaves, añadiendo 2–3 sesiones de intervalos sub-umbral repartidas en la semana. En lugar de entrenos agotadores ocasionales, repites esfuerzos manejables con frecuencia, elevando tu umbral sin arruinar la recuperación.",
+    nsm_seo_body2:
+      "NSM Coach estima tu ritmo umbral a partir de un esfuerzo reciente de 5K, 10K o media maratón, y crea un plan semanal con intervalos sub-T y rodajes suaves. Puedes calcular sin iniciar sesión; guarda el plan para recibir la sesión de cada día.",
   },
 
   ja: {
@@ -3923,6 +3938,11 @@ export const translations = {
     tm_guide_body: "トレッドミルの多くはkm/h表示で、米国モデルはmph表示です。屋外に近い負荷にしたいときは傾斜1%がよく推奨されます。",
     home_tools_card_title: "ランニング計算ツール",
     home_tools_card_desc: "ペース計算機 · トレッドミル速度変換",
+    nsm_seo_title: "ノルウェー式トレーニング(NSM)とは?",
+    nsm_seo_body1:
+      "ノルウェー式シングルス(Norwegian Singles Method)は、イージーランを土台に、週2〜3回の閾値(Sub-T)インターバルを分散して行うトレーニング法です。一度に追い込む代わりに、無理のない強度を高頻度で繰り返し、回復を損なわずに閾値能力を着実に高めるのが狙いです。",
+    nsm_seo_body2:
+      "NSMコーチは、直近の5K・10K・ハーフの記録から閾値ペースを推定し、Sub-Tインターバルとイージーランで構成された1週間のスケジュールを自動作成します。ログインなしで計算でき、保存すれば毎日その日のセッションが提案されます。",
   },
 
   zh: {
@@ -4903,6 +4923,11 @@ export const translations = {
     tm_guide_body: "大多数跑步机使用 km/h，美国机型多用 mph。想接近户外跑的强度，通常建议把坡度调到 1%。",
     home_tools_card_title: "跑步计算工具",
     home_tools_card_desc: "配速计算器 · 跑步机速度换算",
+    nsm_seo_title: "什么是挪威式训练(NSM)?",
+    nsm_seo_body1:
+      "挪威式单次训练法(Norwegian Singles Method)以轻松跑为基础，每周分散安排 2–3 次亚阈值(Sub-T)间歇。它不追求偶尔的极限课表，而是高频率地重复可承受的强度，在不影响恢复的前提下稳步提升阈值能力。",
+    nsm_seo_body2:
+      "NSM 教练根据你最近的 5K、10K 或半马成绩估算阈值配速，自动生成由 Sub-T 间歇和轻松跑组成的一周课表。无需登录即可计算，保存后每天都会推荐当日训练。",
   },
 } satisfies Record<Locale, Record<string, unknown>>;
 

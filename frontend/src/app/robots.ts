@@ -22,7 +22,6 @@ export default function robots(): MetadataRoute.Robots {
         "/workout/",
         "/rivals",
         "/shoes",
-        "/training",
         "/login",
         "/kakao/",
         "/feedback",

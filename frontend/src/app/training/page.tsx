@@ -566,7 +566,20 @@ function TrainingContent({ user }: { user: User | null }) {
           {t.nsm_cancel_btn}
         </button>
       ) : null}
+      <NsmSeoSection />
     </PageLayout>
+  );
+}
+
+/** NSM 소개(정적 콘텐츠). auth 로딩 분기에도 렌더해 프리렌더 HTML에 검색용 본문이 담기게 한다. */
+function NsmSeoSection() {
+  const { t } = useLocale();
+  return (
+    <section className="mt-6">
+      <h2 className="text-base font-semibold">{t.nsm_seo_title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.nsm_seo_body1}</p>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.nsm_seo_body2}</p>
+    </section>
   );
 }
 
@@ -579,6 +592,7 @@ export default function TrainingPage() {
     return (
       <PageLayout title={t.nsm_title}>
         <LoadingCard />
+        <NsmSeoSection />
       </PageLayout>
     );
   }

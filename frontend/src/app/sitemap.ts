@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/tools`, priority: 0.9 },
     { url: `${base}/tools/pace-calculator`, priority: 0.9 },
     { url: `${base}/tools/treadmill-pace`, priority: 0.9 },
+    { url: `${base}/training`, priority: 0.9 },
     { url: `${base}/guides`, priority: 0.6 },
     { url: `${base}/guides/app`, priority: 0.6 },
     { url: `${base}/guides/ios`, priority: 0.6 },
