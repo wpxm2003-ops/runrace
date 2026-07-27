@@ -14,9 +14,9 @@ export type WorkoutMapProps = {
 };
 
 const KakaoWorkoutMap = dynamic(() => import("./KakaoWorkoutMap"), { ssr: false });
-const LeafletWorkoutMap = dynamic(() => import("./LeafletWorkoutMap"), { ssr: false });
+const MapboxWorkoutMap = dynamic(() => import("./MapboxWorkoutMap"), { ssr: false });
 
 export default function WorkoutMap(props: WorkoutMapProps) {
   const { locale } = useLocale();
-  return locale === "ko" ? <KakaoWorkoutMap {...props} /> : <LeafletWorkoutMap {...props} />;
+  return locale === "ko" ? <KakaoWorkoutMap {...props} /> : <MapboxWorkoutMap {...props} />;
 }

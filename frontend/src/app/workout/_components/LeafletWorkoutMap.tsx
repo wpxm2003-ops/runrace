@@ -15,32 +15,32 @@ import "leaflet/dist/leaflet.css";
 
 const DEFAULT_CENTER: LatLng = { lat: 37.5665, lng: 126.978 };
 
-function toTuple(p: LatLng): [number, number] {
-  return [p.lat, p.lng];
+function toTuple(point: LatLng): [number, number] {
+  return [point.lat, point.lng];
 }
 
 function MapResize() {
   const map = useMap();
 
   useEffect(() => {
-    const fix = () => map.invalidateSize();
-    fix();
-    const t1 = window.setTimeout(fix, 100);
-    const t2 = window.setTimeout(fix, 400);
-
-    const el = map.getContainer().parentElement;
-    const ro =
-      el && typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => fix())
+    const resize = () => map.invalidateSize();
+    resize();
+    const firstTimer = window.setTimeout(resize, 100);
+    const secondTimer = window.setTimeout(resize, 400);
+    const parent = map.getContainer().parentElement;
+    const observer =
+      parent && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(resize)
         : null;
-    if (ro && el) ro.observe(el);
 
-    window.addEventListener("resize", fix);
+    if (parent) observer?.observe(parent);
+    window.addEventListener("resize", resize);
+
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      ro?.disconnect();
-      window.removeEventListener("resize", fix);
+      clearTimeout(firstTimer);
+      clearTimeout(secondTimer);
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
     };
   }, [map]);
 
@@ -65,14 +65,25 @@ function MapFollower({
         animate: true,
         duration: 0.35,
       });
-      return;
-    }
-    // follow=false: 경로가 2점 이상이면 FitPathBounds가 전체 경로에 맞춤
-    if (pathLength < 2) {
+    } else if (pathLength < 2) {
       map.setView([position.lat, position.lng], 17, { animate: false });
       map.invalidateSize();
     }
   }, [position, follow, pathLength, map]);
+
+  return null;
+}
+
+function FitPathBounds({ path, enabled }: { path: LatLng[]; enabled: boolean }) {
+  const map = useMap();
+  const boundsKey = pathBoundsKey(path);
+
+  useEffect(() => {
+    if (!enabled || path.length < 2) return;
+    const bounds = latLngBounds(path.map(toTuple));
+    map.fitBounds(bounds, { padding: [36, 36] });
+    map.invalidateSize();
+  }, [boundsKey, enabled, map, path]);
 
   return null;
 }
@@ -83,25 +94,12 @@ type WorkoutMapProps = {
   follow: boolean;
 };
 
-function FitPathBounds({ path, enabled }: { path: LatLng[]; enabled: boolean }) {
-  const map = useMap();
-  const boundsKey = pathBoundsKey(path);
-
-  useEffect(() => {
-    if (!enabled || path.length < 2) return;
-    const bounds = latLngBounds(path.map((p) => [p.lat, p.lng] as [number, number]));
-    map.fitBounds(bounds, { padding: [36, 36] });
-    map.invalidateSize();
-  }, [boundsKey, enabled, map, path]);
-
-  return null;
-}
-
-export default function LeafletWorkoutMap({ path, position, follow }: WorkoutMapProps) {
+export default function LeafletWorkoutMap({
+  path,
+  position,
+  follow,
+}: WorkoutMapProps) {
   const center = position ?? path[0] ?? DEFAULT_CENTER;
-
-  // 연속 두 점 사이 거리가 비정상적으로 크면(백그라운드로 추적이 끊긴 구간) 점선으로 표시한다.
-  // path가 바뀔 때만 재계산 — 경로 변화 없는 리렌더에서 Polyline 재diff 방지.
   const { solidLines, gapLines } = useMemo(() => {
     const segments = splitPathAtGaps(path);
     return {
@@ -127,18 +125,23 @@ export default function LeafletWorkoutMap({ path, position, follow }: WorkoutMap
         <MapResize />
         <MapFollower position={position} follow={follow} pathLength={path.length} />
         <FitPathBounds path={path} enabled={!follow} />
-        {solidLines.map((line, i) => (
+        {solidLines.map((line, index) => (
           <Polyline
-            key={`s${i}`}
+            key={`solid-${index}`}
             positions={line}
             pathOptions={{ color: "#18181b", weight: 5, opacity: 0.9 }}
           />
         ))}
-        {gapLines.map((line, i) => (
+        {gapLines.map((line, index) => (
           <Polyline
-            key={`g${i}`}
+            key={`gap-${index}`}
             positions={line}
-            pathOptions={{ color: "#a1a1aa", weight: 3, opacity: 0.8, dashArray: "6 8" }}
+            pathOptions={{
+              color: "#a1a1aa",
+              weight: 3,
+              opacity: 0.8,
+              dashArray: "6 8",
+            }}
           />
         ))}
         {position ? (
