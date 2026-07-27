@@ -61,7 +61,7 @@ export type PathSegments = { solidLines: LatLng[][]; gapLines: LatLng[][] };
 /**
  * GPS 경로를 지도 렌더링용 실선(연속 구간)·점선(끊긴 구간)으로 분리한다.
  * 경로 포인트엔 시각이 없어 거리 점프 휴리스틱을 쓴다(백그라운드 추적 끊김 대응).
- * Kakao/Leaflet 지도 컴포넌트가 공용으로 사용한다.
+ * Kakao/Mapbox 지도 컴포넌트가 공용으로 사용한다.
  */
 export function splitPathAtGaps(
   path: LatLng[],

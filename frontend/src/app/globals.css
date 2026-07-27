@@ -36,13 +36,6 @@ textarea,
   user-select: none;
 }
 
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  background: #e4e4e7;
-  z-index: 0;
-}
-
 @keyframes nav-progress-indeterminate {
   0% {
     transform: translateX(-100%);

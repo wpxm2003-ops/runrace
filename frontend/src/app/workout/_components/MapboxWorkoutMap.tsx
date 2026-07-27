@@ -7,7 +7,6 @@ import mapboxgl, {
   type GeoJSONSource,
 } from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";
-import LeafletWorkoutMap from "./LeafletWorkoutMap";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -262,11 +261,6 @@ export default function MapboxWorkoutMap({
     map.fitBounds(bounds, { padding: 36, duration: 0 });
     map.resize();
   }, [boundsKey, follow, path]);
-
-  if (!token) {
-    // TODO: Mapbox 운영 토큰 설정이 완전히 끝나면 Leaflet 폴백과 관련 의존성을 제거한다.
-    return <LeafletWorkoutMap path={path} position={position} follow={follow} />;
-  }
 
   return <div ref={containerRef} className="absolute inset-0 z-0 bg-zinc-200" />;
 }
