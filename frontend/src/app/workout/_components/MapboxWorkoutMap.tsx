@@ -12,6 +12,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 const DEFAULT_CENTER: [number, number] = [126.978, 37.5665];
 const MAP_STYLE = "mapbox://styles/mapbox/streets-v12";
+/** 카카오 지도 level 3과 비슷한 배율. */
+const DEFAULT_ZOOM = 16;
 
 const SOURCE_IDS = {
   route: "workout-route",
@@ -195,7 +197,7 @@ export default function MapboxWorkoutMap({
       container: containerRef.current,
       style: MAP_STYLE,
       center: initialCenter,
-      zoom: 17,
+      zoom: DEFAULT_ZOOM,
       attributionControl: true,
     });
     mapRef.current = map;
@@ -205,7 +207,7 @@ export default function MapboxWorkoutMap({
       addMapData(map, latestDataRef.current);
       const viewport = latestViewportRef.current;
       if (viewport.follow && viewport.position) {
-        map.jumpTo({ center: coordinates(viewport.position), zoom: 17 });
+        map.jumpTo({ center: coordinates(viewport.position), zoom: DEFAULT_ZOOM });
       } else if (viewport.path.length >= 2) {
         const bounds = viewport.path.reduce(
           (nextBounds, point) => nextBounds.extend(coordinates(point)),
@@ -244,7 +246,7 @@ export default function MapboxWorkoutMap({
     if (follow) {
       map.easeTo({ center: coordinates(position), duration: 350 });
     } else if (path.length < 2) {
-      map.jumpTo({ center: coordinates(position), zoom: 17 });
+      map.jumpTo({ center: coordinates(position), zoom: DEFAULT_ZOOM });
       map.resize();
     }
   }, [position, follow, path.length]);
