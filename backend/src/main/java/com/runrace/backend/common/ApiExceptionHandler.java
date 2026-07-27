@@ -36,12 +36,22 @@ public class ApiExceptionHandler {
 
   public record ApiError(String error, String requestId) {}
 
-  /** 정상적인 비즈니스 플로우로 예상되는 에러 코드 — error_log 수집 제외. */
-  private static final Set<String> EXPECTED_CODES = Set.of("nudge_daily_limit");
+  /**
+   * error_log 수집 대상인 4xx 코드(opt-in). 기본은 비어 있다.
+   *
+   * <p>4xx는 서버가 규칙대로 거절한 정상 플로우라(권한 없음·중복·정원 초과·쿨다운 등) 고칠 대상이
+   * 아니어서 수집하지 않는다. 특정 코드를 한시적으로 관찰해야 할 때만 여기에 추가한다
+   * (예: 관리자 API 탐색 시도 감시).
+   */
+  private static final Set<String> WATCHED_CODES = Set.of();
 
+  /**
+   * 서버 결함(5xx)만 error_log에 남긴다. 4xx는 WATCHED_CODES에 명시한 것만 예외적으로 수집한다
+   * — 코드가 100개를 넘어 제외 목록을 유지하는 방식은 새 코드가 생길 때마다 누락된다.
+   */
   @ExceptionHandler(ApiException.class)
   public ResponseEntity<ApiError> handleApiException(ApiException e, HttpServletRequest request) {
-    if (!EXPECTED_CODES.contains(e.code())) {
+    if (e.status().is5xxServerError() || WATCHED_CODES.contains(e.code())) {
       UUID userId = AuthContext.getOptional().map(AuthPrincipal::userId).orElse(null);
       errorLogService.recordApiError(
           e.code(),

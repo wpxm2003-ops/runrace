@@ -1,6 +1,8 @@
 package com.runrace.backend.auth;
 
+import com.google.firebase.ErrorCode;
 import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.AuthErrorCode;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
@@ -14,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -95,12 +98,18 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       }
       filterChain.doFilter(request, response);
     } catch (FirebaseAuthException e) {
-      log.warn("Firebase token verification failed: {}", e.getMessage());
-      errorLogService.recordServiceError(
-          "firebase",
-          e.getErrorCode() != null ? e.getErrorCode().name() : "UNKNOWN",
-          e.getMessage(), null,
-          request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
+      // 만료·폐기·형식 오류 토큰은 세션이 오래된 정상 상황(재로그인하면 해결)이라 수집하지 않는다.
+      // 구글 인증서 조회 실패 등 인프라 장애만 남긴다 — 그것만 우리가 조치할 수 있는 문제다.
+      if (isInfraFailure(e)) {
+        log.warn("Firebase token verification failed: {}", e.getMessage());
+        errorLogService.recordServiceError(
+            "firebase",
+            e.getErrorCode() != null ? e.getErrorCode().name() : "UNKNOWN",
+            e.getMessage(), null,
+            request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
+      } else {
+        log.debug("Firebase token rejected: {}", e.getMessage());
+      }
       unauthorized(response, "invalid_token");
     } catch (ServletException | IOException e) {
       throw e;
@@ -201,6 +210,20 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
   private boolean isClientErrorReport(HttpServletRequest request) {
     return "POST".equalsIgnoreCase(request.getMethod())
         && "/api/client-errors".equals(request.getRequestURI());
+  }
+
+  /** 우리가 조치할 수 있는 인프라 장애로 볼 Firebase 오류 등급. 토큰 자체 문제는 여기 없다. */
+  private static final Set<ErrorCode> INFRA_ERROR_CODES = Set.of(
+      ErrorCode.INTERNAL, ErrorCode.UNAVAILABLE, ErrorCode.DEADLINE_EXCEEDED, ErrorCode.UNKNOWN);
+
+  /**
+   * 인증 실패가 인프라 장애인지(= error_log에 남길 가치가 있는지).
+   * 만료·폐기·형식 오류 토큰은 false — 유저가 재로그인하면 끝나는 정상 흐름이다.
+   */
+  private static boolean isInfraFailure(FirebaseAuthException e) {
+    if (e.getAuthErrorCode() == AuthErrorCode.CERTIFICATE_FETCH_FAILED) return true;
+    ErrorCode code = e.getErrorCode();
+    return code != null && INFRA_ERROR_CODES.contains(code);
   }
 
   private void unauthorized(HttpServletResponse response, String code) throws IOException {
