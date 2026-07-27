@@ -94,6 +94,10 @@ export default function Home() {
             </div>
             <div className="mt-1 text-sm text-zinc-600">{t.nsm_home_desc}</div>
           </Link>
+          <Link href="/tools" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
+            <div className="text-base font-semibold">{t.home_tools_card_title}</div>
+            <div className="mt-1 text-sm text-zinc-600">{t.home_tools_card_desc}</div>
+          </Link>
           <Link href="/guides" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
             <div className="text-base font-semibold">{t.guide_list_title}</div>
             <div className="mt-1 text-sm text-zinc-600">{t.home_guide_card_desc}</div>
