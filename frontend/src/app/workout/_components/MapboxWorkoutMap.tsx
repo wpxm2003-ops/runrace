@@ -262,5 +262,11 @@ export default function MapboxWorkoutMap({
     map.resize();
   }, [boundsKey, follow, path]);
 
-  return <div ref={containerRef} className="absolute inset-0 z-0 bg-zinc-200" />;
+  // mapbox-gl이 컨테이너에 .mapboxgl-map(position: relative)을 덧씌워 Tailwind의
+  // absolute와 충돌하므로, 위치는 바깥 래퍼가 잡고 컨테이너는 크기만 채운다.
+  return (
+    <div className="absolute inset-0 z-0">
+      <div ref={containerRef} className="h-full w-full bg-zinc-200" />
+    </div>
+  );
 }
