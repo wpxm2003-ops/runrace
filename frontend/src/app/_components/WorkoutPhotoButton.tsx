@@ -7,11 +7,17 @@ import { Button } from "@/app/_components/ui/Button";
 import { updateWorkoutImage, uploadImage, patchWorkoutDetailImage, mapErrorMessage } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
+import {
+  WorkoutPhotoEditor,
+  readAsDataURL,
+  type WorkoutStatsData,
+} from "@/app/workouts/_components/PhotoStatsCard";
 
 export function WorkoutPhotoButton({
   workoutId,
   imageUrl,
   user,
+  statsData,
   className = "",
   children,
   ariaLabel,
@@ -19,6 +25,8 @@ export function WorkoutPhotoButton({
   workoutId: number;
   imageUrl: string | null;
   user: User;
+  /** 넘기면 사진 선택 후 기록 삽입 에디터를 연다(운동 상세). 없으면 즉시 업로드(기존 동작). */
+  statsData?: WorkoutStatsData;
   className?: string;
   children?: ReactNode;
   ariaLabel?: string;
@@ -28,6 +36,9 @@ export function WorkoutPhotoButton({
   const [busy, setBusy] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(imageUrl);
+  const [editing, setEditing] = useState<
+    { file: File; dataUrl: string; width: number; height: number } | null
+  >(null);
 
   useNativeBack(() => setViewerOpen(false), viewerOpen);
 
@@ -46,6 +57,23 @@ export function WorkoutPhotoButton({
     e.target.value = "";
     if (!file) return;
     setViewerOpen(false);
+
+    // 운동 상세: 에디터를 열어 기록 삽입 여부를 고르게 한다. 업로드는 에디터의 [등록]이 수행.
+    if (statsData) {
+      try {
+        const dataUrl = await readAsDataURL(file);
+        // 디코드 가능한지 미리 확인 — 깨진/미지원 포맷이면 에디터를 열지 않는다.
+        // 원본 크기도 여기서 확보한다(캔버스가 사진 비율을 그대로 따라가므로).
+        const image = new Image();
+        image.src = dataUrl;
+        await image.decode();
+        setEditing({ file, dataUrl, width: image.naturalWidth, height: image.naturalHeight });
+      } catch {
+        toast.error(t.photo_card_load_error);
+      }
+      return;
+    }
+
     setBusy(true);
     try {
       const newUrl = await uploadImage(file, user);
@@ -98,6 +126,20 @@ export function WorkoutPhotoButton({
       >
         {children ?? buttonLabel}
       </Button>
+
+      {editing && statsData ? (
+        <WorkoutPhotoEditor
+          file={editing.file}
+          dataUrl={editing.dataUrl}
+          imageWidth={editing.width}
+          imageHeight={editing.height}
+          workoutId={workoutId}
+          user={user}
+          workout={statsData}
+          onUploaded={(newUrl) => setUrl(newUrl)}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
 
       {viewerOpen && url ? (
         <div

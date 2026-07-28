@@ -937,6 +937,18 @@ export const translations = {
     feedback_err_upload: "사진을 업로드하지 못했어요. 다시 시도해 주세요.",
     feedback_err_submit: "의견을 전송하지 못했어요. 잠시 후 다시 시도해 주세요.",
 
+    // ── 사진 기록 카드(photo card) ─────────────
+    photo_card_insert_stats: "기록 삽입",
+    photo_card_show_route: "경로 표시",
+    photo_card_hint: "드래그로 위치를, 두 손가락으로 크기를 조절해요",
+    photo_card_size: "크기",
+    photo_card_download: "다운로드",
+    photo_card_busy: "만드는 중...",
+    photo_card_error: "이미지를 만들지 못했어요. 다시 시도해 주세요.",
+    photo_card_load_error: "사진을 불러오지 못했어요. 다른 사진으로 시도해 주세요.",
+    photo_card_layout_vertical: "세로",
+    photo_card_layout_horizontal: "가로",
+
     // ── 도구(계산기) ──────────────────────
     tools_title: "러닝 계산기",
     tools_desc: "로그인 없이 바로 쓰는 러닝 도구 모음이에요.",
@@ -1930,6 +1942,18 @@ export const translations = {
     feedback_err_image_size: "Each photo must be 5MB or smaller.",
     feedback_err_upload: "Could not upload the photo. Please try again.",
     feedback_err_submit: "Could not send your feedback. Please try again shortly.",
+
+    // ── 사진 기록 카드(photo card) ─────────────
+    photo_card_insert_stats: "Add stats",
+    photo_card_show_route: "Show route",
+    photo_card_hint: "Drag to move · pinch to resize",
+    photo_card_size: "Size",
+    photo_card_download: "Download",
+    photo_card_busy: "Creating...",
+    photo_card_error: "Couldn't create the image. Please try again.",
+    photo_card_load_error: "Couldn't load that photo. Try another one.",
+    photo_card_layout_vertical: "Vertical",
+    photo_card_layout_horizontal: "Horizontal",
 
     // ── 도구(계산기) ──────────────────────
     tools_title: "Running Calculators",
@@ -2925,6 +2949,18 @@ export const translations = {
     feedback_err_upload: "No se pudo subir la foto. Inténtalo de nuevo.",
     feedback_err_submit: "No se pudo enviar tu opinión. Inténtalo de nuevo más tarde.",
 
+    // ── 사진 기록 카드(photo card) ─────────────
+    photo_card_insert_stats: "Añadir datos",
+    photo_card_show_route: "Mostrar ruta",
+    photo_card_hint: "Arrastra para mover · pellizca para el tamaño",
+    photo_card_size: "Tamaño",
+    photo_card_download: "Descargar",
+    photo_card_busy: "Creando...",
+    photo_card_error: "No se pudo crear la imagen. Inténtalo de nuevo.",
+    photo_card_load_error: "No se pudo cargar la foto. Prueba con otra.",
+    photo_card_layout_vertical: "Vertical",
+    photo_card_layout_horizontal: "Horizontal",
+
     // ── Herramientas (calculadoras) ───────
     tools_title: "Calculadoras de running",
     tools_desc: "Herramientas de running gratis, sin iniciar sesión.",
@@ -3919,6 +3955,18 @@ export const translations = {
     feedback_err_upload: "写真をアップロードできませんでした。もう一度お試しください。",
     feedback_err_submit: "送信できませんでした。しばらくしてからもう一度お試しください。",
 
+    // ── 사진 기록 카드(photo card) ─────────────
+    photo_card_insert_stats: "記録を載せる",
+    photo_card_show_route: "ルート表示",
+    photo_card_hint: "ドラッグで移動 · ピンチでサイズ調整",
+    photo_card_size: "サイズ",
+    photo_card_download: "ダウンロード",
+    photo_card_busy: "作成中...",
+    photo_card_error: "画像を作成できませんでした。もう一度お試しください。",
+    photo_card_load_error: "写真を読み込めませんでした。別の写真でお試しください。",
+    photo_card_layout_vertical: "縦",
+    photo_card_layout_horizontal: "横",
+
     // ── ツール(計算機) ────────────────────
     tools_title: "ランニング計算ツール",
     tools_desc: "ログイン不要で使えるランニングツール集です。",
@@ -4911,6 +4959,18 @@ export const translations = {
     feedback_err_image_size: "每张照片必须不超过5MB。",
     feedback_err_upload: "照片上传失败，请重试。",
     feedback_err_submit: "意见发送失败，请稍后重试。",
+
+    // ── 사진 기록 카드(photo card) ─────────────
+    photo_card_insert_stats: "加入记录",
+    photo_card_show_route: "显示路线",
+    photo_card_hint: "拖动调整位置 · 双指缩放大小",
+    photo_card_size: "大小",
+    photo_card_download: "下载",
+    photo_card_busy: "生成中...",
+    photo_card_error: "无法生成图片，请重试。",
+    photo_card_load_error: "无法加载照片，请换一张试试。",
+    photo_card_layout_vertical: "竖排",
+    photo_card_layout_horizontal: "横排",
 
     // ── 工具(计算器) ──────────────────────
     tools_title: "跑步计算工具",

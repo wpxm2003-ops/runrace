@@ -93,6 +93,12 @@ function WorkoutActions({
             workoutId={workoutId}
             imageUrl={detail.imageUrl ?? null}
             user={user}
+            statsData={{
+              distanceM: detail.distanceM,
+              durationSec: detail.durationSec,
+              workoutType: detail.workoutType,
+              path: detail.path,
+            }}
             className={ACTION_ICON_CLASS}
             ariaLabel={detail.imageUrl ? t.photo_view_btn : t.photo_save_btn}
           >

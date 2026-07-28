@@ -16,34 +16,51 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+export type CaptureSize = { width: number; height: number };
+
 /**
- * 카드 DOM을 PNG로 캡처해 저장한다.
- * - 네이티브: 캐시에 쓰고 OS 공유 시트로 연결. 사용자가 취소하면 'aborted'.
- * - 웹: 즉시 다운로드.
- * 실패(캡처/쓰기 오류)는 throw하여 호출부가 처리한다(AbortError는 호출부가 무시).
- * @param fileNamePrefix 확장자·타임스탬프 제외한 파일명 접두어(예: "runrace", "runrace-recap")
+ * 카드 DOM을 이미지 Blob으로 캡처한다. mime "image/jpeg"는 사진 배경 카드용
+ * (PNG 대비 수 배 작아 S3 업로드에 적합), 기본 PNG는 그래픽 카드용.
  */
-export async function captureAndSaveCard(
+export async function captureCardBlob(
   node: HTMLElement,
-  fileNamePrefix: string,
+  size: CaptureSize = { width: CARD_W, height: CARD_H },
   backgroundColor = "#0B0C10",
-): Promise<"saved" | "aborted"> {
-  const { toBlob } = await import("html-to-image");
-  const blob = await toBlob(node, {
-    width: CARD_W,
-    height: CARD_H,
+  mime: "image/png" | "image/jpeg" = "image/png",
+  quality = 0.92,
+): Promise<Blob> {
+  const { toCanvas } = await import("html-to-image");
+  const canvas = await toCanvas(node, {
+    width: size.width,
+    height: size.height,
     pixelRatio: 1,
     cacheBust: true,
     backgroundColor,
   });
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, mime, quality),
+  );
   if (!blob) throw new Error("no blob");
+  return blob;
+}
 
+/**
+ * 이미지 Blob을 기기에 저장한다.
+ * - 네이티브: 캐시에 쓰고 OS 공유 시트로 연결. 사용자가 취소하면 'aborted'.
+ * - 웹: 즉시 다운로드.
+ * @param fileNamePrefix 확장자·타임스탬프 제외한 파일명 접두어(예: "runrace", "runrace-photo")
+ */
+export async function saveBlobLocally(
+  blob: Blob,
+  fileNamePrefix: string,
+  ext: ".png" | ".jpg" = ".png",
+): Promise<"saved" | "aborted"> {
   const { Capacitor } = await import("@capacitor/core");
   if (Capacitor.isNativePlatform()) {
     const base64 = await blobToBase64(blob);
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
     const written = await Filesystem.writeFile({
-      path: `${fileNamePrefix}-${Date.now()}.png`,
+      path: `${fileNamePrefix}-${Date.now()}${ext}`,
       data: base64,
       directory: Directory.Cache,
     });
@@ -58,11 +75,25 @@ export async function captureAndSaveCard(
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${fileNamePrefix}.png`;
+    a.download = `${fileNamePrefix}${ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
   }
   return "saved";
+}
+
+/**
+ * 카드 DOM을 PNG로 캡처해 저장한다(캡처+저장 일괄 — 그래픽 스토리 카드용 기존 경로).
+ * 실패(캡처/쓰기 오류)는 throw하여 호출부가 처리한다(AbortError는 호출부가 무시).
+ */
+export async function captureAndSaveCard(
+  node: HTMLElement,
+  fileNamePrefix: string,
+  backgroundColor = "#0B0C10",
+  size: CaptureSize = { width: CARD_W, height: CARD_H },
+): Promise<"saved" | "aborted"> {
+  const blob = await captureCardBlob(node, size, backgroundColor, "image/png");
+  return saveBlobLocally(blob, fileNamePrefix, ".png");
 }
