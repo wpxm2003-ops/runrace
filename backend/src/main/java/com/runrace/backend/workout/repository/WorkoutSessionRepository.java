@@ -162,6 +162,39 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
       """, nativeQuery = true)
   int maxStreakDaysForUser(@Param("userId") UUID userId);
 
+  /**
+   * 성과 판정용 — [from, ∞) 구간에서 이 운동(excludeId 제외)보다 거리가 크거나 같은 다른 운동 수.
+   * 0이면 그 구간의 최장 거리다(역대/올해/30일/이번 주는 from만 바꿔 재사용). from에 아주 과거를
+   * 넘기면 역대 기준이 된다.
+   */
+  @Query("select count(w) from WorkoutSession w where w.user.id = :userId "
+      + "and w.id <> :excludeId and w.distanceM >= :distanceM and w.startedAt >= :from")
+  long countRunsAtLeastDistanceSince(
+      @Param("userId") UUID userId,
+      @Param("excludeId") Long excludeId,
+      @Param("distanceM") int distanceM,
+      @Param("from") OffsetDateTime from);
+
+  /** 특정 시점 이후 운동 수(오늘 몇 회째·이번 주 몇 회째 판정용). */
+  long countByUserIdAndStartedAtGreaterThanEqual(UUID userId, OffsetDateTime from);
+
+  /**
+   * 현재 연속 운동일 수(KST) — 가장 최근 운동일을 포함하는 연속 구간의 길이.
+   * 방금 저장한 운동이 오늘이면 "오늘까지 이어진 연속일"이 된다. 기록이 없으면 0.
+   */
+  @Query(value = """
+      with dated as (
+        select distinct (started_at at time zone 'Asia/Seoul')::date as d
+        from workout_session where user_id = :userId
+      ),
+      grp as (
+        select d, d - (row_number() over (order by d))::int as g from dated
+      )
+      select coalesce(count(*), 0)::int from grp
+      where g = (select g2.g from grp g2 order by g2.d desc limit 1)
+      """, nativeQuery = true)
+  int currentStreakDaysForUser(@Param("userId") UUID userId);
+
   /** 크루 대항전 채점 — GPS 러닝만 [from, to) 합산(실내런 소급 입력 조작 방지). */
   @Query("select w.user.id as userId, sum(w.distanceM) as distanceM, count(w) as runs "
       + "from WorkoutSession w where w.user.id in :userIds "

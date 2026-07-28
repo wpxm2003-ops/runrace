@@ -8,7 +8,9 @@ import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
+import com.runrace.backend.workout.dto.Achievement;
 import com.runrace.backend.workout.dto.PersonalBestRow;
+import com.runrace.backend.workout.service.AchievementService;
 import com.runrace.backend.workout.service.PersonalBestService;
 import com.runrace.backend.workout.dto.UpdateWorkoutImageRequest;
 import com.runrace.backend.workout.dto.UpdateWorkoutMemoRequest;
@@ -42,6 +44,7 @@ public class WorkoutController {
 
   private final WorkoutService workoutService;
   private final PersonalBestService personalBestService;
+  private final AchievementService achievementService;
   private final ShoeService shoeService;
 
   @PostMapping
@@ -64,7 +67,8 @@ public class WorkoutController {
     var pb = body.bestSegments() != null
         ? personalBestService.evaluate(principal.userId(), session.getId(), body.bestSegments()).orElse(null)
         : null;
-    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), pb));
+    List<Achievement> achievements = achievementService.evaluate(principal.userId(), session);
+    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), pb, achievements));
   }
 
   /** 실내러닝 등록 — path 없이 거리·시간만 입력. */
@@ -73,7 +77,8 @@ public class WorkoutController {
       AuthPrincipal principal, @RequestBody CreateIndoorRunRequest body) {
     WorkoutSession session = workoutService.createIndoor(
         principal, body.distanceM(), body.durationSec(), body.startedAt(), body.imageUrl());
-    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null));
+    List<Achievement> achievements = achievementService.evaluate(principal.userId(), session);
+    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, achievements));
   }
 
   /** 실내러닝 승인/거부 투표. */

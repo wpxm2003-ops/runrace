@@ -25,7 +25,7 @@ import { formatDistance } from "@/lib/units";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
 import { computeBestSegments } from "@/lib/workoutTrack";
-import type { PersonalBest } from "@/lib/api/types";
+import type { Achievement, PersonalBest } from "@/lib/api/types";
 import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
 import { RunLockOverlay } from "@/app/workout/_components/RunLockOverlay";
 import { GhostPicker, type GhostSelection } from "@/app/workout/_components/GhostPicker";
@@ -55,6 +55,7 @@ type CelebrationState = {
   recordId: number;
   snapshot: WorkoutFinishSnapshot;
   personalBest: PersonalBest | null;
+  achievements: Achievement[];
   ghostResult: GhostRaceResult | null;
   ghostLabel: string | null;
   showNsmCta: boolean;
@@ -260,6 +261,7 @@ export default function WorkoutPage() {
           recordId: res.id,
           snapshot,
           personalBest: res.personalBest ?? null,
+          achievements: res.achievements ?? [],
           ghostResult,
           ghostLabel,
           showNsmCta,
@@ -364,6 +366,7 @@ export default function WorkoutPage() {
           durationSec={celebration.snapshot.durationSec}
           distanceM={celebration.snapshot.distanceM}
           personalBest={celebration.personalBest}
+          achievements={celebration.achievements}
           ghostResult={celebration.ghostResult}
           ghostLabel={celebration.ghostLabel}
           showNsmCta={celebration.showNsmCta}

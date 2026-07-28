@@ -586,9 +586,21 @@ export type NsmBlockReport = {
   subTMinutes: number;
 };
 
+/**
+ * 운동 저장 직후 서버가 판정한 "오늘의 성과" 한 건.
+ * 문구는 code + value로 프론트가 로컬라이즈한다(서버는 판정만).
+ * value/value2의 의미는 code마다 다르다 — 아래 achievementText 참고.
+ */
+export type Achievement = {
+  code: string;
+  value: number | null;
+  value2: number | null;
+};
+
 export type CreateWorkoutResponse = {
   id: number;
   personalBest: PersonalBest | null;
+  achievements?: Achievement[];
 };
 
 /** 공개 공유 페이지용 운동 데이터 (인증 불필요). */

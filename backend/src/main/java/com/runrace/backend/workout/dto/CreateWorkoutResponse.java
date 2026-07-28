@@ -1,3 +1,6 @@
 package com.runrace.backend.workout.dto;
 
-public record CreateWorkoutResponse(Long id, PersonalBestResult personalBest) {}
+import java.util.List;
+
+public record CreateWorkoutResponse(
+    Long id, PersonalBestResult personalBest, List<Achievement> achievements) {}

@@ -8,7 +8,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { markNsmCtaShown } from "@/lib/nsmCta";
 import { track } from "@/lib/analytics";
-import type { PersonalBest } from "@/lib/api/types";
+import type { Achievement, PersonalBest } from "@/lib/api/types";
+import { achievementView, type AchievementTone } from "@/lib/achievements";
 import type { GhostRaceResult } from "@/lib/ghostRace";
 
 const CONFETTI_COLORS = ["#f59e0b", "#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899"] as const;
@@ -19,6 +20,8 @@ type WorkoutCelebrationProps = {
   durationSec: number;
   distanceM: number;
   personalBest?: PersonalBest | null;
+  /** 서버가 판정한 오늘의 성과(최대 3개). 규칙상 최소 하나는 온다. */
+  achievements?: Achievement[];
   ghostResult?: GhostRaceResult | null;
   ghostLabel?: string | null;
   /** 고스트 패배 시 NSM 훈련 제안 — 게이트(접전·연패·7일 캡·플랜 없음)는 호출부에서 통과된 값. */
@@ -39,6 +42,7 @@ export function WorkoutCelebration({
   durationSec,
   distanceM,
   personalBest = null,
+  achievements = [],
   ghostResult = null,
   ghostLabel = null,
   showNsmCta = false,
@@ -161,6 +165,36 @@ export function WorkoutCelebration({
               {daysLabel ? (
                 <p className="mt-0.5 text-xs text-amber-500">{daysLabel}</p>
               ) : null}
+            </div>
+          );
+        })()}
+
+        {(() => {
+          const views = achievements
+            .map((a) => achievementView(a, t, unit))
+            .filter((v): v is NonNullable<typeof v> => v != null);
+          if (views.length === 0) return null;
+          const toneClass: Record<AchievementTone, string> = {
+            gold: "border-amber-200 bg-amber-50 text-amber-800",
+            crew: "border-sky-200 bg-sky-50 text-sky-800",
+            plain: "border-zinc-200 bg-zinc-50 text-zinc-700",
+          };
+          return (
+            <div className="mt-3">
+              <div className="mb-1.5 text-left text-xs font-medium text-zinc-500">
+                {t.ach_heading}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {views.map((v, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left ${toneClass[v.tone]}`}
+                  >
+                    <span className="shrink-0 text-base">{v.icon}</span>
+                    <span className="text-sm font-medium">{v.text}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           );
         })()}
