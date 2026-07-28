@@ -78,14 +78,34 @@
 
 ## 4. 남은 후보 (우선순위순, 대부분 낮음)
 
-> 3차(§7)에서 재확인함 — 아래 5건은 여전히 유효하고 전부 미착수다. 새로 발견된 후보는 §7에 있다.
+> 3차(§7) 이후 갱신. **가치가 높다고 판단되는 항목은 남아 있지 않다** — 아래는 전부 "필요해지면" 급이다.
+> 착수 전에 §3(재조사 금지 목록)을 먼저 읽을 것.
 
-1. **시간 포맷터 표기 통일**(3차 신규, 유일하게 제품 결정이 필요한 건) — §7의 "미해결로 남긴 것" 참조.
-2. **JPQL 텍스트블록 통일** — §3 참조, 하려면 각 쿼리 내용을 신중히 옮겨적고 mvnw test로 즉시 검증 필요.
-3. **KakaoAuthService 테스트 가능하게 리팩토링** — `HttpClient`를 생성자 주입으로 바꾸는 선행 작업 필요(사용자 승인 후 진행 권장).
+**~~시간 포맷터 표기 통일~~ — 해소됨(`f8813da`).** 통일은 불가로 결론:
+`useWorkoutSession.elapsedLabel`이 1초마다 갱신되는 라이브 타이머라 무패딩이면 `9:59→10:00`에서 폭이 바뀌어 레이아웃이 튄다.
+대신 계약을 이름으로 드러냈다 — `formatClock`(시계·고정폭) / `formatHms`(기록·무패딩).
+겸사겸사 배분 오류 1건(추격 격차가 화면마다 `03:00`/`3:00`으로 갈리던 것)을 무패딩으로 통일.
+
+1. **JPQL 텍스트블록 통일** — §3 참조, 하려면 각 쿼리 내용을 신중히 옮겨적고 mvnw test로 즉시 검증 필요.
+2. **KakaoAuthService 테스트 가능하게 리팩토링** — `HttpClient`를 생성자 주입으로 바꾸는 선행 작업 필요(사용자 승인 후 진행 권장).
 4. **backdrop+fixed 패널 3종 BottomSheet 이관** — §3 참조, 시각 재설계 필요라 우선순위 낮음.
-5. **`lib/api/hooks.ts` 도메인별 분리** — 파일 정리 수준, 실익 낮음(3차에서 622줄로 확인, 판단 유지).
+5. **`lib/api/hooks.ts` 도메인별 분리** — 파일 정리 수준, 실익 낮음(612줄, 판단 유지).
 6. `Field/TextInput`을 라벨+힌트+에러까지 감싸는 `Field` 컴포넌트로 확장 — 콜사이트마다 라벨 위치·힌트 유무가 달라 지금은 leaf 프리미티브(TextInput/TextArea)만 추출함. 필요해지면 재검토.
+
+### 오케스트레이터 작업 중 발견한 것 — 처리 완료
+
+- ✅ **`createRoom` 활성 방 한도 TOCTOU** — 활성 조건이 `is_ended=false AND (end_at IS NULL OR end_at > now)`로
+  **시간 의존이라 유니크 제약·부분 인덱스로는 막을 수 없다**(부분 인덱스는 `now()` 같은 비-immutable 함수를 못 쓴다).
+  병렬 요청이 전부 한도 미달 상태를 읽고 통과해 한도가 사실상 무력화되는 스팸 벡터였다.
+  → `AppUserRepository.findByIdForUpdate`(신규, `@Lock(PESSIMISTIC_WRITE)`)로 생성자 행을 잠그고 센다.
+  같은 사용자의 동시 생성끼리만 대기하므로 정상 사용에는 경합이 없다. `ChallengeRepository.findByIdForUpdate` 선례를 따름.
+- ✅ **`IndoorApprovalService` self-invocation — 비이슈로 확인.** `@Transactional` 기본 전파가 `REQUIRED`라
+  내부 호출이든 프록시 경유든 결국 호출자 트랜잭션에 합류해 동작이 동일하다(양쪽 호출자 모두 `@Transactional`).
+  다만 **여기를 `REQUIRES_NEW`로 바꾸면 내부 호출 경로만 조용히 무시**하므로 그 함정을 javadoc에 명시했다.
+- ✅ **`CrewMatchService` nullable `startAt`/`endAt`** — 생성 경로는 `RaceRules.validateWindow`가 null을 막고 있어
+  **활성 버그는 아니었고 방어 공백**이었다. 다만 컬럼은 스키마상 nullable이고 `derivedStatus`는 조회 경로라
+  그런 행이 생기면 대항전 목록·상세가 통째로 500이 된다. 같은 파일의 `finalizeIfNeeded`·`memberDistances`는
+  이미 가드가 있어 일관성도 깨져 있었다 → `derivedStatus`·`detectAndNotifyOvertake`에 가드 추가.
 
 ## 5. 백엔드 테스트 공백 — 처리 결과 (2차)
 

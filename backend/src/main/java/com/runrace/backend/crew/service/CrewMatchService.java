@@ -395,6 +395,8 @@ public class CrewMatchService {
     if (myRoster == null) return;
 
     CrewMatch match = myRoster.getMatch();
+    // start/end는 스키마상 nullable이다(create()의 validateWindow가 막지만 수기 삽입·과거 행 방어).
+    if (match.getStartAt() == null || match.getEndAt() == null) return;
     if (workoutEndedAt.isBefore(match.getStartAt()) || !workoutEndedAt.isBefore(match.getEndAt())) {
       return; // 이 운동은 대항전 채점 구간 밖 — memberDistances 집계에 반영되지 않는다.
     }
@@ -541,9 +543,14 @@ public class CrewMatchService {
     return switch (match.getStatus()) {
       case DECLINED -> "DECLINED";
       case PENDING -> isAlivePending(match, now) ? "PENDING" : "EXPIRED";
-      case ACCEPTED -> match.isEnded() || !now.isBefore(match.getEndAt())
-          ? "ENDED"
-          : (now.isBefore(match.getStartAt()) ? "SCHEDULED" : "IN_PROGRESS");
+      case ACCEPTED -> {
+        if (match.isEnded()) yield "ENDED";
+        // start/end는 스키마상 nullable이다. create()의 validateWindow가 null을 막지만,
+        // 수기 삽입·과거 행이 섞이면 여기서 NPE가 나 대항전 목록·상세가 통째로 500이 된다.
+        if (match.getStartAt() == null || match.getEndAt() == null) yield "IN_PROGRESS";
+        if (!now.isBefore(match.getEndAt())) yield "ENDED";
+        yield now.isBefore(match.getStartAt()) ? "SCHEDULED" : "IN_PROGRESS";
+      }
     };
   }
 

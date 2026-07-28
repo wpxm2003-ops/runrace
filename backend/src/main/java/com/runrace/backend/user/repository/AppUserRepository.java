@@ -2,11 +2,13 @@ package com.runrace.backend.user.repository;
 
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.domain.AppUser;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,15 @@ public interface AppUserRepository
 
   @Query("select u from AppUser u where u.withdrawnAt is null order by u.createdAt desc")
   List<AppUser> findRecentActiveUsers(org.springframework.data.domain.Pageable pageable);
+
+  /**
+   * 사용자 행을 잠그고 조회 — "이 사용자의 X를 세어보고 한도 미만이면 하나 더 만든다" 류의
+   * 조회~저장 사이가 벌어지는 처리를 직렬화하는 용도. 같은 사용자의 동시 요청끼리만 대기하므로
+   * 서로 다른 사용자 사이에는 경합이 없다.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select u from AppUser u where u.id = :id")
+  Optional<AppUser> findByIdForUpdate(@Param("id") UUID id);
 
   Optional<AppUser> findByFirebaseUid(String firebaseUid);
 

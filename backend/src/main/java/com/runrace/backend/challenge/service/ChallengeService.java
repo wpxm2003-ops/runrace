@@ -96,7 +96,11 @@ public class ChallengeService {
     Long crewId = crewOnly ? requireOwnCrewId(principal) : null;
 
     // 방장당 활성 방 개수 제한
-    AppUser creator = appUserRepository.getRequired(principal.userId());
+    // 생성자 행을 잠그고 센다 — 잠그지 않으면 병렬 요청이 전부 한도 미달 상태를 읽고 통과해
+    // 한도가 무력화된다(활성 조건이 시간 의존이라 DB 제약으로는 막을 수 없다).
+    // 같은 사용자의 동시 생성끼리만 대기하므로 정상 사용에는 영향이 없다.
+    AppUser creator = appUserRepository.findByIdForUpdate(principal.userId())
+        .orElseThrow(() -> ApiException.notFound("user_not_found"));
     ensureActiveRoomLimit(creator);
 
     // 방 저장
@@ -163,23 +167,16 @@ public class ChallengeService {
       int maxMembers,
       OffsetDateTime startAt,
       OffsetDateTime endAt) {
+    // 입력 검증
     validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
 
+    // 방 저장 — 스케줄러가 만드는 공개 레이스라 언어는 ko 고정, 내기·크루 귀속 없음.
+    // (방장 활성 방 한도는 적용하지 않는다 — 사용자가 만든 방이 아니다.)
     AppUser creator = appUserRepository.getRequired(creatorId);
-    Challenge challenge = Challenge.builder()
-        .creator(creator)
-        .createdAt(OffsetDateTime.now())
-        .langCd(SupportedLanguages.normalizeOrDefault("ko"))
-        .title(title.trim())
-        .goalKm(goalKm.setScale(3, RoundingMode.HALF_UP))
-        .maxMembers(maxMembers)
-        .startAt(startAt)
-        .endAt(endAt)
-        .stake(null)
-        .crewId(null) // 공개 레이스
-        .build();
-    Challenge saved = challengeRepository.save(challenge);
+    Challenge saved =
+        saveRoom(creator, title, goalKm, maxMembers, startAt, endAt, "ko", null, null);
 
+    // 방장을 첫 참가자로 등록
     challengeMemberRepository.save(newMember(saved, creator));
 
     return saved;
