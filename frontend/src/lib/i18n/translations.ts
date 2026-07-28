@@ -695,7 +695,7 @@ export const translations = {
     pb_months_since: (n: number) => `${n}개월 만에 경신`,
     pb_years_since: (n: number) => `${n}년 만에 경신`,
     my_pb_heading: "개인 최고 기록",
-    my_pb_hint: "앱 운동하기(GPS)로 측정한 러닝의 가장 빠른 구간이 기준이에요. 실내러닝은 빠져요.",
+    my_pb_hint: "앱 운동하기(GPS)로 측정한 러닝의 가장 빠른 구간이 기준이에요.",
     // ── 오늘의 성과 (ko) ─────────────────────
     ach_heading: "오늘의 성과",
     ach_first_run: "첫 러닝 완료!",
@@ -1747,7 +1747,7 @@ export const translations = {
     pb_months_since: (n: number) => `After ${n} months`,
     pb_years_since: (n: number) => `After ${n} years`,
     my_pb_heading: "Personal bests",
-    my_pb_hint: "Based on the fastest segment of runs tracked with GPS in the app. Indoor runs aren't included.",
+    my_pb_hint: "Based on the fastest segment of runs tracked with GPS in the app.",
     // ── Today's results ─────────────────────
     ach_heading: "Today's results",
     ach_first_run: "First run complete!",
@@ -2799,7 +2799,7 @@ export const translations = {
     pb_months_since: (n: number) => `Tras ${n} meses`,
     pb_years_since: (n: number) => `Tras ${n} años`,
     my_pb_heading: "Récords personales",
-    my_pb_hint: "Según el tramo más rápido de las carreras registradas con GPS en la app. No incluye carreras indoor.",
+    my_pb_hint: "Según el tramo más rápido de las carreras registradas con GPS en la app.",
     // ── Logros de hoy ─────────────────────
     ach_heading: "Logros de hoy",
     ach_first_run: "¡Primera carrera completada!",
@@ -3851,7 +3851,7 @@ export const translations = {
     pb_months_since: (n: number) => `${n}ヶ月ぶりに更新`,
     pb_years_since: (n: number) => `${n}年ぶりに更新`,
     my_pb_heading: "自己ベスト",
-    my_pb_hint: "アプリのGPS計測ランの最速区間が基準です。室内ランは含まれません。",
+    my_pb_hint: "アプリのGPS計測ランの最速区間が基準です。",
     // ── 今日の成果 ─────────────────────
     ach_heading: "今日の成果",
     ach_first_run: "初ランニング完了!",
@@ -4903,7 +4903,7 @@ export const translations = {
     pb_months_since: (n: number) => `时隔${n}个月刷新`,
     pb_years_since: (n: number) => `时隔${n}年刷新`,
     my_pb_heading: "个人最佳记录",
-    my_pb_hint: "以应用内GPS记录跑步的最快区间为准，不含室内跑步。",
+    my_pb_hint: "以应用内GPS记录跑步的最快区间为准。",
     // ── 今日成果 ─────────────────────
     ach_heading: "今日成果",
     ach_first_run: "完成首次跑步!",
