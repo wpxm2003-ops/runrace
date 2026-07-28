@@ -30,6 +30,7 @@ import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,8 @@ public class WorkoutService {
   private static final int MAX_DURATION_SEC = 36 * 3600; // 36h
   private static final int MAX_CALORIES = 100_000;
   private static final int MAX_PATH_POINTS = 100_000;
+  /** 실내러닝 시작 시각의 미래 허용 오차(분) — 기기 시계가 조금 빠른 경우를 흡수한다. */
+  private static final int STARTED_AT_FUTURE_SKEW_MIN = 10;
   private static final int MIN_GHOST_OVERLAP_M = 500;
   private static final long GHOST_DELTA_TOLERANCE_MS = 1_000;
   private static final long MAX_GHOST_TIME_MS = MAX_DURATION_SEC * 1_000L;
@@ -171,10 +174,11 @@ public class WorkoutService {
       String imageUrl) {
     // 입력 검증 — 비정상·조작 값 차단
     validateIndoorInput(distanceM, durationSec, imageUrl);
+    OffsetDateTime start = parseStartedAt(startedAt);
 
     // 운동 저장 — 칼로리·페이스는 거리와 시간에서 산출
     AppUser user = appUserRepository.getRequired(principal.userId());
-    WorkoutSession saved = saveIndoorSession(user, distanceM, durationSec, startedAt, imageUrl);
+    WorkoutSession saved = saveIndoorSession(user, distanceM, durationSec, start, imageUrl);
 
     // 참가 중인 레이스마다 구성원 승인 대기 생성 — 승인돼야 레이스 거리로 반영된다
     indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
@@ -193,13 +197,31 @@ public class WorkoutService {
     }
   }
 
+  /**
+   * 실내러닝 시작 시각 파싱 — 잘못된 값은 400으로 돌려준다.
+   * 검증 없이 바로 파싱하면 null·형식 오류가 다른 입력들과 달리 500이 된다.
+   * 미래 시각은 주간·월간 집계를 앞당겨 오염시키므로 기기 시계 오차({@value #STARTED_AT_FUTURE_SKEW_MIN}분)까지만 허용한다.
+   */
+  private static OffsetDateTime parseStartedAt(String startedAt) {
+    if (startedAt == null || startedAt.isBlank()) throw ApiException.badRequest("started_at_invalid");
+    OffsetDateTime start;
+    try {
+      start = OffsetDateTime.parse(startedAt);
+    } catch (DateTimeParseException e) {
+      throw ApiException.badRequest("started_at_invalid");
+    }
+    if (start.isAfter(OffsetDateTime.now().plusMinutes(STARTED_AT_FUTURE_SKEW_MIN))) {
+      throw ApiException.badRequest("started_at_future");
+    }
+    return start;
+  }
+
   private WorkoutSession saveIndoorSession(
       AppUser user,
       int distanceM,
       int durationSec,
-      String startedAt,
+      OffsetDateTime start,
       String imageUrl) {
-    OffsetDateTime start = OffsetDateTime.parse(startedAt);
     OffsetDateTime end = start.plusSeconds(durationSec);
 
     int calories = Math.max(1, Math.round(distanceM / 1000f * KCAL_PER_KM));
@@ -318,9 +340,10 @@ public class WorkoutService {
     WorkoutSession current = getForUser(principal.userId(), id);
     OffsetDateTime from = current.getStartedAt().minusDays(COMPARISON_LOOKBACK_DAYS);
 
+    // 상한은 기준 운동의 시작 시각 — 그 이후 기록이 "이전 30일 평균"에 섞이지 않게 한다.
     List<WorkoutComparisonItem> recent =
         workoutSessionRepository.findRecentForComparison(
-            principal.userId(), id, from);
+            principal.userId(), id, from, current.getStartedAt());
 
     PreviousWorkoutDto previous =
         findPreviousWorkout(principal.userId(), id, current.getStartedAt());

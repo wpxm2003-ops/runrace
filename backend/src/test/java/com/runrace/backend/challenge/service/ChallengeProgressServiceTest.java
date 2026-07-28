@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -119,5 +121,45 @@ class ChallengeProgressServiceTest {
     assertFalse(c.isEnded(), "종료 상태 해제");
     verify(raceFinalization).clearFinalRanks(1L);
     verify(challengeWorkoutRepository).deleteAll(List.of(link));
+  }
+
+  /**
+   * 기간 만료로 끝난 레이스는 남의 기록이 삭제돼도 종료 상태와 우승자를 유지해야 한다.
+   * 예전에는 경로 구분 없이 resetEnded + clearFinalRanks를 실행해,
+   * A의 기록 삭제만으로 이미 끝난 레이스가 되살아나고 B의 우승과 전원의 확정 순위가 지워졌다.
+   */
+  @Test
+  void 기간만료로_끝난_레이스는_남의_기록_삭제에도_종료와_우승자를_유지한다() {
+    AppUser me = user("me");
+    AppUser other = user("other");
+    Challenge c = Challenge.builder()
+        .id(1L)
+        .goalKm(BigDecimal.valueOf(10))
+        .endAt(OffsetDateTime.now().minusDays(1)) // 이미 기간 만료
+        .build();
+    c.declareWinner(other); // 우승자는 B
+    c.end();
+    ChallengeMember mine = member(me, c, 12, T0); // A는 완주 상태
+    ChallengeMember others = member(other, c, 20, T0);
+    ChallengeWorkout link = ChallengeWorkout.builder()
+        .id(1L)
+        .challenge(c)
+        .user(me)
+        .appliedDistanceM(5000) // 5km 차감 → 12-5=7 < 10 → A의 완주 해제
+        .approvalStatus(ApprovalStatus.APPROVED)
+        .build();
+
+    when(challengeWorkoutRepository.findAllByWorkoutSessionId(100L)).thenReturn(List.of(link));
+    when(challengeMemberRepository.findByChallengeIdAndUserId(1L, me.getId()))
+        .thenReturn(Optional.of(mine));
+    when(challengeMemberRepository.findAllForChallenge(1L)).thenReturn(List.of(mine, others));
+
+    service.reverseWorkoutDistance(100L);
+
+    assertNull(mine.getFinishedAt(), "A의 완주는 해제");
+    assertTrue(c.isEnded(), "기간 만료로 끝난 레이스는 계속 종료 상태");
+    assertSame(other, c.getWinner(), "무관한 B의 우승은 유지");
+    verify(raceFinalization, never()).clearFinalRanks(anyLong());
+    verify(raceFinalization).assignFinalRanks(List.of(mine, others)); // 거리 변동 반영해 재산정
   }
 }

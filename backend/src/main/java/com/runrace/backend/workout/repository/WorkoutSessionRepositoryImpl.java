@@ -18,7 +18,7 @@ public class WorkoutSessionRepositoryImpl implements WorkoutSessionRepositoryCus
 
   @Override
   public List<WorkoutComparisonItem> findRecentForComparison(
-      UUID userId, Long excludeId, OffsetDateTime from) {
+      UUID userId, Long excludeId, OffsetDateTime from, OffsetDateTime before) {
 
     return query
         .select(Projections.constructor(
@@ -30,7 +30,8 @@ public class WorkoutSessionRepositoryImpl implements WorkoutSessionRepositoryCus
         .where(
             ws.user.id.eq(userId),
             ws.id.ne(excludeId),
-            ws.startedAt.goe(from))
+            ws.startedAt.goe(from),
+            ws.startedAt.lt(before))
         .orderBy(ws.startedAt.desc())
         .fetch();
   }

@@ -417,8 +417,14 @@ public class CrewService {
   /**
    * 가입 신청 승인(리더 전용) — 승인 순간 정원·소속 상태를 재확인한다(신청 이후 상황이 바뀔 수 있음).
    * 승인되면 신청자의 다른 대기중 신청은 전부 자동취소된다(1인 1크루 전제와 정합).
+   *
+   * <p>{@code noRollbackFor}인 이유: 신청자가 이미 다른 크루에 들어간 경우
+   * {@link #requireApplicantStillJoinable}가 그 신청을 취소해 두고 conflict를 던지는데,
+   * 기본 설정이면 {@code ApiException}(RuntimeException)에 롤백돼 그 취소가 사라진다.
+   * 그러면 프론트는 "자동으로 취소됐어요"라고 안내하는데 신청은 계속 대기중으로 남는다.
+   * 이 메서드에서 예외 전에 일어나는 쓰기는 그 의도된 취소뿐이라 커밋해도 안전하다.
    */
-  @Transactional
+  @Transactional(noRollbackFor = ApiException.class)
   public void approve(UUID leaderId, long requestId) {
     CrewJoinRequest request = requirePendingRequestAsLeader(leaderId, requestId);
     Crew crew = request.getCrew();

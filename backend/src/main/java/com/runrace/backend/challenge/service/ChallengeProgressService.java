@@ -10,6 +10,7 @@ import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.common.Distance;
 import com.runrace.backend.event.ChallengeEvents.MilestoneReachedEvent;
 import com.runrace.backend.event.ChallengeEvents.RankOvertakeEvent;
+import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
@@ -188,16 +189,43 @@ public class ChallengeProgressService {
         });
   }
 
-  /** 완주·종료·승자·확정 순위를 되돌린다 — 차감으로 목표에 미달하게 된 멤버용. */
+  /**
+   * 완주·종료·승자·확정 순위를 되돌린다 — 차감으로 목표에 미달하게 된 멤버용.
+   *
+   * <p>레이스가 종료되는 경로는 둘이다 — (1) 전원 완주, (2) 기간(endAt) 만료.
+   * 한 멤버의 완주가 취소되면 전제가 깨지는 것은 (1)뿐이므로, 기간이 이미 지난 레이스는
+   * 종료 상태를 유지한다. 예전에는 경로 구분 없이 무조건 되돌려서, 남의 기록 삭제만으로
+   * 이미 끝난 레이스가 되살아나고 무관한 참가자들의 확정 순위까지 전부 지워졌다.
+   */
   private void resetFinishState(Challenge challenge, ChallengeMember member, UUID userId) {
     member.resetFinished();
-    challenge.resetEnded();
     if (challenge.getWinner() != null && challenge.getWinner().getId().equals(userId)) {
       challenge.clearWinner();
     }
+
+    if (isTimeEnded(challenge)) {
+      // 시계가 끝낸 레이스 — 종료는 그대로 두고, 거리·완주가 바뀌었으니 승자와 순위만 다시 확정한다.
+      List<ChallengeMember> members =
+          challengeMemberRepository.findAllForChallenge(challenge.getId());
+      AppUser winner =
+          RaceFinalizationService.resolveWinner(challenge, members, OffsetDateTime.now());
+      if (winner != null) {
+        challenge.declareWinner(winner);
+      }
+      challengeRepository.save(challenge);
+      raceFinalization.assignFinalRanks(members);
+      return;
+    }
+
+    challenge.resetEnded();
     challengeRepository.save(challenge);
     // 종료가 풀렸으므로 확정 순위(final_rank)도 초기화 — 전적이 잘못 집계되지 않게.
     raceFinalization.clearFinalRanks(challenge.getId());
+  }
+
+  /** 기간(endAt)이 지나 종료된 레이스인지 — 완주 취소와 무관하게 종료가 유지돼야 하는 경우. */
+  private static boolean isTimeEnded(Challenge challenge) {
+    return challenge.getEndAt() != null && OffsetDateTime.now().isAfter(challenge.getEndAt());
   }
 
   private void publishMilestoneEvents(

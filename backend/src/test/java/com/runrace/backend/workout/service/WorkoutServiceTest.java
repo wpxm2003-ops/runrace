@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.workout.dto.GhostRaceResultDto;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -78,6 +79,34 @@ class WorkoutServiceTest {
       ApiException ex = assertThrows(ApiException.class,
           () -> service.createIndoor(p, 300_001, 300, "2026-01-01T00:00:00Z", null));
       assertEquals("distance_invalid", ex.code());
+    }
+
+    // startedAt은 예전에 검증 없이 바로 파싱돼, 잘못된 값이 400이 아니라 500으로 나갔다.
+    @Test void startedAt이_null이면_started_at_invalid() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.createIndoor(p, 1000, 300, null, null));
+      assertEquals("started_at_invalid", ex.code());
+    }
+
+    @Test void startedAt_형식이_틀리면_started_at_invalid() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.createIndoor(p, 1000, 300, "어제", null));
+      assertEquals("started_at_invalid", ex.code());
+    }
+
+    @Test void startedAt이_먼_미래면_started_at_future() {
+      String future = OffsetDateTime.now().plusDays(1).toString();
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.createIndoor(p, 1000, 300, future, null));
+      assertEquals("started_at_future", ex.code());
+    }
+
+    // 기기 시계가 조금 빠른 경우는 흡수해야 한다(정상 저장 경로로 넘어가야 함).
+    @Test void startedAt이_시계오차_범위의_미래면_통과한다() {
+      String slightlyFuture = OffsetDateTime.now().plusMinutes(5).toString();
+      // 의존성이 null이라 검증을 통과하면 NPE가 난다 — ApiException이 아니라는 것이 곧 통과의 증거.
+      assertThrows(NullPointerException.class,
+          () -> service.createIndoor(p, 1000, 300, slightlyFuture, null));
     }
   }
 
