@@ -77,13 +77,13 @@ class AchievementServiceTest {
       assertEquals(List.of("FIRST_RUN"), codes(service.evaluate(userId, run(5_000))));
     }
 
-    @Test void 특별한_기록이_없어도_최소_하나는_나온다() {
-      stubSummary(20, 100_000);
-      assertFalse(service.evaluate(userId, run(5_000)).isEmpty());
+    @Test void 의미있는_성과가_없으면_빈_목록을_반환한다() {
+      stubSummary(20, 150_000);
+      assertTrue(service.evaluate(userId, run(5_000)).isEmpty());
     }
 
     @Test void 최대_3개까지만_노출() {
-      // 역대 최장 + 연속 7일 + 누적 100km 돌파 + 이번 주 3회째 → 상위 3개로 잘림
+      // 역대 최장 + 연속 7일 + 누적 100km 돌파 → 최대 3개로 잘림
       stubSummary(30, 100_000);
       when(workoutRepo.countRunsAtLeastDistanceSince(any(), any(), anyInt(), any())).thenReturn(0L);
       when(workoutRepo.currentStreakDaysForUser(userId)).thenReturn(7);
@@ -221,17 +221,26 @@ class AchievementServiceTest {
       assertFalse(codes(service.evaluate(userId, run(5_000))).contains("CREW_GOAL_REACHED"));
     }
 
-    @Test void 크루_상위권이면_CREW_RANK() {
+    @Test void 이번_운동으로_크루_순위가_오르면_CREW_RANK() {
       stubSummary(20, 200_000);
       UUID other1 = UUID.randomUUID();
       UUID other2 = UUID.randomUUID();
-      stubCrew(null, 5, List.of(agg(userId, 50_000), agg(other1, 30_000), agg(other2, 10_000)));
+      stubCrew(null, 5, List.of(agg(userId, 50_000), agg(other1, 48_000), agg(other2, 10_000)));
 
       var result = service.evaluate(userId, run(5_000));
       var rank = result.stream().filter(a -> a.code().equals("CREW_RANK")).findFirst();
       assertTrue(rank.isPresent());
       assertEquals(1L, rank.get().value());
       assertEquals(5L, rank.get().value2());
+    }
+
+    @Test void 이미_같은_순위면_CREW_RANK를_반복하지_않는다() {
+      stubSummary(20, 200_000);
+      UUID other1 = UUID.randomUUID();
+      UUID other2 = UUID.randomUUID();
+      stubCrew(null, 5, List.of(agg(userId, 50_000), agg(other1, 30_000), agg(other2, 10_000)));
+
+      assertFalse(codes(service.evaluate(userId, run(5_000))).contains("CREW_RANK"));
     }
 
     @Test void 동거리_동점자는_같은_순위다() {

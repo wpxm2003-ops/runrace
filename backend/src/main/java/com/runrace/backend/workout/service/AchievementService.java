@@ -79,9 +79,6 @@ public class AchievementService {
       }
       addTotalDistanceMilestone(out, distanceM, totalDistanceM);
       addTotalRunsMilestone(out, totalRuns);
-      if (!saved.getStartedAt().isBefore(weekStart)) {
-        addWeekCount(out, userId, weekStart);
-      }
     }
 
     if (!saved.getStartedAt().isBefore(monthStart)) {
@@ -158,15 +155,6 @@ public class AchievementService {
     }
   }
 
-  private void addWeekCount(List<Scored> out, UUID userId, OffsetDateTime weekStart) {
-    long weekCount = workoutRepository.countByUserIdAndStartedAtGreaterThanEqual(userId, weekStart);
-    if (weekCount >= 2) {
-      out.add(new Scored(30, Achievement.of("WEEK_COUNT", weekCount)));
-    } else {
-      out.add(new Scored(25, Achievement.of("FIRST_RUN_OF_WEEK")));
-    }
-  }
-
   /** 크루 소속이면: 이번 달 공통 개인 목표 달성/진행 + 이번 달 크루 내 순위. */
   private void addCrewAchievements(
       List<Scored> out, UUID userId, int distanceM, OffsetDateTime monthStart) {
@@ -184,7 +172,7 @@ public class AchievementService {
         .orElse(distanceM);
 
     addCrewGoal(out, crew, myMonthDist, distanceM);
-    addCrewRank(out, rows, userId, crew.getId());
+    addCrewRank(out, rows, userId, crew.getId(), distanceM);
   }
 
   private void addCrewGoal(List<Scored> out, Crew crew, long myMonthDist, int distanceM) {
@@ -214,7 +202,7 @@ public class AchievementService {
 
   private void addCrewRank(
       List<Scored> out, List<CrewMemberRepository.MemberDistanceAgg> rows,
-      UUID userId, Long crewId) {
+      UUID userId, Long crewId, int distanceM) {
     int memberCount = crewMemberRepository.countByCrewId(crewId);
     if (memberCount < 3) return;
 
@@ -226,10 +214,19 @@ public class AchievementService {
         .findFirst()
         .orElse(-1);
     if (myDist < 0) return;
-    long strictlyAhead = rows.stream().filter(r -> r.getDistanceM() > myDist).count();
-    int rank = (int) strictlyAhead + 1;
-    if (rank <= 3) {
-      out.add(new Scored(55, Achievement.of("CREW_RANK", rank, memberCount)));
+    long previousMyDist = Math.max(0, myDist - distanceM);
+    int previousRank =
+        (int) rows.stream()
+            .filter(r -> !r.getUserId().equals(userId))
+            .filter(r -> r.getDistanceM() > previousMyDist)
+            .count() + 1;
+    int currentRank =
+        (int) rows.stream()
+            .filter(r -> !r.getUserId().equals(userId))
+            .filter(r -> r.getDistanceM() > myDist)
+            .count() + 1;
+    if (currentRank <= 3 && currentRank < previousRank) {
+      out.add(new Scored(55, Achievement.of("CREW_RANK", currentRank, memberCount)));
     }
   }
 
