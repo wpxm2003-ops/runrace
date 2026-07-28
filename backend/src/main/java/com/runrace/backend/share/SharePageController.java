@@ -32,6 +32,7 @@ public class SharePageController {
 
   @GetMapping(value = "/challenges/{id:" + PathPatterns.ID + "}", produces = MediaType.TEXT_HTML_VALUE)
   public ResponseEntity<String> challengeShare(@PathVariable("id") Long id) {
+    // 공개 상세 조회 — 없는 레이스는 미리보기 대신 404
     ChallengeService.ChallengeDetailView detail;
     try {
       detail = challengeService.getDetail(Optional.empty(), id);
@@ -42,6 +43,11 @@ public class SharePageController {
       throw e;
     }
 
+    // 링크 미리보기용 OG 메타 + 실제 페이지로 즉시 이동시키는 HTML
+    return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(renderSharePage(id, detail));
+  }
+
+  private String renderSharePage(Long id, ChallengeService.ChallengeDetailView detail) {
     Challenge challenge = detail.challenge();
     String title = escape(challenge.getTitle()) + " | RunRace";
     String description =
@@ -50,7 +56,7 @@ public class SharePageController {
     String pageUrl = appUrl + "/challenges/" + id;
     String ogImage = appUrl + "/og-image.png";
 
-    String html =
+    return
         """
         <!DOCTYPE html>
         <html lang="ko">
@@ -75,8 +81,6 @@ public class SharePageController {
         </html>
         """
             .formatted(title, description, title, description, pageUrl, ogImage, pageUrl, pageUrl);
-
-    return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
   }
 
   private static String escape(String raw) {

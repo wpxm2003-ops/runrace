@@ -61,22 +61,14 @@ public class ChallengePrizeService {
   public void save(
       UUID userId, Long challengeId, PrizeAwardType awardType, List<PrizeItemRequest> items) {
     Challenge challenge = requireChallenge(challengeId);
-    if (!challenge.isOwner(userId)) {
-      throw ApiException.forbidden("not_creator");
-    }
-    if (!OffsetDateTime.now().isBefore(challenge.getStartAt())) {
-      throw ApiException.badRequest("race_started");
-    }
+    requireEditableByCreator(challenge, userId);
+
+    // 지급 방식 갱신
     challenge.setPrizeAwardType(awardType);
     challengeRepository.save(challenge);
 
-    List<ChallengePrize> existing = prizeRepository.findByChallengeIdOrderByRank(challengeId);
-
     // 기존 이미지 키를 등수별로 맵핑
-    Map<Integer, String> oldKeysByRank = new HashMap<>();
-    for (ChallengePrize p : existing) {
-      if (p.getImageKey() != null) oldKeysByRank.put(p.getRank(), p.getImageKey());
-    }
+    Map<Integer, String> oldKeysByRank = oldImageKeysByRank(challengeId);
 
     // 빈 목록 = 경품 전체 삭제
     if (items == null || items.isEmpty()) {
@@ -88,6 +80,35 @@ public class ChallengePrizeService {
 
     validate(items, challenge.getMaxMembers());
 
+    // 재사용되지 않는 기존 이미지 = 고아 → 커밋 이후 정리(위와 동일 이유).
+    List<String> orphanedKeys = orphanedImageKeys(items, oldKeysByRank);
+
+    replaceAllPrizes(challengeId, items, oldKeysByRank);
+    ChallengeEvents.publishPrizeCleanup(eventPublisher, orphanedKeys);
+  }
+
+  /** 경품 편집은 생성자 본인만, 레이스 시작 전에만 가능하다. */
+  private void requireEditableByCreator(Challenge challenge, UUID userId) {
+    if (!challenge.isOwner(userId)) {
+      throw ApiException.forbidden("not_creator");
+    }
+    if (!OffsetDateTime.now().isBefore(challenge.getStartAt())) {
+      throw ApiException.badRequest("race_started");
+    }
+  }
+
+  private Map<Integer, String> oldImageKeysByRank(Long challengeId) {
+    List<ChallengePrize> existing = prizeRepository.findByChallengeIdOrderByRank(challengeId);
+    Map<Integer, String> oldKeysByRank = new HashMap<>();
+    for (ChallengePrize p : existing) {
+      if (p.getImageKey() != null) oldKeysByRank.put(p.getRank(), p.getImageKey());
+    }
+    return oldKeysByRank;
+  }
+
+  /** 저장 후에도 재사용되지 않는 기존 S3 키 = 고아. */
+  private List<String> orphanedImageKeys(
+      List<PrizeItemRequest> items, Map<Integer, String> oldKeysByRank) {
     // 저장 후 실제 사용될 S3 키 집합 계산
     Set<String> keptKeys = new HashSet<>();
     for (PrizeItemRequest it : items) {
@@ -95,17 +116,20 @@ public class ChallengePrizeService {
       if (kept != null) keptKeys.add(kept);
     }
 
-    // 재사용되지 않는 기존 이미지 = 고아 → 커밋 이후 정리(위와 동일 이유).
     List<String> orphanedKeys = new ArrayList<>();
     for (String oldKey : oldKeysByRank.values()) {
       if (!keptKeys.contains(oldKey)) orphanedKeys.add(oldKey);
     }
+    return orphanedKeys;
+  }
 
+  /** 전체 교체 — 기존 행을 지우고 요청 목록으로 다시 채운다. */
+  private void replaceAllPrizes(
+      Long challengeId, List<PrizeItemRequest> items, Map<Integer, String> oldKeysByRank) {
     prizeRepository.deleteByChallengeId(challengeId);
     for (PrizeItemRequest it : items) {
       prizeRepository.save(ChallengePrize.of(challengeId, it.rank(), it.name().trim(), keptKey(it, oldKeysByRank)));
     }
-    ChallengeEvents.publishPrizeCleanup(eventPublisher, orphanedKeys);
   }
 
   private String keptKey(PrizeItemRequest it, Map<Integer, String> oldKeysByRank) {

@@ -43,48 +43,65 @@ public class UserProvisioningService {
       boolean emailVerified,
       String langHint) {
 
+    // 이미 있는 uid면 프로필만 갱신
     AppUser existing = appUserRepository.findByFirebaseUid(firebaseUid).orElse(null);
-
     if (existing != null) {
-      // 비어 들어온 값으로 기존 값을 덮지 않는다.
-      // (예: 카카오 사용자는 Firebase 커스텀 토큰으로 인증돼 토큰에 name·email 클레임이 없어
-      //  null이 넘어오는데, 이때 기존 이름/이메일을 지우면 안 된다.)
-      String nextName = nonBlankOr(displayName, existing.getDisplayName());
-      String nextEmail = nonBlankOr(email, existing.getEmail());
-      String nextProvider = resolveProvider(provider, existing.getProvider());
-
-      // 변경이 있을 때만 dirty — 동일 프로필 재방문은 SELECT만으로 끝낸다.
-      boolean changed = !Objects.equals(existing.getEmail(), nextEmail)
-          || !Objects.equals(existing.getDisplayName(), nextName)
-          || !Objects.equals(existing.getProvider(), nextProvider);
-      if (!changed) return existing;
-
-      existing.updateProfile(firebaseUid, nextEmail, nextName, nextProvider);
-      return appUserRepository.save(existing);
+      return updateExistingProfile(existing, firebaseUid, email, displayName, provider);
     }
 
-    // 동일 이메일로 다른 provider 계정이 있으면 해당 계정의 firebaseUid를 새 provider로 업데이트 (계정 병합).
-    // 단, 검증된 이메일일 때만 — 미검증 이메일로 남의 계정을 탈취하는 것을 막는다(미검증이면 별도 계정 생성).
-    //
-    // 병합 전략 주의: 여기서는 '들어온 uid로 덮어쓰기' — 이 경로(Firebase 로그인)는 들어온 uid가
-    // 실제 인증 주체이기 때문이다. 카카오 경로(KakaoAuthService)는 반대로 '기존 uid 유지' 전략을 쓰며,
-    // upsert를 호출하지 않고 자체적으로 병합 로그인을 끝낸다. 두 전략은 의도적으로 다르다.
-    if (email != null && emailVerified) {
-      AppUser byEmail = appUserRepository.findByEmail(email).orElse(null);
-      if (byEmail != null) {
-        log.info("Merging account [{}] into existing [{}] by email", firebaseUid, byEmail.getFirebaseUid());
-        // 병합 시에도 빈 이름·일반 provider("custom")로 기존 값을 지우지 않는다.
-        byEmail.updateProfile(
-            firebaseUid,
-            email,
-            nonBlankOr(displayName, byEmail.getDisplayName()),
-            resolveProvider(provider, byEmail.getProvider()));
-        return appUserRepository.save(byEmail);
-      }
-    }
+    // 검증된 동일 이메일 계정이 있으면 그 계정에 병합 (없으면 null)
+    AppUser merged = mergeByVerifiedEmail(firebaseUid, email, displayName, provider, emailVerified);
+    if (merged != null) return merged;
 
+    // 신규 가입
     String lang = SupportedLanguages.normalizeOrDefault(langHint);
     return createNewUser(firebaseUid, email, displayName, provider, lang);
+  }
+
+  /** 기존 사용자 프로필 갱신 — 실제 변경이 없으면 저장하지 않고 그대로 반환한다. */
+  private AppUser updateExistingProfile(
+      AppUser existing, String firebaseUid, String email, String displayName, String provider) {
+    // 비어 들어온 값으로 기존 값을 덮지 않는다.
+    // (예: 카카오 사용자는 Firebase 커스텀 토큰으로 인증돼 토큰에 name·email 클레임이 없어
+    //  null이 넘어오는데, 이때 기존 이름/이메일을 지우면 안 된다.)
+    String nextName = nonBlankOr(displayName, existing.getDisplayName());
+    String nextEmail = nonBlankOr(email, existing.getEmail());
+    String nextProvider = resolveProvider(provider, existing.getProvider());
+
+    // 변경이 있을 때만 dirty — 동일 프로필 재방문은 SELECT만으로 끝낸다.
+    boolean changed = !Objects.equals(existing.getEmail(), nextEmail)
+        || !Objects.equals(existing.getDisplayName(), nextName)
+        || !Objects.equals(existing.getProvider(), nextProvider);
+    if (!changed) return existing;
+
+    existing.updateProfile(firebaseUid, nextEmail, nextName, nextProvider);
+    return appUserRepository.save(existing);
+  }
+
+  /**
+   * 동일 이메일로 다른 provider 계정이 있으면 해당 계정의 firebaseUid를 새 provider로 업데이트 (계정 병합).
+   * 단, 검증된 이메일일 때만 — 미검증 이메일로 남의 계정을 탈취하는 것을 막는다(미검증이면 별도 계정 생성).
+   *
+   * <p>병합 전략 주의: 여기서는 '들어온 uid로 덮어쓰기' — 이 경로(Firebase 로그인)는 들어온 uid가
+   * 실제 인증 주체이기 때문이다. 카카오 경로(KakaoAuthService)는 반대로 '기존 uid 유지' 전략을 쓰며,
+   * upsert를 호출하지 않고 자체적으로 병합 로그인을 끝낸다. 두 전략은 의도적으로 다르다.
+   *
+   * @return 병합한 기존 계정, 병합 대상이 없으면 null
+   */
+  private AppUser mergeByVerifiedEmail(
+      String firebaseUid, String email, String displayName, String provider, boolean emailVerified) {
+    if (email == null || !emailVerified) return null;
+    AppUser byEmail = appUserRepository.findByEmail(email).orElse(null);
+    if (byEmail == null) return null;
+
+    log.info("Merging account [{}] into existing [{}] by email", firebaseUid, byEmail.getFirebaseUid());
+    // 병합 시에도 빈 이름·일반 provider("custom")로 기존 값을 지우지 않는다.
+    byEmail.updateProfile(
+        firebaseUid,
+        email,
+        nonBlankOr(displayName, byEmail.getDisplayName()),
+        resolveProvider(provider, byEmail.getProvider()));
+    return appUserRepository.save(byEmail);
   }
 
   /**

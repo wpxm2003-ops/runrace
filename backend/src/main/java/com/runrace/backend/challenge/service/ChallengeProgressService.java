@@ -160,34 +160,44 @@ public class ChallengeProgressService {
         continue; // 아래 deleteAll에서 삭제됨
       }
 
-      Challenge challenge = link.getChallenge();
-      UUID userId = link.getUser().getId();
-      BigDecimal subtractKm = Distance.toKm(link.getAppliedDistanceM());
-
-      challengeMemberRepository
-          .findByChallengeIdAndUserId(challenge.getId(), userId)
-          .ifPresent(member -> {
-            BigDecimal next = member.getTotalKm().subtract(subtractKm).max(BigDecimal.ZERO);
-            member.setDistanceAndSync(next, OffsetDateTime.now());
-
-            // 목표 미달로 내려가면 완주 상태 초기화
-            if (member.getFinishedAt() != null
-                && next.compareTo(challenge.getGoalKm()) < 0) {
-              member.resetFinished();
-              challenge.resetEnded();
-              if (challenge.getWinner() != null && challenge.getWinner().getId().equals(userId)) {
-                challenge.clearWinner();
-              }
-              challengeRepository.save(challenge);
-              // 종료가 풀렸으므로 확정 순위(final_rank)도 초기화 — 전적이 잘못 집계되지 않게.
-              raceFinalization.clearFinalRanks(challenge.getId());
-            }
-            challengeMemberRepository.save(member);
-          });
+      subtractAppliedDistance(link);
     }
     if (!links.isEmpty()) {
       challengeWorkoutRepository.deleteAll(links);
     }
+  }
+
+  /** 이미 반영된 링크의 거리를 해당 레이스 멤버의 누적 거리에서 되돌린다. */
+  private void subtractAppliedDistance(ChallengeWorkout link) {
+    Challenge challenge = link.getChallenge();
+    UUID userId = link.getUser().getId();
+    BigDecimal subtractKm = Distance.toKm(link.getAppliedDistanceM());
+
+    challengeMemberRepository
+        .findByChallengeIdAndUserId(challenge.getId(), userId)
+        .ifPresent(member -> {
+          BigDecimal next = member.getTotalKm().subtract(subtractKm).max(BigDecimal.ZERO);
+          member.setDistanceAndSync(next, OffsetDateTime.now());
+
+          // 목표 미달로 내려가면 완주 상태 초기화
+          if (member.getFinishedAt() != null
+              && next.compareTo(challenge.getGoalKm()) < 0) {
+            resetFinishState(challenge, member, userId);
+          }
+          challengeMemberRepository.save(member);
+        });
+  }
+
+  /** 완주·종료·승자·확정 순위를 되돌린다 — 차감으로 목표에 미달하게 된 멤버용. */
+  private void resetFinishState(Challenge challenge, ChallengeMember member, UUID userId) {
+    member.resetFinished();
+    challenge.resetEnded();
+    if (challenge.getWinner() != null && challenge.getWinner().getId().equals(userId)) {
+      challenge.clearWinner();
+    }
+    challengeRepository.save(challenge);
+    // 종료가 풀렸으므로 확정 순위(final_rank)도 초기화 — 전적이 잘못 집계되지 않게.
+    raceFinalization.clearFinalRanks(challenge.getId());
   }
 
   private void publishMilestoneEvents(

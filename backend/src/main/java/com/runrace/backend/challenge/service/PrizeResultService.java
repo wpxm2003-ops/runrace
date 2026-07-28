@@ -40,10 +40,19 @@ public class PrizeResultService {
       return response(challenge, "BEFORE_END", null);
     }
 
+    // 아직 추첨 전이면 이 자리에서 추첨
     List<ChallengeMember> members = memberRepository.findAllForChallenge(challengeId);
     prizeDrawingService.drawIfNeeded(challenge, members);
     challengeRepository.save(challenge);
 
+    // 내 당첨 여부 판정
+    return judgeMyPrize(challenge, member, userId);
+  }
+
+  /** 지급 방식별 당첨 판정 — 랜덤 지급은 완주자 중 추첨 결과로, 그 외는 최종 등수로. */
+  private PrizeResultResponse judgeMyPrize(
+      Challenge challenge, ChallengeMember member, UUID userId) {
+    Long challengeId = challenge.getId();
     if (challenge.getPrizeAwardType() == PrizeAwardType.RANDOM_FINISHER) {
       if (member.getFinishedAt() == null) {
         return response(challenge, "NOT_ELIGIBLE", null);

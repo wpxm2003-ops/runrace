@@ -79,6 +79,41 @@ public class WorkoutService {
       Long ghostWorkoutId,
       GhostRaceResultDto ghostResult
   ) {
+    // 입력 검증 — 비정상·조작 값 차단
+    validateGpsInput(startedAt, endedAt, durationSec, distanceM, calories, avgPaceSecPerKm, path);
+
+    // 고스트 레이스 상대 확정 — 지목한 과거 기록이 내 것이 아니거나 결과가 어긋나면 무시된다
+    GhostRaceData ghostRace = resolveGhostRace(principal.userId(), ghostWorkoutId, ghostResult);
+
+    // 운동 저장
+    AppUser user = appUserRepository.getRequired(principal.userId());
+    WorkoutSession saved = saveGpsSession(
+        user, startedAt, endedAt, durationSec, distanceM, calories, avgPaceSecPerKm, path, ghostRace);
+
+    // 현재 참여 중인 진행 레이스에 운동 거리 반영
+    challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
+
+    // 진행 중인 크루 대항전 로스터라면, 이 운동으로 방금 상대를 추월했는지 확인해 알린다.
+    crewMatchService.checkOvertakeOnWorkout(principal.userId(), distanceM, endedAt);
+
+    // 활성 신발 귀속 + 교체 목표 도달 시 알림 이벤트 발행
+    shoeService.attributeActiveShoe(principal.userId(), saved);
+
+    // 라이벌 도발 푸시 — AFTER_COMMIT 리스너가 처리
+    eventPublisher.publishEvent(new WorkoutEvents.WorkoutSavedEvent(
+        principal.userId(), user.getNickname(), distanceM));
+
+    return saved;
+  }
+
+  private void validateGpsInput(
+      OffsetDateTime startedAt,
+      OffsetDateTime endedAt,
+      int durationSec,
+      int distanceM,
+      int calories,
+      Integer avgPaceSecPerKm,
+      List<PathPoint> path) {
     if (durationSec < 1 || durationSec > MAX_DURATION_SEC) {
       throw ApiException.badRequest("duration_invalid");
     }
@@ -100,10 +135,19 @@ public class WorkoutService {
     if (startedAt == null || endedAt == null || !endedAt.isAfter(startedAt)) {
       throw ApiException.badRequest("time_range_invalid");
     }
-    GhostRaceData ghostRace = resolveGhostRace(principal.userId(), ghostWorkoutId, ghostResult);
+  }
 
-    AppUser user = appUserRepository.getRequired(principal.userId());
-    WorkoutSession saved = workoutSessionRepository.save(WorkoutSession.builder()
+  private WorkoutSession saveGpsSession(
+      AppUser user,
+      OffsetDateTime startedAt,
+      OffsetDateTime endedAt,
+      int durationSec,
+      int distanceM,
+      int calories,
+      Integer avgPaceSecPerKm,
+      List<PathPoint> path,
+      GhostRaceData ghostRace) {
+    return workoutSessionRepository.save(WorkoutSession.builder()
         .user(user)
         .startedAt(startedAt)
         .endedAt(endedAt)
@@ -116,21 +160,6 @@ public class WorkoutService {
         .ghostResultJson(ghostRace.resultJson())
         .createdAt(OffsetDateTime.now())
         .build());
-
-    // 현재 참여 중인 진행 레이스에 운동 거리 반영
-    challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
-
-    // 진행 중인 크루 대항전 로스터라면, 이 운동으로 방금 상대를 추월했는지 확인해 알린다.
-    crewMatchService.checkOvertakeOnWorkout(principal.userId(), distanceM, endedAt);
-
-    // 활성 신발 귀속 + 교체 목표 도달 시 알림 이벤트 발행
-    shoeService.attributeActiveShoe(principal.userId(), saved);
-
-    // 라이벌 도발 푸시 — AFTER_COMMIT 리스너가 처리
-    eventPublisher.publishEvent(new WorkoutEvents.WorkoutSavedEvent(
-        principal.userId(), user.getNickname(), distanceM));
-
-    return saved;
   }
 
   @Transactional
@@ -140,21 +169,43 @@ public class WorkoutService {
       int durationSec,
       String startedAt,
       String imageUrl) {
+    // 입력 검증 — 비정상·조작 값 차단
+    validateIndoorInput(distanceM, durationSec, imageUrl);
+
+    // 운동 저장 — 칼로리·페이스는 거리와 시간에서 산출
+    AppUser user = appUserRepository.getRequired(principal.userId());
+    WorkoutSession saved = saveIndoorSession(user, distanceM, durationSec, startedAt, imageUrl);
+
+    // 참가 중인 레이스마다 구성원 승인 대기 생성 — 승인돼야 레이스 거리로 반영된다
+    indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
+
+    // 실내러닝도 활성 신발에 귀속(신발 마모는 승인 여부와 무관)
+    shoeService.attributeActiveShoe(principal.userId(), saved);
+    return saved;
+  }
+
+  private void validateIndoorInput(int distanceM, int durationSec, String imageUrl) {
     if (durationSec < 1 || durationSec > MAX_DURATION_SEC) throw ApiException.badRequest("duration_invalid");
     if (distanceM <= 0 || distanceM > MAX_DISTANCE_M) throw ApiException.badRequest("distance_invalid");
     // imageUrl은 우리 S3 버킷에서 발급된 것만 허용 (외부 URL 주입·타인 이미지 삭제 차단)
     if (imageUrl != null && !imageUrl.isBlank() && !imageUploadService.isStoredUrl(imageUrl)) {
       throw ApiException.badRequest("invalid_image_url");
     }
+  }
 
-    AppUser user = appUserRepository.getRequired(principal.userId());
+  private WorkoutSession saveIndoorSession(
+      AppUser user,
+      int distanceM,
+      int durationSec,
+      String startedAt,
+      String imageUrl) {
     OffsetDateTime start = OffsetDateTime.parse(startedAt);
     OffsetDateTime end = start.plusSeconds(durationSec);
 
     int calories = Math.max(1, Math.round(distanceM / 1000f * KCAL_PER_KM));
     Integer avgPaceSecPerKm = avgPaceSecPerKm(distanceM, durationSec);
 
-    WorkoutSession saved = workoutSessionRepository.save(WorkoutSession.builder()
+    return workoutSessionRepository.save(WorkoutSession.builder()
         .user(user)
         .workoutType(WorkoutType.INDOOR)
         .startedAt(start)
@@ -167,12 +218,6 @@ public class WorkoutService {
         .pathJson("[]")
         .createdAt(OffsetDateTime.now())
         .build());
-
-    indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
-
-    // 실내러닝도 활성 신발에 귀속(신발 마모는 승인 여부와 무관)
-    shoeService.attributeActiveShoe(principal.userId(), saved);
-    return saved;
   }
 
   @Transactional
@@ -277,13 +322,26 @@ public class WorkoutService {
         workoutSessionRepository.findRecentForComparison(
             principal.userId(), id, from);
 
-    PreviousWorkoutDto previous = workoutSessionRepository
-        .findPreviousForComparison(principal.userId(), id, current.getStartedAt())
+    PreviousWorkoutDto previous =
+        findPreviousWorkout(principal.userId(), id, current.getStartedAt());
+
+    // 비교할 최근 기록이 없으면 직전 기록만 담아 반환
+    if (recent.isEmpty()) return WorkoutComparisonResponse.builder().previous(previous).build();
+
+    return averageComparison(recent, previous);
+  }
+
+  private PreviousWorkoutDto findPreviousWorkout(UUID userId, Long id, OffsetDateTime before) {
+    return workoutSessionRepository
+        .findPreviousForComparison(userId, id, before)
         .map(w -> new PreviousWorkoutDto(w.distanceM(), w.durationSec(), w.avgPaceSecPerKm()))
         .orElse(null);
+  }
 
+  /** 최근 기록들의 평균 거리·시간·페이스를 낸다. 페이스는 값이 있는 기록만 평균한다. */
+  private WorkoutComparisonResponse averageComparison(
+      List<WorkoutComparisonItem> recent, PreviousWorkoutDto previous) {
     int count = recent.size();
-    if (count == 0) return WorkoutComparisonResponse.builder().previous(previous).build();
 
     long totalDist = 0;
     long totalDur = 0;

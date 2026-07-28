@@ -104,31 +104,39 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       }
       filterChain.doFilter(request, response);
     } catch (FirebaseAuthException e) {
-      // 만료·폐기·형식 오류 토큰은 세션이 오래된 정상 상황(재로그인하면 해결)이라 수집하지 않는다.
-      // 구글 인증서 조회 실패 등 인프라 장애만 남긴다 — 그것만 우리가 조치할 수 있는 문제다.
-      if (isInfraFailure(e)) {
-        log.warn("Firebase token verification failed: {}", e.getMessage());
-        errorLogService.recordServiceError(
-            "firebase",
-            e.getErrorCode() != null ? e.getErrorCode().name() : "UNKNOWN",
-            e.getMessage(), null,
-            request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
-      } else {
-        log.debug("Firebase token rejected: {}", e.getMessage());
-      }
+      logTokenFailure(e, request);
       unauthorized(response, "invalid_token");
     } catch (ServletException | IOException e) {
       throw e;
     } catch (Exception e) {
-      log.error("Auth filter error on {}", request.getRequestURI(), e);
-      errorLogService.recordServiceError(
-          "firebase", "auth_filter_error", e.getMessage(),
-          ErrorLogService.stackTraceOf(e),
-          request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
+      logUnexpectedFailure(e, request);
       unauthorized(response, "auth_failed");
     } finally {
       AuthContext.clear();
     }
+  }
+
+  private void logTokenFailure(FirebaseAuthException e, HttpServletRequest request) {
+    // 만료·폐기·형식 오류 토큰은 세션이 오래된 정상 상황(재로그인하면 해결)이라 수집하지 않는다.
+    // 구글 인증서 조회 실패 등 인프라 장애만 남긴다 — 그것만 우리가 조치할 수 있는 문제다.
+    if (isInfraFailure(e)) {
+      log.warn("Firebase token verification failed: {}", e.getMessage());
+      errorLogService.recordServiceError(
+          "firebase",
+          e.getErrorCode() != null ? e.getErrorCode().name() : "UNKNOWN",
+          e.getMessage(), null,
+          request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
+    } else {
+      log.debug("Firebase token rejected: {}", e.getMessage());
+    }
+  }
+
+  private void logUnexpectedFailure(Exception e, HttpServletRequest request) {
+    log.error("Auth filter error on {}", request.getRequestURI(), e);
+    errorLogService.recordServiceError(
+        "firebase", "auth_filter_error", e.getMessage(),
+        ErrorLogService.stackTraceOf(e),
+        request.getMethod() + " " + request.getRequestURI() + " | req:" + RequestIdFilter.current());
   }
 
   /** 인증을 강제한다. 실패하면 401 에러 코드를 담아 반환, 성공하면 empty. */

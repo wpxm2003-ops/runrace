@@ -101,16 +101,35 @@ public class CrewService {
     Crew crew = membership.get().getCrew();
     List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
 
-    OffsetDateTime monthStart = monthStartKst();
-    Map<UUID, long[]> agg = new HashMap<>();
-    // 가입 이후 기록만 집계 — 가입 전 과거 운동이 크루 보드·잔디에 새어 들어오지 않게 한다.
-    for (var row : crewMemberRepository.sumMemberDistanceSince(crew.getId(), monthStart)) {
-      agg.put(row.getUserId(), new long[] {row.getDistanceM(), row.getRuns()});
-    }
+    // 이번 달 멤버별 누적
+    Map<UUID, long[]> agg = sumMonthDistanceByMember(crew.getId(), monthStartKst());
 
     long allTime = crewMemberRepository.sumMemberDistanceSinceJoin(crew.getId());
 
-    List<CrewMemberRow> rows = members.stream()
+    List<CrewMemberRow> rows = toBoardRows(crew, members, agg, meId);
+
+    return new MyCrewResponse(new CrewView(
+        crew.getId(), crew.getName(), crew.getNotice(), crew.getJoinCode(),
+        crew.isLeader(meId), crew.getMaxMembers(), crew.getMonthGoalKm(),
+        allTime, rows));
+  }
+
+  /**
+   * 이번 달 멤버별 집계 — {userId → [거리m, 횟수]}.
+   * 가입 이후 기록만 집계 — 가입 전 과거 운동이 크루 보드·잔디에 새어 들어오지 않게 한다.
+   */
+  private Map<UUID, long[]> sumMonthDistanceByMember(Long crewId, OffsetDateTime monthStart) {
+    Map<UUID, long[]> agg = new HashMap<>();
+    for (var row : crewMemberRepository.sumMemberDistanceSince(crewId, monthStart)) {
+      agg.put(row.getUserId(), new long[] {row.getDistanceM(), row.getRuns()});
+    }
+    return agg;
+  }
+
+  /** 월간 보드 행 — 멤버마다 이번 달 집계를 채우고(없으면 0) 거리순으로 세운다. */
+  private static List<CrewMemberRow> toBoardRows(
+      Crew crew, List<CrewMember> members, Map<UUID, long[]> agg, UUID meId) {
+    return members.stream()
         .map(m -> {
           AppUser u = m.getUser();
           long[] a = agg.getOrDefault(u.getId(), new long[] {0, 0});
@@ -121,11 +140,6 @@ public class CrewService {
         // 월간 거리 내림차순, 동률(0km 포함)은 가입 순 유지(stream 정렬은 stable)
         .sorted(Comparator.comparingLong(CrewMemberRow::monthDistanceM).reversed())
         .toList();
-
-    return new MyCrewResponse(new CrewView(
-        crew.getId(), crew.getName(), crew.getNotice(), crew.getJoinCode(),
-        crew.isLeader(meId), crew.getMaxMembers(), crew.getMonthGoalKm(),
-        allTime, rows));
   }
 
   /**
@@ -192,20 +206,27 @@ public class CrewService {
     CrewMember membership = requireMembership(meId);
     Crew crew = membership.getCrew();
     List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
-
-    Map<UUID, String> nicknames = new HashMap<>();
-    for (CrewMember m : members) {
-      nicknames.put(m.getUser().getId(), m.getUser().getNickname());
-    }
-
-    // 잔디 — 이번 달(캘린더 월 1일 시작). 날짜별 뛴 멤버 닉네임(가입 순, 최대 10명).
-    // 달마다 실제 날짜 수·시작 요일이 달라 매달 그리드 모양이 자연히 달라진다(고정 윈도우가 아님).
     OffsetDateTime heatmapFrom = monthStartKst();
+
+    List<CrewInsightsResponse.DayCell> heatmap = buildHeatmap(crew.getId(), members, heatmapFrom);
+    List<CrewInsightsResponse.HallEntry> hallOfFame = buildHallOfFame(crew.getId(), members);
+
+    return new CrewInsightsResponse(
+        heatmapFrom.atZoneSameInstant(KST).toLocalDate().toString(),
+        members.size(), heatmap, hallOfFame);
+  }
+
+  /**
+   * 잔디 — 이번 달(캘린더 월 1일 시작). 날짜별 뛴 멤버 닉네임(가입 순, 최대 10명).
+   * 달마다 실제 날짜 수·시작 요일이 달라 매달 그리드 모양이 자연히 달라진다(고정 윈도우가 아님).
+   */
+  private List<CrewInsightsResponse.DayCell> buildHeatmap(
+      Long crewId, List<CrewMember> members, OffsetDateTime heatmapFrom) {
     Map<LocalDate, Set<UUID>> runnersByDay = new HashMap<>();
-    for (var row : crewMemberRepository.findDailyRunners(crew.getId(), heatmapFrom)) {
+    for (var row : crewMemberRepository.findDailyRunners(crewId, heatmapFrom)) {
       runnersByDay.computeIfAbsent(row.getDay(), k -> new HashSet<>()).add(row.getUserId());
     }
-    List<CrewInsightsResponse.DayCell> heatmap = runnersByDay.entrySet().stream()
+    return runnersByDay.entrySet().stream()
         .map(e -> {
           List<String> names = members.stream()
               .filter(m -> e.getValue().contains(m.getUser().getId()))
@@ -216,11 +237,18 @@ public class CrewService {
           return new CrewInsightsResponse.DayCell(e.getKey().toString(), e.getValue().size(), names);
         })
         .toList();
+  }
 
-    // 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대 12개.
+  /** 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대 12개. */
+  private List<CrewInsightsResponse.HallEntry> buildHallOfFame(Long crewId, List<CrewMember> members) {
+    Map<UUID, String> nicknames = new HashMap<>();
+    for (CrewMember m : members) {
+      nicknames.put(m.getUser().getId(), m.getUser().getNickname());
+    }
+
     String currentYm = LocalDate.now(KST).toString().substring(0, 7);
     Map<String, CrewInsightsResponse.HallEntry> bestByMonth = new HashMap<>();
-    for (var row : crewMemberRepository.aggregateMonthlyMemberDistance(crew.getId())) {
+    for (var row : crewMemberRepository.aggregateMonthlyMemberDistance(crewId)) {
       if (row.getYm().compareTo(currentYm) >= 0) {
         continue;
       }
@@ -230,14 +258,10 @@ public class CrewService {
             row.getYm(), nicknames.get(row.getUserId()), row.getDistanceM()));
       }
     }
-    List<CrewInsightsResponse.HallEntry> hallOfFame = bestByMonth.values().stream()
+    return bestByMonth.values().stream()
         .sorted(Comparator.comparing(CrewInsightsResponse.HallEntry::month).reversed())
         .limit(12)
         .toList();
-
-    return new CrewInsightsResponse(
-        heatmapFrom.atZoneSameInstant(KST).toLocalDate().toString(),
-        members.size(), heatmap, hallOfFame);
   }
 
   // ── 생성·가입·탈퇴 ────────────────────────────────────────────
@@ -396,26 +420,13 @@ public class CrewService {
    */
   @Transactional
   public void approve(UUID leaderId, long requestId) {
-    CrewJoinRequest request = crewJoinRequestRepository.findWithCrewAndUserById(requestId)
-        .orElseThrow(() -> ApiException.notFound("request_not_found"));
+    CrewJoinRequest request = requirePendingRequestAsLeader(leaderId, requestId);
     Crew crew = request.getCrew();
-    if (!crew.isLeader(leaderId)) {
-      throw ApiException.forbidden("not_leader");
-    }
-    if (!request.isPending()) {
-      throw ApiException.conflict("request_already_decided");
-    }
     UUID applicantId = request.getUser().getId();
-    // 신청 이후 다른 경로(초대코드 등)로 이미 크루에 들어갔으면 이 신청은 더 이상 유효하지 않다.
-    if (crewMemberRepository.existsByUserId(applicantId)) {
-      request.cancel();
-      crewJoinRequestRepository.save(request);
-      throw ApiException.conflict("applicant_already_in_crew");
-    }
-    if (crewMemberRepository.countByCrewId(crew.getId()) >= crew.getMaxMembers()) {
-      throw ApiException.conflict("crew_full");
-    }
 
+    requireApplicantStillJoinable(request, crew, applicantId);
+
+    // 가입 확정 — 멤버 등록 → 신청 승인 → 신청자의 다른 대기중 신청 정리
     crewMemberRepository.save(
         CrewMember.builder().crew(crew).user(request.getUser()).joinedAt(OffsetDateTime.now()).build());
     request.approve(leaderId);
@@ -426,18 +437,37 @@ public class CrewService {
         new CrewEvents.CrewApplyApproved(applicantId, crew.getName(), crew.getId()));
   }
 
-  /** 가입 신청 거절(리더 전용) — 사유는 선택. 거절 시각부터 {@value #APPLY_COOLDOWN_HOURS}h 재신청 쿨다운. */
-  @Transactional
-  public void reject(UUID leaderId, long requestId, String rawReason) {
+  /** 승인·거절 공통 가드 — 신청 존재 + 내가 그 크루의 리더 + 아직 대기중. */
+  private CrewJoinRequest requirePendingRequestAsLeader(UUID leaderId, long requestId) {
     CrewJoinRequest request = crewJoinRequestRepository.findWithCrewAndUserById(requestId)
         .orElseThrow(() -> ApiException.notFound("request_not_found"));
-    Crew crew = request.getCrew();
-    if (!crew.isLeader(leaderId)) {
+    if (!request.getCrew().isLeader(leaderId)) {
       throw ApiException.forbidden("not_leader");
     }
     if (!request.isPending()) {
       throw ApiException.conflict("request_already_decided");
     }
+    return request;
+  }
+
+  /** 승인 순간의 재확인 — 신청자 소속·정원 상태는 신청 이후 바뀔 수 있다. */
+  private void requireApplicantStillJoinable(CrewJoinRequest request, Crew crew, UUID applicantId) {
+    // 신청 이후 다른 경로(초대코드 등)로 이미 크루에 들어갔으면 이 신청은 더 이상 유효하지 않다.
+    if (crewMemberRepository.existsByUserId(applicantId)) {
+      request.cancel();
+      crewJoinRequestRepository.save(request);
+      throw ApiException.conflict("applicant_already_in_crew");
+    }
+    if (crewMemberRepository.countByCrewId(crew.getId()) >= crew.getMaxMembers()) {
+      throw ApiException.conflict("crew_full");
+    }
+  }
+
+  /** 가입 신청 거절(리더 전용) — 사유는 선택. 거절 시각부터 {@value #APPLY_COOLDOWN_HOURS}h 재신청 쿨다운. */
+  @Transactional
+  public void reject(UUID leaderId, long requestId, String rawReason) {
+    CrewJoinRequest request = requirePendingRequestAsLeader(leaderId, requestId);
+    Crew crew = request.getCrew();
     String reason = validateBoundedText(rawReason, REJECT_REASON_MAX, "invalid_reject_reason");
 
     request.reject(leaderId, reason);

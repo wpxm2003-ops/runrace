@@ -72,31 +72,20 @@ public class CrewMatchService {
       OffsetDateTime startAt, OffsetDateTime endAt, List<UUID> rosterUserIds) {
     Crew myCrew = requireMyCrewAsLeader(meId);
 
+    // 입력 검증 — 로스터 인원수 + 대결 기간
     if (rosterSize < ROSTER_MIN || rosterSize > ROSTER_MAX) {
       throw ApiException.badRequest("invalid_roster_size");
     }
     RaceRules.validateWindow(startAt, endAt);
 
-    String name = opponentCrewName == null ? "" : opponentCrewName.trim();
-    Crew opponent = crewRepository.findByName(name)
-        .orElseThrow(() -> ApiException.notFound("crew_not_found"));
-    if (opponent.getId().equals(myCrew.getId())) {
-      throw ApiException.badRequest("cannot_challenge_self");
-    }
-    if (crewMemberRepository.countByCrewId(opponent.getId()) < rosterSize) {
-      throw ApiException.conflict("opponent_too_small");
-    }
+    Crew opponent = resolveOpponent(myCrew, opponentCrewName, rosterSize);
 
     OffsetDateTime now = OffsetDateTime.now();
-    if (!crewMatchRepository.findActiveByCrewId(myCrew.getId(), now).isEmpty()) {
-      throw ApiException.conflict("match_already_active");
-    }
-    if (!crewMatchRepository.findActiveByCrewId(opponent.getId(), now).isEmpty()) {
-      throw ApiException.conflict("opponent_busy");
-    }
+    requireNoActiveMatch(myCrew, opponent, now);
 
     List<CrewMember> myRoster = validateRoster(myCrew.getId(), rosterUserIds, rosterSize);
 
+    // 도전장 + 도전 크루 로스터 저장
     CrewMatch match = crewMatchRepository.save(CrewMatch.builder()
         .challengerCrew(myCrew)
         .opponentCrew(opponent)
@@ -110,6 +99,30 @@ public class CrewMatchService {
     // 커밋 후 상대 크루 리더에게 도전장 도착 푸시 — 방치로 인한 슬롯 잠금 완화.
     eventPublisher.publishEvent(new CrewMatchEvents.ChallengeReceived(
         opponent.getLeader().getId(), myCrew.getName(), match.getId()));
+  }
+
+  /** 지목한 상대 크루를 이름으로 찾는다 — 자기 크루 지목·로스터 인원 미달은 거절. */
+  private Crew resolveOpponent(Crew myCrew, String opponentCrewName, int rosterSize) {
+    String name = opponentCrewName == null ? "" : opponentCrewName.trim();
+    Crew opponent = crewRepository.findByName(name)
+        .orElseThrow(() -> ApiException.notFound("crew_not_found"));
+    if (opponent.getId().equals(myCrew.getId())) {
+      throw ApiException.badRequest("cannot_challenge_self");
+    }
+    if (crewMemberRepository.countByCrewId(opponent.getId()) < rosterSize) {
+      throw ApiException.conflict("opponent_too_small");
+    }
+    return opponent;
+  }
+
+  /** 크루당 진행 중인 대항전은 1건 — 양측 모두 비어 있어야 도전장을 보낼 수 있다. */
+  private void requireNoActiveMatch(Crew myCrew, Crew opponent, OffsetDateTime now) {
+    if (!crewMatchRepository.findActiveByCrewId(myCrew.getId(), now).isEmpty()) {
+      throw ApiException.conflict("match_already_active");
+    }
+    if (!crewMatchRepository.findActiveByCrewId(opponent.getId(), now).isEmpty()) {
+      throw ApiException.conflict("opponent_busy");
+    }
   }
 
   /**
@@ -126,24 +139,31 @@ public class CrewMatchService {
       throw ApiException.forbidden("not_opponent_leader");
     }
     requireAlivePending(match, now);
+    requireChallengerStillFree(match, now);
 
-    // 그 사이 도전 크루가 다른 대결을 잡았을 수 있다 — 이 매치를 제외하고 활성 검사.
+    List<CrewMember> roster = validateRoster(myCrew.getId(), rosterUserIds, match.getRosterSize());
+
+    // 수락 상태 전이 + 수락 크루 로스터 저장
+    match.accept();
+    crewMatchRepository.save(match);
+    saveRoster(match, myCrew.getId(), roster);
+
+    publishMatchConfirmed(match, myCrew.getName(), meId);
+  }
+
+  /** 그 사이 도전 크루가 다른 대결을 잡았을 수 있다 — 이 매치를 제외하고 활성 검사. */
+  private void requireChallengerStillFree(CrewMatch match, OffsetDateTime now) {
     boolean challengerBusy = crewMatchRepository
         .findActiveByCrewId(match.getChallengerCrew().getId(), now).stream()
         .anyMatch(m -> !m.getId().equals(match.getId()) && m.getStatus() == CrewMatch.Status.ACCEPTED);
     if (challengerBusy) {
       throw ApiException.conflict("opponent_busy");
     }
+  }
 
-    List<CrewMember> roster = validateRoster(myCrew.getId(), rosterUserIds, match.getRosterSize());
-
-    match.accept();
-    crewMatchRepository.save(match);
-    saveRoster(match, myCrew.getId(), roster);
-
-    // 커밋 후 양측 로스터 전원에게 출전 확정 푸시(수락 처리한 리더 본인 제외).
+  /** 커밋 후 양측 로스터 전원에게 출전 확정 푸시(수락 처리한 리더 본인 제외). */
+  private void publishMatchConfirmed(CrewMatch match, String opponentName, UUID meId) {
     String challengerName = match.getChallengerCrew().getName();
-    String opponentName = myCrew.getName();
     List<CrewMatchEvents.MatchConfirmed.RosterPush> receivers = new ArrayList<>();
     for (CrewMatchRoster r : crewMatchRosterRepository.findAllByMatchId(match.getId())) {
       UUID userId = r.getUser().getId();
@@ -197,6 +217,29 @@ public class CrewMatchService {
     Long crewId = myCrew.getId();
     OffsetDateTime now = OffsetDateTime.now();
 
+    // 진행중/받은 도전장/보낸 도전장 분류 (기간 끝난 ACCEPTED는 여기서 확정되며 빠진다)
+    ActiveMatches active = classifyActiveMatches(crewId, now);
+
+    // 가장 최근에 끝난 대항전 1건 — 위에서 방금 확정된 매치도 여기에 잡힌다.
+    CrewMatchSummary lastEnded = crewMatchRepository
+        .findEndedByCrewId(crewId, PageRequest.of(0, 1)).stream()
+        .findFirst()
+        .map(m -> toSummary(m, crewId, now))
+        .orElse(null);
+
+    MatchRecord record = new MatchRecord(
+        crewMatchRepository.countWins(crewId),
+        crewMatchRepository.countLosses(crewId),
+        crewMatchRepository.countDraws(crewId));
+    return new MyCrewMatchesResponse(
+        record, active.current(), active.received(), active.sent(), lastEnded);
+  }
+
+  /** 활성 매치 분류 결과 — 진행중(없으면 null) + 받은/보낸 도전장. */
+  private record ActiveMatches(
+      CrewMatchSummary current, List<CrewMatchSummary> received, List<CrewMatchSummary> sent) {}
+
+  private ActiveMatches classifyActiveMatches(Long crewId, OffsetDateTime now) {
     CrewMatchSummary current = null;
     List<CrewMatchSummary> received = new ArrayList<>();
     List<CrewMatchSummary> sent = new ArrayList<>();
@@ -214,18 +257,7 @@ public class CrewMatchService {
         sent.add(summary);
       }
     }
-
-    CrewMatchSummary lastEnded = crewMatchRepository
-        .findEndedByCrewId(crewId, PageRequest.of(0, 1)).stream()
-        .findFirst()
-        .map(m -> toSummary(m, crewId, now))
-        .orElse(null);
-
-    MatchRecord record = new MatchRecord(
-        crewMatchRepository.countWins(crewId),
-        crewMatchRepository.countLosses(crewId),
-        crewMatchRepository.countDraws(crewId));
-    return new MyCrewMatchesResponse(record, current, received, sent, lastEnded);
+    return new ActiveMatches(current, received, sent);
   }
 
   /** 크루가 주고받은 전체 대항전 — 최신 신청 순 페이지. */
@@ -258,7 +290,39 @@ public class CrewMatchService {
     OffsetDateTime now = OffsetDateTime.now();
     finalizeIfNeeded(match, now);
 
-    List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(matchId);
+    // 양측 로스터 행 + 합산 거리
+    RosterBoard board = buildRosterBoard(match, meId, now);
+
+    boolean myCrewIsChallenger = match.getChallengerCrew().getId().equals(myCrewId);
+    boolean isLeader = membership.getCrew().isLeader(meId);
+    boolean alivePending = match.getStatus() == CrewMatch.Status.PENDING && isAlivePending(match, now);
+    return new CrewMatchDetailResponse(
+        match.getId(),
+        derivedStatus(match, now),
+        match.getChallengerCrew().getName(),
+        match.getOpponentCrew().getName(),
+        myCrewIsChallenger,
+        match.getRosterSize(),
+        IsoTime.format(match.getCreatedAt()),
+        IsoTime.formatOrNull(match.getStartAt()),
+        IsoTime.formatOrNull(match.getEndAt()),
+        alivePending && !myCrewIsChallenger && isLeader,
+        alivePending && !myCrewIsChallenger && isLeader,
+        alivePending && myCrewIsChallenger && isLeader,
+        board.challengerSum(),
+        board.opponentSum(),
+        result(match, myCrewId),
+        board.challengerRows(),
+        board.opponentRows());
+  }
+
+  /** 상세 화면용 양측 로스터 — 크루별 행 목록(거리 내림차순) + 합산 거리. */
+  private record RosterBoard(
+      List<RosterRow> challengerRows, List<RosterRow> opponentRows,
+      long challengerSum, long opponentSum) {}
+
+  private RosterBoard buildRosterBoard(CrewMatch match, UUID meId, OffsetDateTime now) {
+    List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
     Map<UUID, Long> byUser = memberDistances(match, rosters, now);
 
     Long challengerId = match.getChallengerCrew().getId();
@@ -282,28 +346,7 @@ public class CrewMatchService {
     Comparator<RosterRow> byDistance = Comparator.comparingLong(RosterRow::distanceM).reversed();
     challengerRows.sort(byDistance);
     opponentRows.sort(byDistance);
-
-    boolean myCrewIsChallenger = challengerId.equals(myCrewId);
-    boolean isLeader = membership.getCrew().isLeader(meId);
-    boolean alivePending = match.getStatus() == CrewMatch.Status.PENDING && isAlivePending(match, now);
-    return new CrewMatchDetailResponse(
-        match.getId(),
-        derivedStatus(match, now),
-        match.getChallengerCrew().getName(),
-        match.getOpponentCrew().getName(),
-        myCrewIsChallenger,
-        match.getRosterSize(),
-        IsoTime.format(match.getCreatedAt()),
-        IsoTime.formatOrNull(match.getStartAt()),
-        IsoTime.formatOrNull(match.getEndAt()),
-        alivePending && !myCrewIsChallenger && isLeader,
-        alivePending && !myCrewIsChallenger && isLeader,
-        alivePending && myCrewIsChallenger && isLeader,
-        challengerSum,
-        opponentSum,
-        result(match, myCrewId),
-        challengerRows,
-        opponentRows);
+    return new RosterBoard(challengerRows, opponentRows, challengerSum, opponentSum);
   }
 
   /**
@@ -356,7 +399,25 @@ public class CrewMatchService {
       return; // 이 운동은 대항전 채점 구간 밖 — memberDistances 집계에 반영되지 않는다.
     }
 
+    // 이 운동까지 반영된 양측 합산 거리
     List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
+    CrewSums sums = crewSums(match, rosters, now);
+
+    boolean mySideIsChallenger = myRoster.getCrewId().equals(match.getChallengerCrew().getId());
+    long myNextSum = mySideIsChallenger ? sums.challenger() : sums.opponent();
+    long otherSum = mySideIsChallenger ? sums.opponent() : sums.challenger();
+    long myPrevSum = myNextSum - distanceM; // 방금 반영된 이 운동만큼 제외한 직전 상태
+
+    // 직전엔 뒤지거나 동률이었는데 이 운동으로 앞서게 됐으면 방금 추월한 것.
+    if (myPrevSum > otherSum || myNextSum <= otherSum) return;
+
+    publishOvertake(match, rosters, mySideIsChallenger);
+  }
+
+  /** 양측 크루의 로스터 합산 거리. */
+  private record CrewSums(long challenger, long opponent) {}
+
+  private CrewSums crewSums(CrewMatch match, List<CrewMatchRoster> rosters, OffsetDateTime now) {
     Map<UUID, Long> byUser = memberDistances(match, rosters, now);
     Long challengerId = match.getChallengerCrew().getId();
     long challengerSum = 0;
@@ -365,17 +426,16 @@ public class CrewMatchService {
       long dist = byUser.getOrDefault(r.getUser().getId(), 0L);
       if (r.getCrewId().equals(challengerId)) challengerSum += dist; else opponentSum += dist;
     }
+    return new CrewSums(challengerSum, opponentSum);
+  }
 
-    boolean mySideIsChallenger = myRoster.getCrewId().equals(challengerId);
-    long myNextSum = mySideIsChallenger ? challengerSum : opponentSum;
-    long otherSum = mySideIsChallenger ? opponentSum : challengerSum;
-    long myPrevSum = myNextSum - distanceM; // 방금 반영된 이 운동만큼 제외한 직전 상태
-
-    // 직전엔 뒤지거나 동률이었는데 이 운동으로 앞서게 됐으면 방금 추월한 것.
-    if (myPrevSum > otherSum || myNextSum <= otherSum) return;
-
+  /** 추월당한 크루 로스터 전원에게 추월 푸시 이벤트를 발행한다. 대상이 없으면 생략. */
+  private void publishOvertake(
+      CrewMatch match, List<CrewMatchRoster> rosters, boolean mySideIsChallenger) {
     Crew overtakerCrew = mySideIsChallenger ? match.getChallengerCrew() : match.getOpponentCrew();
-    Long overtakenCrewId = mySideIsChallenger ? match.getOpponentCrew().getId() : challengerId;
+    Long overtakenCrewId = mySideIsChallenger
+        ? match.getOpponentCrew().getId()
+        : match.getChallengerCrew().getId();
     List<UUID> overtakenUserIds = rosters.stream()
         .filter(r -> r.getCrewId().equals(overtakenCrewId))
         .map(r -> r.getUser().getId())

@@ -49,42 +49,63 @@ public class IndoorApprovalService {
 
     challengeProgressService.forEachActiveChallengeMember(userId, now, (member, allMembers) -> {
       Challenge challenge = member.getChallenge();
+      // 같은 레이스에 이미 등록된 운동이면 중복 승인 요청을 만들지 않는다
       if (challengeWorkoutRepository.existsByChallengeIdAndWorkoutSessionId(
           challenge.getId(), session.getId())) return;
 
-      ChallengeWorkout saved = challengeWorkoutRepository.save(ChallengeWorkout.builder()
-          .challenge(challenge)
-          .workoutSession(session)
-          .user(member.getUser())
-          .appliedDistanceM(distanceM)
-          .approvalStatus(ApprovalStatus.PENDING)
-          .createdAt(now)
-          .build());
+      // 승인 대기 상태의 레이스-운동 링크 생성
+      ChallengeWorkout saved = savePendingChallengeWorkout(challenge, session, member, distanceM, now);
 
-      List<UUID> voterIds = new ArrayList<>();
-      List<IndoorRunApproval> approvals = new ArrayList<>();
-      for (ChallengeMember voter : allMembers) {
-        if (voter.getUser().getId().equals(userId)) continue;
-        approvals.add(IndoorRunApproval.builder()
-            .challengeWorkout(saved)
-            .voter(voter.getUser())
-            .createdAt(now)
-            .build());
-        voterIds.add(voter.getUser().getId());
-      }
-      indoorRunApprovalRepository.saveAll(approvals);
+      // 본인을 제외한 구성원에게 투표 행 생성
+      List<UUID> voterIds = createApprovalVotes(saved, allMembers, userId, now);
 
       // 투표자가 없으면(혼자 참가 중) 즉시 승인
       if (voterIds.isEmpty()) {
-        saved.approve();
-        challengeWorkoutRepository.save(saved);
-        applyApprovedIndoorRun(saved.getId());
+        approveWithoutVote(saved);
       } else {
         String nickname = member.getUser().getNickname();
         eventPublisher.publishEvent(new WorkoutEvents.IndoorRunPendingApprovalEvent(
             saved.getId(), challenge.getId(), userId, voterIds, nickname));
       }
     });
+  }
+
+  private ChallengeWorkout savePendingChallengeWorkout(
+      Challenge challenge, WorkoutSession session, ChallengeMember member,
+      int distanceM, OffsetDateTime now) {
+    return challengeWorkoutRepository.save(ChallengeWorkout.builder()
+        .challenge(challenge)
+        .workoutSession(session)
+        .user(member.getUser())
+        .appliedDistanceM(distanceM)
+        .approvalStatus(ApprovalStatus.PENDING)
+        .createdAt(now)
+        .build());
+  }
+
+  /** 본인을 제외한 레이스 구성원의 투표 행을 만들고, 투표자 ID 목록을 돌려준다. */
+  private List<UUID> createApprovalVotes(
+      ChallengeWorkout saved, List<ChallengeMember> allMembers, UUID userId, OffsetDateTime now) {
+    List<UUID> voterIds = new ArrayList<>();
+    List<IndoorRunApproval> approvals = new ArrayList<>();
+    for (ChallengeMember voter : allMembers) {
+      if (voter.getUser().getId().equals(userId)) continue;
+      approvals.add(IndoorRunApproval.builder()
+          .challengeWorkout(saved)
+          .voter(voter.getUser())
+          .createdAt(now)
+          .build());
+      voterIds.add(voter.getUser().getId());
+    }
+    indoorRunApprovalRepository.saveAll(approvals);
+    return voterIds;
+  }
+
+  /** 투표자가 없어 승인 절차를 건너뛰고 바로 거리까지 반영한다. */
+  private void approveWithoutVote(ChallengeWorkout saved) {
+    saved.approve();
+    challengeWorkoutRepository.save(saved);
+    applyApprovedIndoorRun(saved.getId());
   }
 
   /** 해당 ChallengeWorkout의 모든 투표가 승인 상태인지 — 전원 승인 판정(거리 반영 트리거용). */

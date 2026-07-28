@@ -89,20 +89,48 @@ public class ChallengeService {
       String langCd,
       String stake,
       boolean crewOnly) {
+    // 입력 검증
     validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
 
-    Long crewId = null;
-    if (crewOnly) {
-      crewId = CrewGuards.requireMembership(crewMemberRepository, principal.userId())
-          .getCrew().getId();
-    }
+    // 크루 전용이면 생성자의 소속 크루에 귀속(미소속이면 여기서 막힌다)
+    Long crewId = crewOnly ? requireOwnCrewId(principal) : null;
 
+    // 방장당 활성 방 개수 제한
     AppUser creator = appUserRepository.getRequired(principal.userId());
+    ensureActiveRoomLimit(creator);
+
+    // 방 저장
+    Challenge saved =
+        saveRoom(creator, title, goalKm, maxMembers, startAt, endAt, langCd, stake, crewId);
+
+    // 방장을 첫 참가자로 등록
+    challengeMemberRepository.save(newMember(saved, creator));
+
+    return saved;
+  }
+
+  private Long requireOwnCrewId(AuthPrincipal principal) {
+    return CrewGuards.requireMembership(crewMemberRepository, principal.userId())
+        .getCrew().getId();
+  }
+
+  private void ensureActiveRoomLimit(AppUser creator) {
     if (challengeRepository.countActiveByCreator(creator.getId(), OffsetDateTime.now())
         >= MAX_ACTIVE_ROOMS_PER_CREATOR) {
       throw ApiException.conflict("active_room_limit");
     }
+  }
 
+  private Challenge saveRoom(
+      AppUser creator,
+      String title,
+      BigDecimal goalKm,
+      int maxMembers,
+      OffsetDateTime startAt,
+      OffsetDateTime endAt,
+      String langCd,
+      String stake,
+      Long crewId) {
     Challenge challenge = Challenge.builder()
         .creator(creator)
         .createdAt(OffsetDateTime.now())
@@ -116,11 +144,7 @@ public class ChallengeService {
         .stake(cleanStake(stake))
         .crewId(crewId)
         .build();
-    Challenge saved = challengeRepository.save(challenge);
-
-    challengeMemberRepository.save(newMember(saved, creator));
-
-    return saved;
+    return challengeRepository.save(challenge);
   }
 
   /**
