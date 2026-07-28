@@ -552,6 +552,40 @@ export type NsmWeeklyProgress = {
   planned: number;
 };
 
+/** 역치 추이 그래프의 점 하나(재측정 1회). */
+export type NsmRetestPoint = {
+  id: number;
+  createdAt: string;
+  vdot: number;
+  thresholdPaceSec: number;
+  sourceDistanceM: number;
+  sourceTimeSec: number;
+};
+
+/** 내 성장 리포트(인증 필요) — 역치 추이 전체 + 전 기간 누적. */
+export type NsmMyReport = {
+  retests: NsmRetestPoint[];
+  totalSubTCompleted: number;
+  totalSubTMinutes: number;
+  /** 가장 최근 블록(직전 재측정→최신 재측정)의 공개 리포트 id. 블록이 없으면 null. */
+  latestBlockRetestId: number | null;
+};
+
+/** NSM 블록(직전 재측정 → 이번 재측정) 공개 리포트 — 인증 불필요, 사용자 식별 정보 미포함. */
+export type NsmBlockReport = {
+  days: number;
+  startVdot: number;
+  endVdot: number;
+  startThresholdPaceSec: number;
+  endThresholdPaceSec: number;
+  startSourceDistanceM: number;
+  startSourceTimeSec: number;
+  endSourceDistanceM: number;
+  endSourceTimeSec: number;
+  subTCompleted: number;
+  subTMinutes: number;
+};
+
 export type CreateWorkoutResponse = {
   id: number;
   personalBest: PersonalBest | null;

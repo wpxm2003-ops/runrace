@@ -1,15 +1,20 @@
 package com.runrace.backend.training.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.PathPatterns;
+import com.runrace.backend.training.dto.NsmBlockReportResponse;
+import com.runrace.backend.training.dto.NsmMyReportResponse;
 import com.runrace.backend.training.dto.NsmSessionLogRequest;
 import com.runrace.backend.training.dto.NsmWeeklyProgressResponse;
 import com.runrace.backend.training.dto.TrainingPlanRequest;
 import com.runrace.backend.training.dto.TrainingPlanResponse;
+import com.runrace.backend.training.service.NsmReportService;
 import com.runrace.backend.training.service.NsmSessionLogService;
 import com.runrace.backend.training.service.TrainingPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,6 +29,7 @@ public class TrainingPlanController {
 
   private final TrainingPlanService trainingPlanService;
   private final NsmSessionLogService nsmSessionLogService;
+  private final NsmReportService nsmReportService;
 
   /** 내 활성 플랜. 없으면 body=null(200). */
   @GetMapping
@@ -67,5 +73,20 @@ public class TrainingPlanController {
   @GetMapping("/sessions/weekly")
   public ResponseEntity<NsmWeeklyProgressResponse> weeklyProgress(AuthPrincipal principal) {
     return ResponseEntity.ok(nsmSessionLogService.weeklyProgress(principal.userId()));
+  }
+
+  /** 내 성장 리포트 — 역치 추이 + 전 기간 누적(인증 필요). */
+  @GetMapping("/report")
+  public ResponseEntity<NsmMyReportResponse> myReport(AuthPrincipal principal) {
+    return ResponseEntity.ok(nsmReportService.myReport(principal.userId()));
+  }
+
+  /**
+   * 블록(직전 재측정 → 이 재측정) 공개 리포트 — 인증 불필요. 링크 공유용이라 워크아웃 공유 페이지와
+   * 동일하게 FirebaseAuthFilter에서 이 경로를 인증 우회 대상으로 등록해뒀다.
+   */
+  @GetMapping("/report/{id:" + PathPatterns.ID + "}")
+  public ResponseEntity<NsmBlockReportResponse> blockReport(@PathVariable("id") Long id) {
+    return ResponseEntity.ok(nsmReportService.blockReport(id));
   }
 }

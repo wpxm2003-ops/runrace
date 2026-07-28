@@ -47,6 +47,9 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       Pattern.compile("^/api/challenges/" + PathPatterns.ID + "/prizes$");
   private static final Pattern WORKOUT_SHARE =
       Pattern.compile("^/api/workouts/" + PathPatterns.ID + "/share$");
+  /** NSM 블록(직전 재측정→이번 재측정) 리포트 — 링크 공유용, 사용자 식별 정보 미포함. */
+  private static final Pattern NSM_BLOCK_REPORT =
+      Pattern.compile("^/api/training-plan/report/" + PathPatterns.ID + "$");
   private static final Pattern CHALLENGE_SHARE_PAGE =
       Pattern.compile("^/api/share/challenges/" + PathPatterns.ID + "$");
   /** 크루 발견 목록·공개 상세 — 비회원도 구경 가능, 로그인 상태면 내 신청 상태를 함께 내려준다. */
@@ -68,6 +71,9 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
       return true;
     }
     if ("GET".equalsIgnoreCase(request.getMethod()) && WORKOUT_SHARE.matcher(path).matches()) {
+      return true;
+    }
+    if ("GET".equalsIgnoreCase(request.getMethod()) && NSM_BLOCK_REPORT.matcher(path).matches()) {
       return true;
     }
     if ("GET".equalsIgnoreCase(request.getMethod()) && CHALLENGE_SHARE_PAGE.matcher(path).matches()) {

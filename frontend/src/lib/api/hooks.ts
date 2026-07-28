@@ -37,7 +37,7 @@ import {
 import { fetchPrizes } from "./prizes";
 import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
-import { fetchNsmWeeklyProgress, fetchTrainingPlan } from "./training";
+import { fetchNsmBlockReport, fetchNsmMyReport, fetchNsmWeeklyProgress, fetchTrainingPlan } from "./training";
 import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear, fetchPersonalBests } from "./workouts";
 import { fetchMe } from "./auth";
 import { fetchNotificationSetting } from "./push";
@@ -501,6 +501,24 @@ export function useNsmWeeklyProgress(user: User | null) {
     user ? (["nsm-weekly-progress", user.uid] as const) : null,
     () => fetchNsmWeeklyProgress(user!),
     BASE_CONFIG,
+  );
+}
+
+/** 내 NSM 성장 리포트(역치 추이 + 누적) — /training/report 대시보드용. */
+export function useNsmMyReport(user: User | null) {
+  return useSWR(
+    user ? (["nsm-my-report", user.uid] as const) : null,
+    () => fetchNsmMyReport(user!),
+    BASE_CONFIG,
+  );
+}
+
+/** NSM 블록 공개 리포트 — 인증 불필요, 공유 링크로 조회(id 변경 시 재요청). */
+export function useNsmBlockReport(id: number | null) {
+  return useSWR(
+    id != null ? (["nsm-block-report", id] as const) : null,
+    () => fetchNsmBlockReport(id!),
+    { ...BASE_CONFIG, revalidateOnFocus: false },
   );
 }
 

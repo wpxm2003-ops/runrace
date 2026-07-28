@@ -3,11 +3,16 @@ package com.runrace.backend.training.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.training.domain.NsmRetestLog;
 import com.runrace.backend.training.domain.TrainingPlan;
 import com.runrace.backend.training.dto.TrainingPlanRequest;
+import com.runrace.backend.training.repository.NsmRetestLogRepository;
 import com.runrace.backend.training.repository.TrainingPlanRepository;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TrainingPlanServiceTest {
 
   @Mock TrainingPlanRepository trainingPlanRepository;
+  @Mock NsmRetestLogRepository retestLogRepository;
   @InjectMocks TrainingPlanService service;
 
   private final UUID userId = UUID.randomUUID();
@@ -177,6 +183,43 @@ class TrainingPlanServiceTest {
       assertEquals("1,3,5", saved.getSubTDays());
       assertEquals(3, saved.getSessionsPerWeek());
       assertEquals(280, saved.getThresholdPaceSec());
+    }
+  }
+
+  /** training_plan은 upsert라 재측정 이력을 별도로 append 로그하지 않으면 과거 값이 영영 사라진다. */
+  @Nested class RetestLogging {
+    @Test void 첫_저장이면_재측정_로그를_남긴다() {
+      when(trainingPlanRepository.findByUserId(userId)).thenReturn(Optional.empty());
+      when(trainingPlanRepository.save(any(TrainingPlan.class))).thenAnswer(inv -> inv.getArgument(0));
+      when(retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)).thenReturn(Optional.empty());
+
+      service.save(userId, req(45, 280, OK_DAYS, 5000, 1320));
+
+      verify(retestLogRepository, times(1)).save(any(NsmRetestLog.class));
+    }
+
+    @Test void 원본기록이_직전_재측정과_같으면_로그를_남기지_않는다() {
+      when(trainingPlanRepository.findByUserId(userId)).thenReturn(Optional.empty());
+      when(trainingPlanRepository.save(any(TrainingPlan.class))).thenAnswer(inv -> inv.getArgument(0));
+      NsmRetestLog last = NsmRetestLog.of(userId, 45, 280, 5000, 1320, null);
+      when(retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)).thenReturn(Optional.of(last));
+
+      // band만 바뀌고 원본 기록(거리·시간)은 동일 — 새 재측정이 아니다. (band 4는 2~3일 허용, OK_DAYS=3일과 호환)
+      service.save(userId, reqWithBand(45, 280, OK_DAYS, 5000, 1320, 4));
+
+      verify(retestLogRepository, never()).save(any(NsmRetestLog.class));
+    }
+
+    @Test void 원본기록이_직전_재측정과_다르면_로그를_남긴다() {
+      when(trainingPlanRepository.findByUserId(userId)).thenReturn(Optional.empty());
+      when(trainingPlanRepository.save(any(TrainingPlan.class))).thenAnswer(inv -> inv.getArgument(0));
+      NsmRetestLog last = NsmRetestLog.of(userId, 42, 300, 5000, 1400, null);
+      when(retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)).thenReturn(Optional.of(last));
+
+      // 5K 기록이 1400초 → 1320초로 갱신 — 진짜 재측정.
+      service.save(userId, req(45, 280, OK_DAYS, 5000, 1320));
+
+      verify(retestLogRepository, times(1)).save(any(NsmRetestLog.class));
     }
   }
 }

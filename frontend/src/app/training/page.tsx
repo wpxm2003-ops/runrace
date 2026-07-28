@@ -353,6 +353,13 @@ function TrainingContent({ user }: { user: User | null }) {
               {t.nsm_week_progress(weekly.completed, weekly.planned)}
             </p>
           ) : null}
+          <button
+            type="button"
+            onClick={() => nativeNavigate("/training/report")}
+            className="mt-2 text-[11px] font-medium text-zinc-300 underline underline-offset-2 hover:text-white"
+          >
+            📈 {t.nsm_report_link}
+          </button>
         </Card>
       ) : null}
 

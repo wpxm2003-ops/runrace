@@ -1,8 +1,10 @@
 package com.runrace.backend.training.service;
 
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.training.domain.NsmRetestLog;
 import com.runrace.backend.training.domain.TrainingPlan;
 import com.runrace.backend.training.dto.TrainingPlanRequest;
+import com.runrace.backend.training.repository.NsmRetestLogRepository;
 import com.runrace.backend.training.repository.TrainingPlanRepository;
 import java.util.Arrays;
 import java.util.Map;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TrainingPlanService {
 
   private final TrainingPlanRepository trainingPlanRepository;
+  private final NsmRetestLogRepository retestLogRepository;
 
   /** 볼륨 밴드별 sub-T 요일 수 제약(최소,최대) — 런갤 NSM 볼륨 티어 표 기준. 미지정 시 레거시 기본(2~3). */
   private static final Map<Integer, int[]> BAND_DAY_LIMITS = Map.of(
@@ -62,7 +65,26 @@ public class TrainingPlanService {
       plan.update(req.vdot(), req.thresholdPaceSec(), csv,
           req.sourceDistanceM(), req.sourceTimeSec(), req.weeklyBand());
     }
-    return trainingPlanRepository.save(plan);
+    plan = trainingPlanRepository.save(plan);
+    recordRetestIfChanged(userId, req);
+    return plan;
+  }
+
+  /**
+   * 새로 입력한 원본 기록(거리·시간)이 직전 재측정과 다르면 append 로그를 남긴다.
+   * 밴드만 바꾸는 등 원본 기록이 그대로인 저장은 "새 재측정"이 아니므로 로그하지 않는다.
+   * training_plan은 upsert라 이 순간을 놓치면 과거 재측정 이력은 영영 복원할 수 없다.
+   */
+  private void recordRetestIfChanged(UUID userId, TrainingPlanRequest req) {
+    boolean isNewRetest = retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
+        .map(last -> last.getSourceDistanceM() != req.sourceDistanceM()
+            || last.getSourceTimeSec() != req.sourceTimeSec())
+        .orElse(true);
+    if (isNewRetest) {
+      retestLogRepository.save(NsmRetestLog.of(
+          userId, req.vdot(), req.thresholdPaceSec(),
+          req.sourceDistanceM(), req.sourceTimeSec(), req.weeklyBand()));
+    }
   }
 
   /** sub-T 요일 검증·정규화 — 볼륨 밴드별 최소/최대(미지정 시 2~3), 0~6 범위, 중복 제거·정렬 후 CSV. */
