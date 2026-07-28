@@ -12,10 +12,10 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 const DEFAULT_CENTER: [number, number] = [126.978, 37.5665];
 /**
- * light-v11 — streets-v12 대비 가볍다. streets는 terrain·bathymetry(해저 지형) 타일셋까지
- * 합성해 받는데 러닝 경로 표시엔 불필요하다. 배경이 연해서 경로선 대비도 더 좋다.
+ * streets-v12 — 공원 초록·물 파랑 등 러너에게 필요한 지형 색이 들어간다.
+ * light-v11은 더 가볍지만 데이터 오버레이용 무채색 베이스맵이라 지형이 전혀 구분되지 않는다.
  */
-const MAP_STYLE = "mapbox://styles/mapbox/light-v11";
+const MAP_STYLE = "mapbox://styles/mapbox/streets-v12";
 /**
  * CJK 글자는 기기 폰트로 렌더한다. 지정하지 않으면 한글 글리프를 서버에서 내려받는데,
  * 글자 수가 많아 요청이 무겁다(한국에서 체감 로딩이 느린 주된 원인).
