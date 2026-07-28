@@ -5,10 +5,11 @@ import { Alert } from "@/app/_components/ui/Alert";
 import { AsyncList } from "@/app/_components/ui/AsyncList";
 import { Card } from "@/app/_components/ui/Card";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
+import { PersonalBestsSection } from "@/app/my/_components/PersonalBestsSection";
 import { useWorkoutSummary } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
 
-/** 전체 운동 기록 요약 — 누적 거리·횟수·연속일수. */
+/** 전체 운동 기록 요약 — 누적 거리·횟수·연속일수 + 개인 최고 기록. */
 export function WorkoutSummarySection({ user }: { user: User }) {
   const { t } = useLocale();
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useWorkoutSummary(user);
@@ -26,12 +27,15 @@ export function WorkoutSummarySection({ user }: { user: User }) {
           skeletonCount={3}
         >
           {(summary) => (
-            <WorkoutAggregateStats
-              stats={summary}
-              showWorkoutDays
-              totalLabels
-              maxStreakDays={summary.maxStreakDays}
-            />
+            <>
+              <WorkoutAggregateStats
+                stats={summary}
+                showWorkoutDays
+                totalLabels
+                maxStreakDays={summary.maxStreakDays}
+              />
+              <PersonalBestsSection user={user} />
+            </>
           )}
         </AsyncList>
       </div>
