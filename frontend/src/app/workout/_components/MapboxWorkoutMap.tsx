@@ -11,7 +11,16 @@ import { useEffect, useMemo, useRef } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const DEFAULT_CENTER: [number, number] = [126.978, 37.5665];
-const MAP_STYLE = "mapbox://styles/mapbox/streets-v12";
+/**
+ * light-v11 — streets-v12 대비 가볍다. streets는 terrain·bathymetry(해저 지형) 타일셋까지
+ * 합성해 받는데 러닝 경로 표시엔 불필요하다. 배경이 연해서 경로선 대비도 더 좋다.
+ */
+const MAP_STYLE = "mapbox://styles/mapbox/light-v11";
+/**
+ * CJK 글자는 기기 폰트로 렌더한다. 지정하지 않으면 한글 글리프를 서버에서 내려받는데,
+ * 글자 수가 많아 요청이 무겁다(한국에서 체감 로딩이 느린 주된 원인).
+ */
+const LOCAL_IDEOGRAPH_FONT = "'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif";
 /** 카카오 지도 level 3과 비슷한 배율. */
 const DEFAULT_ZOOM = 16;
 
@@ -225,6 +234,7 @@ export default function MapboxWorkoutMap({
       center: initialCenter,
       zoom: DEFAULT_ZOOM,
       attributionControl: true,
+      localIdeographFontFamily: LOCAL_IDEOGRAPH_FONT,
     });
     mapRef.current = map;
 
