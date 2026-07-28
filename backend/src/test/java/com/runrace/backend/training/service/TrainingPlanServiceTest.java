@@ -1,8 +1,11 @@
 package com.runrace.backend.training.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,14 +17,17 @@ import com.runrace.backend.training.domain.TrainingPlan;
 import com.runrace.backend.training.dto.TrainingPlanRequest;
 import com.runrace.backend.training.repository.NsmRetestLogRepository;
 import com.runrace.backend.training.repository.TrainingPlanRepository;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class TrainingPlanServiceTest {
@@ -210,16 +216,55 @@ class TrainingPlanServiceTest {
       verify(retestLogRepository, never()).save(any(NsmRetestLog.class));
     }
 
-    @Test void 원본기록이_직전_재측정과_다르면_로그를_남긴다() {
+    @Test void 원본기록이_직전_재측정과_다르면_새_로그를_append한다() {
       when(trainingPlanRepository.findByUserId(userId)).thenReturn(Optional.empty());
       when(trainingPlanRepository.save(any(TrainingPlan.class))).thenAnswer(inv -> inv.getArgument(0));
       NsmRetestLog last = NsmRetestLog.of(userId, 42, 300, 5000, 1400, null);
+      // 4주 전 재측정 — 정정 윈도우(1시간) 밖이므로 진짜 재측정으로 append돼야 한다.
+      ReflectionTestUtils.setField(last, "createdAt", OffsetDateTime.now().minusDays(28));
       when(retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)).thenReturn(Optional.of(last));
 
       // 5K 기록이 1400초 → 1320초로 갱신 — 진짜 재측정.
       service.save(userId, req(45, 280, OK_DAYS, 5000, 1320));
 
-      verify(retestLogRepository, times(1)).save(any(NsmRetestLog.class));
+      ArgumentCaptor<NsmRetestLog> captor = ArgumentCaptor.forClass(NsmRetestLog.class);
+      verify(retestLogRepository, times(1)).save(captor.capture());
+      assertNotSame(last, captor.getValue());
+      assertEquals(1320, captor.getValue().getSourceTimeSec());
+    }
+
+    @Test void 정정_윈도우_안의_재저장은_직전_로그를_고친다() {
+      when(trainingPlanRepository.findByUserId(userId)).thenReturn(Optional.empty());
+      when(trainingPlanRepository.save(any(TrainingPlan.class))).thenAnswer(inv -> inv.getArgument(0));
+      // 방금(1시간 이내) 남긴 로그 — 2:50/km 같은 오타를 바로 고치는 상황.
+      NsmRetestLog last = NsmRetestLog.of(userId, 42, 300, 5000, 1400, null);
+      when(retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)).thenReturn(Optional.of(last));
+      when(retestLogRepository.findTopByUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+          eq(userId), any(OffsetDateTime.class))).thenReturn(Optional.empty());
+
+      service.save(userId, req(45, 280, OK_DAYS, 5000, 1320));
+
+      ArgumentCaptor<NsmRetestLog> captor = ArgumentCaptor.forClass(NsmRetestLog.class);
+      verify(retestLogRepository, times(1)).save(captor.capture());
+      assertSame(last, captor.getValue()); // 새 행이 아니라 기존 행을 덮어썼다
+      assertEquals(1320, last.getSourceTimeSec());
+      assertEquals(45, last.getVdot());
+    }
+
+    @Test void 정정으로_이전_재측정과_같은_기록으로_되돌리면_행을_지운다() {
+      when(trainingPlanRepository.findByUserId(userId)).thenReturn(Optional.empty());
+      when(trainingPlanRepository.save(any(TrainingPlan.class))).thenAnswer(inv -> inv.getArgument(0));
+      // 원래 기록 1400초(과거) → 실수로 1200초 입력(방금) → 다시 1400초로 되돌리는 저장.
+      NsmRetestLog beforeLast = NsmRetestLog.of(userId, 42, 300, 5000, 1400, null);
+      NsmRetestLog last = NsmRetestLog.of(userId, 50, 260, 5000, 1200, null);
+      when(retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)).thenReturn(Optional.of(last));
+      when(retestLogRepository.findTopByUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+          eq(userId), any(OffsetDateTime.class))).thenReturn(Optional.of(beforeLast));
+
+      service.save(userId, req(42, 300, OK_DAYS, 5000, 1400));
+
+      verify(retestLogRepository).delete(last);
+      verify(retestLogRepository, never()).save(any(NsmRetestLog.class));
     }
   }
 }

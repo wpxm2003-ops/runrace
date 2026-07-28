@@ -209,13 +209,15 @@ public class AchievementService {
     if (memberCount < 3) return;
 
     // 이번 달 거리 내림차순 순위(0km 미기록 멤버는 rows에 없음 → 뛴 사람 중 순위).
-    List<UUID> ranked = rows.stream()
-        .sorted(Comparator.comparingLong(CrewMemberRepository.MemberDistanceAgg::getDistanceM).reversed())
-        .map(CrewMemberRepository.MemberDistanceAgg::getUserId)
-        .toList();
-    int idx = ranked.indexOf(userId);
-    if (idx < 0) return;
-    int rank = idx + 1;
+    // 동거리는 동순위(나보다 엄격히 많이 뛴 사람 수 + 1) — 정렬 순서에 따라 등수가 흔들리지 않는다.
+    long myDist = rows.stream()
+        .filter(r -> r.getUserId().equals(userId))
+        .mapToLong(CrewMemberRepository.MemberDistanceAgg::getDistanceM)
+        .findFirst()
+        .orElse(-1);
+    if (myDist < 0) return;
+    long strictlyAhead = rows.stream().filter(r -> r.getDistanceM() > myDist).count();
+    int rank = (int) strictlyAhead + 1;
     if (rank <= 3) {
       out.add(new Scored(55, Achievement.of("CREW_RANK", rank, memberCount)));
     }

@@ -6,6 +6,8 @@ import com.runrace.backend.training.domain.TrainingPlan;
 import com.runrace.backend.training.dto.TrainingPlanRequest;
 import com.runrace.backend.training.repository.NsmRetestLogRepository;
 import com.runrace.backend.training.repository.TrainingPlanRepository;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -70,21 +72,47 @@ public class TrainingPlanService {
     return plan;
   }
 
+  /** 이 시간 안의 연속 저장은 새 재측정이 아니라 직전 입력의 정정으로 본다(1시간 안에 5K를 두 번 재는 사람은 없다). */
+  private static final Duration RETEST_CORRECTION_WINDOW = Duration.ofHours(1);
+
   /**
-   * 새로 입력한 원본 기록(거리·시간)이 직전 재측정과 다르면 append 로그를 남긴다.
+   * 새로 입력한 원본 기록(거리·시간)이 직전 재측정과 다르면 재측정 이력을 남긴다.
    * 밴드만 바꾸는 등 원본 기록이 그대로인 저장은 "새 재측정"이 아니므로 로그하지 않는다.
+   * 단, 직전 로그가 {@link #RETEST_CORRECTION_WINDOW} 이내면 오타 정정으로 보고
+   * 새 행을 쌓는 대신 직전 행을 고친다 — 정정이 재측정 2건으로 남으면 0일짜리 블록이 생기고
+   * 추이 그래프에 가짜 점이 찍힌다. 정정 결과가 그 이전 재측정과 같은 기록으로 돌아가면
+   * (잘못 넣었다가 되돌린 것) 행 자체를 지워 이력을 원상복구한다.
    * training_plan은 upsert라 이 순간을 놓치면 과거 재측정 이력은 영영 복원할 수 없다.
    */
   private void recordRetestIfChanged(UUID userId, TrainingPlanRequest req) {
-    boolean isNewRetest = retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
-        .map(last -> last.getSourceDistanceM() != req.sourceDistanceM()
-            || last.getSourceTimeSec() != req.sourceTimeSec())
-        .orElse(true);
-    if (isNewRetest) {
-      retestLogRepository.save(NsmRetestLog.of(
-          userId, req.vdot(), req.thresholdPaceSec(),
-          req.sourceDistanceM(), req.sourceTimeSec(), req.weeklyBand()));
+    NsmRetestLog last = retestLogRepository.findTopByUserIdOrderByCreatedAtDesc(userId).orElse(null);
+    boolean recordChanged = last == null
+        || last.getSourceDistanceM() != req.sourceDistanceM()
+        || last.getSourceTimeSec() != req.sourceTimeSec();
+    if (!recordChanged) return;
+
+    boolean withinCorrectionWindow = last != null
+        && last.getCreatedAt().isAfter(OffsetDateTime.now().minus(RETEST_CORRECTION_WINDOW));
+    if (withinCorrectionWindow) {
+      NsmRetestLog beforeLast = retestLogRepository
+          .findTopByUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(userId, last.getCreatedAt())
+          .orElse(null);
+      boolean revertedToPrevious = beforeLast != null
+          && beforeLast.getSourceDistanceM() == req.sourceDistanceM()
+          && beforeLast.getSourceTimeSec() == req.sourceTimeSec();
+      if (revertedToPrevious) {
+        retestLogRepository.delete(last);
+      } else {
+        last.correctTo(req.vdot(), req.thresholdPaceSec(),
+            req.sourceDistanceM(), req.sourceTimeSec(), req.weeklyBand());
+        retestLogRepository.save(last);
+      }
+      return;
     }
+
+    retestLogRepository.save(NsmRetestLog.of(
+        userId, req.vdot(), req.thresholdPaceSec(),
+        req.sourceDistanceM(), req.sourceTimeSec(), req.weeklyBand()));
   }
 
   /** sub-T 요일 검증·정규화 — 볼륨 밴드별 최소/최대(미지정 시 2~3), 0~6 범위, 중복 제거·정렬 후 CSV. */

@@ -46,13 +46,14 @@ import { sessionJson } from "@/lib/safeStorage";
 type NsmDraft = { distM: number; timeStr: string; subTDays: number[]; band?: NsmVolumeBand };
 const nsmDraftStore = sessionJson<NsmDraft>("nsm_calc_draft");
 
-// 3K는 PB(personal_best)에도 이미 있는 거리 — 여기 없으면 3K PB를 골랐을 때
-// 선택된 버튼이 하나도 없는 상태가 된다. 입문자가 5K를 아직 못 뛰는 경우의 진입로이기도 하다.
+// PB(personal_best)에 있는 거리는 전부 있어야 한다 — 빠지면 그 PB 칩을 골랐을 때
+// 선택된 버튼이 하나도 없는 상태가 된다(3K는 입문자 진입로이기도 하다).
 const DISTANCES = [
   { label: "3K", m: 3000 },
   { label: "5K", m: 5000 },
   { label: "10K", m: 10000 },
   { label: "Half", m: 21097 },
+  { label: "Full", m: 42195 },
 ];
 const PB_LABEL: Record<string, string> = {
   "3k": "3K",
@@ -69,7 +70,7 @@ function parseTime(v: string): number | null {
   const min = Number(m[1]);
   const sec = Number(m[2]);
   if (sec >= 60) return null; // 초는 0~59
-  if (min > 240) return null; // 상한 4시간 — 오타/비정상 입력 차단
+  if (min > 420) return null; // 상한 7시간 — 풀코스 완주 기록까지 허용, 오타/비정상 입력 차단
   return min * 60 + sec;
 }
 /** 숫자 키패드에는 콜론이 없으므로 입력 숫자만 받아 mm:ss로 자동 포맷 (2200 → 22:00) */
@@ -398,7 +399,7 @@ function TrainingContent({ user }: { user: User | null }) {
                   key={d.m}
                   type="button"
                   onClick={() => setDistM(d.m)}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                  className={`flex-1 rounded-lg border px-2 py-2 text-sm ${
                     distM === d.m ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300 bg-white text-zinc-700"
                   }`}
                 >

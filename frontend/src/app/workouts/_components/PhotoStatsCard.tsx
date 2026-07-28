@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
 import { track } from "@/lib/analytics";
@@ -196,7 +196,13 @@ export function WorkoutPhotoEditor({
 }) {
   const { t } = useLocale();
   const { unit } = useUnit();
-  useNativeBack(onClose);
+
+  const [busy, setBusy] = useState<"upload" | "download" | null>(null);
+  // 업로드가 진행 중일 때 닫으면 업로드는 서버에서 끝까지 진행되는데 사용자는 취소됐다고
+  // 생각하게 된다 — busy 동안은 백버튼/✕ 닫기를 막는다(버튼들도 이미 disabled).
+  useNativeBack(() => {
+    if (!busy) onClose();
+  });
 
   const [insertStats, setInsertStats] = useState(false);
   const [showRoute, setShowRoute] = useState(true);
@@ -205,7 +211,6 @@ export function WorkoutPhotoEditor({
   const [cx, setCx] = useState(LAYOUT_DEFAULT_POS.vertical.cx);
   const [cy, setCy] = useState(LAYOUT_DEFAULT_POS.vertical.cy);
   const [scale, setScale] = useState(1);
-  const [busy, setBusy] = useState<"upload" | "download" | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLDivElement>(null);
@@ -240,6 +245,12 @@ export function WorkoutPhotoEditor({
 
   // 드래그(1포인터)·핀치(2포인터) — 포인터별 마지막 좌표를 들고 이동량/거리비를 적용한다.
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+
+  // 제스처 도중 기록 삽입을 끄면 미리보기 표면이 통째로 갈아끼워져 pointerup을 놓친다.
+  // 남은 유령 포인터가 다음 한 손가락 드래그를 핀치로 오인하게 하므로 표면이 사라질 때 비운다.
+  useEffect(() => {
+    if (!insertStats) pointersRef.current.clear();
+  }, [insertStats]);
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!insertStats) return;
@@ -334,8 +345,9 @@ export function WorkoutPhotoEditor({
         <button
           type="button"
           onClick={onClose}
+          disabled={busy != null}
           aria-label={t.cancel}
-          className="-mr-1 rounded-lg p-1 text-zinc-400 hover:text-white"
+          className="-mr-1 rounded-lg p-1 text-zinc-400 hover:text-white disabled:opacity-40"
         >
           ✕
         </button>

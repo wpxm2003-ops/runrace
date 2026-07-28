@@ -61,4 +61,19 @@ public class NsmRetestLog {
     log.createdAt = OffsetDateTime.now();
     return log;
   }
+
+  /**
+   * 오타 정정 — 직전 재측정 행을 새 값으로 덮어쓴다(짧은 시간 안의 재저장 한정).
+   * append-only 원칙의 유일한 예외: 정정이 별도 재측정으로 쌓이면 0일짜리 블록이 생긴다.
+   * createdAt은 최초 입력 시각을 유지한다.
+   */
+  public void correctTo(
+      double vdot, int thresholdPaceSec,
+      int sourceDistanceM, int sourceTimeSec, Integer weeklyBand) {
+    this.vdot = vdot;
+    this.thresholdPaceSec = thresholdPaceSec;
+    this.sourceDistanceM = sourceDistanceM;
+    this.sourceTimeSec = sourceTimeSec;
+    this.weeklyBand = weeklyBand;
+  }
 }

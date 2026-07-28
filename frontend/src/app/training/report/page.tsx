@@ -100,7 +100,7 @@ function BlocksList({ retests, locale }: { retests: NsmRetestPoint[]; locale: st
               <div className="flex shrink-0 items-center gap-3">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400">{t.nsm_block_threshold_label}</div>
-                  <DeltaBadge diff={paceDelta.diff} improved={paceDelta.improved} suffix="초/km" />
+                  <DeltaBadge diff={paceDelta.diff} improved={paceDelta.improved} suffix={t.nsm_unit_sec_per_km} />
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400">VDOT</div>

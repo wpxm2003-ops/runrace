@@ -96,8 +96,10 @@ export function kmFromInput(value: string, unit: DistanceUnit): number {
 export function formatPaceSecPerUnit(secPerUnit: number): string {
   // 음수/비유한 값은 페이스로 성립 불가 — 포맷이 "-2'-40"" 같은 깨진 문자열을 뱉지 않게 방어.
   if (!Number.isFinite(secPerUnit) || secPerUnit < 0) return "-";
-  const m = Math.floor(secPerUnit / 60);
-  const s = Math.round(secPerUnit % 60);
+  // 총초를 먼저 반올림해야 한다 — 초만 따로 반올림하면 299.7초가 "4'60""이 된다.
+  const total = Math.round(secPerUnit);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${m}'${String(s).padStart(2, "0")}"`;
 }
 

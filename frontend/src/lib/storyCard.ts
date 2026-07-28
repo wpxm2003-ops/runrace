@@ -1,7 +1,7 @@
 /**
- * 인스타 스토리 카드(1080×1920) 캡처·저장 공용 로직.
- * ShareCardButton·MonthlyRecapCard가 공유한다. DOM(JSX)은 각 컴포넌트가 보유하고,
- * 캡처→네이티브 공유/웹 다운로드만 여기서 처리한다.
+ * 스토리 카드(기본 1080×1920) 캡처·저장 공용 로직.
+ * MonthlyRecapCard·NsmBlockReportContent·PhotoStatsCard가 공유한다.
+ * DOM(JSX)은 각 컴포넌트가 보유하고, 캡처→네이티브 공유/웹 다운로드만 여기서 처리한다.
  */
 export const CARD_W = 1080;
 export const CARD_H = 1920;

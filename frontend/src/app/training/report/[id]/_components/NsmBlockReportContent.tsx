@@ -110,7 +110,8 @@ export default function NsmBlockReportContent() {
             </span>
           </div>
           <div className="mt-1 text-sm font-medium" style={{ color: paceDiff <= 0 ? COLOR.green : COLOR.amber }}>
-            {paceDiff <= 0 ? "▼" : "▲"} {Math.abs(paceDiff)}초/km
+            {paceDiff <= 0 ? "▼" : "▲"} {Math.abs(paceDiff)}
+            {t.nsm_unit_sec_per_km}
           </div>
 
           <div className="my-4 h-px" style={{ background: COLOR.divider }} />
@@ -122,10 +123,13 @@ export default function NsmBlockReportContent() {
               </div>
               <div className="mt-0.5 text-lg font-semibold text-white">
                 {data.startVdot.toFixed(1)} → {data.endVdot.toFixed(1)}
-                <span className="ml-1 text-xs font-medium" style={{ color: vdotDiff >= 0 ? COLOR.green : COLOR.amber }}>
-                  ({vdotDiff >= 0 ? "+" : ""}
-                  {vdotDiff})
-                </span>
+                {/* 반올림 후 0이면 "(+0)"처럼 무의미한 델타는 표기하지 않는다(대시보드의 "–" 처리와 동일 취지) */}
+                {vdotDiff !== 0 && (
+                  <span className="ml-1 text-xs font-medium" style={{ color: vdotDiff > 0 ? COLOR.green : COLOR.amber }}>
+                    ({vdotDiff > 0 ? "+" : ""}
+                    {vdotDiff})
+                  </span>
+                )}
               </div>
             </div>
             <div>
@@ -200,7 +204,8 @@ export default function NsmBlockReportContent() {
               color: paceDiff <= 0 ? COLOR.green : COLOR.amber,
             }}
           >
-            {paceDiff <= 0 ? "▼" : "▲"} {Math.abs(paceDiff)}초/km
+            {paceDiff <= 0 ? "▼" : "▲"} {Math.abs(paceDiff)}
+            {t.nsm_unit_sec_per_km}
           </div>
 
           <div style={{ marginTop: 70, height: 1, background: COLOR.divider }} />

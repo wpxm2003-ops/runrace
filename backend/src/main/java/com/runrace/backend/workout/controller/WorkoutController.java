@@ -9,6 +9,7 @@ import com.runrace.backend.workout.dto.CreateWorkoutRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutResponse;
 import com.runrace.backend.workout.dto.IndoorRunVoteRequest;
 import com.runrace.backend.workout.dto.Achievement;
+import com.runrace.backend.workout.dto.PersonalBestResult;
 import com.runrace.backend.workout.dto.PersonalBestRow;
 import com.runrace.backend.workout.service.AchievementService;
 import com.runrace.backend.workout.service.PersonalBestService;
@@ -25,6 +26,8 @@ import com.runrace.backend.workout.service.WorkoutService;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/workouts")
 @RequiredArgsConstructor
 public class WorkoutController {
+  private static final Logger log = LoggerFactory.getLogger(WorkoutController.class);
   private static final String ID_PATH = PathPatterns.ID;
 
   private final WorkoutService workoutService;
@@ -64,10 +68,23 @@ public class WorkoutController {
             path,
             body.ghostWorkoutId(),
             body.ghostResult());
-    var pb = body.bestSegments() != null
-        ? personalBestService.evaluate(principal.userId(), session.getId(), body.bestSegments()).orElse(null)
-        : null;
-    List<Achievement> achievements = achievementService.evaluate(principal.userId(), session);
+    // 여기부터는 축하(PB·성과) 계산 — 운동 저장 트랜잭션은 이미 커밋됐다.
+    // 이 단계에서 예외로 500을 내면 프론트 withRetry가 저장 자체를 다시 POST해 중복 기록이 생기므로,
+    // 실패해도 삼켜 기록하고 저장 성공 응답을 내려보낸다.
+    PersonalBestResult pb = null;
+    try {
+      pb = body.bestSegments() != null
+          ? personalBestService.evaluate(principal.userId(), session.getId(), body.bestSegments()).orElse(null)
+          : null;
+    } catch (RuntimeException e) {
+      log.error("PB 판정 실패 — 운동 저장은 완료됨 (workoutId={})", session.getId(), e);
+    }
+    List<Achievement> achievements = List.of();
+    try {
+      achievements = achievementService.evaluate(principal.userId(), session);
+    } catch (RuntimeException e) {
+      log.error("오늘의 성과 판정 실패 — 운동 저장은 완료됨 (workoutId={})", session.getId(), e);
+    }
     return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), pb, achievements));
   }
 
@@ -77,8 +94,10 @@ public class WorkoutController {
       AuthPrincipal principal, @RequestBody CreateIndoorRunRequest body) {
     WorkoutSession session = workoutService.createIndoor(
         principal, body.distanceM(), body.durationSec(), body.startedAt(), body.imageUrl());
-    List<Achievement> achievements = achievementService.evaluate(principal.userId(), session);
-    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, achievements));
+    // 성과 판정은 하지 않는다 — 실내런은 소급 입력이 가능해 "오늘/이번 주" 기준 판정이
+    // 오판(지난주 러닝이 이번 주 첫 러닝으로 발화 등)을 만들고, 실내런 저장 화면은
+    // 상세로 바로 이동해 성과를 표시할 곳도 없다.
+    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, List.of()));
   }
 
   /** 실내러닝 승인/거부 투표. */

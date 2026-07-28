@@ -4,6 +4,7 @@ import {
   formatDistanceAmount,
   formatGoalDistance,
   formatPace,
+  formatPaceSecPerUnit,
   goalInputFromKm,
   goalKmFromInput,
   goalMaxInUnit,
@@ -81,5 +82,21 @@ describe("formatPace", () => {
   it("거리가 너무 짧거나 시간이 0이면 '-'", () => {
     expect(formatPace(5, 300, "km")).toBe("-");
     expect(formatPace(1000, 0, "km")).toBe("-");
+  });
+});
+
+describe("formatPaceSecPerUnit", () => {
+  it("초가 60으로 반올림되면 분으로 자리올림한다", () => {
+    expect(formatPaceSecPerUnit(299.7)).toBe("5'00\""); // 4'60"이 아니라
+    expect(formatPaceSecPerUnit(59.5)).toBe("1'00\"");
+  });
+  it("일반 반올림은 그대로", () => {
+    expect(formatPaceSecPerUnit(299.4)).toBe("4'59\"");
+    expect(formatPaceSecPerUnit(280)).toBe("4'40\"");
+  });
+  it("비정상 입력은 '-'", () => {
+    expect(formatPaceSecPerUnit(-1)).toBe("-");
+    expect(formatPaceSecPerUnit(Number.NaN)).toBe("-");
+    expect(formatPaceSecPerUnit(Number.POSITIVE_INFINITY)).toBe("-");
   });
 });

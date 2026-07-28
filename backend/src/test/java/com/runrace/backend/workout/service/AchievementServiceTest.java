@@ -214,6 +214,19 @@ class AchievementServiceTest {
       assertEquals(5L, rank.get().value2());
     }
 
+    @Test void 동거리_동점자는_같은_순위다() {
+      stubSummary(20, 200_000);
+      UUID other = UUID.randomUUID();
+      // 동거리 1위가 리스트에서 내 앞에 있어도, 정렬 순서가 아니라
+      // "나보다 엄격히 많이 뛴 사람 수 + 1"로 계산해 공동 1위여야 한다.
+      stubCrew(null, 5, List.of(agg(other, 50_000), agg(userId, 50_000)));
+
+      var rank = service.evaluate(userId, run(5_000)).stream()
+          .filter(a -> a.code().equals("CREW_RANK")).findFirst();
+      assertTrue(rank.isPresent());
+      assertEquals(1L, rank.get().value());
+    }
+
     @Test void 하위권이면_순위_성과를_만들지_않는다_패배감_방지() {
       stubSummary(20, 200_000);
       UUID o1 = UUID.randomUUID();

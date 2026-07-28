@@ -83,7 +83,10 @@ public class NsmReportService {
     List<NsmSessionLog> inBlock = sessionLogRepository.findByUserIdAndCompletedIsTrueAndCompletedAtBetween(
         end.getUserId(), start.getCreatedAt(), end.getCreatedAt());
 
-    long days = Duration.between(start.getCreatedAt(), end.getCreatedAt()).toDays();
+    // 대시보드(BlocksList)의 계산과 동일한 규칙: 일 단위 반올림, 최소 1일.
+    // toDays()는 내림이라 같은 날 재측정이 "0일간의 기록"으로 보인다.
+    long days = Math.max(1, Math.round(
+        Duration.between(start.getCreatedAt(), end.getCreatedAt()).toMillis() / 86_400_000.0));
 
     return new NsmBlockReportResponse(
         days,

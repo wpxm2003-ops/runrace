@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class NsmReportServiceTest {
@@ -121,6 +122,34 @@ class NsmReportServiceTest {
       assertEquals(280, block.endThresholdPaceSec());
       assertEquals(1, block.subTCompleted());
       assertEquals(24, block.subTMinutes()); // MEDIUM 6분 × 4렙
+    }
+
+    @Test void 같은_날_재측정이어도_기간은_최소_1일이다() {
+      // 내림(toDays)이면 0일이 나와 "0일간의 기록"으로 보인다 — 반올림+최소1 규칙 확인.
+      NsmRetestLog start = NsmRetestLog.of(userId, 42, 300, 5000, 1400, null);
+      NsmRetestLog end = NsmRetestLog.of(userId, 45, 280, 5000, 1320, null);
+      when(retestLogRepository.findById(4L)).thenReturn(Optional.of(end));
+      when(retestLogRepository.findTopByUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+          userId, end.getCreatedAt())).thenReturn(Optional.of(start));
+      when(sessionLogRepository.findByUserIdAndCompletedIsTrueAndCompletedAtBetween(
+          userId, start.getCreatedAt(), end.getCreatedAt())).thenReturn(List.of());
+
+      assertEquals(1, service.blockReport(4L).days());
+    }
+
+    @Test void 블록_기간은_일_단위_반올림이다() {
+      NsmRetestLog start = NsmRetestLog.of(userId, 42, 300, 5000, 1400, null);
+      NsmRetestLog end = NsmRetestLog.of(userId, 45, 280, 5000, 1320, null);
+      // 27일 20시간 전 → 내림이면 27일, 반올림이면 28일. 프론트 대시보드와 같은 값이어야 한다.
+      ReflectionTestUtils.setField(
+          start, "createdAt", end.getCreatedAt().minusDays(27).minusHours(20));
+      when(retestLogRepository.findById(5L)).thenReturn(Optional.of(end));
+      when(retestLogRepository.findTopByUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+          userId, end.getCreatedAt())).thenReturn(Optional.of(start));
+      when(sessionLogRepository.findByUserIdAndCompletedIsTrueAndCompletedAtBetween(
+          userId, start.getCreatedAt(), end.getCreatedAt())).thenReturn(List.of());
+
+      assertEquals(28, service.blockReport(5L).days());
     }
 
     @Test void 미완주_세션은_구간_조회_필터에서_애초에_제외된다() {
