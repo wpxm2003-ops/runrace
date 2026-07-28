@@ -1,5 +1,6 @@
 package com.runrace.backend.challenge.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -100,7 +101,6 @@ class ChallengeProgressServiceTest {
     AppUser me = user("me");
     Challenge c = Challenge.builder().id(1L).goalKm(BigDecimal.valueOf(10)).build();
     c.declareWinner(me);
-    c.end();
     ChallengeMember mine = member(me, c, 12, T0); // 완주 상태
     ChallengeWorkout link = ChallengeWorkout.builder()
         .id(1L)
@@ -150,16 +150,43 @@ class ChallengeProgressServiceTest {
         .build();
 
     when(challengeWorkoutRepository.findAllByWorkoutSessionId(100L)).thenReturn(List.of(link));
-    when(challengeMemberRepository.findByChallengeIdAndUserId(1L, me.getId()))
-        .thenReturn(Optional.of(mine));
-    when(challengeMemberRepository.findAllForChallenge(1L)).thenReturn(List.of(mine, others));
-
     service.reverseWorkoutDistance(100L);
 
-    assertNull(mine.getFinishedAt(), "A의 완주는 해제");
-    assertTrue(c.isEnded(), "기간 만료로 끝난 레이스는 계속 종료 상태");
-    assertSame(other, c.getWinner(), "무관한 B의 우승은 유지");
+    assertEquals(BigDecimal.valueOf(12.0), mine.getTotalKm(), "종료 레이스 거리는 고정");
+    assertNotNull(mine.getFinishedAt(), "종료 레이스 완주 상태는 고정");
+    assertTrue(c.isEnded(), "종료 상태 유지");
+    assertSame(other, c.getWinner(), "기존 우승자 유지");
+    verify(challengeMemberRepository, never()).save(any());
     verify(raceFinalization, never()).clearFinalRanks(anyLong());
-    verify(raceFinalization).assignFinalRanks(List.of(mine, others)); // 거리 변동 반영해 재산정
+    verify(raceFinalization, never()).assignFinalRanks(anyList());
+    verify(challengeWorkoutRepository).deleteAll(List.of(link));
+  }
+
+  @Test
+  void resultIsLockedAfterEndAtEvenBeforeFinalizationRuns() {
+    AppUser me = user("me");
+    Challenge challenge = Challenge.builder()
+        .id(2L)
+        .goalKm(BigDecimal.valueOf(10))
+        .endAt(OffsetDateTime.now().minusMinutes(1))
+        .build();
+    ChallengeMember mine = member(me, challenge, 12, T0);
+    ChallengeWorkout link = ChallengeWorkout.builder()
+        .id(2L)
+        .challenge(challenge)
+        .user(me)
+        .appliedDistanceM(5000)
+        .approvalStatus(ApprovalStatus.APPROVED)
+        .build();
+    when(challengeWorkoutRepository.findAllByWorkoutSessionId(200L)).thenReturn(List.of(link));
+
+    service.reverseWorkoutDistance(200L);
+
+    assertEquals(BigDecimal.valueOf(12.0), mine.getTotalKm());
+    assertNotNull(mine.getFinishedAt());
+    verify(challengeMemberRepository, never()).save(any());
+    verify(raceFinalization, never()).assignFinalRanks(anyList());
+    verify(raceFinalization, never()).clearFinalRanks(anyLong());
+    verify(challengeWorkoutRepository).deleteAll(List.of(link));
   }
 }

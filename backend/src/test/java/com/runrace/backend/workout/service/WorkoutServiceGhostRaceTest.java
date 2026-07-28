@@ -46,7 +46,7 @@ class WorkoutServiceGhostRaceTest {
     AppUser user = mock(AppUser.class);
     WorkoutSession persisted = mock(WorkoutSession.class);
     when(persisted.getId()).thenReturn(99L);
-    when(userRepository.getRequired(userId)).thenReturn(user);
+    when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
     when(workoutRepository.findByIdAndUserId(7L, userId)).thenReturn(Optional.empty());
     when(workoutRepository.save(any(WorkoutSession.class))).thenReturn(persisted);
 
@@ -77,7 +77,8 @@ class WorkoutServiceGhostRaceTest {
         333,
         List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)),
         7L,
-        result);
+        result,
+        UUID.randomUUID());
 
     ArgumentCaptor<WorkoutSession> sessionCaptor = ArgumentCaptor.forClass(WorkoutSession.class);
     org.mockito.Mockito.verify(workoutRepository).save(sessionCaptor.capture());

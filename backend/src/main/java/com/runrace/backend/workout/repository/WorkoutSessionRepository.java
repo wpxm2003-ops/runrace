@@ -36,6 +36,8 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
   }
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
 
+  Optional<WorkoutSession> findByUserIdAndClientWorkoutId(UUID userId, UUID clientWorkoutId);
+
   /** 상세 응답용 — 신발(LAZY)을 함께 로드해 트랜잭션 밖에서도 귀속 신발을 노출한다. */
   @Query("select w from WorkoutSession w left join fetch w.shoe where w.id = :id and w.user.id = :userId")
   Optional<WorkoutSession> findDetailByIdAndUserId(@Param("id") Long id, @Param("userId") UUID userId);

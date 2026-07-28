@@ -67,7 +67,8 @@ public class WorkoutController {
             body.avgPaceSecPerKm(),
             path,
             body.ghostWorkoutId(),
-            body.ghostResult());
+            body.ghostResult(),
+            body.clientWorkoutId());
     // 여기부터는 축하(PB·성과) 계산 — 운동 저장 트랜잭션은 이미 커밋됐다.
     // 이 단계에서 예외로 500을 내면 프론트 withRetry가 저장 자체를 다시 POST해 중복 기록이 생기므로,
     // 실패해도 삼켜 기록하고 저장 성공 응답을 내려보낸다.
@@ -93,7 +94,12 @@ public class WorkoutController {
   public ResponseEntity<CreateWorkoutResponse> createIndoor(
       AuthPrincipal principal, @RequestBody CreateIndoorRunRequest body) {
     WorkoutSession session = workoutService.createIndoor(
-        principal, body.distanceM(), body.durationSec(), body.startedAt(), body.imageUrl());
+        principal,
+        body.distanceM(),
+        body.durationSec(),
+        body.startedAt(),
+        body.imageUrl(),
+        body.clientWorkoutId());
     // 성과 판정은 하지 않는다 — 실내런은 소급 입력이 가능해 "오늘/이번 주" 기준 판정이
     // 오판(지난주 러닝이 이번 주 첫 러닝으로 발화 등)을 만들고, 실내런 저장 화면은
     // 상세로 바로 이동해 성과를 표시할 곳도 없다.

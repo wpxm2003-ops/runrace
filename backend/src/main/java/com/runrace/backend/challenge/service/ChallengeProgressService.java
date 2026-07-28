@@ -161,6 +161,12 @@ public class ChallengeProgressService {
         continue; // 아래 deleteAll에서 삭제됨
       }
 
+      // 종료 확정 또는 종료 시각 경과 후에는 거리·우승자·순위·경품 결과를 고정한다.
+      // 운동 원본은 삭제할 수 있지만 레이스에 반영된 스냅샷은 되돌리지 않는다.
+      if (isResultLocked(link.getChallenge())) {
+        continue;
+      }
+
       subtractAppliedDistance(link);
     }
     if (!links.isEmpty()) {
@@ -203,29 +209,16 @@ public class ChallengeProgressService {
       challenge.clearWinner();
     }
 
-    if (isTimeEnded(challenge)) {
-      // 시계가 끝낸 레이스 — 종료는 그대로 두고, 거리·완주가 바뀌었으니 승자와 순위만 다시 확정한다.
-      List<ChallengeMember> members =
-          challengeMemberRepository.findAllForChallenge(challenge.getId());
-      AppUser winner =
-          RaceFinalizationService.resolveWinner(challenge, members, OffsetDateTime.now());
-      if (winner != null) {
-        challenge.declareWinner(winner);
-      }
-      challengeRepository.save(challenge);
-      raceFinalization.assignFinalRanks(members);
-      return;
-    }
-
     challenge.resetEnded();
     challengeRepository.save(challenge);
     // 종료가 풀렸으므로 확정 순위(final_rank)도 초기화 — 전적이 잘못 집계되지 않게.
     raceFinalization.clearFinalRanks(challenge.getId());
   }
 
-  /** 기간(endAt)이 지나 종료된 레이스인지 — 완주 취소와 무관하게 종료가 유지돼야 하는 경우. */
-  private static boolean isTimeEnded(Challenge challenge) {
-    return challenge.getEndAt() != null && OffsetDateTime.now().isAfter(challenge.getEndAt());
+  /** 종료 확정 또는 종료 시각 경과 후라 거리·순위·경품 결과가 불변이어야 하는 경우. */
+  private static boolean isResultLocked(Challenge challenge) {
+    return challenge.isEnded()
+        || (challenge.getEndAt() != null && OffsetDateTime.now().isAfter(challenge.getEndAt()));
   }
 
   private void publishMilestoneEvents(

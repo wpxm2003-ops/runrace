@@ -4,6 +4,7 @@ export type LatLng = { lat: number; lng: number; t?: number; ele?: number };
 export type WorkoutStatus = "idle" | "running" | "paused";
 
 export type WorkoutFinishSnapshot = {
+  clientWorkoutId: string;
   startedAt: string;
   endedAt: string;
   durationSec: number;

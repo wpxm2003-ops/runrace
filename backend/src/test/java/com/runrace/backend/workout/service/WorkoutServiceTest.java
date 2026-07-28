@@ -59,45 +59,45 @@ class WorkoutServiceTest {
 
     @Test void duration_0이면_duration_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.createIndoor(p, 1000, 0, "2026-01-01T00:00:00Z", null));
+          () -> service.createIndoor(p, 1000, 0, "2026-01-01T00:00:00Z", null, null));
       assertEquals("duration_invalid", ex.code());
     }
 
     @Test void duration_36시간_초과이면_duration_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.createIndoor(p, 1000, 36 * 3600 + 1, "2026-01-01T00:00:00Z", null));
+          () -> service.createIndoor(p, 1000, 36 * 3600 + 1, "2026-01-01T00:00:00Z", null, null));
       assertEquals("duration_invalid", ex.code());
     }
 
     @Test void distance_0이면_distance_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.createIndoor(p, 0, 300, "2026-01-01T00:00:00Z", null));
+          () -> service.createIndoor(p, 0, 300, "2026-01-01T00:00:00Z", null, null));
       assertEquals("distance_invalid", ex.code());
     }
 
     @Test void distance_300km_초과이면_distance_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.createIndoor(p, 300_001, 300, "2026-01-01T00:00:00Z", null));
+          () -> service.createIndoor(p, 300_001, 300, "2026-01-01T00:00:00Z", null, null));
       assertEquals("distance_invalid", ex.code());
     }
 
     // startedAt은 예전에 검증 없이 바로 파싱돼, 잘못된 값이 400이 아니라 500으로 나갔다.
     @Test void startedAt이_null이면_started_at_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.createIndoor(p, 1000, 300, null, null));
+          () -> service.createIndoor(p, 1000, 300, null, null, null));
       assertEquals("started_at_invalid", ex.code());
     }
 
     @Test void startedAt_형식이_틀리면_started_at_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.createIndoor(p, 1000, 300, "어제", null));
+          () -> service.createIndoor(p, 1000, 300, "어제", null, null));
       assertEquals("started_at_invalid", ex.code());
     }
 
     @Test void startedAt이_먼_미래면_started_at_future() {
       String future = OffsetDateTime.now().plusDays(1).toString();
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.createIndoor(p, 1000, 300, future, null));
+          () -> service.createIndoor(p, 1000, 300, future, null, null));
       assertEquals("started_at_future", ex.code());
     }
 
@@ -106,7 +106,7 @@ class WorkoutServiceTest {
       String slightlyFuture = OffsetDateTime.now().plusMinutes(5).toString();
       // 의존성이 null이라 검증을 통과하면 NPE가 난다 — ApiException이 아니라는 것이 곧 통과의 증거.
       assertThrows(NullPointerException.class,
-          () -> service.createIndoor(p, 1000, 300, slightlyFuture, null));
+          () -> service.createIndoor(p, 1000, 300, slightlyFuture, null, null));
     }
   }
 
@@ -149,26 +149,26 @@ class WorkoutServiceTest {
 
     @Test void duration_0이면_duration_invalid() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(1), 0, 1000, 100, null, java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), null, null));
+          () -> service.create(p, T, T.plusSeconds(1), 0, 1000, 100, null, java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), null, null, null));
       assertEquals("duration_invalid", ex.code());
     }
 
     @Test void 경로_비어있으면_path_empty() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, java.util.List.of(), null, null));
+          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, java.util.List.of(), null, null, null));
       assertEquals("path_empty", ex.code());
     }
 
     @Test void 경로_null이면_path_empty() {
       ApiException ex = assertThrows(ApiException.class,
-          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, null, null, null));
+          () -> service.create(p, T, T.plusSeconds(1), 300, 1000, 100, null, null, null, null, null));
       assertEquals("path_empty", ex.code());
     }
 
     @Test void 종료가_시작보다_이전이면_time_range_invalid() {
       ApiException ex = assertThrows(ApiException.class,
           () -> service.create(p, T, T.minusSeconds(1), 300, 1000, 100, null,
-              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), null, null));
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), null, null, null));
       assertEquals("time_range_invalid", ex.code());
     }
 

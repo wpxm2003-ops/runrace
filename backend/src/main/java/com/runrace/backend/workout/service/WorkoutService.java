@@ -32,6 +32,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -80,18 +81,38 @@ public class WorkoutService {
       Integer avgPaceSecPerKm,
       List<PathPoint> path,
       Long ghostWorkoutId,
-      GhostRaceResultDto ghostResult
+      GhostRaceResultDto ghostResult,
+      UUID clientWorkoutId
   ) {
     // 입력 검증 — 비정상·조작 값 차단
     validateGpsInput(startedAt, endedAt, durationSec, distanceM, calories, avgPaceSecPerKm, path);
 
+    // 같은 사용자의 동시 저장을 직렬화해 요청 ID 조회와 신규 저장 사이의 경합을 막는다.
+    AppUser user = lockUser(principal.userId());
+    WorkoutSession existing = findExistingGpsRequest(
+        principal.userId(),
+        clientWorkoutId,
+        startedAt,
+        endedAt,
+        durationSec,
+        distanceM,
+        calories,
+        avgPaceSecPerKm);
+    if (existing != null) return existing;
+
     // 고스트 레이스 상대 확정 — 지목한 과거 기록이 내 것이 아니거나 결과가 어긋나면 무시된다
     GhostRaceData ghostRace = resolveGhostRace(principal.userId(), ghostWorkoutId, ghostResult);
-
-    // 운동 저장
-    AppUser user = appUserRepository.getRequired(principal.userId());
     WorkoutSession saved = saveGpsSession(
-        user, startedAt, endedAt, durationSec, distanceM, calories, avgPaceSecPerKm, path, ghostRace);
+        user,
+        clientWorkoutId,
+        startedAt,
+        endedAt,
+        durationSec,
+        distanceM,
+        calories,
+        avgPaceSecPerKm,
+        path,
+        ghostRace);
 
     // 현재 참여 중인 진행 레이스에 운동 거리 반영
     challengeProgressService.applyWorkoutDistance(principal.userId(), saved.getId(), distanceM);
@@ -142,6 +163,7 @@ public class WorkoutService {
 
   private WorkoutSession saveGpsSession(
       AppUser user,
+      UUID clientWorkoutId,
       OffsetDateTime startedAt,
       OffsetDateTime endedAt,
       int durationSec,
@@ -152,6 +174,7 @@ public class WorkoutService {
       GhostRaceData ghostRace) {
     return workoutSessionRepository.save(WorkoutSession.builder()
         .user(user)
+        .clientWorkoutId(clientWorkoutId)
         .startedAt(startedAt)
         .endedAt(endedAt)
         .durationSec(durationSec)
@@ -171,14 +194,19 @@ public class WorkoutService {
       int distanceM,
       int durationSec,
       String startedAt,
-      String imageUrl) {
+      String imageUrl,
+      UUID clientWorkoutId) {
     // 입력 검증 — 비정상·조작 값 차단
     validateIndoorInput(distanceM, durationSec, imageUrl);
     OffsetDateTime start = parseStartedAt(startedAt);
 
     // 운동 저장 — 칼로리·페이스는 거리와 시간에서 산출
-    AppUser user = appUserRepository.getRequired(principal.userId());
-    WorkoutSession saved = saveIndoorSession(user, distanceM, durationSec, start, imageUrl);
+    AppUser user = lockUser(principal.userId());
+    WorkoutSession existing = findExistingIndoorRequest(
+        principal.userId(), clientWorkoutId, distanceM, durationSec, start, imageUrl);
+    if (existing != null) return existing;
+    WorkoutSession saved = saveIndoorSession(
+        user, clientWorkoutId, distanceM, durationSec, start, imageUrl);
 
     // 참가 중인 레이스마다 구성원 승인 대기 생성 — 승인돼야 레이스 거리로 반영된다
     indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
@@ -218,6 +246,7 @@ public class WorkoutService {
 
   private WorkoutSession saveIndoorSession(
       AppUser user,
+      UUID clientWorkoutId,
       int distanceM,
       int durationSec,
       OffsetDateTime start,
@@ -229,6 +258,7 @@ public class WorkoutService {
 
     return workoutSessionRepository.save(WorkoutSession.builder()
         .user(user)
+        .clientWorkoutId(clientWorkoutId)
         .workoutType(WorkoutType.INDOOR)
         .startedAt(start)
         .endedAt(end)
@@ -240,6 +270,61 @@ public class WorkoutService {
         .pathJson("[]")
         .createdAt(OffsetDateTime.now())
         .build());
+  }
+
+  private AppUser lockUser(UUID userId) {
+    return appUserRepository.findByIdForUpdate(userId)
+        .orElseThrow(() -> ApiException.notFound("user_not_found"));
+  }
+
+  private WorkoutSession findExistingGpsRequest(
+      UUID userId,
+      UUID clientWorkoutId,
+      OffsetDateTime startedAt,
+      OffsetDateTime endedAt,
+      int durationSec,
+      int distanceM,
+      int calories,
+      Integer avgPaceSecPerKm) {
+    if (clientWorkoutId == null) return null;
+    return workoutSessionRepository.findByUserIdAndClientWorkoutId(userId, clientWorkoutId)
+        .map(existing -> {
+          boolean sameRequest = existing.getWorkoutType() == WorkoutType.GPS
+              && sameInstant(existing.getStartedAt(), startedAt)
+              && sameInstant(existing.getEndedAt(), endedAt)
+              && existing.getDurationSec() == durationSec
+              && existing.getDistanceM() == distanceM
+              && existing.getCalories() == calories
+              && Objects.equals(existing.getAvgPaceSecPerKm(), avgPaceSecPerKm);
+          if (!sameRequest) throw ApiException.conflict("workout_request_id_reused");
+          return existing;
+        })
+        .orElse(null);
+  }
+
+  private WorkoutSession findExistingIndoorRequest(
+      UUID userId,
+      UUID clientWorkoutId,
+      int distanceM,
+      int durationSec,
+      OffsetDateTime startedAt,
+      String imageUrl) {
+    if (clientWorkoutId == null) return null;
+    return workoutSessionRepository.findByUserIdAndClientWorkoutId(userId, clientWorkoutId)
+        .map(existing -> {
+          boolean sameRequest = existing.getWorkoutType() == WorkoutType.INDOOR
+              && sameInstant(existing.getStartedAt(), startedAt)
+              && existing.getDurationSec() == durationSec
+              && existing.getDistanceM() == distanceM
+              && Objects.equals(existing.getImageUrl(), imageUrl);
+          if (!sameRequest) throw ApiException.conflict("workout_request_id_reused");
+          return existing;
+        })
+        .orElse(null);
+  }
+
+  private static boolean sameInstant(OffsetDateTime left, OffsetDateTime right) {
+    return left != null && right != null && left.isEqual(right);
   }
 
   @Transactional

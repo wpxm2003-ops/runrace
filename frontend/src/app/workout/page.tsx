@@ -217,6 +217,7 @@ export default function WorkoutPage() {
           () =>
             createWorkout(
               {
+                clientWorkoutId: snapshot.clientWorkoutId,
                 startedAt: snapshot.startedAt,
                 endedAt: snapshot.endedAt,
                 durationSec: snapshot.durationSec,

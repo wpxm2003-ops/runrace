@@ -1,7 +1,10 @@
 package com.runrace.backend.workout.dto;
 
+import java.util.UUID;
+
 /** 실내러닝(러닝머신) 등록 요청. 페이스·칼로리는 서버가 계산한다. */
 public record CreateIndoorRunRequest(
+    UUID clientWorkoutId,
     int distanceM,
     int durationSec,
     String startedAt,

@@ -428,6 +428,7 @@ export type WorkoutComparison = {
 };
 
 export type WorkoutCreateBody = {
+  clientWorkoutId: string;
   startedAt: string;
   endedAt: string;
   durationSec: number;
@@ -446,6 +447,7 @@ export type WorkoutCreateBody = {
 };
 
 export type IndoorRunCreateBody = {
+  clientWorkoutId: string;
   distanceM: number;
   durationSec: number;
   startedAt: string;

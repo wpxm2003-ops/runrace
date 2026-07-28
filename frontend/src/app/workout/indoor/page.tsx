@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { ImageUploadField, type ImageFieldState } from "@/app/workout/indoor/_components/ImageUploadField";
@@ -14,11 +14,22 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { metersFromInput } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { createClientWorkoutId } from "@/lib/workoutRequestId";
 
 type FieldErrors = {
   distance?: string;
   duration?: string;
   image?: string;
+};
+
+type PendingIndoorSubmission = {
+  file: File;
+  distanceM: number;
+  durationSec: number;
+  takenAtMs: number | null;
+  clientWorkoutId: string;
+  imageUrl: string | null;
+  startedAt: string | null;
 };
 
 export default function IndoorRunPage() {
@@ -34,6 +45,7 @@ export default function IndoorRunPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const pendingSubmissionRef = useRef<PendingIndoorSubmission | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,21 +83,49 @@ export default function IndoorRunPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      const imageUrl = await uploadImage(imageState.file!, user, { precompressed: true });
-      const startedAt = imageState.takenAt
-        ? workoutStartedAtFromPhotoEnd(imageState.takenAt, durationSec)
-        : new Date().toISOString();
+      const file = imageState.file!;
+      const takenAtMs = imageState.takenAt?.getTime() ?? null;
+      let pending = pendingSubmissionRef.current;
+      if (
+        !pending ||
+        pending.file !== file ||
+        pending.distanceM !== distM ||
+        pending.durationSec !== durationSec ||
+        pending.takenAtMs !== takenAtMs
+      ) {
+        pending = {
+          file,
+          distanceM: distM,
+          durationSec,
+          takenAtMs,
+          clientWorkoutId: createClientWorkoutId(),
+          imageUrl: null,
+          startedAt: null,
+        };
+        pendingSubmissionRef.current = pending;
+      }
+
+      if (pending.imageUrl == null) {
+        pending.imageUrl = await uploadImage(file, user, { precompressed: true });
+      }
+      if (pending.startedAt == null) {
+        pending.startedAt = imageState.takenAt
+          ? workoutStartedAtFromPhotoEnd(imageState.takenAt, durationSec)
+          : new Date().toISOString();
+      }
+      const { clientWorkoutId, imageUrl, startedAt } = pending;
 
       // 1차 방어: 3초 간격 3회 자동 재시도 (서버 재시작·네트워크 깜빡임 흡수)
       const res = await withRetry(
         () =>
           createIndoorRun(
-            { distanceM: distM, durationSec, startedAt, imageUrl },
+            { clientWorkoutId, distanceM: distM, durationSec, startedAt, imageUrl },
             user,
           ),
         3,
         3000,
       );
+      pendingSubmissionRef.current = null;
       const distanceKm = distM / 1000;
       void track("record_saved", {
         distance_bucket: distanceBucket(distanceKm),

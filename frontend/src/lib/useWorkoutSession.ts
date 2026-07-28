@@ -26,6 +26,7 @@ import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
 import { track } from "./analytics";
 import { Capacitor } from "@capacitor/core";
 import { waitForNativePermissions } from "./nativePermissions";
+import { createClientWorkoutId } from "./workoutRequestId";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const SAVE_INTERVAL_MS = 10_000;
@@ -493,6 +494,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     const finalDistance = Math.round(distanceAccumRef.current);
 
     const snapshot: WorkoutFinishSnapshot = {
+      clientWorkoutId: createClientWorkoutId(),
       startedAt,
       endedAt,
       durationSec: Math.max(1, finalElapsed),
