@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { formatDistance } from "@/lib/units";
 import type { DistanceUnit } from "@/lib/units";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 import { track } from "@/lib/analytics";
 import { CARD_W, CARD_H, captureAndSaveCard } from "@/lib/storyCard";
 import type { Translations } from "@/lib/i18n/translations";
@@ -56,7 +56,7 @@ export function MonthlyRecapCard({
   const stats: [string, string][] = [
     [t.recap_runs_label, t.stats_count_unit(runCount)],
     [t.recap_streak_label, t.recap_days(longestStreak)],
-    [t.recap_time_label, formatDuration(durationSec)],
+    [t.recap_time_label, formatClock(durationSec)],
   ];
 
   // 월간 캘린더 그리드 — 운동한 날은 초록, 안 한 날은 어둡게. 빈 칸은 투명.

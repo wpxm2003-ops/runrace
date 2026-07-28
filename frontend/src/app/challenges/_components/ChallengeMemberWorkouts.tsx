@@ -7,7 +7,7 @@ import { formatDateTimeMinute } from "@/lib/format";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 import type { User } from "firebase/auth";
 
 type Props = {
@@ -49,7 +49,7 @@ export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
                 {formatDateTimeMinute(w.startedAt, locale)}
               </p>
               <p className="col-start-2 row-start-2 whitespace-nowrap text-right text-xs tabular-nums">
-                <span className="text-zinc-500">{formatDuration(w.durationSec)}</span>
+                <span className="text-zinc-500">{formatClock(w.durationSec)}</span>
                 <span className="mx-1.5 text-zinc-300" aria-hidden>
                   ·
                 </span>

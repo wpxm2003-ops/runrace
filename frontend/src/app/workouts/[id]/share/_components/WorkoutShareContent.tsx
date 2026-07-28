@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/format";
 import { RoutePath } from "@/lib/routePath";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { formatDistance, formatPace } from "@/lib/units";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 import Link from "next/link";
 import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
@@ -48,7 +48,7 @@ export default function WorkoutShareContent() {
   }
 
   const [distVal, distUnit] = formatDistance(data.distanceM, unit).split(" ");
-  const time = formatDuration(data.durationSec);
+  const time = formatClock(data.durationSec);
   const pace = formatPace(data.distanceM, data.durationSec, unit);
   const stats: [string, string][] = [
     [t.stat_time, time],

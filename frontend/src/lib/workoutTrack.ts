@@ -490,12 +490,15 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
 }
 
 /**
- * 초 → "H:MM:SS"(1시간 미만은 분 0패딩 "MM:SS", 예: 303초 → "05:03"). 음수는 0으로 클램프.
+ * **시계 표기** — 초 → "H:MM:SS"(1시간 미만은 분 0패딩 "MM:SS", 예: 303초 → "05:03"). 음수는 0으로 클램프.
  *
- * ⚠️ 1시간 미만 출력이 {@link import("./paceMath").formatHms}(분 무패딩)와 다르다 — 사본을 새로 만들지 말고
- * 둘 중 맥락에 맞는 쪽을 import 해라. 자세한 구분은 formatHms의 주석 참조.
+ * 폭이 고정돼야 하는 곳에 쓴다: 1초마다 갱신되는 러닝 중 타이머(무패딩이면 9:59→10:00에서
+ * 글자 수가 바뀌어 레이아웃이 튄다), 스탯 그리드·목록처럼 세로로 줄 맞춤이 필요한 표기.
+ *
+ * ⚠️ 기록 값(개인 최고, 완주 예상, 격차)은 이쪽이 아니라 {@link import("./paceMath").formatHms}
+ * (분 무패딩 "5:03" — 레이스 결과 표기법)를 쓴다. 사본을 새로 만들지 말 것.
  */
-export function formatDuration(totalSeconds: number): string {
+export function formatClock(totalSeconds: number): string {
   const sec = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);

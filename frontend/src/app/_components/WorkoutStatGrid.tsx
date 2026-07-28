@@ -1,7 +1,7 @@
 import { StatCard } from "@/app/_components/ui/StatCard";
 import type { Translations } from "@/lib/i18n/translations";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 
 export type WorkoutStatLabels = {
   time: string;
@@ -51,7 +51,7 @@ export function WorkoutStatGrid({
 
   const cards: [string, string][] = [
     [labels.distance, formatDistance(distanceM, unit)],
-    [labels.time, formatDuration(durationSec)],
+    [labels.time, formatClock(durationSec)],
     [labels.pace, formatPace(distanceM, durationSec, unit)],
     [labels.calories, `${calories} kcal`],
   ];

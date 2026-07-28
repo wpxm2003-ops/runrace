@@ -5,26 +5,26 @@ import {
   creditedPathDistanceMeters,
   estimateCalories,
   evaluateVehicleTier,
-  formatDuration,
+  formatClock,
   pathBoundsKey,
   pathDistanceMeters,
   splitPathAtGaps,
 } from "@/lib/workoutTrack";
 import type { LatLng, VehicleDetectState } from "@/lib/workoutTrack";
 
-describe("formatDuration", () => {
+describe("formatClock", () => {
   it("1시간 미만은 mm:ss", () => {
-    expect(formatDuration(0)).toBe("00:00");
-    expect(formatDuration(5)).toBe("00:05");
-    expect(formatDuration(65)).toBe("01:05");
-    expect(formatDuration(3599)).toBe("59:59");
+    expect(formatClock(0)).toBe("00:00");
+    expect(formatClock(5)).toBe("00:05");
+    expect(formatClock(65)).toBe("01:05");
+    expect(formatClock(3599)).toBe("59:59");
   });
   it("1시간 이상은 h:mm:ss", () => {
-    expect(formatDuration(3600)).toBe("1:00:00");
-    expect(formatDuration(3661)).toBe("1:01:01");
+    expect(formatClock(3600)).toBe("1:00:00");
+    expect(formatClock(3661)).toBe("1:01:01");
   });
   it("음수는 0으로 클램프", () => {
-    expect(formatDuration(-5)).toBe("00:00");
+    expect(formatClock(-5)).toBe("00:00");
   });
 });
 

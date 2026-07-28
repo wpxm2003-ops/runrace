@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   estimateCalories,
   evaluateVehicleTier,
-  formatDuration,
+  formatClock,
   haversineMeters,
   normalizeGpsAccuracyM,
   creditedPathDistanceMeters,
@@ -531,7 +531,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     distanceM,
     geoError,
     vehicleTier,
-    elapsedLabel: formatDuration(elapsedSec),
+    elapsedLabel: formatClock(elapsedSec),
     paceLabel: formatPace(distanceM, elapsedSec, unit),
     calories: estimateCalories(distanceM),
     start,

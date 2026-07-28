@@ -3,7 +3,7 @@
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace, formatPaceSecPerUnit } from "@/lib/units";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { markNsmCtaShown } from "@/lib/nsmCta";
@@ -135,7 +135,7 @@ export function WorkoutCelebration({
         <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-zinc-50 p-3 text-sm">
           <div>
             <div className="text-zinc-500">{t.stat_time}</div>
-            <div className="font-semibold tabular-nums">{formatDuration(durationSec)}</div>
+            <div className="font-semibold tabular-nums">{formatClock(durationSec)}</div>
           </div>
           <div>
             <div className="text-zinc-500">{t.stat_distance}</div>

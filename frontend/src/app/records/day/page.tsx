@@ -17,7 +17,7 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
 import { aggregateWorkouts, workoutsOnDate } from "@/lib/workoutStats";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 
 function useDateParam(): string | null {
   return useSyncExternalStore(
@@ -83,7 +83,7 @@ function WorkoutDayCard({
         <div>
           <div className="text-xs text-zinc-400">{t.stat_time}</div>
           <div className="mt-0.5 font-semibold tabular-nums text-zinc-900">
-            {formatDuration(workout.durationSec)}
+            {formatClock(workout.durationSec)}
           </div>
         </div>
         <div>

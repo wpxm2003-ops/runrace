@@ -7,7 +7,7 @@ import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistanceAmount } from "@/lib/units";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatHms } from "@/lib/paceMath";
 import { formatDateTimeMinute } from "@/lib/format";
 import type { ChallengeMember } from "@/lib/api/types";
 
@@ -221,7 +221,8 @@ const ResultSummary = memo(function ResultSummary({
           (new Date(me.finishedAt).getTime() - new Date(above.finishedAt).getTime()) / 1000,
         ),
       );
-      gap = formatDuration(sec);
+      // 격차는 시계가 아니라 기록 값 — WorkoutComparisonCard의 시간 델타와 같은 표기(무패딩)를 쓴다.
+      gap = formatHms(sec);
     } else {
       const diffKm = Math.max(0, Number(above.totalKm) - Number(me.totalKm));
       gap = `${formatDistanceAmount(diffKm, unit)} ${unit}`;

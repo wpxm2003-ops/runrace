@@ -11,7 +11,7 @@ import { RoutePath, type PathPoint } from "@/lib/routePath";
 import { useNativeBack } from "@/lib/useNativeBack";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 import { CARD_W, captureCardBlob, saveBlobLocally } from "@/lib/storyCard";
 
 /**
@@ -523,6 +523,6 @@ function buildStats(
   return [
     { label: t.stat_distance, value: formatDistance(distanceM, unit) },
     { label: t.stat_pace, value: formatPace(distanceM, durationSec, unit) },
-    { label: t.stat_time, value: formatDuration(durationSec) },
+    { label: t.stat_time, value: formatClock(durationSec) },
   ];
 }

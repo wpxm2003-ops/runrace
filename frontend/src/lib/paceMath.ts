@@ -40,12 +40,13 @@ export function finishSecFromPace(distanceKm: number, paceSecPerKm: number): num
 }
 
 /**
- * 초 → "H:MM:SS"(1시간 미만은 분 무패딩 "M:SS", 예: 303초 → "5:03"). 비정상 값은 "-".
+ * **기록 표기** — 초 → "H:MM:SS"(1시간 미만은 분 무패딩 "M:SS", 예: 303초 → "5:03"). 비정상 값은 "-".
  *
- * ⚠️ 시간 포맷터는 이 프로젝트에 둘이고 **1시간 미만일 때 출력이 다르다**. 새로 만들지 말고 둘 중 하나를 골라 써라.
- * - `formatHms`(여기): 분 무패딩 — 기록·계산 결과용(페이스 계산기, 트레드밀, 개인 최고 기록, 비교 카드).
- * - {@link import("./workoutTrack").formatDuration}: 분 0패딩 "MM:SS" — 운동 시간 표시용(기록 목록·공유 카드 등 10곳).
- * 둘을 하나로 합치려면 화면 표기가 바뀌므로 순수 리팩토링이 아니다(별도 결정 필요).
+ * 레이스 결과를 쓰는 방식이다("5:03"이지 "05:03"이 아니다). 개인 최고 기록, 완주 예상 시간,
+ * 상대와의 격차·델타처럼 **하나의 값으로 읽히는 기록**에 쓴다.
+ *
+ * ⚠️ 째깍이는 타이머나 줄 맞춤이 필요한 표에는 이쪽을 쓰면 안 된다 —
+ * {@link import("./workoutTrack").formatClock}(분 0패딩, 고정폭)을 써라. 사본을 새로 만들지 말 것.
  */
 export function formatHms(totalSec: number): string {
   if (!Number.isFinite(totalSec) || totalSec < 0) return "-";

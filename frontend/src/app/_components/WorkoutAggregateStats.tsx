@@ -5,7 +5,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace } from "@/lib/units";
 import type { WorkoutAggregate } from "@/lib/workoutStats";
-import { formatDuration } from "@/lib/workoutTrack";
+import { formatClock } from "@/lib/workoutTrack";
 
 type Props = {
   stats: WorkoutAggregate;
@@ -38,7 +38,7 @@ export function WorkoutAggregateStats({
     },
     {
       label: totalLabels ? t.stat_total_time : t.stat_time,
-      value: formatDuration(stats.totalDurationSec),
+      value: formatClock(stats.totalDurationSec),
     },
     {
       label: totalLabels ? t.stat_avg_pace : t.stat_pace,
