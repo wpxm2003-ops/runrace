@@ -100,10 +100,16 @@ public class WorkoutController {
         body.startedAt(),
         body.imageUrl(),
         body.clientWorkoutId());
-    // 성과 판정은 하지 않는다 — 실내런은 소급 입력이 가능해 "오늘/이번 주" 기준 판정이
-    // 오판(지난주 러닝이 이번 주 첫 러닝으로 발화 등)을 만들고, 실내런 저장 화면은
-    // 상세로 바로 이동해 성과를 표시할 곳도 없다.
-    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, List.of()));
+    // 실내런도 전체 누적 성과에는 포함한다. AchievementService가 소급 기록에 대해
+    // 오늘/이번 주/이번 달처럼 현재 기간에 종속된 성과만 제외한다.
+    List<Achievement> achievements = List.of();
+    try {
+      achievements = achievementService.evaluate(principal.userId(), session);
+    } catch (RuntimeException e) {
+      log.error("Indoor achievement evaluation failed; workout is already saved (workoutId={})",
+          session.getId(), e);
+    }
+    return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, achievements));
   }
 
   /** 실내러닝 승인/거부 투표. */

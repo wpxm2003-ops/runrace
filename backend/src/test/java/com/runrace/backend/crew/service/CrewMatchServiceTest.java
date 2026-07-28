@@ -84,6 +84,11 @@ class CrewMatchServiceTest {
     return new Object[] {mine, List.of(leaderId, m2, m3)};
   }
 
+  private void allowCrewLock(Crew first, Crew second) {
+    when(crewRepository.findAllByIdsForUpdate(List.of(first.getId(), second.getId())))
+        .thenReturn(List.of(first, second));
+  }
+
   // ── create ───────────────────────────────────────────────────────────────
 
   @Nested class Create {
@@ -126,6 +131,7 @@ class CrewMatchServiceTest {
       Crew other = crew(2L, UUID.randomUUID(), "상대크루");
       when(crewMemberRepository.findByUserId(leaderId)).thenReturn(Optional.of(member(mine, leaderId)));
       when(crewRepository.findByName("상대크루")).thenReturn(Optional.of(other));
+      allowCrewLock(mine, other);
       when(crewMemberRepository.countByCrewId(2L)).thenReturn(2);
       ApiException ex = assertThrows(ApiException.class,
           () -> service.create(leaderId, "상대크루", 3, start, end, List.of()));
@@ -137,6 +143,7 @@ class CrewMatchServiceTest {
       Crew other = crew(2L, UUID.randomUUID(), "상대크루");
       when(crewMemberRepository.findByUserId(leaderId)).thenReturn(Optional.of(member(mine, leaderId)));
       when(crewRepository.findByName("상대크루")).thenReturn(Optional.of(other));
+      allowCrewLock(mine, other);
       when(crewMemberRepository.countByCrewId(2L)).thenReturn(5);
       when(crewMatchRepository.findActiveByCrewId(eq(1L), any()))
           .thenReturn(List.of(CrewMatch.builder()
@@ -151,6 +158,7 @@ class CrewMatchServiceTest {
       Object[] ctx = myCrewWithMembers();
       Crew other = crew(2L, UUID.randomUUID(), "상대크루");
       when(crewRepository.findByName("상대크루")).thenReturn(Optional.of(other));
+      allowCrewLock((Crew) ctx[0], other);
       when(crewMemberRepository.countByCrewId(2L)).thenReturn(5);
       when(crewMatchRepository.findActiveByCrewId(any(), any())).thenReturn(List.of());
       List<UUID> roster = List.of(leaderId, UUID.randomUUID(), UUID.randomUUID());
@@ -166,6 +174,7 @@ class CrewMatchServiceTest {
       List<UUID> roster = (List<UUID>) ctx[1];
       Crew other = crew(2L, UUID.randomUUID(), "상대크루");
       when(crewRepository.findByName("상대크루")).thenReturn(Optional.of(other));
+      allowCrewLock((Crew) ctx[0], other);
       when(crewMemberRepository.countByCrewId(2L)).thenReturn(5);
       when(crewMatchRepository.findActiveByCrewId(any(), any())).thenReturn(List.of());
       // 실제 저장소처럼 id가 부여된 엔티티를 돌려준다(도전장 푸시 이벤트가 matchId를 쓴다).

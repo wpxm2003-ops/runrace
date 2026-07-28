@@ -1,4 +1,5 @@
 const MAX_UPLOAD_BYTES = 600_000;
+const MAX_COMPRESSED_FALLBACK_BYTES = 5 * 1024 * 1024;
 /** 러닝머신 화면은 1000px면 충분 */
 const MAX_EDGE_PX = 1000;
 const JPEG_QUALITY = 0.65;
@@ -78,20 +79,23 @@ export async function compressImageForUpload(file: File): Promise<File> {
     return file;
   }
 
+  let compressed: File;
   try {
-    const compressed =
+    compressed =
       typeof createImageBitmap === "function"
         ? await compressWithBitmap(file)
         : await compressWithImage(file);
-    if (compressed.size <= MAX_UPLOAD_BYTES || compressed.size < file.size) {
-      return compressed;
-    }
-    return file;
   } catch {
-    try {
-      return await compressWithImage(file);
-    } catch {
-      return file;
-    }
+    compressed = await compressWithImage(file);
   }
+
+  // 압축 실패 시 대용량 원본을 그대로 업로드하면 프록시/서버 한도에서 413이 발생한다.
+  // 목표 용량을 조금 넘더라도 충분히 작아진 파일만 허용하고, 그 외에는 선택 단계에서 실패시킨다.
+  if (
+    compressed.size <= MAX_UPLOAD_BYTES
+    || (compressed.size < file.size && compressed.size <= MAX_COMPRESSED_FALLBACK_BYTES)
+  ) {
+    return compressed;
+  }
+  throw new Error("image_compression_failed");
 }

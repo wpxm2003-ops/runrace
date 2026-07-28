@@ -78,7 +78,11 @@ public class CrewMatchService {
     }
     RaceRules.validateWindow(startAt, endAt);
 
-    Crew opponent = resolveOpponent(myCrew, opponentCrewName, rosterSize);
+    Crew opponent = resolveOpponent(myCrew, opponentCrewName);
+    LockedCrews locked = lockCrews(myCrew.getId(), opponent.getId());
+    myCrew = locked.mine();
+    opponent = locked.opponent();
+    requireEnoughMembers(opponent, rosterSize);
 
     OffsetDateTime now = OffsetDateTime.now();
     requireNoActiveMatch(myCrew, opponent, now);
@@ -102,18 +106,37 @@ public class CrewMatchService {
   }
 
   /** 지목한 상대 크루를 이름으로 찾는다 — 자기 크루 지목·로스터 인원 미달은 거절. */
-  private Crew resolveOpponent(Crew myCrew, String opponentCrewName, int rosterSize) {
+  private Crew resolveOpponent(Crew myCrew, String opponentCrewName) {
     String name = opponentCrewName == null ? "" : opponentCrewName.trim();
     Crew opponent = crewRepository.findByName(name)
         .orElseThrow(() -> ApiException.notFound("crew_not_found"));
     if (opponent.getId().equals(myCrew.getId())) {
       throw ApiException.badRequest("cannot_challenge_self");
     }
+    return opponent;
+  }
+
+  private void requireEnoughMembers(Crew opponent, int rosterSize) {
     if (crewMemberRepository.countByCrewId(opponent.getId()) < rosterSize) {
       throw ApiException.conflict("opponent_too_small");
     }
-    return opponent;
   }
+
+  private LockedCrews lockCrews(Long myCrewId, Long opponentCrewId) {
+    long firstId = Math.min(myCrewId, opponentCrewId);
+    long secondId = Math.max(myCrewId, opponentCrewId);
+    List<Crew> crews = crewRepository.findAllByIdsForUpdate(List.of(firstId, secondId));
+    if (crews.size() != 2) {
+      throw ApiException.notFound("crew_not_found");
+    }
+    Crew first = crews.get(0);
+    Crew second = crews.get(1);
+    return first.getId().equals(myCrewId)
+        ? new LockedCrews(first, second)
+        : new LockedCrews(second, first);
+  }
+
+  private record LockedCrews(Crew mine, Crew opponent) {}
 
   /** 크루당 진행 중인 대항전은 1건 — 양측 모두 비어 있어야 도전장을 보낼 수 있다. */
   private void requireNoActiveMatch(Crew myCrew, Crew opponent, OffsetDateTime now) {

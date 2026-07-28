@@ -33,12 +33,16 @@ class AchievementServiceTest {
   private final UUID userId = UUID.randomUUID();
 
   private static WorkoutSession run(int distanceM) {
+    return runAt(distanceM, OffsetDateTime.now());
+  }
+
+  private static WorkoutSession runAt(int distanceM, OffsetDateTime startedAt) {
     return WorkoutSession.builder()
         .id(1L)
         .distanceM(distanceM)
         .durationSec(1800)
-        .startedAt(OffsetDateTime.now())
-        .endedAt(OffsetDateTime.now())
+        .startedAt(startedAt)
+        .endedAt(startedAt.plusMinutes(30))
         .build();
   }
 
@@ -147,6 +151,22 @@ class AchievementServiceTest {
   }
 
   @Nested class 누적_마일스톤 {
+
+    @Test void 소급_실내런도_누적_성과에는_포함하지만_현재기간_성과는_제외() {
+      stubSummary(50, 101_000);
+      OffsetDateTime lastYear = OffsetDateTime.now().minusYears(1);
+
+      var result = codes(service.evaluate(userId, runAt(5_000, lastYear)));
+
+      assertTrue(result.contains("TOTAL_DISTANCE"));
+      assertTrue(result.contains("TOTAL_RUNS"));
+      assertFalse(result.contains("STREAK"));
+      assertFalse(result.contains("WEEK_COUNT"));
+      assertFalse(result.contains("FIRST_RUN_OF_WEEK"));
+      assertFalse(result.contains("YEAR_DISTANCE"));
+      assertFalse(result.contains("MONTH30_DISTANCE"));
+      assertFalse(result.contains("WEEK_DISTANCE"));
+    }
 
     @Test void 이번_운동으로_100km를_넘으면_TOTAL_DISTANCE() {
       stubSummary(30, 101_000); // 직전 96km → 101km

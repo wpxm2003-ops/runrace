@@ -294,7 +294,7 @@ public class CrewService {
   /** 초대 코드로 가입. */
   @Transactional
   public void join(UUID meId, String rawCode) {
-    Crew crew = findByCode(rawCode);
+    Crew crew = lockCrew(findByCode(rawCode).getId());
     if (crewMemberRepository.existsByUserId(meId)) {
       throw ApiException.conflict("already_in_crew");
     }
@@ -427,7 +427,7 @@ public class CrewService {
   @Transactional(noRollbackFor = ApiException.class)
   public void approve(UUID leaderId, long requestId) {
     CrewJoinRequest request = requirePendingRequestAsLeader(leaderId, requestId);
-    Crew crew = request.getCrew();
+    Crew crew = lockCrew(request.getCrew().getId());
     UUID applicantId = request.getUser().getId();
 
     requireApplicantStillJoinable(request, crew, applicantId);
@@ -563,6 +563,14 @@ public class CrewService {
     }
     return crewRepository.findByJoinCode(code)
         .orElseThrow(() -> ApiException.notFound("crew_not_found"));
+  }
+
+  private Crew lockCrew(Long crewId) {
+    List<Crew> crews = crewRepository.findAllByIdsForUpdate(List.of(crewId));
+    if (crews.size() != 1) {
+      throw ApiException.notFound("crew_not_found");
+    }
+    return crews.get(0);
   }
 
   private CrewMember requireMembership(UUID meId) {

@@ -61,6 +61,8 @@ public class AchievementService {
     OffsetDateTime todayStart = LocalDate.now(KST).atStartOfDay(KST).toOffsetDateTime();
     OffsetDateTime weekStart =
         LocalDate.now(KST).with(DayOfWeek.MONDAY).atStartOfDay(KST).toOffsetDateTime();
+    OffsetDateTime monthStart =
+        LocalDate.now(KST).withDayOfMonth(1).atStartOfDay(KST).toOffsetDateTime();
 
     WorkoutSessionRepository.WorkoutSummaryAggregate agg =
         workoutRepository.aggregateForUser(userId);
@@ -72,13 +74,19 @@ public class AchievementService {
       out.add(new Scored(100, Achievement.of("FIRST_RUN")));
     } else {
       addDistanceRecord(out, userId, saved, todayStart, weekStart);
-      addStreak(out, userId, saved, todayStart);
+      if (!saved.getStartedAt().isBefore(todayStart)) {
+        addStreak(out, userId, saved, todayStart);
+      }
       addTotalDistanceMilestone(out, distanceM, totalDistanceM);
       addTotalRunsMilestone(out, totalRuns);
-      addWeekCount(out, userId, weekStart);
+      if (!saved.getStartedAt().isBefore(weekStart)) {
+        addWeekCount(out, userId, weekStart);
+      }
     }
 
-    addCrewAchievements(out, userId, distanceM);
+    if (!saved.getStartedAt().isBefore(monthStart)) {
+      addCrewAchievements(out, userId, distanceM, monthStart);
+    }
 
     return out.stream()
         .sorted(Comparator.comparingInt(Scored::tier).reversed())
@@ -101,16 +109,19 @@ public class AchievementService {
     }
     OffsetDateTime yearStart =
         LocalDate.now(KST).withDayOfMonth(1).withMonth(1).atStartOfDay(KST).toOffsetDateTime();
-    if (isLongestSince(userId, id, distanceM, yearStart)) {
+    if (!saved.getStartedAt().isBefore(yearStart)
+        && isLongestSince(userId, id, distanceM, yearStart)) {
       out.add(new Scored(70, Achievement.of("YEAR_DISTANCE", distanceM)));
       return;
     }
     OffsetDateTime thirtyDaysAgo = OffsetDateTime.now().minusDays(30);
-    if (isLongestSince(userId, id, distanceM, thirtyDaysAgo)) {
+    if (!saved.getStartedAt().isBefore(thirtyDaysAgo)
+        && isLongestSince(userId, id, distanceM, thirtyDaysAgo)) {
       out.add(new Scored(60, Achievement.of("MONTH30_DISTANCE", distanceM)));
       return;
     }
-    if (isLongestSince(userId, id, distanceM, weekStart)) {
+    if (!saved.getStartedAt().isBefore(weekStart)
+        && isLongestSince(userId, id, distanceM, weekStart)) {
       out.add(new Scored(50, Achievement.of("WEEK_DISTANCE", distanceM)));
     }
   }
@@ -157,13 +168,12 @@ public class AchievementService {
   }
 
   /** 크루 소속이면: 이번 달 공통 개인 목표 달성/진행 + 이번 달 크루 내 순위. */
-  private void addCrewAchievements(List<Scored> out, UUID userId, int distanceM) {
+  private void addCrewAchievements(
+      List<Scored> out, UUID userId, int distanceM, OffsetDateTime monthStart) {
     CrewMember membership = crewMemberRepository.findByUserId(userId).orElse(null);
     if (membership == null) return;
     Crew crew = membership.getCrew();
 
-    OffsetDateTime monthStart =
-        LocalDate.now(KST).withDayOfMonth(1).atStartOfDay(KST).toOffsetDateTime();
     List<CrewMemberRepository.MemberDistanceAgg> rows =
         crewMemberRepository.sumMemberDistanceSince(crew.getId(), monthStart);
 

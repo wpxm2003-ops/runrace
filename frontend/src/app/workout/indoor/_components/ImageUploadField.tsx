@@ -24,6 +24,7 @@ export function ImageUploadField({ error, onChange }: Props) {
   const [preparing, setPreparing] = useState(false);
   const [photoTakenAt, setPhotoTakenAt] = useState<Date | null>(null);
   const [prepareError, setPrepareError] = useState<string | null>(null);
+  const preparationIdRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -31,11 +32,16 @@ export function ImageUploadField({ error, onChange }: Props) {
     };
   }, [imagePreview]);
 
+  useEffect(() => () => {
+    preparationIdRef.current += 1;
+  }, []);
+
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
     const file = e.target.files?.[0];
     if (!file) return;
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImagePreview(URL.createObjectURL(file));
+    const preparationId = ++preparationIdRef.current;
+    setImagePreview(null);
     setPhotoTakenAt(null);
     setPrepareError(null);
     setPreparing(true);
@@ -45,14 +51,25 @@ export function ImageUploadField({ error, onChange }: Props) {
         compressImageForUpload(file),
         readPhotoTakenAt(file),
       ]);
+      if (preparationId !== preparationIdRef.current) return;
+      setImagePreview(URL.createObjectURL(compressed));
       setPhotoTakenAt(takenAt);
       setPreparing(false);
       onChange({ file: compressed, takenAt, preparing: false });
     } catch {
+      if (preparationId !== preparationIdRef.current) return;
+      input.value = "";
       setPreparing(false);
       setPrepareError(t.indoor_image_prepare_error);
-      onChange({ file, takenAt: null, preparing: false });
+      onChange({ file: null, takenAt: null, preparing: false });
     }
+  }
+
+  function openFilePicker() {
+    const input = fileInputRef.current;
+    if (!input) return;
+    input.value = "";
+    input.click();
   }
 
   return (
@@ -78,7 +95,7 @@ export function ImageUploadField({ error, onChange }: Props) {
           />
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={openFilePicker}
             className="mt-2 text-sm text-zinc-500 hover:underline"
           >
             {t.indoor_field_image_change}
@@ -87,7 +104,7 @@ export function ImageUploadField({ error, onChange }: Props) {
       ) : (
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={openFilePicker}
           className={`mt-2 flex h-36 w-full items-center justify-center rounded-2xl border border-dashed text-sm ${
             error
               ? "border-red-400 bg-red-50 text-red-400"
