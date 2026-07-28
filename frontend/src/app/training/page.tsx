@@ -46,7 +46,10 @@ import { sessionJson } from "@/lib/safeStorage";
 type NsmDraft = { distM: number; timeStr: string; subTDays: number[]; band?: NsmVolumeBand };
 const nsmDraftStore = sessionJson<NsmDraft>("nsm_calc_draft");
 
+// 3K는 PB(personal_best)에도 이미 있는 거리 — 여기 없으면 3K PB를 골랐을 때
+// 선택된 버튼이 하나도 없는 상태가 된다. 입문자가 5K를 아직 못 뛰는 경우의 진입로이기도 하다.
 const DISTANCES = [
+  { label: "3K", m: 3000 },
   { label: "5K", m: 5000 },
   { label: "10K", m: 10000 },
   { label: "Half", m: 21097 },
