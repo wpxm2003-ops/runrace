@@ -23,7 +23,6 @@ import {
 } from "./challenges";
 import {
   fetchMyCrew,
-  fetchCrewRecap,
   fetchCrewInsights,
   fetchMyCrewMatches,
   fetchCrewMatchDetail,
@@ -290,15 +289,6 @@ export function useMyCrew(user: User | null) {
 /** 크루 생성/가입/탈퇴/수정/멤버 변경 후 크루 홈 재검증. */
 export function invalidateMyCrew(userId: string) {
   invalidateByPrefix("crew-me", userId);
-}
-
-/** 지난주 크루 결산 — 크루 소속일 때만 조회(enabled). */
-export function useCrewRecap(user: User | null, enabled: boolean) {
-  return useSWR(
-    enabled && user ? (["crew-recap", user.uid] as const) : null,
-    () => fetchCrewRecap(user!),
-    { ...BASE_CONFIG, revalidateOnFocus: false },
-  );
 }
 
 /** 크루 잔디 + 명예의 전당 — 크루 소속일 때만 조회(enabled). */

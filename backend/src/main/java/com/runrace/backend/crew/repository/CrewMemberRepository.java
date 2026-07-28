@@ -56,21 +56,7 @@ public interface CrewMemberRepository extends JpaRepository<CrewMember, Long> {
   List<MemberDistanceAgg> sumMemberDistanceSince(
       @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
 
-  /** 멤버별 [from, to) 거리·횟수 — 가입 이후 기록만(지난주 결산 등 기간 조회). */
-  @Query(value = """
-      select w.user_id as "userId", sum(w.distance_m) as "distanceM", count(*) as "runs"
-      from workout_session w
-      join crew_member m on m.user_id = w.user_id
-      where m.crew_id = :crewId and w.started_at >= m.joined_at
-        and w.started_at >= :from and w.started_at < :to
-      group by w.user_id
-      """, nativeQuery = true)
-  List<MemberDistanceAgg> sumMemberDistanceBetween(
-      @Param("crewId") Long crewId,
-      @Param("from") OffsetDateTime from,
-      @Param("to") OffsetDateTime to);
-
-  /** {@link #sumMemberDistanceSince}·{@link #sumMemberDistanceBetween} 결과 투영. */
+  /** {@link #sumMemberDistanceSince} 결과 투영. */
   interface MemberDistanceAgg {
     UUID getUserId();
     long getDistanceM();

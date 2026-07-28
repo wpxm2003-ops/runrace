@@ -13,7 +13,6 @@ import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.crew.dto.CrewDetailResponse;
 import com.runrace.backend.crew.dto.CrewInsightsResponse;
 import com.runrace.backend.crew.dto.CrewJoinRequestRow;
-import com.runrace.backend.crew.dto.CrewRecapResponse;
 import com.runrace.backend.crew.dto.MyApplicationRow;
 import com.runrace.backend.crew.dto.MyCrewResponse;
 import com.runrace.backend.crew.dto.MyCrewResponse.CrewMemberRow;
@@ -28,7 +27,6 @@ import com.runrace.backend.user.repository.AppUserRepository;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -128,56 +126,6 @@ public class CrewService {
         crew.getId(), crew.getName(), crew.getNotice(), crew.getJoinCode(),
         crew.isLeader(meId), crew.getMaxMembers(), crew.getMonthGoalKm(),
         allTime, rows));
-  }
-
-  /** 지난주(월~일 완결 주) 결산 — 홈 결산 섹션 + 공유 카드용. */
-  @Transactional(readOnly = true)
-  public CrewRecapResponse recap(UUID meId) {
-    CrewMember membership = requireMembership(meId);
-    Crew crew = membership.getCrew();
-    List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
-    Map<UUID, String> nicknamesById = new HashMap<>();
-    for (CrewMember member : members) {
-      nicknamesById.put(member.getUser().getId(), member.getUser().getNickname());
-    }
-
-    OffsetDateTime weekStart = weekStartKst();
-    OffsetDateTime lastWeekStart = weekStart.minusDays(7);
-
-    // 가입 이후 기록만 — 크루 창단 전 개인 기록이 결산에 섞이지 않게 한다.
-    List<CrewMemberRepository.MemberDistanceAgg> aggregates = crewMemberRepository
-        .sumMemberDistanceBetween(crew.getId(), lastWeekStart, weekStart);
-    long total = 0;
-    long runs = 0;
-    for (var row : aggregates) {
-      total += row.getDistanceM();
-      runs += row.getRuns();
-    }
-
-    List<CrewMemberRepository.MemberDistanceAgg> ranked = aggregates.stream()
-        .sorted(Comparator
-            .comparingLong(CrewMemberRepository.MemberDistanceAgg::getDistanceM)
-            .reversed()
-            .thenComparing(row -> Objects.toString(nicknamesById.get(row.getUserId()), "")))
-        .toList();
-    List<CrewRecapResponse.CrewRecapLeader> leaders = new ArrayList<>();
-    for (int i = 0; i < ranked.size() && i < 3; i++) {
-      var row = ranked.get(i);
-      leaders.add(new CrewRecapResponse.CrewRecapLeader(
-          i + 1,
-          nicknamesById.get(row.getUserId()),
-          row.getDistanceM()));
-    }
-    String mvpNickname = leaders.isEmpty() ? null : leaders.get(0).nickname();
-    long mvpDist = leaders.isEmpty() ? 0 : leaders.get(0).distanceM();
-
-    LocalDate startDate = lastWeekStart.atZoneSameInstant(KST).toLocalDate();
-    return new CrewRecapResponse(
-        startDate.toString(), startDate.plusDays(6).toString(),
-        total, (int) runs,
-        ranked.size(),
-        mvpNickname, mvpDist,
-        leaders);
   }
 
   /**
@@ -570,12 +518,6 @@ public class CrewService {
   private static OffsetDateTime monthStartKst() {
     LocalDate firstOfMonth = LocalDate.now(KST).withDayOfMonth(1);
     return firstOfMonth.atStartOfDay(KST).toOffsetDateTime();
-  }
-
-  /** 이번 주 시작(KST 월요일 00:00). {@link #recap}(지난주 결산)만 쓰는 주간 경계 — 보드·잔디는 월간(monthStartKst). */
-  private static OffsetDateTime weekStartKst() {
-    LocalDate monday = LocalDate.now(KST).with(DayOfWeek.MONDAY);
-    return monday.atStartOfDay(KST).toOffsetDateTime();
   }
 
   private Crew findByCode(String rawCode) {

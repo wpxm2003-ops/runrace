@@ -3,6 +3,7 @@
 import type { User } from "firebase/auth";
 import { usePersonalBests } from "@/lib/api";
 import type { PersonalBestRow } from "@/lib/api/types";
+import { formatHms } from "@/lib/paceMath";
 import { formatPace } from "@/lib/units";
 import { useUnit } from "@/lib/UnitContext";
 import { useLocale } from "@/lib/i18n";
@@ -22,14 +23,6 @@ function pbLabel(distanceKey: string, t: Translations): string {
 /** 저장된 값은 초/km 페이스 — 러너에게 익숙한 "완주 시간"으로 환산한다. */
 function pbTotalSec(pb: PersonalBestRow): number {
   return Math.round((pb.bestPaceSec * pb.distanceM) / 1000);
-}
-
-function formatDuration(totalSec: number): string {
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
 /**
@@ -54,7 +47,7 @@ export function PersonalBestsSection({ user }: { user: User }) {
               <span className="text-sm text-zinc-600">{pbLabel(pb.distanceKey, t)}</span>
               <span className="flex items-baseline gap-2">
                 <span className="text-sm font-semibold tabular-nums text-zinc-900">
-                  {formatDuration(totalSec)}
+                  {formatHms(totalSec)}
                 </span>
                 <span className="text-[11px] tabular-nums text-zinc-400">
                   {formatPace(pb.distanceM, totalSec, unit)}

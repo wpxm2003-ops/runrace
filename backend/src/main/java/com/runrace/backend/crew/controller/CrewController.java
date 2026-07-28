@@ -8,7 +8,6 @@ import com.runrace.backend.crew.dto.CrewDiscoveryItem;
 import com.runrace.backend.crew.dto.CrewInsightsResponse;
 import com.runrace.backend.crew.dto.CrewDiscoveryResponse;
 import com.runrace.backend.crew.dto.CrewJoinRequestRow;
-import com.runrace.backend.crew.dto.CrewRecapResponse;
 import com.runrace.backend.crew.dto.CrewSearchItem;
 import com.runrace.backend.crew.dto.JoinCrewRequest;
 import com.runrace.backend.crew.dto.MyApplicationRow;
@@ -47,12 +46,6 @@ public class CrewController {
   @GetMapping("/me")
   public ResponseEntity<MyCrewResponse> myCrew(AuthPrincipal principal) {
     return ResponseEntity.ok(crewService.myCrew(principal.userId()));
-  }
-
-  /** 지난주 크루 결산 — 홈 결산 섹션 + 공유 카드용. */
-  @GetMapping("/me/recap")
-  public ResponseEntity<CrewRecapResponse> recap(AuthPrincipal principal) {
-    return ResponseEntity.ok(crewService.recap(principal.userId()));
   }
 
   /** 크루 잔디 + 명예의 전당 — 크루 홈 부가 콘텐츠. */

@@ -489,6 +489,12 @@ export function evaluateVehicleTier(input: VehicleDetectInput): VehicleDetectRes
   });
 }
 
+/**
+ * 초 → "H:MM:SS"(1시간 미만은 분 0패딩 "MM:SS", 예: 303초 → "05:03"). 음수는 0으로 클램프.
+ *
+ * ⚠️ 1시간 미만 출력이 {@link import("./paceMath").formatHms}(분 무패딩)와 다르다 — 사본을 새로 만들지 말고
+ * 둘 중 맥락에 맞는 쪽을 import 해라. 자세한 구분은 formatHms의 주석 참조.
+ */
 export function formatDuration(totalSeconds: number): string {
   const sec = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(sec / 3600);

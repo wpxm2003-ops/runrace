@@ -1,6 +1,7 @@
 package com.runrace.backend.training.service;
 
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.KstTime;
 import com.runrace.backend.training.domain.NsmSessionLog;
 import com.runrace.backend.training.dto.NsmSessionLogRequest;
 import com.runrace.backend.training.dto.NsmWeeklyProgressResponse;
@@ -23,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class NsmSessionLogService {
 
-  private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+  private static final ZoneId KST = KstTime.ZONE;
   private static final Set<String> KINDS = Set.of("SHORT", "MEDIUM", "LONG");
 
   private final NsmSessionLogRepository logRepository;

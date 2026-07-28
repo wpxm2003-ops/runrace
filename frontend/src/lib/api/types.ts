@@ -252,24 +252,6 @@ export type CrewMatchDetail = {
   opponentRoster: CrewMatchRosterRow[];
 };
 
-/** 지난주(월~일 완결 주) 크루 결산. 기록 없던 주면 totalRuns=0. */
-export type CrewRecapLeader = {
-  rank: number;
-  nickname: string | null;
-  distanceM: number;
-};
-
-export type CrewRecap = {
-  weekStartDate: string;
-  weekEndDate: string;
-  totalDistanceM: number;
-  totalRuns: number;
-  participantCount: number;
-  mvpNickname: string | null;
-  mvpDistanceM: number;
-  leaders: CrewRecapLeader[];
-};
-
 // ── 신발장(shoe) ──────────────────────────────────────────────────
 /** 신발 한 줄 — 누적 거리(totalDistanceM, m) 포함. 활성 신발로 이후 러닝이 자동 귀속된다. */
 export type ShoeRow = {

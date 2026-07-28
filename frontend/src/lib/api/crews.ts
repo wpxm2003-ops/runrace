@@ -7,7 +7,6 @@ import type {
   CrewMatchDetail,
   CrewMatchHistoryPage,
   CrewProfileBody,
-  CrewRecap,
   CrewRegion,
   CrewSearchItem,
   CrewDiscoveryResponse,
@@ -43,11 +42,6 @@ export function updateCrew(
   user: User,
 ) {
   return apiFetch<void>(`/api/crews/${crewId}`, { method: "PATCH", user, body });
-}
-
-/** 지난주 크루 결산 — 홈 결산 섹션 + 공유 카드용. */
-export function fetchCrewRecap(user: User) {
-  return apiFetch<CrewRecap>("/api/crews/me/recap", { user });
 }
 
 /** 크루 잔디 + 명예의 전당. */

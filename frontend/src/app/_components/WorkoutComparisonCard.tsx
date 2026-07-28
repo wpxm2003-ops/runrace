@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { User } from "firebase/auth";
 import { useWorkoutComparison } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
+import { formatHms } from "@/lib/paceMath";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace } from "@/lib/units";
 
@@ -16,14 +17,6 @@ type Props = {
 };
 
 const METERS_PER_MI = 1609.344;
-
-function fmtDuration(sec: number): string {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 export function WorkoutComparisonCard({
   workoutId,
@@ -133,14 +126,14 @@ export function WorkoutComparisonCard({
               }
             />
             <MetricRow
-              avg={fmtDuration(refDurSec)}
-              current={fmtDuration(currentDurationSec)}
+              avg={formatHms(refDurSec)}
+              current={formatHms(currentDurationSec)}
               badge={
                 durDelta === 0
                   ? null
                   : durMore
-                    ? { text: t.comparison_dist_more(fmtDuration(Math.abs(durDelta)), durPercent), positive: true }
-                    : { text: t.comparison_dist_less(fmtDuration(Math.abs(durDelta)), durPercent), positive: false }
+                    ? { text: t.comparison_dist_more(formatHms(Math.abs(durDelta)), durPercent), positive: true }
+                    : { text: t.comparison_dist_less(formatHms(Math.abs(durDelta)), durPercent), positive: false }
               }
             />
             {hasPace ? (
