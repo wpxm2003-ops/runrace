@@ -16,15 +16,19 @@
 
 ## 권장 패턴
 
-기본 참고 구현:
-- [frontend/src/app/shoes/_components/ShoeFormSheet.tsx](C:/workspace/runrace/frontend/src/app/shoes/_components/ShoeFormSheet.tsx:12)
+기본 참고 구현 — 새 드롭다운은 아래 공용 컴포넌트에서 시작합니다:
+- `frontend/src/app/_components/ui/BottomSheet.tsx` — 배경 오버레이, 배경 탭으로 닫기, `useNativeBack`, `role="dialog"`/`aria-modal`을 한 컴포넌트가 소유합니다.
+- `frontend/src/app/_components/ui/SelectSheet.tsx` — 위를 감싼 단일 선택 목록. `role="listbox"`/`role="option"`/`aria-selected`와 "선택 즉시 닫기"까지 처리합니다.
+
+사용 예시:
+- `frontend/src/app/shoes/_components/ShoeFormSheet.tsx` — 트리거 버튼은 127-134행, `SelectSheet` 호출은 206-215행.
 
 구현 메모:
-- 트리거는 `<select>`가 아니라 `button`을 사용합니다.
-- 옵션 목록은 커스텀 시트/다이얼로그 안에서 렌더링하고, 필요에 따라 `role="dialog"` 또는 `role="listbox"`를 설정합니다.
-- 시트가 열려 있을 때는 `useNativeBack(...)`를 연결해서 Android 뒤로가기가 먼저 시트를 닫도록 합니다.
-- 선택 해제가 필요하면 같은 목록 안에 "선택 안 함" 항목을 같이 둡니다.
-- 시트가 닫힌 상태에서도 현재 선택값이 버튼에 보이도록 유지합니다.
+- 트리거는 `<select>`가 아니라 `button`을 사용합니다. (직접 작성)
+- 옵션 목록은 커스텀 시트/다이얼로그 안에서 렌더링하고, 필요에 따라 `role="dialog"` 또는 `role="listbox"`를 설정합니다. → `BottomSheet`/`SelectSheet`를 쓰면 자동 충족됩니다.
+- 시트가 열려 있을 때는 `useNativeBack(...)`를 연결해서 Android 뒤로가기가 먼저 시트를 닫도록 합니다. → `BottomSheet` 안에서 자동 충족됩니다. 오버레이를 직접 만들 때만 수동으로 연결합니다.
+- 선택 해제가 필요하면 같은 목록 안에 "선택 안 함" 항목을 같이 둡니다. (직접 작성 — 옵션 배열에 넣어야 합니다)
+- 시트가 닫힌 상태에서도 현재 선택값이 버튼에 보이도록 유지합니다. (직접 작성)
 
 ## 리뷰 체크리스트
 

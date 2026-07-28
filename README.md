@@ -2,7 +2,7 @@
 
 ## UI Guide
 
-- App WebView dropdown rule: [docs/frontend-ui-guidelines.md](C:/workspace/runrace/docs/frontend-ui-guidelines.md)
+- App WebView dropdown rule: [docs/frontend-ui-guidelines.md](docs/frontend-ui-guidelines.md)
 
 친구와 함께하는 러닝 대결 앱
 
@@ -55,14 +55,15 @@ npm run dev
 sdk.dir=C\:\\Users\\<사용자명>\\AppData\\Local\\Android\\Sdk
 ```
 
-### 빌드
+### 디버그 빌드
 
 ```bash
 cd frontend
 npm run build
-npx cap copy android
-npx cap sync android
+npm run cap:sync:android
 ```
+
+> `cap:sync:android`는 `npx cap sync android` 앞에 `scripts/ensure-cap-webdir.mjs`를 붙인 래퍼다. 원격 서버 모드(`CAPACITOR_SERVER_URL`)처럼 `out/`이 없는 상태에서도 sync가 통과하도록 최소 webDir을 만들어 준다.
 
 ```powershell
 cd frontend\android
@@ -70,6 +71,47 @@ cd frontend\android
 ```
 
 APK 위치: `frontend/android/app/build/outputs/apk/debug/app-debug.apk`
+
+### 릴리스 빌드 (서명)
+
+`frontend/android/keystore.properties` 생성 (gitignore 등록됨):
+
+```
+storeFile=릴리스_키스토어_경로
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+
+`storeFile`은 `frontend/android` 기준 상대경로다. 이 파일이 없으면 `signingConfigs.release`가 빈 채로 빌드돼 서명 없는 산출물이 나온다(`frontend/android/app/build.gradle`).
+
+버전은 같은 `build.gradle`의 `versionCode` / `versionName`을 올린다.
+
+```powershell
+cd frontend\android
+.\gradlew assembleRelease   # APK → app/build/outputs/apk/release/
+.\gradlew bundleRelease     # AAB(Play 업로드용) → app/build/outputs/bundle/release/
+```
+
+### Google 로그인 (네이티브)
+
+APK WebView에서는 `signInWithPopup`이 Chrome으로만 열리고 앱으로 돌아오지 않는다. 그래서 웹 팝업 대신 `@capacitor-firebase/authentication` 네이티브 로그인을 쓴다.
+
+**`No credentials available` 오류** — 새 개발 PC나 새 `debug.keystore`를 쓸 때마다 재발한다. 그 키의 SHA-1이 Firebase에 없어서 `google-services.json`에 Android OAuth 클라이언트가 들어가지 않은 것이 원인이다.
+
+1. SHA-1 추출: **저장소 루트에서** `.\scripts\android-debug-sha1.ps1` (스크립트는 `frontend/`가 아니라 루트에 있다)
+2. Firebase Console → 프로젝트 설정 → Android 앱(`com.runrace.app`) → **지문 추가**에 등록
+3. `google-services.json`을 **다시 다운로드**해서 `frontend/android/app/google-services.json` 교체
+4. 파일 안 `oauth_client`에 `"client_type": 1`(Android)이 있는지 확인
+
+```json
+"client_type": 1,
+"android_info": { "package_name": "com.runrace.app", "certificate_hash": "..." }
+```
+
+`"client_type": 3`(웹)만 있으면 2번이 아직 반영되지 않은 것이고, APK에서 오류가 그대로 난다.
+
+Play 배포본에서만 로그인이 실패하는 경우도 같은 원인이다. Play 앱 서명을 쓰면 Google이 업로드 키가 아닌 **앱 서명 키**로 재서명하므로, Play Console → 설정 → 앱 서명의 SHA-1도 위 절차대로 Firebase에 등록하고 `google-services.json`을 다시 받아야 한다.
 
 ---
 
@@ -175,7 +217,8 @@ sudo systemctl restart runrace
 
 | 증상 | 원인 | 해결 |
 |------|------|------|
-| 빌드 중 멈춤 / 서버 다운 | RAM 부족(OOM) | 스왑 확인(`free -h`) 후 빌드. 스왑 없으면 위 "스왑 재설정" |
+| 빌드 중 멈춤 / 서버 다운 | RAM 부족(OOM) | 스왑 확인(`free -h`) 후 빌드. 스왑이 없으면 `dd`+`mkswap`+`swapon`으로 2GB 스왑 생성 |
+| APK에서만 API 호출이 `Failed to fetch` (웹은 정상) | WebView의 오리진이 `localhost`라 CORS에 막힘 | `frontend/capacitor.config.ts`의 `CapacitorHttp.enabled`가 켜져 있는지 확인 + EC2 `RUNRACE_CORS_ALLOWED_ORIGINS`(스프링 키 `runrace.cors.allowed-origins`)에 `http://localhost,https://localhost` 포함 후 `sudo systemctl restart runrace` |
 | `zip file is empty` 빌드 에러 | 이전에 죽은 빌드가 깨진 jar를 남김 | `./mvnw clean package` (clean으로 제거) |
 | `Access key ID cannot be blank` 기동 실패 | 손으로 `java -jar` 실행해 환경변수 누락 | `sudo systemctl restart runrace` 로 실행 |
 | 웹만 옛 서버로 접속(타임아웃), 앱은 정상 | 브라우저/Service Worker 캐시 | F12 → Application → Clear site data |
