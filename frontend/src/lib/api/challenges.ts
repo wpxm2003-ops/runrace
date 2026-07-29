@@ -63,7 +63,10 @@ export function createChallenge(body: ChallengeFormBody, user: User) {
   return apiFetch<CreatedId>("/api/challenges", { method: "POST", user, body });
 }
 
-/** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 배열. */
+/**
+ * 크루 홈의 레이스 미리보기 — 예정·진행중 중 최대 5개만(전체는 "전체보기" → /crew/races).
+ * 미소속이면 빈 배열.
+ */
 export function fetchCrewRaces(user: User) {
   return fetchCrewRacesPage(user, { phase: "active", page: 0, size: 5 })
     .then((page) => page.items);

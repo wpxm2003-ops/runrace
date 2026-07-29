@@ -77,22 +77,7 @@ public class ChallengeController {
     return ResponseEntity.ok(new CreateChallengeResponse(challenge.getId()));
   }
 
-  /** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 목록. */
-  @GetMapping("/crew")
-  public ResponseEntity<List<ChallengeListItem>> listCrewRaces(AuthPrincipal principal) {
-    OffsetDateTime now = OffsetDateTime.now();
-    List<Challenge> challenges = challengeService.listCrewRaces(principal.userId());
-    List<Long> ids = challenges.stream().map(Challenge::getId).toList();
-    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
-    Set<Long> memberIds = challengeService.memberChallengeIds(principal.userId(), ids);
-    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
-    List<ChallengeListItem> items = challenges.stream()
-        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds, prizeIds))
-        .toList();
-    return ResponseEntity.ok(items);
-  }
-
-  /** 내 크루 내부 레이스 전체보기 — 예정·진행중/종료 탭과 무한스크롤용. */
+  /** 내 크루 내부 레이스 — 홈 미리보기(size 소량)와 전체보기(탭·무한스크롤) 공용. */
   @GetMapping("/crew/page")
   public ResponseEntity<ChallengeListPage> listCrewRacesPage(
       AuthPrincipal principal,

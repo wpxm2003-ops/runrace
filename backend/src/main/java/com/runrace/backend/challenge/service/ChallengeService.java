@@ -181,14 +181,6 @@ public class ChallengeService {
     return saved;
   }
 
-  /** 내 크루의 내부 레이스 목록(최근 시작 순, 최대 10개). 미소속이면 빈 목록. */
-  @Transactional(readOnly = true)
-  public List<Challenge> listCrewRaces(UUID userId) {
-    return crewMemberRepository.findByUserId(userId)
-        .map(m -> challengeRepository.findTop10ByCrewIdOrderByStartAtDesc(m.getCrew().getId()))
-        .orElse(List.of());
-  }
-
   /** 내 크루 내부 레이스 — 상태별 페이지. 미소속이면 빈 페이지. */
   @Transactional(readOnly = true)
   public Slice<Challenge> listCrewRacesPage(UUID userId, String phase, int page, int size) {
