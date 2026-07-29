@@ -12,6 +12,7 @@ import { formatDistance } from "@/lib/units";
 import { WelcomeOnboarding } from "@/app/_components/WelcomeOnboarding";
 
 function HomeStats() {
+  const { t } = useLocale();
   const { user, loading: authLoading, hint } = useAuthUser();
   const { unit } = useUnit();
   const today = useMemo(() => new Date(), []);
@@ -32,33 +33,39 @@ function HomeStats() {
     <div className="mb-6">
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <p className="text-xs text-zinc-500">이번 달</p>
+          <p className="text-xs text-zinc-500">{t.home_month_label}</p>
           {isLoading ? (
             <div className="mt-2 h-7 w-20 animate-pulse rounded-lg bg-zinc-100" />
           ) : isEmpty ? (
-            <p className="mt-2 text-sm text-zinc-400">아직 기록이 없어요</p>
+            <p className="mt-2 text-sm text-zinc-400">{t.home_stats_empty}</p>
           ) : (
             <>
               <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">
                 {formatDistance(monthStats.totalDistanceM, unit)}
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400">{monthStats.workoutCount}회 운동</p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                {t.home_month_runs(monthStats.workoutCount)}
+              </p>
             </>
           )}
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <p className="text-xs text-zinc-500">연속 운동</p>
+          <p className="text-xs text-zinc-500">{t.home_streak_label}</p>
           {isLoading ? (
             <div className="mt-2 h-7 w-16 animate-pulse rounded-lg bg-zinc-100" />
           ) : isEmpty ? (
-            <p className="mt-2 text-sm text-zinc-400">우리 같이 만들어 가볼까요?</p>
+            <p className="mt-2 text-sm text-zinc-400">{t.home_streak_empty}</p>
           ) : (
             <>
               <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">
                 {streak.current}
-                <span className="ml-1 text-sm font-semibold text-zinc-400">일</span>
+                <span className="ml-1 text-sm font-semibold text-zinc-400">
+                  {t.home_streak_unit}
+                </span>
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400">최장 {streak.longest}일</p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                {t.home_streak_longest(streak.longest)}
+              </p>
             </>
           )}
         </div>

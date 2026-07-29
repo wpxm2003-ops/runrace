@@ -70,18 +70,31 @@ export default function ChallengesPage() {
     savePageState(STORE_KEY, { phase: phaseFilter, size, showAllLangs });
   }, [phaseFilter, size, showAllLangs]);
 
-  // ── 예정·진행중이 비어 있으면 종료 탭으로 1회 자동 전환 ──────────────
-  // 빈 화면 대신 종료된 레이스를 보여준다. ref로 1회만 — 사용자가 다시 active로 가면 존중.
+  // ── 목록이 비면 단계적으로 조건을 완화한다 ──────────────────────────
+  // ① 언어 필터 해제 → ② 그래도 비면 종료 탭. 각각 1회만(ref) — 사용자가 되돌리면 존중.
+  //
+  // ①이 필요한 이유: 시스템이 자동 생성하는 온램프 레이스는 langCd가 "ko" 고정이라
+  // (ChallengeService.createOfficialRace) 다른 언어 사용자는 언어 필터를 풀지 않으면
+  // 참가 가능한 레이스가 하나도 안 보인다 — 온보딩 CTA가 빈 화면으로 끝나게 된다.
+  const autoAllLangsRef = useRef(false);
   const autoSwitchedRef = useRef(false);
   useEffect(() => {
-    if (autoSwitchedRef.current || phaseFilter !== "active" || waitForAuth || error) return;
+    if (waitForAuth || error) return;
     const lastPage = pages?.[pages.length - 1];
     // 완전히 로드된 빈 목록(더 불러올 것 없음)일 때만.
-    if (pages != null && itemCount === 0 && lastPage && !lastPage.hasNext) {
+    const fullyEmpty = pages != null && itemCount === 0 && lastPage != null && !lastPage.hasNext;
+    if (!fullyEmpty) return;
+
+    if (!showAllLangs && !autoAllLangsRef.current) {
+      autoAllLangsRef.current = true;
+      setShowAllLangs(true);
+      return;
+    }
+    if (phaseFilter === "active" && !autoSwitchedRef.current) {
       autoSwitchedRef.current = true;
       setPhaseFilter("ended");
     }
-  }, [pages, itemCount, phaseFilter, waitForAuth, error]);
+  }, [pages, itemCount, phaseFilter, showAllLangs, waitForAuth, error]);
 
   const filterLabel: Record<RacePhaseFilterValue, string> = useMemo(
     () => ({
