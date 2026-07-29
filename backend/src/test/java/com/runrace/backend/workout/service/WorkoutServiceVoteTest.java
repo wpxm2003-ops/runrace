@@ -59,13 +59,14 @@ class WorkoutServiceVoteTest {
 
   @Test
   void 대기중인_승인이_없으면_예외() {
-    when(challengeWorkoutRepository.findAllByWorkoutSessionId(WORKOUT_ID)).thenReturn(List.of());
+    when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
+        .thenReturn(List.of());
     assertThrows(ApiException.class, () -> service.voteIndoorRun(principal, WORKOUT_ID, true));
   }
 
   @Test
   void 투표권이_없으면_예외() {
-    when(challengeWorkoutRepository.findAllByWorkoutSessionId(WORKOUT_ID))
+    when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
         .thenReturn(List.of(pendingCw()));
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.empty());
@@ -74,7 +75,7 @@ class WorkoutServiceVoteTest {
 
   @Test
   void 이미_투표했으면_예외() {
-    when(challengeWorkoutRepository.findAllByWorkoutSessionId(WORKOUT_ID))
+    when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
         .thenReturn(List.of(pendingCw()));
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.of(myVote(true))); // approved != null
@@ -85,7 +86,8 @@ class WorkoutServiceVoteTest {
   void 거부하면_REJECTED_전이_거리반영_없음() {
     ChallengeWorkout cw = pendingCw();
     IndoorRunApproval vote = myVote(null);
-    when(challengeWorkoutRepository.findAllByWorkoutSessionId(WORKOUT_ID)).thenReturn(List.of(cw));
+    when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
+        .thenReturn(List.of(cw));
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.of(vote));
 
@@ -101,7 +103,8 @@ class WorkoutServiceVoteTest {
   @Test
   void 승인했지만_전원승인_아니면_반영_없음() {
     ChallengeWorkout cw = pendingCw();
-    when(challengeWorkoutRepository.findAllByWorkoutSessionId(WORKOUT_ID)).thenReturn(List.of(cw));
+    when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
+        .thenReturn(List.of(cw));
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.of(myVote(null)));
     when(indoorApprovalService.isFullyApproved(1L)).thenReturn(false);
@@ -114,7 +117,8 @@ class WorkoutServiceVoteTest {
   @Test
   void 전원승인_충족시_거리반영_위임() {
     ChallengeWorkout cw = pendingCw();
-    when(challengeWorkoutRepository.findAllByWorkoutSessionId(WORKOUT_ID)).thenReturn(List.of(cw));
+    when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
+        .thenReturn(List.of(cw));
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.of(myVote(null)));
     when(indoorApprovalService.isFullyApproved(1L)).thenReturn(true);
@@ -122,5 +126,20 @@ class WorkoutServiceVoteTest {
     service.voteIndoorRun(principal, WORKOUT_ID, true);
 
     verify(indoorApprovalService).applyApprovedIndoorRun(1L);
+  }
+
+  @Test
+  void 조회는_잠금_버전을_쓰고_비잠금_버전은_호출하지_않는다() {
+    ChallengeWorkout cw = pendingCw();
+    when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
+        .thenReturn(List.of(cw));
+    when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
+        .thenReturn(Optional.of(myVote(null)));
+    when(indoorApprovalService.isFullyApproved(1L)).thenReturn(false);
+
+    service.voteIndoorRun(principal, WORKOUT_ID, true);
+
+    verify(challengeWorkoutRepository).findAllByWorkoutSessionIdForUpdate(WORKOUT_ID);
+    verify(challengeWorkoutRepository, never()).findAllByWorkoutSessionId(anyLong());
   }
 }

@@ -9,6 +9,7 @@ import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.user.domain.QAppUser;
 import com.runrace.backend.workout.domain.QWorkoutSession;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +28,16 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
         .join(cw.challenge).fetchJoin()
         .join(cw.user).fetchJoin()
         .where(cw.workoutSession.id.eq(workoutSessionId))
+        .fetch();
+  }
+
+  @Override
+  public List<ChallengeWorkout> findAllByWorkoutSessionIdForUpdate(Long workoutSessionId) {
+    return query.selectFrom(cw)
+        .join(cw.challenge).fetchJoin()
+        .join(cw.user).fetchJoin()
+        .where(cw.workoutSession.id.eq(workoutSessionId))
+        .setLockMode(LockModeType.PESSIMISTIC_WRITE)
         .fetch();
   }
 

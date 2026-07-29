@@ -185,7 +185,7 @@ public class WorkoutController {
   public ResponseEntity<WorkoutShareResponse> share(@PathVariable("id") Long id) {
     WorkoutSession session = workoutService.getForShare(id);
     return ResponseEntity.ok(
-        WorkoutShareResponse.from(session, workoutService.toPath(session.getPathJson())));
+        WorkoutShareResponse.from(session, workoutService.toSharePath(session.getPathJson())));
   }
 
   @GetMapping("/{id:" + ID_PATH + "}/comparison")

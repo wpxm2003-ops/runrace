@@ -57,6 +57,8 @@ public class WorkoutService {
   private static final int MIN_GHOST_OVERLAP_M = 500;
   private static final long GHOST_DELTA_TOLERANCE_MS = 1_000;
   private static final long MAX_GHOST_TIME_MS = MAX_DURATION_SEC * 1_000L;
+  /** 공유 페이지에서 경로 시작·종료 부근을 잘라내는 반경(m) — 거주지 추론 방지. */
+  private static final double SHARE_PATH_TRUNCATE_M = 250;
 
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
@@ -338,8 +340,10 @@ public class WorkoutService {
 
   @Transactional
   public void voteIndoorRun(AuthPrincipal principal, Long workoutId, boolean approved) {
+    // 마지막 두 투표가 거의 동시에 들어와도 행 잠금으로 서로를 직렬화해
+    // 뒤 트랜잭션이 앞 트랜잭션의 커밋된 투표 상태를 반드시 보게 한다.
     List<ChallengeWorkout> pending = challengeWorkoutRepository
-        .findAllByWorkoutSessionId(workoutId)
+        .findAllByWorkoutSessionIdForUpdate(workoutId)
         .stream()
         .filter(cw -> cw.getApprovalStatus() == ApprovalStatus.PENDING)
         .toList();
@@ -615,6 +619,47 @@ public class WorkoutService {
     return parsePath(pathJson).stream()
         .map(p -> new PathPointDto(p.lat(), p.lng(), p.t(), p.ele()))
         .toList();
+  }
+
+  /** 공유 페이지 전용 — {@link #toPath}에 프라이버시 절단을 더한 것. */
+  public List<PathPointDto> toSharePath(String pathJson) {
+    return truncateForShare(toPath(pathJson));
+  }
+
+  private static double haversineMeters(PathPointDto a, PathPointDto b) {
+    double toRad = Math.PI / 180;
+    double dLat = (b.lat() - a.lat()) * toRad;
+    double dLng = (b.lng() - a.lng()) * toRad;
+    double lat1 = a.lat() * toRad;
+    double lat2 = b.lat() * toRad;
+    double h = Math.pow(Math.sin(dLat / 2), 2)
+        + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dLng / 2), 2);
+    return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
+  }
+
+  /**
+   * 공유용 경로 — 시작·종료 {@value #SHARE_PATH_TRUNCATE_M}m 구간을 잘라 거주지 추론을 어렵게 한다.
+   * 잘라내고 남는 중간 구간이 2점 미만이면(짧은 왕복 러닝 등) 통째로 빈 경로를 반환한다 —
+   * 노출보다 "경로 없음" 표시가 낫다.
+   */
+  private static List<PathPointDto> truncateForShare(List<PathPointDto> path) {
+    // 1점 이하는 잘라낼 앞뒤 구간이 없다 — 있는 그대로 내보내면 "노출보다 없음이 낫다"는
+    // 이 메서드의 목적과 어긋나므로(1점=사실상 시작·끝이 같은 지점) 빈 경로로 취급한다.
+    if (path.size() < 2) return List.of();
+    int startIdx = 0;
+    double acc = 0;
+    while (startIdx < path.size() - 1 && acc < SHARE_PATH_TRUNCATE_M) {
+      acc += haversineMeters(path.get(startIdx), path.get(startIdx + 1));
+      startIdx++;
+    }
+    int endIdx = path.size() - 1;
+    acc = 0;
+    while (endIdx > 0 && acc < SHARE_PATH_TRUNCATE_M) {
+      acc += haversineMeters(path.get(endIdx - 1), path.get(endIdx));
+      endIdx--;
+    }
+    if (endIdx <= startIdx) return List.of();
+    return path.subList(startIdx, endIdx + 1);
   }
 
   /** 평균 페이스(초/km). {@link #MIN_DISTANCE_FOR_PACE_M} 미만이면 null. */

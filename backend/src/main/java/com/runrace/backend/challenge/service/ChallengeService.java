@@ -245,8 +245,10 @@ public class ChallengeService {
 
   @Transactional
   public void joinRoom(AuthPrincipal principal, Long id) {
+    // 잠근 채로 읽는다 — 잠그지 않으면 정원 마지막 한 자리를 여러 요청이 동시에 보고
+    // 전부 통과해 정원이 초과된다(인원수 확인~저장 사이 경합).
     Challenge challenge =
-        challengeRepository.findById(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+        challengeRepository.findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
     ensureNotStarted(challenge);
     if (isEnded(challenge, OffsetDateTime.now())) {
       throw ApiException.conflict("ended");

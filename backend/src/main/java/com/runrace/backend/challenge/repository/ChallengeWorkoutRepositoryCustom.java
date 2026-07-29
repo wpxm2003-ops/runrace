@@ -10,6 +10,13 @@ public interface ChallengeWorkoutRepositoryCustom {
 
   List<ChallengeWorkout> findAllByWorkoutSessionId(Long workoutSessionId);
 
+  /**
+   * {@link #findAllByWorkoutSessionId}와 동일하지만 행 잠금(PESSIMISTIC_WRITE)을 건다.
+   * 마지막 두 투표가 거의 동시에 들어오면 잠금 없이는 서로의 커밋 전 상태를 못 봐
+   * 둘 다 "전원 승인 아님"으로 끝나 PENDING에 영구 고착된다({@link com.runrace.backend.workout.service.WorkoutService#voteIndoorRun}에서 사용).
+   */
+  List<ChallengeWorkout> findAllByWorkoutSessionIdForUpdate(Long workoutSessionId);
+
   /** 레이스에 반영된 운동 — 상태 필터 + 시작일 내림차순. */
   List<ChallengeWorkout> findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(
       Long challengeId, ApprovalStatus status);

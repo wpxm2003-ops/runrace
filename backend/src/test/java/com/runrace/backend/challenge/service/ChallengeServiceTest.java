@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.runrace.backend.auth.AuthPrincipal;
@@ -192,7 +194,7 @@ class ChallengeServiceTest {
 
     @Test void 이미_시작된_방이면_already_started() {
       Challenge c = challenge(UUID.randomUUID(), PAST, FUTURE);
-      when(challengeRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
       assertEquals("already_started", ex.code());
@@ -202,7 +204,7 @@ class ChallengeServiceTest {
       // startAt이 미래라 hasStarted=false → ensureNotStarted 통과, isEnded(플래그)=true → ended
       Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
       c.end();
-      when(challengeRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
       assertEquals("ended", ex.code());
@@ -210,7 +212,7 @@ class ChallengeServiceTest {
 
     @Test void 이미_멤버면_already_member() {
       Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
-      when(challengeRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(1L), any()))
           .thenReturn(Optional.of(ChallengeMember.builder().build()));
 
@@ -220,13 +222,32 @@ class ChallengeServiceTest {
 
     @Test void 방이_꽉_찼으면_room_full() {
       Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
-      when(challengeRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
       when(challengeMemberRepository.findByChallengeIdAndUserId(any(), any()))
           .thenReturn(Optional.empty());
       when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(10L); // maxMembers=10
 
       ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
       assertEquals("room_full", ex.code());
+    }
+
+    /**
+     * 정원 확인~저장 사이의 동시 가입 경합(TOCTOU)을 막으려면 이 조회가 잠금이어야 한다.
+     * findById(비잠금)로 되돌아가면 이 테스트가 실패해 회귀를 잡는다.
+     */
+    @Test void 정상_참가는_잠긴_조회를_사용한다() {
+      Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
+      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeMemberRepository.findByChallengeIdAndUserId(1L, userId))
+          .thenReturn(Optional.empty());
+      when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(3L); // maxMembers=10
+      when(appUserRepository.getRequired(userId)).thenReturn(user(userId));
+
+      service.joinRoom(p, 1L);
+
+      verify(challengeRepository).findByIdForUpdate(1L);
+      verify(challengeRepository, never()).findById(1L);
+      verify(challengeMemberRepository).saveAndFlush(any(ChallengeMember.class));
     }
   }
 

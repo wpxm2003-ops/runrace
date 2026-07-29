@@ -117,6 +117,11 @@ public class IndoorApprovalService {
   /** 전원 승인 시 호출 — 거리를 레이스 멤버 기록에 반영한다.
    * 동시 투표로 중복 호출될 수 있으므로 이미 APPROVED인 경우 skip(멱등성 보장).
    *
+   * <p>이 멱등성은 {@link com.runrace.backend.workout.service.WorkoutService#voteIndoorRun}이
+   * {@code findAllByWorkoutSessionIdForUpdate}로 대상 행에 PESSIMISTIC_WRITE 잠금을 걸어주는 덕에
+   * 실제로 보장된다 — 각 투표 트랜잭션은 자기 차례에 잠금을 얻고 나서야 진행하므로,
+   * 두 번째 트랜잭션이 여기 들어올 때는 이미 첫 번째가 반영한 APPROVED 상태를 정확히 본다.
+   *
    * <p>같은 클래스의 {@link #approveWithoutVote}도 이 메서드를 부른다(self-invocation이라 프록시 미적용).
    * 전파가 기본값 REQUIRED라 어느 경로든 호출자의 트랜잭션에 합류하므로 동작은 동일하다 —
    * <b>단 여기를 REQUIRES_NEW 등으로 바꾸면 내부 호출 경로만 조용히 그 설정을 무시한다.</b> */
