@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
+  autoPauseStartedAt,
   estimateCalories,
   evaluateVehicleTier,
   formatClock,
@@ -10,6 +11,7 @@ import {
   normalizeGpsAccuracyM,
   creditedPathDistanceMeters,
   pushAccuracySample,
+  shouldAutoResume,
   shouldAppendPoint,
   type LatLng,
   type VehicleDetectState,
@@ -36,10 +38,11 @@ function computeElapsedSec(
   runStarted: number,
   pausedAccum: number,
   pauseStarted: number | null,
+  nowMs: number = Date.now(),
 ): number {
   let extra = pausedAccum;
-  if (pauseStarted != null) extra += Date.now() - pauseStarted;
-  return Math.max(0, Math.floor((Date.now() - runStarted - extra) / 1000));
+  if (pauseStarted != null) extra += nowMs - pauseStarted;
+  return Math.max(0, Math.floor((nowMs - runStarted - extra) / 1000));
 }
 
 /** GPS 연속 두 점과 시간 차로 속도(m/s)를 계산한다. */
@@ -78,6 +81,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   const [geoError, setGeoError] = useState<string | null>(null);
   // ── 치팅 감지 상태 ────────────────────────────────────────────────────────
   const [vehicleTier, setVehicleTier] = useState<VehicleTier>("normal");
+  const [autoPaused, setAutoPaused] = useState(false);
 
   // ── 타이밍 레프 ───────────────────────────────────────────────────────────
   const stopWatchRef = useRef<(() => void) | null>(null);
@@ -86,6 +90,9 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   const pausedAccumRef = useRef(0);
   const pauseStartedRef = useRef<number | null>(null);
   const runStartedRef = useRef<number | null>(null);
+  const autoPausedRef = useRef(false);
+  const lastMovementAtRef = useRef<number | null>(null);
+  const stationarySinceRef = useRef<number | null>(null);
 
   // ── 탈것 Tiered 감지 레프 ─────────────────────────────────────────────────
   const vehicleStateRef = useRef<VehicleDetectState>(resetVehicleState());
@@ -119,8 +126,10 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       runStartedAt: runStartedRef.current,
       pausedAccumMs: pausedAccumRef.current,
       pauseStartedAt: pauseStartedRef.current,
+      lastMovementAt: lastMovementAtRef.current ?? undefined,
+      autoPaused: autoPausedRef.current,
     });
-  }, [status]);
+  }, [status, autoPaused]);
 
   // ── 퍼시스턴스: pagehide / visibilitychange / 주기적 저장 ────────────────
   useEffect(() => {
@@ -133,6 +142,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         runStartedAt: runStartedRef.current,
         pausedAccumMs: pausedAccumRef.current,
         pauseStartedAt: pauseStartedRef.current,
+        lastMovementAt: lastMovementAtRef.current ?? undefined,
+        autoPaused: autoPausedRef.current,
       });
     };
 
@@ -165,6 +176,35 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       stopWatchRef.current();
       stopWatchRef.current = null;
     }
+  }, []);
+
+  /**
+   * GPS 워처는 유지한 채 활동시간만 멈춘다. 마지막 이동 시각을 기준으로 소급하므로
+   * 백그라운드 타이머가 늦게 깨어나도 정지 시간이 페이스에 섞이지 않는다.
+   */
+  const beginAutoPauseIfDue = useCallback((nowMs: number): boolean => {
+    if (
+      statusRef.current !== "running" ||
+      autoPausedRef.current ||
+      pauseStartedRef.current != null ||
+      !vehicleStateRef.current.hasHadGoodFix ||
+      lastPathPointRef.current == null
+    ) {
+      return false;
+    }
+    const startedAt = autoPauseStartedAt({
+      lastMovementAt: lastMovementAtRef.current,
+      stationarySinceAt: stationarySinceRef.current,
+      nowMs,
+    });
+    if (startedAt == null) return false;
+
+    pauseStartedRef.current = startedAt;
+    autoPausedRef.current = true;
+    reanchorNextRef.current = true;
+    setAutoPaused(true);
+    void track("running_auto_pause");
+    return true;
   }, []);
 
   const peekSpeedMps = useCallback(
@@ -201,10 +241,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       const now = Date.now();
       const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
       const speedMps = peekSpeedMps(coords, point, now);
-      const elapsedMs =
-        runStartedRef.current != null
-          ? now - runStartedRef.current - pausedAccumRef.current
-          : undefined;
 
       const accuracyRecent = pushAccuracySample(
         vehicleStateRef.current.accuracyRecent,
@@ -234,15 +270,62 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       // Even when we suppress path/distance accumulation, keep the raw GPS baseline
       // current so recovery and speed estimation use the newest fix.
       commitRawPosition(point, now);
+      const last = lastPathPointRef.current;
+
+      if (autoPausedRef.current) {
+        // GPS 감시는 살아 있다. 양호한 GPS에서 보행 수준의 실제 이동이 확인될 때만
+        // 자동 재개해 집 안 좌표 흔들림이나 차량 탑승으로 시계가 다시 돌지 않게 한다.
+        if (
+          vehicle.tier !== "normal" ||
+          vehicle.blockDistance ||
+          !shouldAutoResume(last, point, speedMps, accuracyM)
+        ) {
+          return;
+        }
+        if (pauseStartedRef.current != null) {
+          pausedAccumRef.current += now - pauseStartedRef.current;
+        }
+        pauseStartedRef.current = null;
+        autoPausedRef.current = false;
+        stationarySinceRef.current = null;
+        lastMovementAtRef.current = now;
+        reanchorNextRef.current = true;
+        setAutoPaused(false);
+        void track("running_auto_resume");
+      } else if (!vehicle.blockDistance) {
+        const movedEnough = last != null && shouldAppendPoint(last, point);
+        const speedShowsMovement = speedMps != null && speedMps >= 0.6;
+        if (last == null || movedEnough || speedShowsMovement) {
+          lastMovementAtRef.current = now;
+          stationarySinceRef.current = null;
+        } else if (
+          coords.speed != null &&
+          coords.speed <= 0.2 &&
+          accuracyM != null &&
+          accuracyM <= 20
+        ) {
+          // OS가 속도 0에 가까운 양호한 fix를 연속 제공할 때는 빠른(5초) 정지 판정을 쓴다.
+          stationarySinceRef.current ??= now;
+        } else {
+          stationarySinceRef.current = null;
+        }
+      } else {
+        stationarySinceRef.current = null;
+      }
+
+      if (beginAutoPauseIfDue(now)) return;
       if (vehicle.blockPathPoints) return;
 
       const reanchor = vehicle.reanchorNextPoint || reanchorNextRef.current;
+      const elapsedMs =
+        runStartedRef.current != null
+          ? now - runStartedRef.current - pausedAccumRef.current
+          : undefined;
       const pointWithT: LatLng = elapsedMs != null ? { ...point, t: elapsedMs } : point;
 
       // 증분 계산·ref 변이는 업데이터 밖에서 한다 — setState 업데이터는 순수해야 하며
       // (StrictMode·concurrent 렌더에서 재실행될 수 있음) 안에 부수효과를 두면 거리가
       // 이중 가산될 수 있다. GPS 콜백은 순차 실행이라 ref 기반 계산이 안전하다.
-      const last = lastPathPointRef.current;
       if (!reanchor && last && !shouldAppendPoint(last, pointWithT)) return;
 
       const increment =
@@ -255,7 +338,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       setPath((prev) => [...prev, pointWithT]);
       setDistanceM(distanceAccumRef.current);
     },
-    [peekSpeedMps, commitRawPosition],
+    [peekSpeedMps, commitRawPosition, beginAutoPauseIfDue],
   );
 
   const startWatch = useCallback(() => {
@@ -298,6 +381,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     if (status !== "running") return;
     const id = window.setInterval(() => {
       if (!runStartedRef.current) return;
+      beginAutoPauseIfDue(Date.now());
       setElapsedSec(
         computeElapsedSec(
           runStartedRef.current,
@@ -307,7 +391,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       );
     }, 1000);
     return () => clearInterval(id);
-  }, [status]);
+  }, [status, beginAutoPauseIfDue]);
 
   // ── 마운트 시 세션 복원 (탭 이탈 ≠ 일시정지, running이면 GPS 재개) ───────
   useEffect(() => {
@@ -316,6 +400,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
     runStartedRef.current = saved.runStartedAt;
     pausedAccumRef.current = saved.pausedAccumMs;
+    lastMovementAtRef.current = saved.lastMovementAt ?? saved.savedAt;
+    stationarySinceRef.current = null;
     pathRef.current = saved.path;
     setPath(saved.path);
     lastPathPointRef.current = saved.path[saved.path.length - 1] ?? null;
@@ -329,13 +415,31 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setDistanceM(restoredDistance);
 
     if (saved.status === "running") {
-      pauseStartedRef.current = null;
+      const restoredAutoPauseStartedAt =
+        saved.autoPaused && saved.pauseStartedAt != null
+          ? saved.pauseStartedAt
+          : autoPauseStartedAt({
+              lastMovementAt: lastMovementAtRef.current,
+              stationarySinceAt: null,
+              nowMs: Date.now(),
+            });
+      const restoredAutoPaused = restoredAutoPauseStartedAt != null;
+      pauseStartedRef.current = restoredAutoPauseStartedAt;
+      autoPausedRef.current = restoredAutoPaused;
+      setAutoPaused(restoredAutoPaused);
       setElapsedSec(
-        computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null),
+        computeElapsedSec(
+          saved.runStartedAt,
+          saved.pausedAccumMs,
+          restoredAutoPauseStartedAt,
+        ),
       );
       setStatus("running");
       pendingResumeWatchRef.current = true;
     } else {
+      // 자동 정지 뒤 사용자가 수동 일시정지 버튼을 누른 상태라면 종료 시각 보정 힌트는 유지한다.
+      autoPausedRef.current = saved.autoPaused === true;
+      setAutoPaused(false);
       pauseStartedRef.current = saved.pauseStartedAt;
       setElapsedSec(
         computeElapsedSec(
@@ -396,6 +500,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
   const start = useCallback(() => {
+    const now = Date.now();
     setPath([]);
     distanceAccumRef.current = 0;
     lastPathPointRef.current = null;
@@ -406,7 +511,11 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setVehicleTier("normal");
     pausedAccumRef.current = 0;
     pauseStartedRef.current = null;
-    runStartedRef.current = Date.now();
+    runStartedRef.current = now;
+    autoPausedRef.current = false;
+    lastMovementAtRef.current = now;
+    stationarySinceRef.current = null;
+    setAutoPaused(false);
     lastRawPosRef.current = null;
     lastPosTimeRef.current = null;
     setStatus("running");
@@ -441,7 +550,13 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
   const pause = useCallback(() => {
     if (statusRef.current !== "running") return;
-    pauseStartedRef.current = Date.now();
+    // 자동 일시정지 상태에서 사용자가 버튼을 누르면 기존 정지 시작 시각을 보존한다.
+    // 그래야 귀가 후 몇 시간 뒤 종료해도 활동 종료 시각과 페이스가 집 도착 시점에 맞는다.
+    if (!autoPausedRef.current) {
+      pauseStartedRef.current = Date.now();
+    }
+    stationarySinceRef.current = null;
+    setAutoPaused(false);
     setStatus("paused");
     clearWatch();
     void track("running_pause");
@@ -458,10 +573,15 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
   const resume = useCallback(() => {
     if (statusRef.current !== "paused") return;
+    const now = Date.now();
     if (pauseStartedRef.current) {
-      pausedAccumRef.current += Date.now() - pauseStartedRef.current;
+      pausedAccumRef.current += now - pauseStartedRef.current;
       pauseStartedRef.current = null;
     }
+    autoPausedRef.current = false;
+    lastMovementAtRef.current = now;
+    stationarySinceRef.current = null;
+    setAutoPaused(false);
     // 치팅 상태 리셋 — 재개 후 새로 측정
     vehicleStateRef.current = resetVehicleState();
     setVehicleTier("normal");
@@ -479,12 +599,34 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       return null;
     }
 
-    const endedAt = new Date().toISOString();
+    const now = Date.now();
+    // 백그라운드에서 JS 타이머가 멈췄다가 종료 버튼과 함께 깨어난 경우도 마지막으로 보정한다.
+    if (
+      statusRef.current === "running" &&
+      !autoPausedRef.current &&
+      lastPathPointRef.current != null
+    ) {
+      const inferred = autoPauseStartedAt({
+        lastMovementAt: lastMovementAtRef.current,
+        stationarySinceAt: stationarySinceRef.current,
+        nowMs: now,
+      });
+      if (inferred != null) {
+        pauseStartedRef.current = inferred;
+        autoPausedRef.current = true;
+      }
+    }
+    const effectiveEndedAt =
+      autoPausedRef.current && pauseStartedRef.current != null
+        ? pauseStartedRef.current
+        : now;
+    const endedAt = new Date(effectiveEndedAt).toISOString();
     const startedAt = new Date(runStartedRef.current).toISOString();
     const finalElapsed = computeElapsedSec(
       runStartedRef.current,
       pausedAccumRef.current,
       pauseStartedRef.current,
+      now,
     );
 
     let finalPath = [...pathRef.current];
@@ -512,6 +654,9 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     pauseStartedRef.current = null;
     pausedAccumRef.current = 0;
     runStartedRef.current = null;
+    autoPausedRef.current = false;
+    lastMovementAtRef.current = null;
+    stationarySinceRef.current = null;
     vehicleStateRef.current = resetVehicleState();
     distanceAccumRef.current = 0;
     lastPathPointRef.current = null;
@@ -521,6 +666,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setDistanceM(0);
     setElapsedSec(0);
     setVehicleTier("normal");
+    setAutoPaused(false);
 
     return snapshot;
   }, [clearWatch, position]);
@@ -533,6 +679,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     distanceM,
     geoError,
     vehicleTier,
+    autoPaused,
     elapsedLabel: formatClock(elapsedSec),
     paceLabel: formatPace(distanceM, elapsedSec, unit),
     calories: estimateCalories(distanceM),

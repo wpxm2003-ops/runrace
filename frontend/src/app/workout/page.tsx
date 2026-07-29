@@ -441,6 +441,13 @@ export default function WorkoutPage() {
             if (tier && cls[tier]) {
               return <div className={`${base} ${cls[tier]}`}>{msg[tier]}</div>;
             }
+            if (session.autoPaused) {
+              return (
+                <div className={`${base} bg-emerald-50 text-emerald-800`}>
+                  {t.workout_auto_paused}
+                </div>
+              );
+            }
             if (session.geoError) {
               return <div className={`${base} bg-red-50 text-red-700`}>{session.geoError}</div>;
             }

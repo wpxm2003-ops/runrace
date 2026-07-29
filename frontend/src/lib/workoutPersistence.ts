@@ -13,6 +13,10 @@ export type PersistedWorkout = {
   runStartedAt: number;    // Date.now() when running began
   pausedAccumMs: number;   // total accumulated pause time in ms
   pauseStartedAt: number | null; // timestamp when current pause began
+  /** 마지막으로 실제 이동이 확인된 시각. 구버전 스냅샷에는 없을 수 있다. */
+  lastMovementAt?: number;
+  /** status는 running이지만 GPS 감시는 유지한 채 활동시간만 멈춘 상태. */
+  autoPaused?: boolean;
   savedAt: number;         // Date.now() when this snapshot was written
 };
 

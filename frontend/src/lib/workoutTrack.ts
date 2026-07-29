@@ -17,6 +17,78 @@ export type WorkoutFinishSnapshot = {
 const MIN_MOVE_METERS = 4;
 const EARTH_RADIUS_M = 6_371_000;
 
+/** GPS가 정지 속도를 명확히 보고한 뒤 자동 일시정지까지 기다리는 시간. */
+export const AUTO_PAUSE_STATIONARY_MS = 5_000;
+/**
+ * 위치 콜백 자체가 끊겼을 때의 보수적인 자동 일시정지 기준.
+ * 네이티브 위치 필터와 느린 보행을 감안해 명시적 정지보다 길게 둔다.
+ */
+export const AUTO_PAUSE_SILENCE_MS = 15_000;
+/** 자동 일시정지 해제에 필요한 최소 GPS 정확도·이동 거리·속도. */
+const AUTO_RESUME_MAX_ACCURACY_M = 25;
+const AUTO_RESUME_MIN_DISTANCE_M = 5;
+const AUTO_RESUME_FALLBACK_DISTANCE_M = 10;
+const AUTO_RESUME_MIN_SPEED_MPS = 0.6;
+
+export type AutoPauseTimingInput = {
+  lastMovementAt: number | null;
+  stationarySinceAt: number | null;
+  nowMs: number;
+};
+
+/**
+ * 자동 일시정지가 시작돼야 할 시각을 계산한다.
+ * 호출 시각이 아니라 임계값을 넘긴 시각을 반환해, 백그라운드에서 JS 타이머가
+ * 늦게 깨어나도 집에서 멈춰 있던 긴 시간이 활동시간에 포함되지 않게 한다.
+ */
+export function autoPauseStartedAt({
+  lastMovementAt,
+  stationarySinceAt,
+  nowMs,
+}: AutoPauseTimingInput): number | null {
+  const candidates: number[] = [];
+  if (
+    stationarySinceAt != null &&
+    nowMs - stationarySinceAt >= AUTO_PAUSE_STATIONARY_MS
+  ) {
+    candidates.push(stationarySinceAt + AUTO_PAUSE_STATIONARY_MS);
+  }
+  if (
+    lastMovementAt != null &&
+    nowMs - lastMovementAt >= AUTO_PAUSE_SILENCE_MS
+  ) {
+    candidates.push(lastMovementAt + AUTO_PAUSE_SILENCE_MS);
+  }
+  return candidates.length > 0 ? Math.min(...candidates) : null;
+}
+
+/**
+ * 자동 일시정지 중 GPS 흔들림이 아닌 실제 이동이 확인됐는지 판정한다.
+ * 속도를 제공하지 않는 기기는 더 긴 이동 거리로 대체 확인한다.
+ */
+export function shouldAutoResume(
+  anchor: LatLng | null,
+  next: LatLng,
+  speedMps: number | null,
+  accuracyM: number | null,
+): boolean {
+  if (
+    !anchor ||
+    accuracyM == null ||
+    accuracyM > AUTO_RESUME_MAX_ACCURACY_M
+  ) {
+    return false;
+  }
+  const movedM = haversineMeters(anchor, next);
+  if (speedMps != null) {
+    return (
+      speedMps >= AUTO_RESUME_MIN_SPEED_MPS &&
+      movedM >= AUTO_RESUME_MIN_DISTANCE_M
+    );
+  }
+  return movedM >= AUTO_RESUME_FALLBACK_DISTANCE_M;
+}
+
 export function haversineMeters(a: LatLng, b: LatLng): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);

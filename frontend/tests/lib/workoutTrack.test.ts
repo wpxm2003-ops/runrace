@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  autoPauseStartedAt,
   computeBestSegments,
   computeKmSplits,
   creditedPathDistanceMeters,
@@ -8,6 +9,7 @@ import {
   formatClock,
   pathBoundsKey,
   pathDistanceMeters,
+  shouldAutoResume,
   splitPathAtGaps,
 } from "@/lib/workoutTrack";
 import type { LatLng, VehicleDetectState } from "@/lib/workoutTrack";
@@ -33,6 +35,51 @@ describe("estimateCalories", () => {
     expect(estimateCalories(0)).toBe(0);
     expect(estimateCalories(1000)).toBe(65);
     expect(estimateCalories(5000)).toBe(325);
+  });
+});
+
+describe("GPS 자동 일시정지", () => {
+  it("명시적 정지는 5초, 위치 무응답은 15초 뒤부터 시간을 제외한다", () => {
+    expect(
+      autoPauseStartedAt({
+        lastMovementAt: 1_000,
+        stationarySinceAt: null,
+        nowMs: 15_999,
+      }),
+    ).toBeNull();
+    expect(
+      autoPauseStartedAt({
+        lastMovementAt: 1_000,
+        stationarySinceAt: null,
+        nowMs: 16_000,
+      }),
+    ).toBe(16_000);
+
+    expect(
+      autoPauseStartedAt({
+        lastMovementAt: 1_000,
+        stationarySinceAt: 5_000,
+        nowMs: 9_999,
+      }),
+    ).toBeNull();
+    expect(
+      autoPauseStartedAt({
+        lastMovementAt: 1_000,
+        stationarySinceAt: 5_000,
+        nowMs: 10_000,
+      }),
+    ).toBe(10_000);
+  });
+
+  it("양호한 GPS에서 실제 이동이 확인돼야 자동 재개한다", () => {
+    const anchor: LatLng = { lat: 37, lng: 127 };
+    const aboutFiveMeters: LatLng = { lat: 37.00005, lng: 127 };
+    const aboutElevenMeters: LatLng = { lat: 37.0001, lng: 127 };
+
+    expect(shouldAutoResume(anchor, aboutFiveMeters, 1, 10)).toBe(true);
+    expect(shouldAutoResume(anchor, aboutFiveMeters, 0, 10)).toBe(false);
+    expect(shouldAutoResume(anchor, aboutElevenMeters, null, 10)).toBe(true);
+    expect(shouldAutoResume(anchor, aboutElevenMeters, 1, 40)).toBe(false);
   });
 });
 
