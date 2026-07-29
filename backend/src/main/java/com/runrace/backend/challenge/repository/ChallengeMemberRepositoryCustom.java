@@ -11,6 +11,9 @@ public interface ChallengeMemberRepositoryCustom {
 
   List<ChallengeMember> findAllForChallenge(Long challengeId);
 
+  /** Active challenge IDs only, used to acquire locks before loading member entities. */
+  List<Long> findAllActiveChallengeIdsForUser(UUID userId, OffsetDateTime now);
+
   List<ChallengeMember> findAllActiveForUser(UUID userId, OffsetDateTime now);
 
   /** 주어진 레이스 id들 중 사용자가 멤버인 것만 — 공개 목록의 "참여" 라벨용. */

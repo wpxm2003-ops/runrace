@@ -27,6 +27,7 @@ import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import com.runrace.backend.workout.repository.WorkoutComparisonItem;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -54,6 +55,21 @@ public class WorkoutService {
   private static final int MAX_PATH_POINTS = 100_000;
   /** 실내러닝 시작 시각의 미래 허용 오차(분) — 기기 시계가 조금 빠른 경우를 흡수한다. */
   private static final int STARTED_AT_FUTURE_SKEW_MIN = 10;
+  /**
+   * GPS 경로 포인트 최소 밀도(m/포인트). 클라이언트는 실제로 최소 이동거리(workoutTrack.ts의
+   * MIN_MOVE_METERS=4m)마다 포인트를 하나씩 남긴다. 그보다 훨씬 느슨한 상한을 둬 GPS 끊김·정지
+   * 구간을 넉넉히 흡수하면서도, "포인트 1개로 300km" 같은 노골적 조작(신고 거리 대비 포인트가
+   * 터무니없이 적은 경우)은 걸러낸다. 경로 실거리를 재계산해 신고 거리와 비교하지는 않는다 —
+   * GPS 오차(터널·건물숲 등)로 인한 정직한 사용자 오탐을 피하려고 의도적으로 포인트 "개수"만
+   * 보고, 거리 재계산·오차허용 비교는 하지 않는다.
+   */
+  private static final int MAX_PATH_POINT_SPACING_M = 50;
+  /** durationSec(활동시간)이 시작~종료 시각 범위를 넘어설 수 없다 — 초과분은 시계 오차 흡수용 여유. */
+  private static final int TIME_CONSISTENCY_TOLERANCE_SEC = 5;
+  private static final double MIN_LAT = -90;
+  private static final double MAX_LAT = 90;
+  private static final double MIN_LNG = -180;
+  private static final double MAX_LNG = 180;
   private static final int MIN_GHOST_OVERLAP_M = 500;
   private static final long GHOST_DELTA_TOLERANCE_MS = 1_000;
   private static final long MAX_GHOST_TIME_MS = MAX_DURATION_SEC * 1_000L;
@@ -169,6 +185,53 @@ public class WorkoutService {
     }
     if (startedAt == null || endedAt == null || !endedAt.isAfter(startedAt)) {
       throw ApiException.badRequest("time_range_invalid");
+    }
+    if (startedAt.isAfter(OffsetDateTime.now().plusMinutes(STARTED_AT_FUTURE_SKEW_MIN))) {
+      throw ApiException.badRequest("started_at_future");
+    }
+    long wallClockSec = Duration.between(startedAt, endedAt).getSeconds();
+    if (durationSec > wallClockSec + TIME_CONSISTENCY_TOLERANCE_SEC) {
+      throw ApiException.badRequest("duration_exceeds_time_range");
+    }
+    int minPathPoints = (int) Math.ceil(distanceM / (double) MAX_PATH_POINT_SPACING_M);
+    if (path.size() < minPathPoints) {
+      throw ApiException.badRequest("path_too_sparse");
+    }
+    validatePathPoints(path);
+  }
+
+  /**
+   * 좌표 범위(및 finite 여부)와 t(경과 ms)의 비음수·비내림차순만 확인한다 — t가 없는 포인트
+   * (구형 기록)는 순서 검사를 건너뛴다. 포인트가 2개 이상인데 전부 좌표가 동일하면 거부한다
+   * ("포인트 밀도" 검사(path_too_sparse)만으로는 같은 좌표를 밀도 요건만큼 반복 제출하는
+   * 우회가 가능해서다). 실제 이동 중 GPS 기록은 좌표가 계속 바뀌므로, 이 검사는 오차 허용치
+   * 없는 단순 동일성 비교라 정직한 사용자를 오탐할 여지가 없다 — 경로 실거리 재계산·비교는
+   * 하지 않는다(터널·건물숲 등 GPS 오차로 인한 오탐 위험이 커서 의도적으로 뺐다).
+   */
+  private static void validatePathPoints(List<PathPoint> path) {
+    Long prevT = null;
+    boolean allSameCoord = path.size() > 1;
+    double firstLat = path.get(0).lat();
+    double firstLng = path.get(0).lng();
+    for (PathPoint point : path) {
+      if (!Double.isFinite(point.lat()) || !Double.isFinite(point.lng())
+          || point.lat() < MIN_LAT || point.lat() > MAX_LAT
+          || point.lng() < MIN_LNG || point.lng() > MAX_LNG) {
+        throw ApiException.badRequest("path_point_invalid");
+      }
+      if (point.lat() != firstLat || point.lng() != firstLng) {
+        allSameCoord = false;
+      }
+      Long t = point.t();
+      if (t != null) {
+        if (t < 0 || (prevT != null && t < prevT)) {
+          throw ApiException.badRequest("path_point_invalid");
+        }
+        prevT = t;
+      }
+    }
+    if (allSameCoord) {
+      throw ApiException.badRequest("path_all_same_point");
     }
   }
 
@@ -627,14 +690,20 @@ public class WorkoutService {
   }
 
   private static double haversineMeters(PathPointDto a, PathPointDto b) {
+    return haversineMeters(a.lat(), a.lng(), b.lat(), b.lng());
+  }
+
+  private static double haversineMeters(
+      double firstLat, double firstLng, double secondLat, double secondLng) {
     double toRad = Math.PI / 180;
-    double dLat = (b.lat() - a.lat()) * toRad;
-    double dLng = (b.lng() - a.lng()) * toRad;
-    double lat1 = a.lat() * toRad;
-    double lat2 = b.lat() * toRad;
+    double dLat = (secondLat - firstLat) * toRad;
+    double dLng = (secondLng - firstLng) * toRad;
+    double lat1 = firstLat * toRad;
+    double lat2 = secondLat * toRad;
     double h = Math.pow(Math.sin(dLat / 2), 2)
         + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dLng / 2), 2);
-    return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
+    double clampedH = Math.max(0, Math.min(1, h));
+    return 2 * 6_371_000 * Math.asin(Math.sqrt(clampedH));
   }
 
   /**

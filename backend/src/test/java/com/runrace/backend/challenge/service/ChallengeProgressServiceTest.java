@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +31,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,6 +43,8 @@ class ChallengeProgressServiceTest {
   @Mock ChallengeMemberRepository challengeMemberRepository;
   @Mock ChallengeWorkoutRepository challengeWorkoutRepository;
   @Mock RaceFinalizationService raceFinalization;
+  @Mock ChallengeService challengeService;
+  @Mock org.springframework.context.ApplicationEventPublisher eventPublisher;
 
   @InjectMocks ChallengeProgressService service;
 
@@ -61,7 +65,7 @@ class ChallengeProgressServiceTest {
   }
 
   @Test
-  void 목표_도달하면_완주_표시_및_승자_확정() {
+  void 목표_도달하면_완주_표시하고_최초_완주자를_승자로_저장() {
     AppUser me = user("me");
     AppUser other = user("other");
     Challenge c = Challenge.builder().id(1L).goalKm(BigDecimal.valueOf(10)).build();
@@ -75,10 +79,29 @@ class ChallengeProgressServiceTest {
     service.applyDistanceToMemberWithContext(mine, BigDecimal.valueOf(3), T0, List.of(mine, others));
 
     assertNotNull(mine.getFinishedAt(), "목표 도달 시 완주 시각 기록");
-    assertSame(me, c.getWinner(), "첫 완주자가 승자로 확정");
+    assertSame(me, c.getWinner(), "최초 완주자를 즉시 승자로 확정");
     verify(challengeRepository).save(c);
     verify(challengeMemberRepository).save(mine);
     verify(raceFinalization, never()).finalizeRace(any(), anyList(), any());
+  }
+
+  @Test
+  void 전원_완주시_먼저_끝난_사람을_승자로_계산해_종료_처리를_위임한다() {
+    AppUser me = user("me");
+    AppUser other = user("other");
+    Challenge c = Challenge.builder().id(1L).goalKm(BigDecimal.valueOf(10)).build();
+    ChallengeMember mine = member(me, c, 8, null);
+    // 상대는 이미 완주(과거 시각) — 내가 지금 완주하면 상대가 먼저 끝난 승자여야 한다.
+    ChallengeMember others = member(other, c, 10, T0.minusMinutes(5));
+    when(challengeMemberRepository.countByChallengeIdAndIdNotAndFinishedAtIsNull(eq(1L), any()))
+        .thenReturn(0L); // 나 말고는 전원 완주
+
+    service.applyDistanceToMemberWithContext(mine, BigDecimal.valueOf(3), T0, List.of(mine, others));
+
+    assertNotNull(mine.getFinishedAt());
+    org.mockito.ArgumentCaptor<AppUser> winnerCaptor = org.mockito.ArgumentCaptor.forClass(AppUser.class);
+    verify(raceFinalization).finalizeRace(eq(c), eq(List.of(mine, others)), winnerCaptor.capture());
+    assertSame(other, winnerCaptor.getValue(), "먼저 완주한 상대가 승자");
   }
 
   @Test
@@ -160,6 +183,52 @@ class ChallengeProgressServiceTest {
     verify(raceFinalization, never()).clearFinalRanks(anyLong());
     verify(raceFinalization, never()).assignFinalRanks(anyList());
     verify(challengeWorkoutRepository).deleteAll(List.of(link));
+  }
+
+  /**
+   * 동시 완주 시 승자 확정이 경합하지 않도록, 사용자가 걸쳐 있는 레이스 행을 정렬된 순서로
+   * 한 번에 잠근다. 잠그지 않으면(또는 정렬하지 않으면) 이 테스트가 회귀를 잡는다.
+   */
+  @Test
+  void 활성_레이스가_여러_개면_정렬된_id로_한번에_잠근다() {
+    AppUser me = user("me");
+    Challenge c1 = Challenge.builder().id(5L).goalKm(BigDecimal.valueOf(10)).build();
+    Challenge c2 = Challenge.builder().id(2L).goalKm(BigDecimal.valueOf(10)).build();
+    ChallengeMember m1 = member(me, c1, 0, null);
+    ChallengeMember m2 = member(me, c2, 0, null);
+    when(challengeMemberRepository.findAllActiveChallengeIdsForUser(me.getId(), T0))
+        .thenReturn(List.of(5L, 2L));
+    when(challengeMemberRepository.findAllActiveForUser(me.getId(), T0))
+        .thenReturn(List.of(m1, m2));
+    when(challengeMemberRepository.findAllByChallengeIdIn(List.of(2L, 5L))).thenReturn(List.of());
+    when(challengeService.deleteIfSolo(any(), eq(T0))).thenReturn(false);
+
+    service.forEachActiveChallengeMember(me.getId(), T0, (member, all) -> {});
+
+    InOrder order = inOrder(challengeMemberRepository, challengeRepository);
+    order.verify(challengeMemberRepository).findAllActiveChallengeIdsForUser(me.getId(), T0);
+    order.verify(challengeRepository).findAllByIdsForUpdate(List.of(2L, 5L));
+    order.verify(challengeMemberRepository).findAllActiveForUser(me.getId(), T0);
+    order.verify(challengeMemberRepository).findAllByChallengeIdIn(List.of(2L, 5L));
+  }
+
+  @Test
+  void 실내런_단건_반영도_레이스_잠금_후_멤버를_조회한다() {
+    AppUser me = user("me");
+    Challenge challenge = Challenge.builder().id(1L).goalKm(BigDecimal.TEN).build();
+    ChallengeMember mine = member(me, challenge, 2, null);
+    when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(challenge));
+    when(challengeMemberRepository.findByChallengeIdAndUserId(1L, me.getId()))
+        .thenReturn(Optional.of(mine));
+    when(challengeMemberRepository.findAllForChallenge(1L)).thenReturn(List.of(mine));
+
+    service.applyDistanceToMember(1L, me.getId(), BigDecimal.ONE, T0);
+
+    InOrder order = inOrder(challengeRepository, challengeMemberRepository);
+    order.verify(challengeRepository).findByIdForUpdate(1L);
+    order.verify(challengeMemberRepository).findByChallengeIdAndUserId(1L, me.getId());
+    order.verify(challengeMemberRepository).findAllForChallenge(1L);
+    assertEquals(BigDecimal.valueOf(3.0), mine.getTotalKm());
   }
 
   @Test

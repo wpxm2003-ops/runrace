@@ -81,7 +81,7 @@ class WorkoutServiceIdempotencyTest {
     OffsetDateTime startedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
     OffsetDateTime endedAt = startedAt.plusSeconds(300);
     WorkoutSession existing = workout(
-        WorkoutType.GPS, clientWorkoutId, startedAt, endedAt, 300, 1_000, 65, 300, null);
+        WorkoutType.GPS, clientWorkoutId, startedAt, endedAt, 300, 50, 65, 300, null);
     when(workoutRepository.findByUserIdAndClientWorkoutId(userId, clientWorkoutId))
         .thenReturn(Optional.of(existing));
 
@@ -90,7 +90,7 @@ class WorkoutServiceIdempotencyTest {
         startedAt,
         endedAt,
         300,
-        1_000,
+        50,
         65,
         300,
         List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)),
@@ -162,7 +162,7 @@ class WorkoutServiceIdempotencyTest {
         startedAt,
         startedAt.plusSeconds(300),
         300,
-        1_000,
+        40,
         65,
         300,
         null);
@@ -176,7 +176,7 @@ class WorkoutServiceIdempotencyTest {
             startedAt,
             startedAt.plusSeconds(300),
             300,
-            1_001,
+            45,
             65,
             300,
             List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)),

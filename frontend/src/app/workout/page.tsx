@@ -196,10 +196,15 @@ export default function WorkoutPage() {
   }, []);
 
   // 마운트 시 복원 — POST 도중 앱이 죽거나 탭을 옮겨도 종료된 런이 유실되지 않게 한다.
+  // uid로 소유자를 확인해, 같은 기기에서 계정을 전환했을 때 다른 사용자의 실패한 런이
+  // 새 로그인 계정으로 잘못 복원·저장되지 않게 막는다.
   useEffect(() => {
-    const restored = loadPendingWorkoutSave();
-    if (restored) setPendingSave(restored);
-  }, []);
+    if (!user) {
+      setPendingSave(null);
+      return;
+    }
+    setPendingSave(loadPendingWorkoutSave(user.uid));
+  }, [user]);
 
   const saveSnapshot = useCallback(
     async (
@@ -276,6 +281,7 @@ export default function WorkoutPage() {
         // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
         setSaveError(t.workout_save_failed);
         setPendingSave({
+          ownerUid: user.uid,
           snapshot,
           ghostWorkoutId,
           ghostResult,
@@ -330,7 +336,15 @@ export default function WorkoutPage() {
     const ghostWorkoutId = ghostResult ? (ghost?.id ?? null) : null;
     setGhost(null); // 유령은 매 런마다 새로 고른다(등록형 라이벌 아님)
     // POST 전에 먼저 로컬에 남겨 둔다 — 도중에 앱이 죽어도 이 스냅샷은 살아남는다.
-    savePendingWorkoutSave({ snapshot, ghostWorkoutId, ghostResult, ghostLabel, showNsmCta, nsmLog });
+    savePendingWorkoutSave({
+      ownerUid: user.uid,
+      snapshot,
+      ghostWorkoutId,
+      ghostResult,
+      ghostLabel,
+      showNsmCta,
+      nsmLog,
+    });
     await saveSnapshot(snapshot, ghostWorkoutId, ghostResult, ghostLabel, showNsmCta, nsmLog);
   }, [
     session,

@@ -2,20 +2,38 @@ package com.runrace.backend.crew.repository;
 
 import com.runrace.backend.crew.domain.CrewJoinRequest;
 import com.runrace.backend.crew.domain.CrewJoinRequestStatus;
+import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CrewJoinRequestRepository extends JpaRepository<CrewJoinRequest, Long> {
 
-  /** 승인/거절 처리용 — 크루(리더 판정)·신청자를 함께 로드한다. */
-  @Query("select r from CrewJoinRequest r "
-      + "join fetch r.crew c join fetch c.leader join fetch r.user where r.id = :id")
-  Optional<CrewJoinRequest> findWithCrewAndUserById(@Param("id") Long id);
+  /**
+   * 여러 신청 행만 정렬된 순서로 한 번에 잠근다. 연관 크루·사용자를 fetch join하지 않아
+   * 데이터베이스가 그 행들까지 우발적으로 잠그면서 전역 user -> crew -> request 순서를
+   * 깨뜨리지 않게 한다.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select r from CrewJoinRequest r where r.id in :ids order by r.id")
+  List<CrewJoinRequest> findAllByIdsForUpdate(@Param("ids") List<Long> ids);
+
+  /** 신청 id로 신청자 uid만 가볍게 조회 — 잠금 전 사전조회용(엔티티를 미리 로드하지 않는다). */
+  @Query("select r.user.id from CrewJoinRequest r where r.id = :requestId")
+  Optional<UUID> findApplicantUserId(@Param("requestId") long requestId);
+
+  /** 승인 잠금 순서(user -> crew -> request)를 정하기 위한 대상 크루 ID 사전조회. */
+  @Query("select r.crew.id from CrewJoinRequest r where r.id = :requestId")
+  Optional<Long> findCrewId(@Param("requestId") long requestId);
+
+  /** 특정 사용자의 대기중 신청 id 전체 — 잠금 전 사전조회용(엔티티를 미리 로드하지 않는다). */
+  @Query("select r.id from CrewJoinRequest r where r.user.id = :userId and r.status = 'PENDING'")
+  List<Long> findPendingIdsByUserId(@Param("userId") UUID userId);
 
   /** 신청 시점 중복 pending 사전 체크(DB 부분 유니크가 최종 방어선). */
   boolean existsByCrewIdAndUserIdAndStatus(Long crewId, UUID userId, CrewJoinRequestStatus status);

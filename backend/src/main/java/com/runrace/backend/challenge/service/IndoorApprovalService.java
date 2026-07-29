@@ -136,13 +136,12 @@ public class IndoorApprovalService {
     cw.approve();
     challengeWorkoutRepository.save(cw);
 
-    Challenge challenge = cw.getChallenge();
+    Long challengeId = cw.getChallenge().getId();
     UUID userId = cw.getUser().getId();
     BigDecimal distanceKm = Distance.toKm(cw.getAppliedDistanceM());
     OffsetDateTime now = OffsetDateTime.now();
 
-    challengeMemberRepository.findByChallengeIdAndUserId(challenge.getId(), userId)
-        .ifPresent(member -> challengeProgressService.applyDistanceToMember(member, distanceKm, now));
+    challengeProgressService.applyDistanceToMember(challengeId, userId, distanceKm, now);
 
     eventPublisher.publishEvent(new WorkoutEvents.IndoorRunApprovedEvent(challengeWorkoutId, userId));
   }

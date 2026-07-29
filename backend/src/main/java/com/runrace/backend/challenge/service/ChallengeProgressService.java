@@ -7,6 +7,7 @@ import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
+import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.Distance;
 import com.runrace.backend.event.ChallengeEvents.MilestoneReachedEvent;
 import com.runrace.backend.event.ChallengeEvents.RankOvertakeEvent;
@@ -74,12 +75,27 @@ public class ChallengeProgressService {
   public void forEachActiveChallengeMember(
       UUID userId, OffsetDateTime now,
       BiConsumer<ChallengeMember, List<ChallengeMember>> body) {
-    List<ChallengeMember> activeMembers = challengeMemberRepository.findAllActiveForUser(userId, now);
+    // Fetch scalar IDs first so no Challenge/ChallengeMember entity enters the persistence
+    // context before the pessimistic locks have been acquired.
+    List<Long> challengeIds = challengeMemberRepository
+        .findAllActiveChallengeIdsForUser(userId, now).stream()
+        .distinct()
+        .sorted()
+        .toList();
+    if (challengeIds.isEmpty()) return;
+
+    // 동시 완주 시 승자·완주 판정이 레이스 조건에 빠지지 않도록, 관련 레이스 행을 정렬된
+    // 순서로 미리 잠근다(교착 방지 — 크루 대항전 잠금과 동일 패턴). 이 잠금은 트랜잭션이
+    // 끝날 때까지 유지되며, 그 안에서 이뤄지는 승자·완주 확정(onMemberProgress)을 직렬화한다.
+    challengeRepository.findAllByIdsForUpdate(challengeIds);
+
+    // Load entities only after the lock. If another transaction ended a race while this
+    // transaction waited, the active query naturally drops it here.
+    List<ChallengeMember> activeMembers =
+        challengeMemberRepository.findAllActiveForUser(userId, now);
     if (activeMembers.isEmpty()) return;
 
     // N+1 방지: 관련 챌린지 전체 멤버를 단일 쿼리로 사전 로드
-    List<Long> challengeIds = activeMembers.stream()
-        .map(m -> m.getChallenge().getId()).toList();
     Map<Long, List<ChallengeMember>> membersByChallenge =
         challengeMemberRepository.findAllByChallengeIdIn(challengeIds).stream()
             .collect(Collectors.groupingBy(m -> m.getChallenge().getId()));
@@ -97,9 +113,18 @@ public class ChallengeProgressService {
    * 진행 중 트랜잭션 안에서 호출되는 것을 전제로 한다(GPS·실내러닝 승인 공통 경로).
    * 단건 호출용 — 내부에서 전체 멤버를 조회한다.
    */
-  public void applyDistanceToMember(ChallengeMember member, BigDecimal deltaKm, OffsetDateTime now) {
-    List<ChallengeMember> allMembers =
-        challengeMemberRepository.findAllForChallenge(member.getChallenge().getId());
+  public void applyDistanceToMember(
+      Long challengeId, UUID userId, BigDecimal deltaKm, OffsetDateTime now) {
+    // Indoor approvals do not pass through forEachActiveChallengeMember. Lock the race
+    // before loading either the target member or the full member list so a transaction
+    // that waited cannot continue with stale finishedAt/totalKm values.
+    challengeRepository.findByIdForUpdate(challengeId)
+        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    ChallengeMember member = challengeMemberRepository
+        .findByChallengeIdAndUserId(challengeId, userId)
+        .orElse(null);
+    if (member == null) return;
+    List<ChallengeMember> allMembers = challengeMemberRepository.findAllForChallenge(challengeId);
     applyDistanceToMemberWithContext(member, deltaKm, now, allMembers);
   }
 
@@ -124,26 +149,36 @@ public class ChallengeProgressService {
   }
 
   /**
-   * 멤버 누적 거리가 목표를 처음 달성하면 완주 시각을 기록하고, 아직 승자가 없으면 승자로 확정한다.
-   * 전원 완주 시 레이스을 종료하고 종료 이벤트를 발행한다.
-   * 사전 로드된 멤버 목록을 받아 findAllForChallenge 중복 조회를 방지하며,
+   * 멤버 누적 거리가 목표를 처음 달성하면 완주 시각과 최초 완주자를 기록한다. 전원 완주
+   * 시에는 같은 승자를 유지한 채 레이스를 종료한다.
+   *
+   * <p>호출자는 레이스 행을 잠근 뒤 멤버 엔티티를 로드해야 한다. GPS 경로는
+   * {@link #forEachActiveChallengeMember}, 실내런은 {@link #applyDistanceToMember}가 이 순서를
+   * 보장하므로 동시 완주도 커밋 순서대로 직렬화되고, 아래 finishedAt 목록도 최신 상태다.
+   *
+   * <p>사전 로드된 멤버 목록을 받아 findAllForChallenge 중복 조회를 방지하며,
    * applyDistanceToMemberWithContext 에서 호출된다(진행 중 트랜잭션 전제).
    */
   private void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm,
                                  List<ChallengeMember> allMembers) {
     Challenge challenge = member.getChallenge();
-    if (nextTotalKm.compareTo(challenge.getGoalKm()) >= 0
-        && member.getFinishedAt() == null) {
-      member.markFinished(OffsetDateTime.now());
-      challenge.declareWinner(member.getUser());
-      boolean allOtherFinished = challengeMemberRepository
-          .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
-      if (allOtherFinished) {
-        // 전원 완주 → 공통 종료 처리(순위·종료 이벤트·저장). 우승자는 위에서 확정한 1등.
-        raceFinalization.finalizeRace(challenge, allMembers, challenge.getWinner());
-      } else {
-        challengeRepository.save(challenge);
-      }
+    if (nextTotalKm.compareTo(challenge.getGoalKm()) < 0 || member.getFinishedAt() != null) {
+      return;
+    }
+
+    member.markFinished(OffsetDateTime.now());
+    AppUser winner =
+        RaceFinalizationService.resolveWinner(challenge, allMembers, OffsetDateTime.now());
+    if (winner != null) {
+      challenge.declareWinner(winner);
+    }
+
+    boolean allOtherFinished = challengeMemberRepository
+        .countByChallengeIdAndIdNotAndFinishedAtIsNull(challenge.getId(), member.getId()) == 0;
+    if (allOtherFinished) {
+      raceFinalization.finalizeRace(challenge, allMembers, challenge.getWinner());
+    } else {
+      challengeRepository.save(challenge);
     }
   }
 

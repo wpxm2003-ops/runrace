@@ -172,6 +172,100 @@ class WorkoutServiceTest {
       assertEquals("time_range_invalid", ex.code());
     }
 
+    @Test void 시작시각이_먼_미래면_started_at_future() {
+      OffsetDateTime future = OffsetDateTime.now().plusDays(1);
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, future, future.plusSeconds(10), 5, 10, 1, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)), null, null, null));
+      assertEquals("started_at_future", ex.code());
+    }
+
+    @Test void duration이_시작종료_범위를_초과하면_duration_exceeds_time_range() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 300, 10, 1, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)), null, null, null));
+      assertEquals("duration_exceeds_time_range", ex.code());
+    }
+
+    // "1포인트로 300km" 같은 노골적 조작 — 신고 거리 대비 경로 포인트가 터무니없이 적으면 거부한다.
+    @Test void 포인트_1개로_300km_신고하면_path_too_sparse() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusHours(36), 129_600, 300_000, 20_000, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)), null, null, null));
+      assertEquals("path_too_sparse", ex.code());
+    }
+
+    // 포인트 개수 요건만 채우려고 같은 좌표를 반복 제출하는 우회 — 거리 재계산 없이도 막는다.
+    @Test void 같은_좌표를_반복해서_밀도_요건만_채우면_path_all_same_point() {
+      java.util.List<WorkoutService.PathPoint> path = java.util.stream.IntStream.range(0, 6_000)
+          .mapToObj(i -> new WorkoutService.PathPoint(37.0, 127.0, i * 1_000L))
+          .toList();
+
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusHours(36), 129_600, 300_000, 20_000, null,
+              path, null, null, null));
+
+      assertEquals("path_all_same_point", ex.code());
+    }
+
+    // GPS 오차로 좌표가 조금씩 흔들리는 정직한 기록은(경로 실거리 재계산·비교를 안 하므로) 통과해야 한다.
+    @Test void 좌표가_조금씩_달라지면_거리검증을_통과한다() {
+      java.util.List<WorkoutService.PathPoint> path = java.util.stream.IntStream.range(0, 6)
+          .mapToObj(i -> new WorkoutService.PathPoint(37.0, 127.0 + i * 0.000001, i * 1_000L))
+          .toList();
+
+      // 입력 검증은 통과하고, 의존성이 없는 서비스라 그다음 lockUser에서 NPE가 난다 — 통과의 증거.
+      assertThrows(NullPointerException.class,
+          () -> service.create(p, T, T.plusMinutes(5), 300, 300, 65, 300,
+              path, null, null, null));
+    }
+
+    @Test void NaN_좌표면_path_point_invalid() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 5, 0, 1, null,
+              java.util.List.of(new WorkoutService.PathPoint(Double.NaN, 127.0, 0L)),
+              null, null, null));
+      assertEquals("path_point_invalid", ex.code());
+    }
+
+    @Test void 위도가_범위를_벗어나면_path_point_invalid() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 5, 10, 1, null,
+              java.util.List.of(new WorkoutService.PathPoint(91.0, 127.0, 0L)), null, null, null));
+      assertEquals("path_point_invalid", ex.code());
+    }
+
+    @Test void 경도가_범위를_벗어나면_path_point_invalid() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 5, 10, 1, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, -181.0, 0L)), null, null, null));
+      assertEquals("path_point_invalid", ex.code());
+    }
+
+    @Test void 포인트_t가_음수면_path_point_invalid() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 5, 10, 1, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, -1L)), null, null, null));
+      assertEquals("path_point_invalid", ex.code());
+    }
+
+    @Test void 포인트_t가_역순이면_path_point_invalid() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 5, 10, 1, null,
+              java.util.List.of(
+                  new WorkoutService.PathPoint(37.0, 127.0, 5_000L),
+                  new WorkoutService.PathPoint(37.001, 127.001, 1_000L)),
+              null, null, null));
+      assertEquals("path_point_invalid", ex.code());
+    }
+
+    // t가 없는 포인트(구형 기록)는 순서 검사를 건너뛰고 통과해야 한다.
+    @Test void t가_없는_포인트는_순서검사를_건너뛴다() {
+      assertThrows(NullPointerException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 5, 10, 1, null,
+              java.util.List.of(new WorkoutService.PathPoint(37.0, 127.0, null)), null, null, null));
+    }
+
     @Test void 고스트_id와_결과가_짝이_아니면_부수_정보를_무효로_본다() {
       assertFalse(WorkoutService.isGhostRacePayloadValid(1L, null));
     }

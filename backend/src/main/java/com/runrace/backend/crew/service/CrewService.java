@@ -271,13 +271,13 @@ public class CrewService {
   public void create(UUID meId, String rawName, String rawRegion) {
     String name = validateName(rawName);
     String region = validateRegion(rawRegion);
+    AppUser me = lockUser(meId);
     if (crewMemberRepository.existsByUserId(meId)) {
       throw ApiException.conflict("already_in_crew");
     }
     if (crewRepository.existsByName(name)) {
       throw ApiException.conflict("crew_name_taken");
     }
-    AppUser me = appUserRepository.getRequired(meId);
     OffsetDateTime now = OffsetDateTime.now();
     Crew crew = crewRepository.save(Crew.builder()
         .name(name)
@@ -294,14 +294,15 @@ public class CrewService {
   /** 초대 코드로 가입. */
   @Transactional
   public void join(UUID meId, String rawCode) {
-    Crew crew = lockCrew(findByCode(rawCode).getId());
+    Long crewId = findByCode(rawCode).getId();
+    AppUser me = lockUser(meId);
+    Crew crew = lockCrew(crewId);
     if (crewMemberRepository.existsByUserId(meId)) {
       throw ApiException.conflict("already_in_crew");
     }
     if (crewMemberRepository.countByCrewId(crew.getId()) >= crew.getMaxMembers()) {
       throw ApiException.conflict("crew_full");
     }
-    AppUser me = appUserRepository.getRequired(meId);
     crewMemberRepository.save(
         CrewMember.builder().crew(crew).user(me).joinedAt(OffsetDateTime.now()).build());
     // 초대코드 즉시가입도 "가입"이므로 발견 경로로 넣어둔 다른 신청은 전부 정리한다.
@@ -389,6 +390,7 @@ public class CrewService {
     Crew crew = crewRepository.findById(crewId)
         .orElseThrow(() -> ApiException.notFound("crew_not_found"));
     String message = validateBoundedText(rawMessage, APPLY_MESSAGE_MAX, "invalid_apply_message");
+    AppUser applicant = lockUser(meId);
 
     if (crewMemberRepository.existsByUserId(meId)) {
       throw ApiException.conflict("already_in_crew");
@@ -408,7 +410,6 @@ public class CrewService {
       throw ApiException.conflict("apply_rate_limited");
     }
 
-    AppUser applicant = appUserRepository.getRequired(meId);
     crewJoinRequestRepository.save(CrewJoinRequest.of(crew, applicant, message));
     eventPublisher.publishEvent(new CrewEvents.CrewApplyReceived(
         crew.getLeader().getId(), applicant.getNickname(), crewId));
@@ -426,34 +427,73 @@ public class CrewService {
    */
   @Transactional(noRollbackFor = ApiException.class)
   public void approve(UUID leaderId, long requestId) {
-    CrewJoinRequest request = requirePendingRequestAsLeader(leaderId, requestId);
-    Crew crew = lockCrew(request.getCrew().getId());
-    UUID applicantId = request.getUser().getId();
+    // 멤버십을 만드는 모든 경로가 신청자 행을 첫 잠금으로 사용한다. 그러면 pending ID를
+    // 읽은 뒤 새 신청·즉시가입·크루생성이 끼어들 수 없고, user -> crew -> request 순서가
+    // 모든 경로에서 동일해진다.
+    UUID applicantId = crewJoinRequestRepository.findApplicantUserId(requestId)
+        .orElseThrow(() -> ApiException.notFound("request_not_found"));
+    Long crewId = crewJoinRequestRepository.findCrewId(requestId)
+        .orElseThrow(() -> ApiException.notFound("request_not_found"));
+    AppUser applicant = lockUser(applicantId);
+    Crew crew = lockCrew(crewId);
+
+    List<CrewJoinRequest> locked =
+        crewJoinRequestRepository.findAllByIdsForUpdate(lockIdsForApplicant(requestId, applicantId));
+    CrewJoinRequest request = locked.stream()
+        .filter(r -> r.getId() == requestId)
+        .findFirst()
+        .orElseThrow(() -> ApiException.notFound("request_not_found"));
+    validateLeaderPending(request, leaderId);
+    if (!request.getCrew().getId().equals(crewId)) {
+      throw ApiException.conflict("request_changed");
+    }
 
     requireApplicantStillJoinable(request, crew, applicantId);
 
     // 가입 확정 — 멤버 등록 → 신청 승인 → 신청자의 다른 대기중 신청 정리
     crewMemberRepository.save(
-        CrewMember.builder().crew(crew).user(request.getUser()).joinedAt(OffsetDateTime.now()).build());
+        CrewMember.builder().crew(crew).user(applicant).joinedAt(OffsetDateTime.now()).build());
     request.approve(leaderId);
     crewJoinRequestRepository.save(request);
-    cancelOtherPendingApplications(applicantId, requestId);
+    cancelAlreadyLocked(locked, requestId);
 
     eventPublisher.publishEvent(
         new CrewEvents.CrewApplyApproved(applicantId, crew.getName(), crew.getId()));
   }
 
+  /** requestId 자신 + 같은 신청자의 대기중 신청 id 전체(정렬) — approve()의 일괄 잠금 대상. */
+  private List<Long> lockIdsForApplicant(long requestId, UUID applicantId) {
+    java.util.TreeSet<Long> ids =
+        new java.util.TreeSet<>(crewJoinRequestRepository.findPendingIdsByUserId(applicantId));
+    ids.add(requestId);
+    return List.copyOf(ids);
+  }
+
+  /** 이미 잠가 둔 목록에서 대상 자신을 제외하고, 여전히 대기중인 것만 취소한다(자동취소). */
+  private void cancelAlreadyLocked(List<CrewJoinRequest> locked, long exceptRequestId) {
+    for (CrewJoinRequest pending : locked) {
+      if (pending.getId() == exceptRequestId || !pending.isPending()) continue;
+      pending.cancel();
+      crewJoinRequestRepository.save(pending);
+    }
+  }
+
   /** 승인·거절 공통 가드 — 신청 존재 + 내가 그 크루의 리더 + 아직 대기중. */
   private CrewJoinRequest requirePendingRequestAsLeader(UUID leaderId, long requestId) {
-    CrewJoinRequest request = crewJoinRequestRepository.findWithCrewAndUserById(requestId)
+    CrewJoinRequest request = crewJoinRequestRepository.findAllByIdsForUpdate(List.of(requestId))
+        .stream().findFirst()
         .orElseThrow(() -> ApiException.notFound("request_not_found"));
+    validateLeaderPending(request, leaderId);
+    return request;
+  }
+
+  private static void validateLeaderPending(CrewJoinRequest request, UUID leaderId) {
     if (!request.getCrew().isLeader(leaderId)) {
       throw ApiException.forbidden("not_leader");
     }
     if (!request.isPending()) {
       throw ApiException.conflict("request_already_decided");
     }
-    return request;
   }
 
   /** 승인 순간의 재확인 — 신청자 소속·정원 상태는 신청 이후 바뀔 수 있다. */
@@ -486,7 +526,10 @@ public class CrewService {
   /** 신청 철회(신청자 본인). */
   @Transactional
   public void cancelApplication(UUID meId, long requestId) {
-    CrewJoinRequest request = crewJoinRequestRepository.findById(requestId)
+    // approve/reject와 같은 잠금 조회를 써서 셋이 같은 신청 건을 동시에 결정할 때
+    // stale 상태로 서로를 덮어쓰지 않게 한다.
+    CrewJoinRequest request = crewJoinRequestRepository.findAllByIdsForUpdate(List.of(requestId))
+        .stream().findFirst()
         .orElseThrow(() -> ApiException.notFound("request_not_found"));
     if (!request.getUser().getId().equals(meId)) {
       throw ApiException.forbidden("not_your_request");
@@ -571,6 +614,11 @@ public class CrewService {
       throw ApiException.notFound("crew_not_found");
     }
     return crews.get(0);
+  }
+
+  private AppUser lockUser(UUID userId) {
+    return appUserRepository.findByIdForUpdate(userId)
+        .orElseThrow(() -> ApiException.notFound("user_not_found"));
   }
 
   private CrewMember requireMembership(UUID meId) {
@@ -720,10 +768,15 @@ public class CrewService {
    * exceptRequestId는 방금 APPROVED로 확정된 요청 id(그 자체는 취소 대상 아님) — 나머지 경로는 null.
    */
   private void cancelOtherPendingApplications(UUID userId, Long exceptRequestId) {
-    for (CrewJoinRequest pending : crewJoinRequestRepository.findPendingByUserId(userId)) {
-      if (exceptRequestId != null && pending.getId().equals(exceptRequestId)) {
-        continue;
-      }
+    // 잠금 없이 조회 후 쓰면, 다른 리더가 같은 신청자의 다른 신청을 동시에 결정할 때 그
+    // 결정을 stale 상태로 덮어쓸 수 있다 — 정렬된 순서로 잠근 뒤(교착 방지) 처리한다.
+    List<Long> ids = crewJoinRequestRepository.findPendingIdsByUserId(userId).stream()
+        .filter(id -> exceptRequestId == null || !id.equals(exceptRequestId))
+        .sorted()
+        .toList();
+    if (ids.isEmpty()) return;
+    for (CrewJoinRequest pending : crewJoinRequestRepository.findAllByIdsForUpdate(ids)) {
+      if (!pending.isPending()) continue; // 잠그는 사이 이미 결정됐으면 건너뜀
       pending.cancel();
       crewJoinRequestRepository.save(pending);
     }

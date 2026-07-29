@@ -28,6 +28,20 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
   }
 
   @Override
+  public List<Long> findAllActiveChallengeIdsForUser(UUID userId, OffsetDateTime now) {
+    return query.select(member.challenge.id)
+        .from(member)
+        .where(
+            member.user.id.eq(userId),
+            member.challenge.startAt.loe(now),
+            member.challenge.endAt.isNull().or(member.challenge.endAt.goe(now)),
+            member.challenge.isEnded.isFalse(),
+            member.finishedAt.isNull())
+        .orderBy(member.challenge.id.asc())
+        .fetch();
+  }
+
+  @Override
   public List<ChallengeMember> findAllActiveForUser(UUID userId, OffsetDateTime now) {
     return query.selectFrom(member)
         .join(member.challenge).fetchJoin()

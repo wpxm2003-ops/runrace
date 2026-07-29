@@ -84,17 +84,14 @@ class IndoorApprovalServiceTest {
     AppUser u = user("runner");
     Challenge c = Challenge.builder().id(10L).goalKm(BigDecimal.valueOf(10)).build();
     ChallengeWorkout pending = cw(1L, ApprovalStatus.PENDING, c, u);
-    ChallengeMember member = ChallengeMember.builder().user(u).totalKm(BigDecimal.ZERO).build();
-
     when(challengeWorkoutRepository.findById(1L)).thenReturn(Optional.of(pending));
-    when(challengeMemberRepository.findByChallengeIdAndUserId(10L, u.getId()))
-        .thenReturn(Optional.of(member));
 
     service.applyApprovedIndoorRun(1L);
 
     assertEquals(ApprovalStatus.APPROVED, pending.getApprovalStatus());
     // 5000m → 5km 거리 반영이 정확히 1번
-    verify(challengeProgressService).applyDistanceToMember(eq(member), any(BigDecimal.class), any());
+    verify(challengeProgressService)
+        .applyDistanceToMember(eq(10L), eq(u.getId()), any(BigDecimal.class), any());
     verify(eventPublisher).publishEvent(any(WorkoutEvents.IndoorRunApprovedEvent.class));
   }
 

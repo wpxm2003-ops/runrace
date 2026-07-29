@@ -251,6 +251,42 @@ class ChallengeServiceTest {
     }
   }
 
+  // ── updateRoom ───────────────────────────────────────────────────────────
+
+  @Nested class UpdateRoom {
+    private final UUID ownerId = UUID.randomUUID();
+    private final AuthPrincipal p = new AuthPrincipal(ownerId, "uid");
+    private final OffsetDateTime start = OffsetDateTime.now().plusDays(1);
+    private final OffsetDateTime end = start.plusDays(7);
+
+    @Test void 정원_축소가_실제_인원보다_작으면_max_members_too_small() {
+      Challenge c = challenge(ownerId, start, end);
+      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(4L);
+
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.updateRoom(p, 1L, "Title", BigDecimal.valueOf(5), 3, start, end, null));
+
+      assertEquals("max_members_too_small", ex.code());
+    }
+
+    /**
+     * 정원 확인~저장 사이의 동시 가입 경합(TOCTOU)을 막으려면 이 조회가 잠금이어야 한다.
+     * findByIdWithDetails(비잠금)로 되돌아가면 이 테스트가 실패해 회귀를 잡는다.
+     */
+    @Test void 정상_수정은_잠긴_조회를_사용한다() {
+      Challenge c = challenge(ownerId, start, end);
+      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(2L);
+
+      service.updateRoom(p, 1L, "새제목", BigDecimal.valueOf(5), 10, start, end, null);
+
+      verify(challengeRepository).findByIdForUpdate(1L);
+      verify(challengeRepository, never()).findByIdWithDetails(any());
+      verify(challengeRepository).save(c);
+    }
+  }
+
   // ── leaveRoom ────────────────────────────────────────────────────────────
 
   @Nested class LeaveRoom {

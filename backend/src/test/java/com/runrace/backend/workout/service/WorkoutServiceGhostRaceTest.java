@@ -72,7 +72,7 @@ class WorkoutServiceGhostRaceTest {
         startedAt,
         startedAt.plusSeconds(1_000),
         1_000,
-        3_000,
+        50,
         200,
         333,
         List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)),

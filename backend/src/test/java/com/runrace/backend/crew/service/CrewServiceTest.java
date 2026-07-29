@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,11 +28,13 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -48,6 +52,12 @@ class CrewServiceTest {
   @InjectMocks CrewService service;
 
   private final UUID meId = UUID.randomUUID();
+
+  @BeforeEach
+  void allowCurrentUserLock() {
+    lenient().when(appUserRepository.findByIdForUpdate(meId))
+        .thenReturn(Optional.of(user(meId)));
+  }
 
   private AppUser user(UUID id) {
     return AppUser.builder().id(id).nickname("u-" + id.toString().substring(0, 4)).build();
@@ -81,6 +91,16 @@ class CrewServiceTest {
   private void allowCrewLock(Crew crew) {
     when(crewRepository.findAllByIdsForUpdate(List.of(crew.getId())))
         .thenReturn(List.of(crew));
+  }
+
+  private void allowApprovalLocks(Crew crew, UUID applicantId, long requestId) {
+    when(crewJoinRequestRepository.findApplicantUserId(requestId))
+        .thenReturn(Optional.of(applicantId));
+    when(crewJoinRequestRepository.findCrewId(requestId))
+        .thenReturn(Optional.of(crew.getId()));
+    when(appUserRepository.findByIdForUpdate(applicantId))
+        .thenReturn(Optional.of(user(applicantId)));
+    allowCrewLock(crew);
   }
 
   // ── create ───────────────────────────────────────────────────────────────
@@ -125,7 +145,6 @@ class CrewServiceTest {
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewRepository.existsByName("달밤크루")).thenReturn(false);
       when(crewRepository.existsByJoinCode(any())).thenReturn(false);
-      when(appUserRepository.getRequired(meId)).thenReturn(user(meId));
       when(crewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
       service.create(meId, " 달밤크루 ", "seoul");
@@ -171,7 +190,6 @@ class CrewServiceTest {
       allowCrewLock(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(c.getId())).thenReturn(3);
-      when(appUserRepository.getRequired(meId)).thenReturn(user(meId));
 
       service.join(meId, " abc234 ");
 
@@ -412,7 +430,6 @@ class CrewServiceTest {
       when(crewJoinRequestRepository.findLastRejectedAt(1L, meId))
           .thenReturn(Optional.of(OffsetDateTime.now().minusHours(25)));
       when(crewJoinRequestRepository.countByUserIdAndCreatedAtAfter(eq(meId), any())).thenReturn(0L);
-      when(appUserRepository.getRequired(meId)).thenReturn(user(meId));
 
       service.apply(meId, 1L, null);
 
@@ -444,7 +461,6 @@ class CrewServiceTest {
           1L, meId, CrewJoinRequestStatus.PENDING)).thenReturn(false);
       when(crewJoinRequestRepository.findLastRejectedAt(1L, meId)).thenReturn(Optional.empty());
       when(crewJoinRequestRepository.countByUserIdAndCreatedAtAfter(eq(meId), any())).thenReturn(0L);
-      when(appUserRepository.getRequired(meId)).thenReturn(user(meId));
 
       service.apply(meId, 1L, " 잘_부탁드려요 ");
 
@@ -459,7 +475,7 @@ class CrewServiceTest {
 
   @Nested class Approve {
     @Test void 요청이_없으면_request_not_found() {
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.empty());
+      // findApplicantUserId 미스텁 시 Mockito 기본값인 빈 Optional.
       ApiException ex = assertThrows(ApiException.class, () -> service.approve(meId, 1L));
       assertEquals("request_not_found", ex.code());
     }
@@ -467,7 +483,8 @@ class CrewServiceTest {
     @Test void 리더가_아니면_not_leader() {
       Crew c = crew(UUID.randomUUID());
       CrewJoinRequest req = pendingRequest(c, UUID.randomUUID(), 1L);
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
+      allowApprovalLocks(c, req.getUser().getId(), 1L);
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.approve(meId, 1L));
 
@@ -478,7 +495,8 @@ class CrewServiceTest {
       Crew c = crew(meId);
       CrewJoinRequest req = pendingRequest(c, UUID.randomUUID(), 1L);
       req.cancel();
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
+      allowApprovalLocks(c, req.getUser().getId(), 1L);
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.approve(meId, 1L));
 
@@ -489,8 +507,8 @@ class CrewServiceTest {
       Crew c = crew(meId);
       UUID applicantId = UUID.randomUUID();
       CrewJoinRequest req = pendingRequest(c, applicantId, 1L);
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
-      allowCrewLock(c);
+      allowApprovalLocks(c, applicantId, 1L);
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
       when(crewMemberRepository.existsByUserId(applicantId)).thenReturn(true);
 
       ApiException ex = assertThrows(ApiException.class, () -> service.approve(meId, 1L));
@@ -506,8 +524,8 @@ class CrewServiceTest {
       Crew c = crew(meId);
       UUID applicantId = UUID.randomUUID();
       CrewJoinRequest req = pendingRequest(c, applicantId, 1L);
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
-      allowCrewLock(c);
+      allowApprovalLocks(c, applicantId, 1L);
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
       when(crewMemberRepository.existsByUserId(applicantId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(c.getId())).thenReturn(30);
 
@@ -516,6 +534,11 @@ class CrewServiceTest {
       assertEquals("crew_full", ex.code());
     }
 
+    /**
+     * 승인 대상 + 신청자의 다른 대기중 신청(타 크루)을 정렬된 id로 한 번에 잠근 뒤 처리해야
+     * 한다. 개별 잠금으로 되돌아가면(다른 리더의 동시 승인과 반대 순서로 잠글 수 있어) 이
+     * 테스트가 회귀를 잡는다.
+     */
     @Test void 정상_승인은_멤버십_생성_타_pending_자동취소_이벤트발행() {
       Crew c = crew(meId);
       UUID applicantId = UUID.randomUUID();
@@ -523,14 +546,23 @@ class CrewServiceTest {
       Crew otherCrew = crew(UUID.randomUUID());
       CrewJoinRequest otherPending = pendingRequest(otherCrew, applicantId, 20L);
 
-      when(crewJoinRequestRepository.findWithCrewAndUserById(10L)).thenReturn(Optional.of(req));
-      allowCrewLock(c);
+      allowApprovalLocks(c, applicantId, 10L);
+      when(crewJoinRequestRepository.findPendingIdsByUserId(applicantId)).thenReturn(List.of(10L, 20L));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(10L, 20L)))
+          .thenReturn(List.of(req, otherPending));
       when(crewMemberRepository.existsByUserId(applicantId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(c.getId())).thenReturn(3);
-      when(crewJoinRequestRepository.findPendingByUserId(applicantId))
-          .thenReturn(List.of(req, otherPending));
 
       service.approve(meId, 10L);
+
+      InOrder lockOrder =
+          inOrder(crewJoinRequestRepository, appUserRepository, crewRepository);
+      lockOrder.verify(crewJoinRequestRepository).findApplicantUserId(10L);
+      lockOrder.verify(crewJoinRequestRepository).findCrewId(10L);
+      lockOrder.verify(appUserRepository).findByIdForUpdate(applicantId);
+      lockOrder.verify(crewRepository).findAllByIdsForUpdate(List.of(c.getId()));
+      lockOrder.verify(crewJoinRequestRepository).findPendingIdsByUserId(applicantId);
+      lockOrder.verify(crewJoinRequestRepository).findAllByIdsForUpdate(List.of(10L, 20L));
 
       verify(crewMemberRepository).save(any(CrewMember.class));
       assertEquals(CrewJoinRequestStatus.APPROVED, req.getStatus());
@@ -549,7 +581,6 @@ class CrewServiceTest {
 
   @Nested class Reject {
     @Test void 요청이_없으면_request_not_found() {
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.empty());
       ApiException ex = assertThrows(ApiException.class, () -> service.reject(meId, 1L, null));
       assertEquals("request_not_found", ex.code());
     }
@@ -557,7 +588,7 @@ class CrewServiceTest {
     @Test void 리더가_아니면_not_leader() {
       Crew c = crew(UUID.randomUUID());
       CrewJoinRequest req = pendingRequest(c, UUID.randomUUID(), 1L);
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.reject(meId, 1L, null));
 
@@ -568,7 +599,7 @@ class CrewServiceTest {
       Crew c = crew(meId);
       CrewJoinRequest req = pendingRequest(c, UUID.randomUUID(), 1L);
       req.cancel();
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.reject(meId, 1L, null));
 
@@ -578,7 +609,7 @@ class CrewServiceTest {
     @Test void 금지문자_사유면_invalid_reject_reason() {
       Crew c = crew(meId);
       CrewJoinRequest req = pendingRequest(c, UUID.randomUUID(), 1L);
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.reject(meId, 1L, "<sql>"));
 
@@ -589,7 +620,7 @@ class CrewServiceTest {
       Crew c = crew(meId);
       UUID applicantId = UUID.randomUUID();
       CrewJoinRequest req = pendingRequest(c, applicantId, 1L);
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       service.reject(meId, 1L, " 활동이_적어요 ");
 
@@ -605,7 +636,7 @@ class CrewServiceTest {
     @Test void 사유없이_거절도_허용() {
       Crew c = crew(meId);
       CrewJoinRequest req = pendingRequest(c, UUID.randomUUID(), 1L);
-      when(crewJoinRequestRepository.findWithCrewAndUserById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       service.reject(meId, 1L, null);
 
@@ -615,7 +646,6 @@ class CrewServiceTest {
 
   @Nested class CancelApplication {
     @Test void 요청이_없으면_request_not_found() {
-      when(crewJoinRequestRepository.findById(1L)).thenReturn(Optional.empty());
       ApiException ex = assertThrows(ApiException.class, () -> service.cancelApplication(meId, 1L));
       assertEquals("request_not_found", ex.code());
     }
@@ -623,7 +653,7 @@ class CrewServiceTest {
     @Test void 내_신청이_아니면_not_your_request() {
       Crew c = crew(UUID.randomUUID());
       CrewJoinRequest req = pendingRequest(c, UUID.randomUUID(), 1L);
-      when(crewJoinRequestRepository.findById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.cancelApplication(meId, 1L));
 
@@ -634,7 +664,7 @@ class CrewServiceTest {
       Crew c = crew(UUID.randomUUID());
       CrewJoinRequest req = pendingRequest(c, meId, 1L);
       req.cancel();
-      when(crewJoinRequestRepository.findById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       ApiException ex = assertThrows(ApiException.class, () -> service.cancelApplication(meId, 1L));
 
@@ -644,7 +674,7 @@ class CrewServiceTest {
     @Test void 정상_취소는_상태변경후_저장() {
       Crew c = crew(UUID.randomUUID());
       CrewJoinRequest req = pendingRequest(c, meId, 1L);
-      when(crewJoinRequestRepository.findById(1L)).thenReturn(Optional.of(req));
+      when(crewJoinRequestRepository.findAllByIdsForUpdate(List.of(1L))).thenReturn(List.of(req));
 
       service.cancelApplication(meId, 1L);
 

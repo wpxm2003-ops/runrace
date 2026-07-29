@@ -15,6 +15,8 @@ import type { NsmSessionLogBody } from "./api/types";
  * 연달아 나는 드문 경우). 흔한 단일 실패 시나리오를 고치는 게 목적이라 감수한다.
  */
 export type PendingWorkoutSave = {
+  /** 저장 시점의 Firebase UID — 같은 기기에서 계정을 전환해도 다른 사용자의 실패한 런(GPS 경로 포함)이 복원되지 않게 한다. */
+  ownerUid: string;
   snapshot: WorkoutFinishSnapshot;
   ghostWorkoutId: number | null;
   ghostResult: GhostRaceResult | null;
@@ -37,6 +39,12 @@ export function clearPendingWorkoutSaveIfMatches(clientWorkoutId: string): void 
   }
 }
 
-export function loadPendingWorkoutSave(): PendingWorkoutSave | null {
-  return store.get();
+/**
+ * uid가 저장된 소유자와 일치할 때만 반환한다. 다른 계정 소유 데이터는 지우지 않고 그대로
+ * 둔다 — 원래 소유자가 나중에 같은 기기로 재로그인하면 여전히 복구할 수 있어야 한다.
+ */
+export function loadPendingWorkoutSave(uid: string): PendingWorkoutSave | null {
+  const current = store.get();
+  if (!current || current.ownerUid !== uid) return null;
+  return current;
 }

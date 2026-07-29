@@ -210,7 +210,10 @@ public class ChallengeService {
       OffsetDateTime startAt,
       OffsetDateTime endAt,
       String stake) {
-    Challenge challenge = requireChallenge(id);
+    // 잠근 채로 읽는다 — 잠그지 않으면 정원 축소 검증과 저장 사이에 동시 참가가 끼어들어
+    // "정원 < 실제 인원" 모순 상태가 될 수 있다(joinRoom과 같은 이유의 TOCTOU).
+    Challenge challenge =
+        challengeRepository.findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
     ensureOwner(principal, challenge);
     ensureNotStarted(challenge);
     validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
