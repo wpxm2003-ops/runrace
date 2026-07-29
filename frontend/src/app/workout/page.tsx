@@ -40,6 +40,12 @@ import {
 } from "@/lib/ghostRace";
 import { useWakeLock } from "@/lib/useWakeLock";
 import { isIosWeb } from "@/lib/nativeNav";
+import {
+  savePendingWorkoutSave,
+  loadPendingWorkoutSave,
+  clearPendingWorkoutSaveIfMatches,
+  type PendingWorkoutSave,
+} from "@/lib/workoutPendingSave";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
@@ -61,15 +67,7 @@ type CelebrationState = {
   showNsmCta: boolean;
 };
 
-type PendingSave = {
-  snapshot: WorkoutFinishSnapshot;
-  ghostWorkoutId: number | null;
-  ghostResult: GhostRaceResult | null;
-  ghostLabel: string | null;
-  showNsmCta: boolean;
-  /** 이 런이 sub-T 세션이었으면 수행 기록(재시도 저장에서도 유실되지 않게 함께 보관). */
-  nsmLog: NsmSessionLogBody | null;
-};
+type PendingSave = PendingWorkoutSave;
 
 /**
  * 종료 시점의 sub-T 세션 + 렙 진행상태 → 수행 기록 페이로드.
@@ -197,6 +195,12 @@ export default function WorkoutPage() {
     setShowIosNotice(false);
   }, []);
 
+  // 마운트 시 복원 — POST 도중 앱이 죽거나 탭을 옮겨도 종료된 런이 유실되지 않게 한다.
+  useEffect(() => {
+    const restored = loadPendingWorkoutSave();
+    if (restored) setPendingSave(restored);
+  }, []);
+
   const saveSnapshot = useCallback(
     async (
       snapshot: WorkoutFinishSnapshot,
@@ -258,6 +262,7 @@ export default function WorkoutPage() {
         // 방금 저장한 것이 보관 중이던 그 스냅샷일 때만 비운다 — 새 런의 저장 성공이
         // 이전에 실패해 보관해둔 다른 런을 폐기하면 그 기록은 영구 유실된다.
         setPendingSave((prev) => (prev && prev.snapshot === snapshot ? null : prev));
+        clearPendingWorkoutSaveIfMatches(snapshot.clientWorkoutId);
         setCelebration({
           recordId: res.id,
           snapshot,
@@ -322,15 +327,11 @@ export default function WorkoutPage() {
     const showNsmCta =
       ghostResult != null &&
       shouldShowNsmCta({ hasPlan: trainingPlan !== null, result: ghostResult, lossStreak });
+    const ghostWorkoutId = ghostResult ? (ghost?.id ?? null) : null;
     setGhost(null); // 유령은 매 런마다 새로 고른다(등록형 라이벌 아님)
-    await saveSnapshot(
-      snapshot,
-      ghostResult ? (ghost?.id ?? null) : null,
-      ghostResult,
-      ghostLabel,
-      showNsmCta,
-      nsmLog,
-    );
+    // POST 전에 먼저 로컬에 남겨 둔다 — 도중에 앱이 죽어도 이 스냅샷은 살아남는다.
+    savePendingWorkoutSave({ snapshot, ghostWorkoutId, ghostResult, ghostLabel, showNsmCta, nsmLog });
+    await saveSnapshot(snapshot, ghostWorkoutId, ghostResult, ghostLabel, showNsmCta, nsmLog);
   }, [
     session,
     user,
