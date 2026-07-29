@@ -24,6 +24,13 @@ public interface CrewRepository extends JpaRepository<Crew, Long> {
 
   boolean existsByName(String name);
 
+  /**
+   * 이 URL을 아직 참조 중인 크루가 있는지(image_urls JSON 배열 안 부분일치) —
+   * 이미지 삭제 전 소유권 없는 URL 재사용 방어용. image_urls는 배열을 직렬화한 text 컬럼이라
+   * 부분일치로 확인한다(우리가 발급하는 URL은 UUID 기반이라 부분 충돌 가능성이 사실상 없다).
+   */
+  boolean existsByImageUrlsJsonContaining(String imageUrl);
+
   /** 대항전 상대 지목용 — 크루명은 unique라 정확 일치로 찾는다. */
   Optional<Crew> findByName(String name);
 

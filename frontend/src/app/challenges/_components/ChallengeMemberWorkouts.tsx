@@ -39,7 +39,7 @@ export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
         <ul className="mt-3 divide-y divide-zinc-100">
           {workouts.map((w) => (
             <li
-              key={w.workoutId}
+              key={`${w.userId}-${w.startedAt}`}
               className="grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 gap-y-0.5 py-3.5 first:pt-0 last:pb-0"
             >
               <p className="col-start-1 row-start-1 self-center truncate text-sm font-medium text-zinc-900">

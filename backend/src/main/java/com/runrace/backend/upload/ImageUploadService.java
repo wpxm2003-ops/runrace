@@ -1,6 +1,8 @@
 package com.runrace.backend.upload;
 
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.crew.repository.CrewRepository;
+import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.UUID;
@@ -36,15 +38,22 @@ public class ImageUploadService {
   /** 이 서비스가 발급하는 URL 접두어 — 외부/타인 URL 주입·삭제를 거르는 데 사용. */
   private final String urlPrefix;
 
+  private final WorkoutSessionRepository workoutSessionRepository;
+  private final CrewRepository crewRepository;
+
   public ImageUploadService(
       @Value("${app.aws.access-key}") String accessKey,
       @Value("${app.aws.secret-key}") String secretKey,
       @Value("${app.aws.region:ap-northeast-2}") String region,
       @Value("${app.aws.s3.bucket}") String bucket,
-      @Value("${app.aws.s3.private-bucket:${app.aws.s3.bucket}}") String privateBucket) {
+      @Value("${app.aws.s3.private-bucket:${app.aws.s3.bucket}}") String privateBucket,
+      WorkoutSessionRepository workoutSessionRepository,
+      CrewRepository crewRepository) {
     this.bucket = bucket;
     this.privateBucket = privateBucket;
     this.urlPrefix = "https://" + bucket + ".s3." + region + ".amazonaws.com/";
+    this.workoutSessionRepository = workoutSessionRepository;
+    this.crewRepository = crewRepository;
     this.s3 = S3Client.builder()
         .region(Region.of(region))
         .credentialsProvider(StaticCredentialsProvider.create(
@@ -91,9 +100,18 @@ public class ImageUploadService {
 
   public void delete(String imageUrl) {
     if (imageUrl == null || imageUrl.isBlank()) return;
-    // 우리 버킷 URL이 아니면 삭제하지 않는다 — 타인/외부 객체 삭제 방지(방어선).
+    // 우리 버킷 URL이 아니면 삭제하지 않는다 — 타인/외부 객체 삭제 방지(방어선 1).
     if (!isStoredUrl(imageUrl)) {
       log.warn("우리 버킷 URL이 아니어서 삭제 건너뜀: {}", imageUrl);
+      return;
+    }
+    // 업로드 키에 소유자가 없어(우리 버킷 URL이면 누구나 자기 운동·크루 프로필에 붙일 수 있다),
+    // "남의 URL을 내 것에 붙였다가 떼서 원본을 지운다"는 공격이 가능했다(방어선 2).
+    // 다른 행이 이 URL을 아직 참조 중이면(그게 원 소유자든, 같은 URL을 재사용한 제3의 행이든)
+    // 삭제하지 않는다 — 최악의 실패가 "S3에 고아 객체가 잠깐 남는다"에 그치게 한다.
+    if (workoutSessionRepository.existsByImageUrl(imageUrl)
+        || crewRepository.existsByImageUrlsJsonContaining(imageUrl)) {
+      log.info("다른 곳에서 아직 참조 중인 이미지라 삭제 건너뜀: {}", imageUrl);
       return;
     }
     try {

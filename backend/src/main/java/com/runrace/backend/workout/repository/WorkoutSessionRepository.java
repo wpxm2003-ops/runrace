@@ -38,6 +38,9 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
 
   Optional<WorkoutSession> findByUserIdAndClientWorkoutId(UUID userId, UUID clientWorkoutId);
 
+  /** 이 URL을 아직 참조 중인 운동 기록이 있는지 — 이미지 삭제 전 소유권 없는 URL 재사용 방어용. */
+  boolean existsByImageUrl(String imageUrl);
+
   /** 상세 응답용 — 신발(LAZY)을 함께 로드해 트랜잭션 밖에서도 귀속 신발을 노출한다. */
   @Query("select w from WorkoutSession w left join fetch w.shoe where w.id = :id and w.user.id = :userId")
   Optional<WorkoutSession> findDetailByIdAndUserId(@Param("id") Long id, @Param("userId") UUID userId);

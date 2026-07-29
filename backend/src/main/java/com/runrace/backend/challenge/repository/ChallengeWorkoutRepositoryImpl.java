@@ -68,7 +68,7 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
     // 엔티티 fetch join은 대용량 path_json(GPS 트랙)까지 로딩해 힙을 폭증시킨다.
     // 목록에 필요한 스칼라 컬럼만 projection해 path_json을 읽지 않는다.
     List<Tuple> rows = query
-        .select(ws.id, user.id, user.nickname, ws.startedAt, ws.endedAt,
+        .select(user.id, user.nickname, ws.startedAt, ws.endedAt,
             ws.durationSec, ws.distanceM, cw.appliedDistanceM)
         .from(cw)
         .join(cw.workoutSession, ws)
@@ -81,7 +81,6 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
         .map(t -> {
           String nickname = t.get(user.nickname);
           return new ChallengeWorkoutListItem(
-              t.get(ws.id),
               t.get(user.id),
               nickname != null ? nickname : "탈퇴한 러너", // AppUser.getDisplayNickname()과 동일
               IsoTime.format(t.get(ws.startedAt)),

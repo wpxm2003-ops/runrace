@@ -306,7 +306,6 @@ export type ChallengeDetail = {
 };
 
 export type ChallengeWorkoutListItem = {
-  workoutId: number;
   userId: string;
   nickname: string | null;
   startedAt: string;
