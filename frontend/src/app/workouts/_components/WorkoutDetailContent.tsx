@@ -254,14 +254,6 @@ export default function WorkoutDetailContent() {
             </div>
           ) : null}
 
-          {/* 편집은 헤더의 메모 아이콘(WorkoutMemoButton) — 본문은 시트를 열지 않아도
-              여기서 항상 읽을 수 있게 한다. */}
-          {detail.memo ? (
-            <p className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
-              {detail.memo}
-            </p>
-          ) : null}
-
         </>
       )}
     </PageLayout>
