@@ -12,49 +12,29 @@ type Props = {
   workoutId: number;
   initialMemo: string | null | undefined;
   user: User;
+  /** 저장·취소로 편집이 끝났을 때 — 바텀시트를 닫는 용도(부모가 트리거를 소유). */
+  onDone: (savedMemo?: string) => void;
 };
 
-export function WorkoutMemoEditor({ workoutId, initialMemo, user }: Props) {
+/**
+ * 메모 편집 폼 — 열리면 바로 편집 상태다(진입 트리거는 WorkoutMemoButton이 담당하므로
+ * 여기서 별도의 "보기→클릭→편집" 전환은 없다).
+ */
+export function WorkoutMemoEditor({ workoutId, initialMemo, user, onDone }: Props) {
   const { t } = useLocale();
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(initialMemo ?? "");
-  const [saved, setSaved] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const displayed = saved !== null ? saved : (initialMemo ?? "");
 
   async function handleSave() {
     setSaving(true);
     try {
       await updateWorkoutMemo(workoutId, draft, user);
-      setSaved(draft);
       invalidateWorkoutDetail(workoutId, user.uid);
-      setEditing(false);
       toast.success(t.toast_memo_saved);
+      onDone(draft);
     } finally {
       setSaving(false);
     }
-  }
-
-  function handleCancel() {
-    setDraft(displayed);
-    setEditing(false);
-  }
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        onClick={() => { setDraft(displayed); setEditing(true); }}
-        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm transition-colors hover:border-zinc-300 hover:bg-zinc-100"
-      >
-        {displayed ? (
-          <span className="whitespace-pre-wrap leading-relaxed text-zinc-700">{displayed}</span>
-        ) : (
-          <span className="text-zinc-400">{t.celebration_memo_placeholder}</span>
-        )}
-      </button>
-    );
   }
 
   return (
@@ -73,7 +53,7 @@ export function WorkoutMemoEditor({ workoutId, initialMemo, user }: Props) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={handleCancel}
+            onClick={() => onDone()}
             disabled={saving}
             className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
           >

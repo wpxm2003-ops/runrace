@@ -15,12 +15,12 @@ import {
 } from "@/lib/api";
 import { WorkoutTimeRange } from "@/app/_components/WorkoutTimeRange";
 import { WorkoutComparisonCard } from "@/app/_components/WorkoutComparisonCard";
-import { WorkoutMemoEditor } from "@/app/_components/WorkoutMemoEditor";
 import { WorkoutMedia } from "@/app/_components/WorkoutMedia";
 import { WorkoutStatGrid, workoutStatLabels } from "@/app/_components/WorkoutStatGrid";
 import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { WorkoutPhotoButton } from "@/app/_components/WorkoutPhotoButton";
+import { WorkoutMemoButton } from "@/app/_components/WorkoutMemoButton";
 import { ElevationSection } from "./ElevationSection";
 import { KmSplitSection } from "./KmSplitSection";
 import type { WorkoutDetail } from "@/lib/api/types";
@@ -60,6 +60,15 @@ function TrashIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
       <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MemoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+      <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" strokeLinejoin="round" />
+      <path d="M9 10h6M9 13.5h6M9 17h3.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -104,6 +113,16 @@ function WorkoutActions({
           >
             <PhotoIcon />
           </WorkoutPhotoButton>
+          <WorkoutMemoButton
+            key={`memo-${workoutId}`}
+            workoutId={workoutId}
+            initialMemo={detail.memo}
+            user={user}
+            className={ACTION_ICON_CLASS}
+            ariaLabel={t.memo_btn}
+          >
+            <MemoIcon />
+          </WorkoutMemoButton>
           <button
             type="button"
             disabled={deleting}
@@ -235,11 +254,9 @@ export default function WorkoutDetailContent() {
             </div>
           ) : null}
 
-          {user ? (
-            <div className="mt-4">
-              <WorkoutMemoEditor workoutId={id!} initialMemo={detail.memo} user={user} />
-            </div>
-          ) : detail.memo ? (
+          {/* 편집은 헤더의 메모 아이콘(WorkoutMemoButton)으로 옮겼다 — 비로그인 방문자에게는
+              그 아이콘 자체가 안 보이므로, 공유된 메모를 읽을 수 있게 이 표시만 남긴다. */}
+          {!user && detail.memo ? (
             <p className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
               {detail.memo}
             </p>

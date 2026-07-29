@@ -928,6 +928,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `사진 촬영 시각 ${time} — 등록 시 운동 종료 시각으로 기록됩니다.`,
     upload_too_large: "사진 용량이 너무 큽니다. 다른 사진을 선택해 주세요.",
+    memo_btn: "메모",
     photo_save_btn: "사진 등록",
     photo_busy: "사진 등록중...",
     photo_view_btn: "사진 보기",
@@ -1975,6 +1976,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `Photo taken at ${time} — will be recorded as workout end time.`,
     upload_too_large: "The photo is too large. Please choose a different image.",
+    memo_btn: "Memo",
     photo_save_btn: "Save as photo",
     photo_busy: "Saving photo...",
     photo_view_btn: "View photo",
@@ -3022,6 +3024,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `Foto tomada a las ${time}: se registrará como hora de fin.`,
     upload_too_large: "La foto es demasiado grande. Elige otra imagen.",
+    memo_btn: "Nota",
     photo_save_btn: "Guardar como foto",
     photo_busy: "Guardando foto...",
     photo_view_btn: "Ver foto",
@@ -4069,6 +4072,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `撮影時刻 ${time} — 登録時に運動終了時刻として記録されます。`,
     upload_too_large: "写真の容量が大きすぎます。別の写真を選んでください。",
+    memo_btn: "メモ",
     photo_save_btn: "写真を残す",
     photo_busy: "写真を登録中...",
     photo_view_btn: "写真を見る",
@@ -5115,6 +5119,7 @@ export const translations = {
     indoor_photo_time_hint: (time: string) =>
       `拍摄时间 ${time} — 登记时将记录为运动结束时间。`,
     upload_too_large: "照片太大。请选择其他照片。",
+    memo_btn: "备注",
     photo_save_btn: "保存为照片",
     photo_busy: "正在保存照片...",
     photo_view_btn: "查看照片",
