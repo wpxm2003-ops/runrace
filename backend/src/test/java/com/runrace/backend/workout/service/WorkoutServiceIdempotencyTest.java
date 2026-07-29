@@ -1,8 +1,10 @@
 package com.runrace.backend.workout.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -83,7 +85,7 @@ class WorkoutServiceIdempotencyTest {
     when(workoutRepository.findByUserIdAndClientWorkoutId(userId, clientWorkoutId))
         .thenReturn(Optional.of(existing));
 
-    WorkoutSession result = service.create(
+    WorkoutService.SavedWorkout result = service.create(
         principal,
         startedAt,
         endedAt,
@@ -96,7 +98,10 @@ class WorkoutServiceIdempotencyTest {
         null,
         clientWorkoutId);
 
-    assertSame(existing, result);
+    assertSame(existing, result.session());
+    // 멱등 히트임을 호출자에게 알려야 컨트롤러가 PB·성과 재계산을 건너뛴다.
+    // 재계산하면 이미 갱신된 PB와 등호로 비교돼 "갱신 없음"이라는 틀린 응답이 나간다.
+    assertTrue(result.deduplicated());
     verify(workoutRepository, never()).save(any());
     verifyNoInteractions(
         challengeProgressService, crewMatchService, shoeService, eventPublisher);
@@ -119,12 +124,32 @@ class WorkoutServiceIdempotencyTest {
     when(workoutRepository.findByUserIdAndClientWorkoutId(userId, clientWorkoutId))
         .thenReturn(Optional.of(existing));
 
-    WorkoutSession result =
+    WorkoutService.SavedWorkout result =
         service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, clientWorkoutId);
 
-    assertSame(existing, result);
+    assertSame(existing, result.session());
+    assertTrue(result.deduplicated());
     verify(workoutRepository, never()).save(any());
     verifyNoInteractions(indoorApprovalService, shoeService);
+  }
+
+  /**
+   * 신규 저장은 deduplicated=false여야 한다 — 이 값이 잘못 true가 되면 컨트롤러가 축하 계산을
+   * 통째로 건너뛰어 PB·성과가 한 번도 표시되지 않는다(가드가 뒤집혔을 때 조용히 실패하는 방향).
+   */
+  @Test
+  void freshIndoorSaveIsNotMarkedAsDeduplicated() {
+    UUID clientWorkoutId = UUID.randomUUID();
+    OffsetDateTime startedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    when(workoutRepository.findByUserIdAndClientWorkoutId(userId, clientWorkoutId))
+        .thenReturn(Optional.empty());
+    when(workoutRepository.save(any(WorkoutSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    WorkoutService.SavedWorkout result =
+        service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, clientWorkoutId);
+
+    assertFalse(result.deduplicated());
+    verify(workoutRepository).save(any(WorkoutSession.class));
   }
 
   @Test

@@ -70,8 +70,17 @@ public class WorkoutService {
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
 
+  /**
+   * 저장 결과 — {@code deduplicated}면 clientWorkoutId가 이미 저장된 요청이라 새로 쓴 것이 없다.
+   *
+   * <p>호출자가 이 구분을 알아야 하는 이유: 저장 이후 단계(PB·성과 판정)는 저장 시점의 상태를
+   * 전제로 계산하는데, 재시도 시점에는 그 상태가 이미 바뀌어 있어 다시 돌리면 틀린 값이 나온다.
+   * (예: PB는 첫 요청에서 이미 갱신돼, 재계산하면 "갱신 없음"으로 판정된다.)
+   */
+  public record SavedWorkout(WorkoutSession session, boolean deduplicated) {}
+
   @Transactional
-  public WorkoutSession create(
+  public SavedWorkout create(
       AuthPrincipal principal,
       OffsetDateTime startedAt,
       OffsetDateTime endedAt,
@@ -98,7 +107,7 @@ public class WorkoutService {
         distanceM,
         calories,
         avgPaceSecPerKm);
-    if (existing != null) return existing;
+    if (existing != null) return new SavedWorkout(existing, true);
 
     // 고스트 레이스 상대 확정 — 지목한 과거 기록이 내 것이 아니거나 결과가 어긋나면 무시된다
     GhostRaceData ghostRace = resolveGhostRace(principal.userId(), ghostWorkoutId, ghostResult);
@@ -127,7 +136,7 @@ public class WorkoutService {
     eventPublisher.publishEvent(new WorkoutEvents.WorkoutSavedEvent(
         principal.userId(), user.getNickname(), distanceM));
 
-    return saved;
+    return new SavedWorkout(saved, false);
   }
 
   private void validateGpsInput(
@@ -189,7 +198,7 @@ public class WorkoutService {
   }
 
   @Transactional
-  public WorkoutSession createIndoor(
+  public SavedWorkout createIndoor(
       AuthPrincipal principal,
       int distanceM,
       int durationSec,
@@ -204,7 +213,7 @@ public class WorkoutService {
     AppUser user = lockUser(principal.userId());
     WorkoutSession existing = findExistingIndoorRequest(
         principal.userId(), clientWorkoutId, distanceM, durationSec, start, imageUrl);
-    if (existing != null) return existing;
+    if (existing != null) return new SavedWorkout(existing, true);
     WorkoutSession saved = saveIndoorSession(
         user, clientWorkoutId, distanceM, durationSec, start, imageUrl);
 
@@ -213,7 +222,7 @@ public class WorkoutService {
 
     // 실내러닝도 활성 신발에 귀속(신발 마모는 승인 여부와 무관)
     shoeService.attributeActiveShoe(principal.userId(), saved);
-    return saved;
+    return new SavedWorkout(saved, false);
   }
 
   private void validateIndoorInput(int distanceM, int durationSec, String imageUrl) {

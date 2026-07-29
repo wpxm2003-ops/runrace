@@ -56,7 +56,7 @@ public class WorkoutController {
       AuthPrincipal principal, @RequestBody CreateWorkoutRequest body) {
     List<WorkoutService.PathPoint> path =
         body.path().stream().map(p -> new WorkoutService.PathPoint(p.lat(), p.lng(), p.t(), p.ele())).toList();
-    WorkoutSession session =
+    WorkoutService.SavedWorkout result =
         workoutService.create(
             principal,
             OffsetDateTime.parse(body.startedAt()),
@@ -69,6 +69,15 @@ public class WorkoutController {
             body.ghostWorkoutId(),
             body.ghostResult(),
             body.clientWorkoutId());
+    WorkoutSession session = result.session();
+
+    // 재시도로 같은 요청이 다시 들어온 경우 축하 계산을 건너뛴다.
+    // 첫 요청이 이미 PB를 갱신해 뒀으므로 다시 판정하면 "갱신 없음"이 나와, 값이 있는 것처럼
+    // 보이지만 실제로는 틀린 응답이 된다. 계산 비용도 그대로 든다.
+    if (result.deduplicated()) {
+      return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, List.of()));
+    }
+
     // 여기부터는 축하(PB·성과) 계산 — 운동 저장 트랜잭션은 이미 커밋됐다.
     // 이 단계에서 예외로 500을 내면 프론트 withRetry가 저장 자체를 다시 POST해 중복 기록이 생기므로,
     // 실패해도 삼켜 기록하고 저장 성공 응답을 내려보낸다.
@@ -93,13 +102,20 @@ public class WorkoutController {
   @PostMapping("/indoor")
   public ResponseEntity<CreateWorkoutResponse> createIndoor(
       AuthPrincipal principal, @RequestBody CreateIndoorRunRequest body) {
-    WorkoutSession session = workoutService.createIndoor(
+    WorkoutService.SavedWorkout result = workoutService.createIndoor(
         principal,
         body.distanceM(),
         body.durationSec(),
         body.startedAt(),
         body.imageUrl(),
         body.clientWorkoutId());
+    WorkoutSession session = result.session();
+
+    // 재시도로 같은 요청이 다시 들어온 경우 성과 판정을 건너뛴다(GPS 경로와 동일한 이유).
+    if (result.deduplicated()) {
+      return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, List.of()));
+    }
+
     // 실내런도 전체 누적 성과에는 포함한다. AchievementService가 소급 기록에 대해
     // 오늘/이번 주/이번 달처럼 현재 기간에 종속된 성과만 제외한다.
     List<Achievement> achievements = List.of();
