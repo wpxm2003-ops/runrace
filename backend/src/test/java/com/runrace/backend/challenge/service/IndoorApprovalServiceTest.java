@@ -16,11 +16,13 @@ import com.runrace.backend.challenge.domain.ChallengeMember;
 import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.domain.IndoorRunApproval;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
+import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.event.WorkoutEvents;
 import com.runrace.backend.user.domain.AppUser;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,6 +38,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class IndoorApprovalServiceTest {
 
   @Mock ChallengeMemberRepository challengeMemberRepository;
+  @Mock ChallengeRepository challengeRepository;
   @Mock ChallengeWorkoutRepository challengeWorkoutRepository;
   @Mock IndoorRunApprovalRepository indoorRunApprovalRepository;
   @Mock ChallengeProgressService challengeProgressService;
@@ -85,6 +88,7 @@ class IndoorApprovalServiceTest {
     Challenge c = Challenge.builder().id(10L).goalKm(BigDecimal.valueOf(10)).build();
     ChallengeWorkout pending = cw(1L, ApprovalStatus.PENDING, c, u);
     when(challengeWorkoutRepository.findById(1L)).thenReturn(Optional.of(pending));
+    when(challengeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(c));
 
     service.applyApprovedIndoorRun(1L);
 
@@ -93,6 +97,26 @@ class IndoorApprovalServiceTest {
     verify(challengeProgressService)
         .applyDistanceToMember(eq(10L), eq(u.getId()), any(BigDecimal.class), any());
     verify(eventPublisher).publishEvent(any(WorkoutEvents.IndoorRunApprovedEvent.class));
+  }
+
+  @Test
+  void 레이스가_종료됐으면_거리를_반영하지_않고_REJECTED로_닫는다() {
+    AppUser u = user("runner");
+    Challenge c = Challenge.builder()
+        .id(10L)
+        .goalKm(BigDecimal.valueOf(10))
+        .endAt(OffsetDateTime.now().minusMinutes(1))
+        .build();
+    ChallengeWorkout pending = cw(1L, ApprovalStatus.PENDING, c, u);
+    when(challengeWorkoutRepository.findById(1L)).thenReturn(Optional.of(pending));
+    when(challengeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(c));
+
+    service.applyApprovedIndoorRun(1L);
+
+    assertEquals(ApprovalStatus.REJECTED, pending.getApprovalStatus());
+    verify(challengeWorkoutRepository).save(pending);
+    verifyNoInteractions(challengeProgressService);
+    verify(eventPublisher, never()).publishEvent(any(WorkoutEvents.IndoorRunApprovedEvent.class));
   }
 
   @Test

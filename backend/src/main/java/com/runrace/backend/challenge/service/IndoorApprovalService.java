@@ -6,6 +6,7 @@ import com.runrace.backend.challenge.domain.ChallengeMember;
 import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.domain.IndoorRunApproval;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
+import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
@@ -36,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class IndoorApprovalService {
   private final ChallengeMemberRepository challengeMemberRepository;
+  private final ChallengeRepository challengeRepository;
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ChallengeProgressService challengeProgressService;
@@ -130,17 +132,26 @@ public class IndoorApprovalService {
     ChallengeWorkout cw = challengeWorkoutRepository.findById(challengeWorkoutId)
         .orElseThrow(() -> ApiException.notFound("challenge_workout_not_found"));
 
-    // 동시 투표로 이미 처리된 경우 — 거리 이중 반영 방지
-    if (cw.getApprovalStatus() == ApprovalStatus.APPROVED) return;
-
-    cw.approve();
-    challengeWorkoutRepository.save(cw);
+    // 동시 투표나 재호출로 이미 처리된 경우 — 거리 이중 반영·상태 재전이 방지
+    if (cw.getApprovalStatus() != ApprovalStatus.PENDING) return;
 
     Long challengeId = cw.getChallenge().getId();
     UUID userId = cw.getUser().getId();
     BigDecimal distanceKm = Distance.toKm(cw.getAppliedDistanceM());
     OffsetDateTime now = OffsetDateTime.now();
 
+    // 종료된 레이스의 순위·경품 결과는 불변이다. 마지막 승인이 늦게 도착한 실내런은
+    // REJECTED 상태로 닫아 대기 목록에서 제거하되, 거리와 승인 알림은 반영하지 않는다.
+    Challenge challenge = challengeRepository.findByIdForUpdate(challengeId)
+        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    if (ChallengeService.isEnded(challenge, now)) {
+      cw.reject();
+      challengeWorkoutRepository.save(cw);
+      return;
+    }
+
+    cw.approve();
+    challengeWorkoutRepository.save(cw);
     challengeProgressService.applyDistanceToMember(challengeId, userId, distanceKm, now);
 
     eventPublisher.publishEvent(new WorkoutEvents.IndoorRunApprovedEvent(challengeWorkoutId, userId));
