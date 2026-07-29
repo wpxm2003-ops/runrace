@@ -3,7 +3,7 @@ import { ApiError } from "./apiError";
 import { apiFetch, apiUrl, publicFetch, uploadMultipart } from "./client";
 import type { PrizeAwardType, PrizeFormItem, PrizeResult, PrizeRow } from "./types";
 
-/** 경품 목록(전체 공개). 생성자면 imageKey 포함. */
+/** 경품 목록(전체 공개) — 경품명·이미지 유무·수령 여부만. S3 키는 어떤 클라이언트에도(생성자 포함) 내려가지 않는다. */
 export function fetchPrizes(challengeId: number, user: User | null) {
   return publicFetch<PrizeRow[]>(`/api/challenges/${challengeId}/prizes`, user);
 }

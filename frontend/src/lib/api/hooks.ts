@@ -186,7 +186,7 @@ export function invalidateChallengeWorkouts(challengeId: number, userId: string)
   return globalMutate(unstable_serialize(["challenge", challengeId, "workouts", userId]));
 }
 
-/** 레이스 경품 목록. 생성자면 imageKey 포함(키는 uid에 의존). */
+/** 레이스 경품 목록 — S3 키는 응답에 없다(uid로는 사용자별 캐시 분리만 한다). */
 export function usePrizes(challengeId: number | null, user?: User | null) {
   const uid = cacheUid(user);
   return useSWR(
