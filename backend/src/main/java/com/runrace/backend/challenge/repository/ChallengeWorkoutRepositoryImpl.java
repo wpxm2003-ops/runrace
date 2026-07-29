@@ -33,9 +33,11 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
 
   @Override
   public List<ChallengeWorkout> findAllByWorkoutSessionIdForUpdate(Long workoutSessionId) {
+    // 비잠금 쌍둥이와 달리 challenge/user를 fetch join하지 않는다 — 여기서 선적재하면
+    // 이후의 레이스 행 잠금(findByIdForUpdate)이 이미 관리 중인 Challenge를 갱신 없이
+    // 돌려줘, 잠금 대기 중 다른 트랜잭션이 끝낸 레이스를 stale 상태(isEnded=false)로
+    // 보게 된다. 이 경로(투표→승인)는 challenge/user의 id만 쓰므로 LAZY 프록시로 충분하다.
     return query.selectFrom(cw)
-        .join(cw.challenge).fetchJoin()
-        .join(cw.user).fetchJoin()
         .where(cw.workoutSession.id.eq(workoutSessionId))
         .setLockMode(LockModeType.PESSIMISTIC_WRITE)
         .fetch();

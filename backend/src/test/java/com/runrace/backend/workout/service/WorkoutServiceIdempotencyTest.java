@@ -72,7 +72,7 @@ class WorkoutServiceIdempotencyTest {
         new ObjectMapper());
     userId = UUID.randomUUID();
     principal = new AuthPrincipal(userId, "uid");
-    when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+    when(userRepository.getRequiredForUpdate(userId)).thenReturn(user);
   }
 
   @Test

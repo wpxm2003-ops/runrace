@@ -11,7 +11,11 @@ public interface ChallengeMemberRepositoryCustom {
 
   List<ChallengeMember> findAllForChallenge(Long challengeId);
 
-  /** Active challenge IDs only, used to acquire locks before loading member entities. */
+  /**
+   * 활성 레이스 id만 — 멤버 엔티티를 로드하기 전에 잠금 대상을 정하기 위한 스칼라 조회.
+   * 잠금 순서 계약을 위해 id 오름차순 정렬을 보장한다. 활성 판정 조건은
+   * {@link #findAllActiveForUser}와 반드시 같은 집합이어야 한다(Impl에서 조건을 공유).
+   */
   List<Long> findAllActiveChallengeIdsForUser(UUID userId, OffsetDateTime now);
 
   List<ChallengeMember> findAllActiveForUser(UUID userId, OffsetDateTime now);

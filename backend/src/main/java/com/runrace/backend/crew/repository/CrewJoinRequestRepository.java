@@ -52,7 +52,8 @@ public interface CrewJoinRequestRepository extends JpaRepository<CrewJoinRequest
       + "where r.crew.id = :crewId and r.status = 'PENDING' order by r.createdAt asc")
   List<CrewJoinRequest> findPendingByCrewId(@Param("crewId") Long crewId);
 
-  /** 특정 유저의 대기중 신청 전체 — 승인 시 타 크루 pending 자동취소, "내 신청 현황" 조회에 공용. */
+  /** 특정 유저의 대기중 신청 전체(크루 fetch join) — "내 신청 현황" 조회 전용.
+   * 자동취소 경로는 {@link #findPendingIdsByUserId} + {@link #findAllByIdsForUpdate}를 쓴다. */
   @Query("select r from CrewJoinRequest r join fetch r.crew where r.user.id = :userId and r.status = 'PENDING'")
   List<CrewJoinRequest> findPendingByUserId(@Param("userId") UUID userId);
 }

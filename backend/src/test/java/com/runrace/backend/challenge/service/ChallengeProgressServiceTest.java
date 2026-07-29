@@ -232,7 +232,7 @@ class ChallengeProgressServiceTest {
   }
 
   @Test
-  void resultIsLockedAfterEndAtEvenBeforeFinalizationRuns() {
+  void 종료시각이_지나면_확정_전이라도_결과가_고정된다() {
     AppUser me = user("me");
     Challenge challenge = Challenge.builder()
         .id(2L)

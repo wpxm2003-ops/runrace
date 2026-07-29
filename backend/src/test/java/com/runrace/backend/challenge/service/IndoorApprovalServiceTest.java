@@ -127,9 +127,8 @@ class IndoorApprovalServiceTest {
 
     service.applyApprovedIndoorRun(1L);
 
-    // 거리 재반영·멤버 조회·이벤트 전부 없어야 함(이중 반영 방지)
+    // 거리 재반영·이벤트 전부 없어야 함(이중 반영 방지)
     verifyNoInteractions(challengeProgressService);
-    verify(challengeMemberRepository, never()).findByChallengeIdAndUserId(any(), any());
     verify(eventPublisher, never()).publishEvent(any());
   }
 }

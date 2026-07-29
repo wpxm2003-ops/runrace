@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -271,7 +272,7 @@ public class CrewService {
   public void create(UUID meId, String rawName, String rawRegion) {
     String name = validateName(rawName);
     String region = validateRegion(rawRegion);
-    AppUser me = lockUser(meId);
+    AppUser me = appUserRepository.getRequiredForUpdate(meId);
     if (crewMemberRepository.existsByUserId(meId)) {
       throw ApiException.conflict("already_in_crew");
     }
@@ -288,14 +289,14 @@ public class CrewService {
         .createdAt(now)
         .build());
     crewMemberRepository.save(CrewMember.builder().crew(crew).user(me).joinedAt(now).build());
-    cancelOtherPendingApplications(meId, null);
+    cancelOtherPendingApplications(meId);
   }
 
   /** 초대 코드로 가입. */
   @Transactional
   public void join(UUID meId, String rawCode) {
     Long crewId = findByCode(rawCode).getId();
-    AppUser me = lockUser(meId);
+    AppUser me = appUserRepository.getRequiredForUpdate(meId);
     Crew crew = lockCrew(crewId);
     if (crewMemberRepository.existsByUserId(meId)) {
       throw ApiException.conflict("already_in_crew");
@@ -306,7 +307,7 @@ public class CrewService {
     crewMemberRepository.save(
         CrewMember.builder().crew(crew).user(me).joinedAt(OffsetDateTime.now()).build());
     // 초대코드 즉시가입도 "가입"이므로 발견 경로로 넣어둔 다른 신청은 전부 정리한다.
-    cancelOtherPendingApplications(meId, null);
+    cancelOtherPendingApplications(meId);
   }
 
   /** 크루 탈퇴 — 리더는 탈퇴 대신 해체만 가능하다(리더 공백 방지). */
@@ -390,7 +391,7 @@ public class CrewService {
     Crew crew = crewRepository.findById(crewId)
         .orElseThrow(() -> ApiException.notFound("crew_not_found"));
     String message = validateBoundedText(rawMessage, APPLY_MESSAGE_MAX, "invalid_apply_message");
-    AppUser applicant = lockUser(meId);
+    AppUser applicant = appUserRepository.getRequiredForUpdate(meId);
 
     if (crewMemberRepository.existsByUserId(meId)) {
       throw ApiException.conflict("already_in_crew");
@@ -434,7 +435,7 @@ public class CrewService {
         .orElseThrow(() -> ApiException.notFound("request_not_found"));
     Long crewId = crewJoinRequestRepository.findCrewId(requestId)
         .orElseThrow(() -> ApiException.notFound("request_not_found"));
-    AppUser applicant = lockUser(applicantId);
+    AppUser applicant = appUserRepository.getRequiredForUpdate(applicantId);
     Crew crew = lockCrew(crewId);
 
     List<CrewJoinRequest> locked =
@@ -444,9 +445,6 @@ public class CrewService {
         .findFirst()
         .orElseThrow(() -> ApiException.notFound("request_not_found"));
     validateLeaderPending(request, leaderId);
-    if (!request.getCrew().getId().equals(crewId)) {
-      throw ApiException.conflict("request_changed");
-    }
 
     requireApplicantStillJoinable(request, crew, applicantId);
 
@@ -463,8 +461,7 @@ public class CrewService {
 
   /** requestId 자신 + 같은 신청자의 대기중 신청 id 전체(정렬) — approve()의 일괄 잠금 대상. */
   private List<Long> lockIdsForApplicant(long requestId, UUID applicantId) {
-    java.util.TreeSet<Long> ids =
-        new java.util.TreeSet<>(crewJoinRequestRepository.findPendingIdsByUserId(applicantId));
+    TreeSet<Long> ids = new TreeSet<>(crewJoinRequestRepository.findPendingIdsByUserId(applicantId));
     ids.add(requestId);
     return List.copyOf(ids);
   }
@@ -478,11 +475,19 @@ public class CrewService {
     }
   }
 
-  /** 승인·거절 공통 가드 — 신청 존재 + 내가 그 크루의 리더 + 아직 대기중. */
-  private CrewJoinRequest requirePendingRequestAsLeader(UUID leaderId, long requestId) {
-    CrewJoinRequest request = crewJoinRequestRepository.findAllByIdsForUpdate(List.of(requestId))
+  /**
+   * 신청 행 단건 잠금 조회 — 승인·거절·철회가 같은 신청을 동시에 결정할 때
+   * 뒤 트랜잭션이 앞 결정을 stale 상태로 덮어쓰지 않게 한다.
+   */
+  private CrewJoinRequest lockRequest(long requestId) {
+    return crewJoinRequestRepository.findAllByIdsForUpdate(List.of(requestId))
         .stream().findFirst()
         .orElseThrow(() -> ApiException.notFound("request_not_found"));
+  }
+
+  /** 승인·거절 공통 가드 — 신청 존재 + 내가 그 크루의 리더 + 아직 대기중. */
+  private CrewJoinRequest requirePendingRequestAsLeader(UUID leaderId, long requestId) {
+    CrewJoinRequest request = lockRequest(requestId);
     validateLeaderPending(request, leaderId);
     return request;
   }
@@ -526,11 +531,7 @@ public class CrewService {
   /** 신청 철회(신청자 본인). */
   @Transactional
   public void cancelApplication(UUID meId, long requestId) {
-    // approve/reject와 같은 잠금 조회를 써서 셋이 같은 신청 건을 동시에 결정할 때
-    // stale 상태로 서로를 덮어쓰지 않게 한다.
-    CrewJoinRequest request = crewJoinRequestRepository.findAllByIdsForUpdate(List.of(requestId))
-        .stream().findFirst()
-        .orElseThrow(() -> ApiException.notFound("request_not_found"));
+    CrewJoinRequest request = lockRequest(requestId);
     if (!request.getUser().getId().equals(meId)) {
       throw ApiException.forbidden("not_your_request");
     }
@@ -614,11 +615,6 @@ public class CrewService {
       throw ApiException.notFound("crew_not_found");
     }
     return crews.get(0);
-  }
-
-  private AppUser lockUser(UUID userId) {
-    return appUserRepository.findByIdForUpdate(userId)
-        .orElseThrow(() -> ApiException.notFound("user_not_found"));
   }
 
   private CrewMember requireMembership(UUID meId) {
@@ -764,14 +760,13 @@ public class CrewService {
   }
 
   /**
-   * 어떤 경로로든(승인/초대코드/직접생성) 크루에 들어간 유저의 다른 대기중 신청을 전부 취소한다.
-   * exceptRequestId는 방금 APPROVED로 확정된 요청 id(그 자체는 취소 대상 아님) — 나머지 경로는 null.
+   * 초대코드 즉시가입·직접생성으로 크루에 들어간 유저의 대기중 신청을 전부 취소한다.
+   * (승인 경로는 {@link #cancelAlreadyLocked}가 approve()의 일괄 잠금 안에서 처리한다.)
    */
-  private void cancelOtherPendingApplications(UUID userId, Long exceptRequestId) {
+  private void cancelOtherPendingApplications(UUID userId) {
     // 잠금 없이 조회 후 쓰면, 다른 리더가 같은 신청자의 다른 신청을 동시에 결정할 때 그
     // 결정을 stale 상태로 덮어쓸 수 있다 — 정렬된 순서로 잠근 뒤(교착 방지) 처리한다.
     List<Long> ids = crewJoinRequestRepository.findPendingIdsByUserId(userId).stream()
-        .filter(id -> exceptRequestId == null || !id.equals(exceptRequestId))
         .sorted()
         .toList();
     if (ids.isEmpty()) return;

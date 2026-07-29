@@ -115,7 +115,7 @@ public class WorkoutService {
     validateGpsInput(startedAt, endedAt, durationSec, distanceM, calories, avgPaceSecPerKm, path);
 
     // 같은 사용자의 동시 저장을 직렬화해 요청 ID 조회와 신규 저장 사이의 경합을 막는다.
-    AppUser user = lockUser(principal.userId());
+    AppUser user = appUserRepository.getRequiredForUpdate(principal.userId());
     WorkoutSession existing = findExistingGpsRequest(
         principal.userId(),
         clientWorkoutId,
@@ -275,7 +275,7 @@ public class WorkoutService {
     OffsetDateTime start = parseStartedAt(startedAt);
 
     // 운동 저장 — 칼로리·페이스는 거리와 시간에서 산출
-    AppUser user = lockUser(principal.userId());
+    AppUser user = appUserRepository.getRequiredForUpdate(principal.userId());
     WorkoutSession existing = findExistingIndoorRequest(
         principal.userId(), clientWorkoutId, distanceM, durationSec, start, imageUrl);
     if (existing != null) return new SavedWorkout(existing, true);
@@ -344,11 +344,6 @@ public class WorkoutService {
         .pathJson("[]")
         .createdAt(OffsetDateTime.now())
         .build());
-  }
-
-  private AppUser lockUser(UUID userId) {
-    return appUserRepository.findByIdForUpdate(userId)
-        .orElseThrow(() -> ApiException.notFound("user_not_found"));
   }
 
   private WorkoutSession findExistingGpsRequest(
@@ -690,18 +685,14 @@ public class WorkoutService {
   }
 
   private static double haversineMeters(PathPointDto a, PathPointDto b) {
-    return haversineMeters(a.lat(), a.lng(), b.lat(), b.lng());
-  }
-
-  private static double haversineMeters(
-      double firstLat, double firstLng, double secondLat, double secondLng) {
     double toRad = Math.PI / 180;
-    double dLat = (secondLat - firstLat) * toRad;
-    double dLng = (secondLng - firstLng) * toRad;
-    double lat1 = firstLat * toRad;
-    double lat2 = secondLat * toRad;
+    double dLat = (b.lat() - a.lat()) * toRad;
+    double dLng = (b.lng() - a.lng()) * toRad;
+    double lat1 = a.lat() * toRad;
+    double lat2 = b.lat() * toRad;
     double h = Math.pow(Math.sin(dLat / 2), 2)
         + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dLng / 2), 2);
+    // 부동소수 오차로 h가 [0,1]을 살짝 벗어나면 asin이 NaN이 되므로 클램프한다.
     double clampedH = Math.max(0, Math.min(1, h));
     return 2 * 6_371_000 * Math.asin(Math.sqrt(clampedH));
   }

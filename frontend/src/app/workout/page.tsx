@@ -67,8 +67,6 @@ type CelebrationState = {
   showNsmCta: boolean;
 };
 
-type PendingSave = PendingWorkoutSave;
-
 /**
  * 종료 시점의 sub-T 세션 + 렙 진행상태 → 수행 기록 페이로드.
  * 진행상태는 clearNsmProgress()로 지워지기 전에만 읽을 수 있고, 플랜은 upsert라 과거 스케줄이
@@ -102,8 +100,9 @@ export default function WorkoutPage() {
   const [counting, setCounting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  // 저장 실패 시 스냅샷을 보관해 "다시 시도"로 재저장한다(stop이 localStorage를 비우므로 메모리에 보존).
-  const [pendingSave, setPendingSave] = useState<PendingSave | null>(null);
+  // 저장 실패 시 스냅샷을 보관해 "다시 시도"로 재저장한다 — localStorage 사본(workoutPendingSave)과
+  // 이중화되고, 마운트 시 소유자(uid) 확인을 거쳐 복원된다.
+  const [pendingSave, setPendingSave] = useState<PendingWorkoutSave | null>(null);
   const [locked, setLocked] = useState(false);
   const [showIosNotice, setShowIosNotice] = useState(false);
   const [ghost, setGhost] = useState<GhostSelection | null>(null);

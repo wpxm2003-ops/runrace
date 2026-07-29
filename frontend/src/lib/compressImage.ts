@@ -91,11 +91,19 @@ export async function compressImageForUpload(file: File): Promise<File> {
 
   // 압축 실패 시 대용량 원본을 그대로 업로드하면 프록시/서버 한도에서 413이 발생한다.
   // 목표 용량을 조금 넘더라도 충분히 작아진 파일만 허용하고, 그 외에는 선택 단계에서 실패시킨다.
-  if (
-    compressed.size <= MAX_UPLOAD_BYTES
-    || (compressed.size < file.size && compressed.size <= MAX_COMPRESSED_FALLBACK_BYTES)
-  ) {
+  if (isAcceptableCompressedSize(compressed.size, file.size)) {
     return compressed;
   }
   throw new Error("image_compression_failed");
+}
+
+/**
+ * 압축 결과 수용 판정 — 목표(600KB) 이내면 무조건 허용, 초과라도 원본보다 줄었고
+ * 폴백 상한(5MB) 이내면 허용. 순수 함수로 분리해 경계값을 테스트로 고정한다.
+ */
+export function isAcceptableCompressedSize(compressedBytes: number, originalBytes: number): boolean {
+  return (
+    compressedBytes <= MAX_UPLOAD_BYTES
+    || (compressedBytes < originalBytes && compressedBytes <= MAX_COMPRESSED_FALLBACK_BYTES)
+  );
 }

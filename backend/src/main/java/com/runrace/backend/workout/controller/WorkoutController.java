@@ -122,8 +122,7 @@ public class WorkoutController {
     try {
       achievements = achievementService.evaluate(principal.userId(), session);
     } catch (RuntimeException e) {
-      log.error("Indoor achievement evaluation failed; workout is already saved (workoutId={})",
-          session.getId(), e);
+      log.error("실내런 성과 판정 실패 — 운동 저장은 완료됨 (workoutId={})", session.getId(), e);
     }
     return ResponseEntity.ok(new CreateWorkoutResponse(session.getId(), null, achievements));
   }

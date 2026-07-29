@@ -55,6 +55,11 @@ public interface AppUserRepository
     return findById(id).orElseThrow(() -> ApiException.notFound("user_not_found"));
   }
 
+  /** {@link #findByIdForUpdate} + 없으면 404 — 잠금 조회의 {@code orElseThrow} 중복 제거용. */
+  default AppUser getRequiredForUpdate(UUID id) {
+    return findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("user_not_found"));
+  }
+
   /**
    * 푸시 수신 선호를 켠다(첫 디바이스 토큰 등록 시점). 멱등 — 이미 true여도 무해.
    * upsert가 통짜 트랜잭션이 아니므로(레이스 캐치 유지) 이 갱신은 자체 트랜잭션으로 실행한다.

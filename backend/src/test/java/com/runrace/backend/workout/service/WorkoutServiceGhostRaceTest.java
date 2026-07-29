@@ -46,7 +46,7 @@ class WorkoutServiceGhostRaceTest {
     AppUser user = mock(AppUser.class);
     WorkoutSession persisted = mock(WorkoutSession.class);
     when(persisted.getId()).thenReturn(99L);
-    when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+    when(userRepository.getRequiredForUpdate(userId)).thenReturn(user);
     when(workoutRepository.findByIdAndUserId(7L, userId)).thenReturn(Optional.empty());
     when(workoutRepository.save(any(WorkoutSession.class))).thenReturn(persisted);
 

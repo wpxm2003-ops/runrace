@@ -69,17 +69,18 @@ public class ChallengeProgressService {
    * 사용자가 현재 참여 중(진행 중·미완주)인 모든 레이스 멤버를 순회하며 {@code body}를 실행한다.
    * - 관련 레이스의 전체 멤버를 단일 쿼리로 사전 로드해 루프 내 N+1을 방지하고, {@code body}에 함께 넘긴다.
    * - 방장 혼자인 레이스는 삭제({@link ChallengeService#deleteIfSolo})하고 건너뛴다.
-   * GPS 운동 반영·실내러닝 승인 생성·헬스데이터 동기화가 공통으로 사용한다.
+   * GPS 운동 반영·실내러닝 승인 생성이 공통으로 사용한다(헬스 동기화 경로는 현재 휴면 —
+   * FitnessController가 비활성이라 도달하지 않는다).
    * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다.
    */
   public void forEachActiveChallengeMember(
       UUID userId, OffsetDateTime now,
       BiConsumer<ChallengeMember, List<ChallengeMember>> body) {
-    // Fetch scalar IDs first so no Challenge/ChallengeMember entity enters the persistence
-    // context before the pessimistic locks have been acquired.
+    // 엔티티가 잠금 전에 영속성 컨텍스트에 선적재되지 않도록 스칼라 id만 먼저 조회한다
+    // (선적재된 엔티티는 잠금 재조회로도 필드가 갱신되지 않는다). 정렬은 잠금 순서
+    // 계약(교착 방지)이라 쿼리의 orderBy와 별개로 여기서도 보장한다.
     List<Long> challengeIds = challengeMemberRepository
         .findAllActiveChallengeIdsForUser(userId, now).stream()
-        .distinct()
         .sorted()
         .toList();
     if (challengeIds.isEmpty()) return;
@@ -89,8 +90,8 @@ public class ChallengeProgressService {
     // 끝날 때까지 유지되며, 그 안에서 이뤄지는 승자·완주 확정(onMemberProgress)을 직렬화한다.
     challengeRepository.findAllByIdsForUpdate(challengeIds);
 
-    // Load entities only after the lock. If another transaction ended a race while this
-    // transaction waited, the active query naturally drops it here.
+    // 엔티티 로드는 잠금 이후에만 — 잠금 대기 중 다른 트랜잭션이 레이스를 끝냈다면
+    // 이 활성 조회가 자연스럽게 걸러낸다.
     List<ChallengeMember> activeMembers =
         challengeMemberRepository.findAllActiveForUser(userId, now);
     if (activeMembers.isEmpty()) return;
@@ -110,14 +111,14 @@ public class ChallengeProgressService {
 
   /**
    * 멤버 누적 거리에 deltaKm를 더하고, 완주/마일스톤/추월 이벤트를 발행한다.
-   * 진행 중 트랜잭션 안에서 호출되는 것을 전제로 한다(GPS·실내러닝 승인 공통 경로).
-   * 단건 호출용 — 내부에서 전체 멤버를 조회한다.
+   * 실내러닝 승인 전용 단건 경로 — {@link #forEachActiveChallengeMember}를 거치지 않으므로
+   * 여기서 직접 레이스 행을 잠근 뒤에야 멤버·전체 목록을 로드한다(잠금 대기 중 커밋된
+   * 완주 상태를 stale하게 보지 않게). 호출자가 같은 레이스를 이미 잠갔다면 재잠금은
+   * 같은 트랜잭션 재진입이라 무해한 no-op이다.
+   * 진행 중 트랜잭션 안에서 호출되는 것을 전제로 한다.
    */
   public void applyDistanceToMember(
       Long challengeId, UUID userId, BigDecimal deltaKm, OffsetDateTime now) {
-    // Indoor approvals do not pass through forEachActiveChallengeMember. Lock the race
-    // before loading either the target member or the full member list so a transaction
-    // that waited cannot continue with stale finishedAt/totalKm values.
     challengeRepository.findByIdForUpdate(challengeId)
         .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
     ChallengeMember member = challengeMemberRepository
@@ -141,7 +142,7 @@ public class ChallengeProgressService {
     BigDecimal goal = challenge.getGoalKm();
 
     member.addDistance(deltaKm, now);
-    onMemberProgress(member, next, allChallengeMembers);
+    onMemberProgress(member, next, now, allChallengeMembers);
     challengeMemberRepository.save(member);
 
     publishMilestoneEvents(member, prevKm, next, goal, allChallengeMembers);
@@ -160,15 +161,14 @@ public class ChallengeProgressService {
    * applyDistanceToMemberWithContext 에서 호출된다(진행 중 트랜잭션 전제).
    */
   private void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm,
-                                 List<ChallengeMember> allMembers) {
+                                 OffsetDateTime now, List<ChallengeMember> allMembers) {
     Challenge challenge = member.getChallenge();
     if (nextTotalKm.compareTo(challenge.getGoalKm()) < 0 || member.getFinishedAt() != null) {
       return;
     }
 
-    member.markFinished(OffsetDateTime.now());
-    AppUser winner =
-        RaceFinalizationService.resolveWinner(challenge, allMembers, OffsetDateTime.now());
+    member.markFinished(now);
+    AppUser winner = RaceFinalizationService.resolveWinner(challenge, allMembers, now);
     if (winner != null) {
       challenge.declareWinner(winner);
     }

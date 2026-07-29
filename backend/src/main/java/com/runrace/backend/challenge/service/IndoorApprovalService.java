@@ -117,7 +117,8 @@ public class IndoorApprovalService {
   }
 
   /** 전원 승인 시 호출 — 거리를 레이스 멤버 기록에 반영한다.
-   * 동시 투표로 중복 호출될 수 있으므로 이미 APPROVED인 경우 skip(멱등성 보장).
+   * PENDING이 아니면 skip(동시 투표·재호출 멱등성). 이미 종료된 레이스면 거리·알림 반영 없이
+   * REJECTED로 닫아 대기 목록에서만 내린다(순위·경품 결과 불변 유지).
    *
    * <p>이 멱등성은 {@link com.runrace.backend.workout.service.WorkoutService#voteIndoorRun}이
    * {@code findAllByWorkoutSessionIdForUpdate}로 대상 행에 PESSIMISTIC_WRITE 잠금을 걸어주는 덕에
@@ -157,7 +158,6 @@ public class IndoorApprovalService {
     eventPublisher.publishEvent(new WorkoutEvents.IndoorRunApprovedEvent(challengeWorkoutId, userId));
   }
 
-  /** 레이스의 승인 대기 중인 실내러닝 목록. */
   /** 레이스 멤버만 승인 목록을 볼 수 있게 한다(비멤버 데이터 노출 차단). */
   private void requireMember(Long challengeId, UUID viewerUserId) {
     if (challengeMemberRepository.findByChallengeIdAndUserId(challengeId, viewerUserId).isEmpty()) {
@@ -165,6 +165,7 @@ public class IndoorApprovalService {
     }
   }
 
+  /** 레이스의 승인 대기 중인 실내러닝 목록. */
   @Transactional(readOnly = true)
   public List<PendingApprovalResponse> getPendingApprovals(Long challengeId, UUID viewerUserId) {
     requireMember(challengeId, viewerUserId);

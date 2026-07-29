@@ -105,7 +105,7 @@ public class CrewMatchService {
         opponent.getLeader().getId(), myCrew.getName(), match.getId()));
   }
 
-  /** 지목한 상대 크루를 이름으로 찾는다 — 자기 크루 지목·로스터 인원 미달은 거절. */
+  /** 지목한 상대 크루를 이름으로 찾는다 — 자기 크루 지목은 거절(인원 미달 검사는 잠금 후 {@link #requireEnoughMembers}). */
   private Crew resolveOpponent(Crew myCrew, String opponentCrewName) {
     String name = opponentCrewName == null ? "" : opponentCrewName.trim();
     Crew opponent = crewRepository.findByName(name)

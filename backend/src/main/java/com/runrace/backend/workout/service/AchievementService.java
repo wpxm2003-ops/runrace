@@ -74,9 +74,9 @@ public class AchievementService {
     if (totalRuns <= 1) {
       out.add(new Scored(100, Achievement.of("FIRST_RUN")));
     } else {
-      addDistanceRecord(out, userId, saved, todayStart, weekStart);
+      addDistanceRecord(out, userId, saved, weekStart);
       if (!saved.getStartedAt().isBefore(todayStart)) {
-        addStreak(out, userId, saved, todayStart);
+        addStreak(out, userId, todayStart);
       }
       addTotalDistanceMilestone(out, distanceM, totalDistanceM);
       addTotalRunsMilestone(out, totalRuns);
@@ -95,8 +95,7 @@ public class AchievementService {
 
   /** 역대 > 올해 > 최근 30일 > 이번 주 순으로 가장 강한 "최장 거리" 하나만 추가. */
   private void addDistanceRecord(
-      List<Scored> out, UUID userId, WorkoutSession saved,
-      OffsetDateTime todayStart, OffsetDateTime weekStart) {
+      List<Scored> out, UUID userId, WorkoutSession saved, OffsetDateTime weekStart) {
     int distanceM = saved.getDistanceM();
     if (distanceM < MIN_RECORD_DISTANCE_M) return;
     Long id = saved.getId();
@@ -129,7 +128,7 @@ public class AchievementService {
   }
 
   /** 오늘의 첫 운동일 때만, 현재 연속일이 마일스톤에 정확히 도달하면 성과. */
-  private void addStreak(List<Scored> out, UUID userId, WorkoutSession saved, OffsetDateTime todayStart) {
+  private void addStreak(List<Scored> out, UUID userId, OffsetDateTime todayStart) {
     // 같은 날 두 번째 러닝은 연속일을 바꾸지 않으므로 재발화하지 않게 오늘 첫 운동만 대상.
     if (workoutRepository.countByUserIdAndStartedAtGreaterThanEqual(userId, todayStart) != 1) return;
     int streak = workoutRepository.currentStreakDaysForUser(userId);

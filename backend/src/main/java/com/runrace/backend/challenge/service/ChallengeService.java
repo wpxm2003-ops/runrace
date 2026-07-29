@@ -99,8 +99,7 @@ public class ChallengeService {
     // 생성자 행을 잠그고 센다 — 잠그지 않으면 병렬 요청이 전부 한도 미달 상태를 읽고 통과해
     // 한도가 무력화된다(활성 조건이 시간 의존이라 DB 제약으로는 막을 수 없다).
     // 같은 사용자의 동시 생성끼리만 대기하므로 정상 사용에는 영향이 없다.
-    AppUser creator = appUserRepository.findByIdForUpdate(principal.userId())
-        .orElseThrow(() -> ApiException.notFound("user_not_found"));
+    AppUser creator = appUserRepository.getRequiredForUpdate(principal.userId());
     ensureActiveRoomLimit(creator);
 
     // 방 저장

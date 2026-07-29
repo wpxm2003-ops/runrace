@@ -1,6 +1,7 @@
 package com.runrace.backend.challenge.repository;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.runrace.backend.challenge.domain.ChallengeMember;
 import com.runrace.backend.challenge.domain.QChallengeMember;
@@ -27,16 +28,26 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
         .fetch();
   }
 
+  /**
+   * "진행 중·미완주 멤버" 활성 판정 조건 — 잠금 대상(id 조회)과 로드 대상(엔티티 조회)이
+   * 반드시 같은 집합이어야 하므로 두 쿼리가 이 조건을 공유한다. 한쪽만 고치면 잠그지 않은
+   * 레이스를 로드하거나 잠근 레이스를 빠뜨려 동시성 보장이 조용히 깨진다.
+   */
+  private static BooleanExpression[] activeForUser(UUID userId, OffsetDateTime now) {
+    return new BooleanExpression[] {
+        member.user.id.eq(userId),
+        member.challenge.startAt.loe(now),
+        member.challenge.endAt.isNull().or(member.challenge.endAt.goe(now)),
+        member.challenge.isEnded.isFalse(),
+        member.finishedAt.isNull(),
+    };
+  }
+
   @Override
   public List<Long> findAllActiveChallengeIdsForUser(UUID userId, OffsetDateTime now) {
     return query.select(member.challenge.id)
         .from(member)
-        .where(
-            member.user.id.eq(userId),
-            member.challenge.startAt.loe(now),
-            member.challenge.endAt.isNull().or(member.challenge.endAt.goe(now)),
-            member.challenge.isEnded.isFalse(),
-            member.finishedAt.isNull())
+        .where(activeForUser(userId, now))
         .orderBy(member.challenge.id.asc())
         .fetch();
   }
@@ -46,12 +57,7 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
     return query.selectFrom(member)
         .join(member.challenge).fetchJoin()
         .join(member.user).fetchJoin()
-        .where(
-            member.user.id.eq(userId),
-            member.challenge.startAt.loe(now),
-            member.challenge.endAt.isNull().or(member.challenge.endAt.goe(now)),
-            member.challenge.isEnded.isFalse(),
-            member.finishedAt.isNull())
+        .where(activeForUser(userId, now))
         .fetch();
   }
 

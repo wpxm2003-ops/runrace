@@ -37,9 +37,11 @@ export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
         <p className="mt-3 text-sm text-zinc-500">{t.detail_member_workouts_empty}</p>
       ) : (
         <ul className="mt-3 divide-y divide-zinc-100">
-          {workouts.map((w) => (
+          {/* 같은 유저·같은 시작시각 기록이 공존할 수 있어(동일 EXIF 실내런 2건) index로 유일성을 보장한다.
+              조회 전용·서버 정렬 고정 목록이라 index key가 무해하다. */}
+          {workouts.map((w, i) => (
             <li
-              key={`${w.userId}-${w.startedAt}`}
+              key={`${w.userId}-${w.startedAt}-${i}`}
               className="grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 gap-y-0.5 py-3.5 first:pt-0 last:pb-0"
             >
               <p className="col-start-1 row-start-1 self-center truncate text-sm font-medium text-zinc-900">

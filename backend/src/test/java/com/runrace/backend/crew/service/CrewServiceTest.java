@@ -55,8 +55,7 @@ class CrewServiceTest {
 
   @BeforeEach
   void allowCurrentUserLock() {
-    lenient().when(appUserRepository.findByIdForUpdate(meId))
-        .thenReturn(Optional.of(user(meId)));
+    lenient().when(appUserRepository.getRequiredForUpdate(meId)).thenReturn(user(meId));
   }
 
   private AppUser user(UUID id) {
@@ -98,8 +97,7 @@ class CrewServiceTest {
         .thenReturn(Optional.of(applicantId));
     when(crewJoinRequestRepository.findCrewId(requestId))
         .thenReturn(Optional.of(crew.getId()));
-    when(appUserRepository.findByIdForUpdate(applicantId))
-        .thenReturn(Optional.of(user(applicantId)));
+    when(appUserRepository.getRequiredForUpdate(applicantId)).thenReturn(user(applicantId));
     allowCrewLock(crew);
   }
 
@@ -559,7 +557,7 @@ class CrewServiceTest {
           inOrder(crewJoinRequestRepository, appUserRepository, crewRepository);
       lockOrder.verify(crewJoinRequestRepository).findApplicantUserId(10L);
       lockOrder.verify(crewJoinRequestRepository).findCrewId(10L);
-      lockOrder.verify(appUserRepository).findByIdForUpdate(applicantId);
+      lockOrder.verify(appUserRepository).getRequiredForUpdate(applicantId);
       lockOrder.verify(crewRepository).findAllByIdsForUpdate(List.of(c.getId()));
       lockOrder.verify(crewJoinRequestRepository).findPendingIdsByUserId(applicantId);
       lockOrder.verify(crewJoinRequestRepository).findAllByIdsForUpdate(List.of(10L, 20L));
