@@ -14,4 +14,9 @@ public record ChallengeListItem(
     boolean isOwner,
     boolean isMember,
     /** 경품이 하나라도 등록됐는지 — 목록 뱃지용(경품명·이미지는 미노출). */
-    boolean hasPrize) {}
+    boolean hasPrize,
+    /**
+     * 크루 전용 레이스인지 — 목록의 '크루' 라벨용. 내 레이스 목록은 공개 레이스와 크루
+     * 레이스가 섞여 나오는데, 소속 크루명까지는 필요 없고 구분만 되면 되므로 boolean만 낸다.
+     */
+    boolean crewOnly) {}

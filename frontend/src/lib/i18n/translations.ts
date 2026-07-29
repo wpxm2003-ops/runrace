@@ -78,6 +78,7 @@ export const translations = {
     races_joined: "참여중",
     races_joined_done: "참여완료",
     races_prize_badge: "경품",
+    races_crew_badge: "크루",
     races_goal_members: (goal: string, memberCount: number) =>
       `목표 ${goal} · ${memberCount}명 참여`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -1127,6 +1128,7 @@ export const translations = {
     races_joined: "Joined",
     races_joined_done: "Completed",
     races_prize_badge: "Prize",
+    races_crew_badge: "Crew",
     races_goal_members: (goal: string, memberCount: number) =>
       `${goal} goal · ${memberCount} joined`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -2175,6 +2177,7 @@ export const translations = {
     races_joined: "Unido",
     races_joined_done: "Completada",
     races_prize_badge: "Premio",
+    races_crew_badge: "Crew",
     races_goal_members: (goal: string, memberCount: number) =>
       `Meta ${goal} · ${memberCount} inscritos`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -3223,6 +3226,7 @@ export const translations = {
     races_joined: "参加中",
     races_joined_done: "参加完了",
     races_prize_badge: "景品",
+    races_crew_badge: "クルー",
     races_goal_members: (goal: string, memberCount: number) =>
       `目標${goal} · ${memberCount}人参加`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>
@@ -4271,6 +4275,7 @@ export const translations = {
     races_joined: "参与中",
     races_joined_done: "已参与",
     races_prize_badge: "奖品",
+    races_crew_badge: "跑团",
     races_goal_members: (goal: string, memberCount: number) =>
       `目标${goal} · ${memberCount}人参加`,
     detail_goal_members: (goal: string, memberCount: number, maxMembers: number) =>

@@ -236,7 +236,8 @@ public class ChallengeController {
         IsoTime.format(challenge.getCreatedAt()),
         isOwner,
         memberIds.contains(challenge.getId()),
-        prizeIds.contains(challenge.getId()));
+        prizeIds.contains(challenge.getId()),
+        challenge.getCrewId() != null);
   }
 
   private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {
