@@ -17,76 +17,43 @@ export type WorkoutFinishSnapshot = {
 const MIN_MOVE_METERS = 4;
 const EARTH_RADIUS_M = 6_371_000;
 
-/** GPS가 정지 속도를 명확히 보고한 뒤 자동 일시정지까지 기다리는 시간. */
-export const AUTO_PAUSE_STATIONARY_MS = 5_000;
 /**
- * 위치 콜백 자체가 끊겼을 때의 보수적인 자동 일시정지 기준.
- * 네이티브 위치 필터와 느린 보행을 감안해 명시적 정지보다 길게 둔다.
+ * 방치 자동 일시정지 — "운동 종료를 잊은" 세션 감지 전용.
+ *
+ * 이 창(기본 30분) 동안 인정 거리가 {@link IDLE_AUTO_PAUSE_MIN_PROGRESS_M}에 못 미치면
+ * 러닝이 아니라 방치(귀가·탑승 후 미종료)로 보고 수동 일시정지와 같은 상태로 전환한다.
+ * 재개는 사용자가 직접 한다(자동 재개 없음).
+ *
+ * 의도적으로 보수적인 기준이다 — 신호 대기·인터벌 휴식 같은 짧은 정지는 절대 걸리지
+ * 않아야 한다. 짧은 정지가 활동시간에서 빠지면 PB·유령 비교의 기준이 "총 경과시간"에서
+ * "이동시간"으로 조용히 바뀌어, 서서 쉬며 끊어 뛴 기록이 연속주 최고기록으로 등록되는
+ * 오염이 생긴다(제품 결정: 총 경과시간 기준 유지).
  */
-export const AUTO_PAUSE_SILENCE_MS = 15_000;
-/** 자동 일시정지 해제에 필요한 최소 GPS 정확도·이동 거리·속도. */
-const AUTO_RESUME_MAX_ACCURACY_M = 25;
-const AUTO_RESUME_MIN_DISTANCE_M = 5;
-const AUTO_RESUME_FALLBACK_DISTANCE_M = 10;
-const AUTO_RESUME_MIN_SPEED_MPS = 0.6;
+export const IDLE_AUTO_PAUSE_WINDOW_MS = 30 * 60_000;
+/** 창 안에 이만큼도 못 나아가면 방치로 판정한다(가장 느린 산책도 30분에 1km+는 간다). */
+export const IDLE_AUTO_PAUSE_MIN_PROGRESS_M = 100;
 
-export type AutoPauseTimingInput = {
-  lastMovementAt: number | null;
-  stationarySinceAt: number | null;
-  nowMs: number;
-};
+/** 방치 판정 기준점 — 마지막으로 "충분한 전진"이 확인된 시각과 그때의 누적 인정 거리. */
+export type IdleAnchor = { timeMs: number; distanceM: number };
 
-/**
- * 자동 일시정지가 시작돼야 할 시각을 계산한다.
- * 호출 시각이 아니라 임계값을 넘긴 시각을 반환해, 백그라운드에서 JS 타이머가
- * 늦게 깨어나도 집에서 멈춰 있던 긴 시간이 활동시간에 포함되지 않게 한다.
- */
-export function autoPauseStartedAt({
-  lastMovementAt,
-  stationarySinceAt,
-  nowMs,
-}: AutoPauseTimingInput): number | null {
-  const candidates: number[] = [];
-  if (
-    stationarySinceAt != null &&
-    nowMs - stationarySinceAt >= AUTO_PAUSE_STATIONARY_MS
-  ) {
-    candidates.push(stationarySinceAt + AUTO_PAUSE_STATIONARY_MS);
-  }
-  if (
-    lastMovementAt != null &&
-    nowMs - lastMovementAt >= AUTO_PAUSE_SILENCE_MS
-  ) {
-    candidates.push(lastMovementAt + AUTO_PAUSE_SILENCE_MS);
-  }
-  return candidates.length > 0 ? Math.min(...candidates) : null;
+/** 앵커 이후 기준 거리 이상 나아갔으면 앵커를 현재로 민다(판정 창을 새로 시작). */
+export function slideIdleAnchor(
+  anchor: IdleAnchor,
+  nowMs: number,
+  distanceM: number,
+): IdleAnchor {
+  return distanceM - anchor.distanceM >= IDLE_AUTO_PAUSE_MIN_PROGRESS_M
+    ? { timeMs: nowMs, distanceM }
+    : anchor;
 }
 
 /**
- * 자동 일시정지 중 GPS 흔들림이 아닌 실제 이동이 확인됐는지 판정한다.
- * 속도를 제공하지 않는 기기는 더 긴 이동 거리로 대체 확인한다.
+ * 방치 자동 일시정지 발동 시각. 창이 다 지나도록 기준 거리를 못 채웠으면 앵커 시각을
+ * 반환한다 — 발동을 뒤늦게 감지해도(백그라운드 타이머 지연·앱 재시작) 일시정지가 그
+ * 시각으로 소급돼 방치된 시간이 활동시간·페이스에 섞이지 않는다. 아직이면 null.
  */
-export function shouldAutoResume(
-  anchor: LatLng | null,
-  next: LatLng,
-  speedMps: number | null,
-  accuracyM: number | null,
-): boolean {
-  if (
-    !anchor ||
-    accuracyM == null ||
-    accuracyM > AUTO_RESUME_MAX_ACCURACY_M
-  ) {
-    return false;
-  }
-  const movedM = haversineMeters(anchor, next);
-  if (speedMps != null) {
-    return (
-      speedMps >= AUTO_RESUME_MIN_SPEED_MPS &&
-      movedM >= AUTO_RESUME_MIN_DISTANCE_M
-    );
-  }
-  return movedM >= AUTO_RESUME_FALLBACK_DISTANCE_M;
+export function idleAutoPauseAt(anchor: IdleAnchor, nowMs: number): number | null {
+  return nowMs - anchor.timeMs >= IDLE_AUTO_PAUSE_WINDOW_MS ? anchor.timeMs : null;
 }
 
 export function haversineMeters(a: LatLng, b: LatLng): number {

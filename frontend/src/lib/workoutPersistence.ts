@@ -1,4 +1,4 @@
-import type { LatLng } from "./workoutTrack";
+import type { IdleAnchor, LatLng } from "./workoutTrack";
 import { sessionJson } from "./safeStorage";
 
 export type PersistedWorkout = {
@@ -13,9 +13,11 @@ export type PersistedWorkout = {
   runStartedAt: number;    // Date.now() when running began
   pausedAccumMs: number;   // total accumulated pause time in ms
   pauseStartedAt: number | null; // timestamp when current pause began
-  /** 마지막으로 실제 이동이 확인된 시각. 구버전 스냅샷에는 없을 수 있다. */
+  /** 방치 자동 일시정지 판정 앵커. 구버전 스냅샷에는 없을 수 있다. */
+  idleAnchor?: IdleAnchor;
+  /** (구버전 스냅샷 전용) 마지막으로 실제 이동이 확인된 시각 — 앵커 복원 폴백에만 쓴다. */
   lastMovementAt?: number;
-  /** status는 running이지만 GPS 감시는 유지한 채 활동시간만 멈춘 상태. */
+  /** 현재 일시정지가 방치 감지로 자동 전환된 것인지(배너·종료 시각 보정용). */
   autoPaused?: boolean;
   savedAt: number;         // Date.now() when this snapshot was written
 };

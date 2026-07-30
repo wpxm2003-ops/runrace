@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  autoPauseStartedAt,
   computeBestSegments,
   computeKmSplits,
   creditedPathDistanceMeters,
   estimateCalories,
   evaluateVehicleTier,
   formatClock,
+  IDLE_AUTO_PAUSE_WINDOW_MS,
+  idleAutoPauseAt,
   pathBoundsKey,
   pathDistanceMeters,
-  shouldAutoResume,
+  slideIdleAnchor,
   splitPathAtGaps,
 } from "@/lib/workoutTrack";
 import type { LatLng, VehicleDetectState } from "@/lib/workoutTrack";
@@ -38,48 +39,31 @@ describe("estimateCalories", () => {
   });
 });
 
-describe("GPS 자동 일시정지", () => {
-  it("명시적 정지는 5초, 위치 무응답은 15초 뒤부터 시간을 제외한다", () => {
-    expect(
-      autoPauseStartedAt({
-        lastMovementAt: 1_000,
-        stationarySinceAt: null,
-        nowMs: 15_999,
-      }),
-    ).toBeNull();
-    expect(
-      autoPauseStartedAt({
-        lastMovementAt: 1_000,
-        stationarySinceAt: null,
-        nowMs: 16_000,
-      }),
-    ).toBe(16_000);
-
-    expect(
-      autoPauseStartedAt({
-        lastMovementAt: 1_000,
-        stationarySinceAt: 5_000,
-        nowMs: 9_999,
-      }),
-    ).toBeNull();
-    expect(
-      autoPauseStartedAt({
-        lastMovementAt: 1_000,
-        stationarySinceAt: 5_000,
-        nowMs: 10_000,
-      }),
-    ).toBe(10_000);
+describe("방치 자동 일시정지", () => {
+  it("창 안에 기준 거리(100m) 이상 나아가야 앵커가 현재로 밀린다", () => {
+    const anchor = { timeMs: 0, distanceM: 500 };
+    // 99m 전진 — 앵커 유지(같은 객체)
+    expect(slideIdleAnchor(anchor, 60_000, 599)).toBe(anchor);
+    // 정확히 100m 전진 — 창을 새로 시작
+    expect(slideIdleAnchor(anchor, 60_000, 600)).toEqual({ timeMs: 60_000, distanceM: 600 });
   });
 
-  it("양호한 GPS에서 실제 이동이 확인돼야 자동 재개한다", () => {
-    const anchor: LatLng = { lat: 37, lng: 127 };
-    const aboutFiveMeters: LatLng = { lat: 37.00005, lng: 127 };
-    const aboutElevenMeters: LatLng = { lat: 37.0001, lng: 127 };
+  it("30분간 기준 거리를 못 채우면 앵커 시각으로 소급해 발동한다", () => {
+    const anchor = { timeMs: 1_000, distanceM: 0 };
+    expect(idleAutoPauseAt(anchor, 1_000 + IDLE_AUTO_PAUSE_WINDOW_MS - 1)).toBeNull();
+    // 발동 시각은 감지 시각(now)이 아니라 앵커 시각 — 방치된 시간이 소급 제외된다.
+    expect(idleAutoPauseAt(anchor, 1_000 + IDLE_AUTO_PAUSE_WINDOW_MS)).toBe(1_000);
+    expect(idleAutoPauseAt(anchor, 1_000 + IDLE_AUTO_PAUSE_WINDOW_MS * 5)).toBe(1_000);
+  });
 
-    expect(shouldAutoResume(anchor, aboutFiveMeters, 1, 10)).toBe(true);
-    expect(shouldAutoResume(anchor, aboutFiveMeters, 0, 10)).toBe(false);
-    expect(shouldAutoResume(anchor, aboutElevenMeters, null, 10)).toBe(true);
-    expect(shouldAutoResume(anchor, aboutElevenMeters, 1, 40)).toBe(false);
+  it("주기적으로 100m를 채우는 러닝은 아무리 길어도 발동하지 않는다", () => {
+    let anchor = { timeMs: 0, distanceM: 0 };
+    // 10분마다 100m씩(아주 느린 산책 수준) 3시간 진행
+    for (let i = 1; i <= 18; i++) {
+      const now = i * 10 * 60_000;
+      anchor = slideIdleAnchor(anchor, now, i * 100);
+      expect(idleAutoPauseAt(anchor, now)).toBeNull();
+    }
   });
 });
 

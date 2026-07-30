@@ -35,8 +35,7 @@ export async function startBackgroundWatch(
         backgroundMessage: notificationMessage,
         requestPermissions: true,
         stale: false,
-        // 경로 저장 문턱(4m)과 가깝게 둬 느린 보행도 자동 일시정지로 오인하지 않는다.
-        distanceFilter: 5,
+        distanceFilter: 10,
       },
       (position, error) => {
         if (error) {

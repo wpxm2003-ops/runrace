@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
-  autoPauseStartedAt,
   estimateCalories,
   evaluateVehicleTier,
   formatClock,
   haversineMeters,
+  idleAutoPauseAt,
   normalizeGpsAccuracyM,
   creditedPathDistanceMeters,
   pushAccuracySample,
-  shouldAutoResume,
   shouldAppendPoint,
+  slideIdleAnchor,
+  type IdleAnchor,
   type LatLng,
   type VehicleDetectState,
   type VehicleTier,
@@ -91,8 +92,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   const pauseStartedRef = useRef<number | null>(null);
   const runStartedRef = useRef<number | null>(null);
   const autoPausedRef = useRef(false);
-  const lastMovementAtRef = useRef<number | null>(null);
-  const stationarySinceRef = useRef<number | null>(null);
+  /** 방치 자동 일시정지 기준점 — 마지막으로 충분한 전진(100m)이 확인된 시각·누적 거리. */
+  const idleAnchorRef = useRef<IdleAnchor | null>(null);
 
   // ── 탈것 Tiered 감지 레프 ─────────────────────────────────────────────────
   const vehicleStateRef = useRef<VehicleDetectState>(resetVehicleState());
@@ -101,6 +102,12 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   const distanceAccumRef = useRef(0);
   /** 경로에 마지막으로 추가된 점 — 증분 거리 계산용(setState 업데이터 밖에서 유지). */
   const lastPathPointRef = useRef<LatLng | null>(null);
+  /**
+   * 마지막 포인트가 기록된 벽시계 시각. 방치 일시정지의 소급 하한 — 이보다 과거로
+   * 소급하면 재개 후 t(경과시간)가 이미 기록된 포인트보다 뒤로 돌아가(비내림차순 위반)
+   * 서버가 저장을 거부한다.
+   */
+  const lastAppendWallMsRef = useRef<number | null>(null);
   /**
    * 다음 GPS 포인트를 재정박(거리 0으로 추가)할지.
    * 일시정지·앱 종료 중 이동을 직선으로 이어 거리에 합산하는 것을 막는다.
@@ -126,7 +133,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       runStartedAt: runStartedRef.current,
       pausedAccumMs: pausedAccumRef.current,
       pauseStartedAt: pauseStartedRef.current,
-      lastMovementAt: lastMovementAtRef.current ?? undefined,
+      idleAnchor: idleAnchorRef.current ?? undefined,
       autoPaused: autoPausedRef.current,
     });
   }, [status, autoPaused]);
@@ -142,7 +149,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         runStartedAt: runStartedRef.current,
         pausedAccumMs: pausedAccumRef.current,
         pauseStartedAt: pauseStartedRef.current,
-        lastMovementAt: lastMovementAtRef.current ?? undefined,
+        idleAnchor: idleAnchorRef.current ?? undefined,
         autoPaused: autoPausedRef.current,
       });
     };
@@ -179,33 +186,38 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   }, []);
 
   /**
-   * GPS 워처는 유지한 채 활동시간만 멈춘다. 마지막 이동 시각을 기준으로 소급하므로
-   * 백그라운드 타이머가 늦게 깨어나도 정지 시간이 페이스에 섞이지 않는다.
+   * 방치 자동 일시정지 — 30분간 100m도 못 나아갔으면 운동 종료를 잊은 것으로 보고
+   * 수동 일시정지와 동일한 상태(재개/종료 버튼)로 전환한다. 재개는 사용자가 직접 한다.
+   * 일시정지 시각은 앵커(마지막 전진 확인 시각)로 소급해, 방치된 시간이 활동시간·
+   * 페이스·기록에 섞이지 않는다. 짧은 휴식(신호 대기·인터벌)은 창에 한참 못 미쳐
+   * 절대 발동하지 않는다 — PB·유령 비교는 총 경과시간 기준을 유지한다.
    */
-  const beginAutoPauseIfDue = useCallback((nowMs: number): boolean => {
-    if (
-      statusRef.current !== "running" ||
-      autoPausedRef.current ||
-      pauseStartedRef.current != null ||
-      !vehicleStateRef.current.hasHadGoodFix ||
-      lastPathPointRef.current == null
-    ) {
-      return false;
-    }
-    const startedAt = autoPauseStartedAt({
-      lastMovementAt: lastMovementAtRef.current,
-      stationarySinceAt: stationarySinceRef.current,
-      nowMs,
-    });
-    if (startedAt == null) return false;
+  /** 소급 하한 적용 — 마지막 기록 포인트보다 과거로는 일시정지를 소급하지 않는다(t 역행 방지). */
+  const clampIdlePauseAt = useCallback((pausedAt: number): number => {
+    const lastWall = lastAppendWallMsRef.current;
+    return lastWall != null && lastWall > pausedAt ? lastWall : pausedAt;
+  }, []);
 
-    pauseStartedRef.current = startedAt;
+  const autoPauseIfIdle = useCallback((nowMs: number): boolean => {
+    if (statusRef.current !== "running" || idleAnchorRef.current == null) return false;
+    const rawPausedAt = idleAutoPauseAt(idleAnchorRef.current, nowMs);
+    if (rawPausedAt == null) return false;
+    const pausedAt = clampIdlePauseAt(rawPausedAt);
+
+    pauseStartedRef.current = pausedAt;
     autoPausedRef.current = true;
-    reanchorNextRef.current = true;
     setAutoPaused(true);
+    setStatus("paused");
+    statusRef.current = "paused";
+    clearWatch();
+    if (runStartedRef.current != null) {
+      setElapsedSec(
+        computeElapsedSec(runStartedRef.current, pausedAccumRef.current, pausedAt),
+      );
+    }
     void track("running_auto_pause");
     return true;
-  }, []);
+  }, [clearWatch, clampIdlePauseAt]);
 
   const peekSpeedMps = useCallback(
     (coords: GeoCoords, point: LatLng, now: number): number | null => {
@@ -272,56 +284,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       commitRawPosition(point, now);
       const last = lastPathPointRef.current;
 
-      if (autoPausedRef.current) {
-        // GPS 감시는 살아 있다. 양호한 GPS에서 보행 수준의 실제 이동이 확인될 때만
-        // 자동 재개해 집 안 좌표 흔들림이나 차량 탑승으로 시계가 다시 돌지 않게 한다.
-        if (
-          vehicle.tier !== "normal" ||
-          vehicle.blockDistance ||
-          !shouldAutoResume(last, point, speedMps, accuracyM)
-        ) {
-          return;
-        }
-        if (pauseStartedRef.current != null) {
-          pausedAccumRef.current += now - pauseStartedRef.current;
-        }
-        pauseStartedRef.current = null;
-        autoPausedRef.current = false;
-        stationarySinceRef.current = null;
-        lastMovementAtRef.current = now;
-        reanchorNextRef.current = true;
-        setAutoPaused(false);
-        void track("running_auto_resume");
-      } else if (!vehicle.blockDistance) {
-        const movedEnough = last != null && shouldAppendPoint(last, point);
-        const speedShowsMovement = speedMps != null && speedMps >= 0.6;
-        if (last == null || movedEnough || speedShowsMovement) {
-          lastMovementAtRef.current = now;
-          stationarySinceRef.current = null;
-        } else if (
-          coords.speed != null &&
-          coords.speed <= 0.2 &&
-          accuracyM != null &&
-          accuracyM <= 20
-        ) {
-          // OS가 속도 0에 가까운 양호한 fix를 연속 제공할 때는 빠른(5초) 정지 판정을 쓴다.
-          stationarySinceRef.current ??= now;
-        } else {
-          stationarySinceRef.current = null;
-        }
-      } else {
-        // suspect 단계는 "탈것 확정 전"이라 경로를 계속 기록한다는 약속(배너 문구)이
-        // 있다 — 실제 변위가 이어지는 동안은 이동 시각도 갱신해, 고속 스퍼트(내리막
-        // 21km/h+)가 15초 지속될 때 자동멈춤이 오발동해 시계·경로가 끊기는 것을 막는다.
-        // confirmed·weak_gps는 갱신하지 않아 15초 뒤 의도대로 멈춘다 — 운동 종료를
-        // 깜빡한 채 지하철·차량에 타면 페이스가 오염되는 것을 막는 게 자동멈춤의 목적.
-        if (vehicle.tier === "suspect" && last != null && shouldAppendPoint(last, point)) {
-          lastMovementAtRef.current = now;
-        }
-        stationarySinceRef.current = null;
-      }
-
-      if (beginAutoPauseIfDue(now)) return;
+      if (autoPauseIfIdle(now)) return;
       if (vehicle.blockPathPoints) return;
 
       const reanchor = vehicle.reanchorNextPoint || reanchorNextRef.current;
@@ -342,11 +305,18 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
           : haversineMeters(last, pointWithT);
       distanceAccumRef.current += increment;
       lastPathPointRef.current = pointWithT;
+      lastAppendWallMsRef.current = now;
       reanchorNextRef.current = false;
+      // 인정 거리가 100m 쌓일 때마다 방치 판정 창을 새로 시작한다. 차단(blockDistance)
+      // 중에는 거리가 안 쌓여 앵커가 안 밀리므로, 탑승 상태가 이어지면 창이 차오른다.
+      if (idleAnchorRef.current != null) {
+        idleAnchorRef.current = slideIdleAnchor(
+          idleAnchorRef.current, now, distanceAccumRef.current);
+      }
       setPath((prev) => [...prev, pointWithT]);
       setDistanceM(distanceAccumRef.current);
     },
-    [peekSpeedMps, commitRawPosition, beginAutoPauseIfDue],
+    [peekSpeedMps, commitRawPosition, autoPauseIfIdle],
   );
 
   const startWatch = useCallback(() => {
@@ -385,11 +355,13 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
   }, [appendPosition, clearWatch, bgNotification?.title, bgNotification?.message]);
 
   // ── 타이머 ────────────────────────────────────────────────────────────────
+  // 방치 판정도 여기서 함께 돈다 — 정지 중엔 네이티브 GPS 콜백(distanceFilter)이
+  // 침묵하므로 콜백만으로는 발동 시점을 놓친다.
   useEffect(() => {
     if (status !== "running") return;
     const id = window.setInterval(() => {
       if (!runStartedRef.current) return;
-      beginAutoPauseIfDue(Date.now());
+      if (autoPauseIfIdle(Date.now())) return;
       setElapsedSec(
         computeElapsedSec(
           runStartedRef.current,
@@ -399,7 +371,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       );
     }, 1000);
     return () => clearInterval(id);
-  }, [status, beginAutoPauseIfDue]);
+  }, [status, autoPauseIfIdle]);
 
   // ── 마운트 시 세션 복원 (탭 이탈 ≠ 일시정지, running이면 GPS 재개) ───────
   useEffect(() => {
@@ -408,8 +380,6 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
     runStartedRef.current = saved.runStartedAt;
     pausedAccumRef.current = saved.pausedAccumMs;
-    lastMovementAtRef.current = saved.lastMovementAt ?? saved.savedAt;
-    stationarySinceRef.current = null;
     pathRef.current = saved.path;
     setPath(saved.path);
     lastPathPointRef.current = saved.path[saved.path.length - 1] ?? null;
@@ -422,38 +392,41 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     distanceAccumRef.current = restoredDistance;
     setDistanceM(restoredDistance);
 
+    // 방치 판정 앵커 복원 — 구버전 스냅샷(idleAnchor 없음)은 마지막 이동/저장 시각으로 근사.
+    idleAnchorRef.current = saved.idleAnchor ?? {
+      timeMs: saved.lastMovementAt ?? saved.savedAt,
+      distanceM: restoredDistance,
+    };
+    // 소급 하한 복원 — 마지막 포인트의 t(경과 ms)를 벽시계 시각으로 환산한다.
+    const lastT = lastPathPointRef.current?.t;
+    lastAppendWallMsRef.current =
+      lastT != null ? saved.runStartedAt + saved.pausedAccumMs + lastT : null;
+
     if (saved.status === "running") {
-      // 경로가 0포인트면 자동멈춤을 추론하지 않는다 — 재개 판정(shouldAutoResume)이
-      // 앵커 포인트를 요구해서, 앵커 없이 멈추면 영원히 재개될 수 없는 데드락이 된다
-      // (라이브 발동 쪽 lastPathPoint null 가드와 같은 이유의 복원판. GPS 콜드스타트
-      // 중 WebView가 재구성되는 경우가 정확히 이 경로다).
-      const canInferAutoPause = saved.path.length > 0;
-      const restoredAutoPauseStartedAt = !canInferAutoPause
-        ? null
-        : saved.autoPaused && saved.pauseStartedAt != null
-          ? saved.pauseStartedAt
-          : autoPauseStartedAt({
-              lastMovementAt: lastMovementAtRef.current,
-              stationarySinceAt: null,
-              nowMs: Date.now(),
-            });
-      const restoredAutoPaused = restoredAutoPauseStartedAt != null;
-      pauseStartedRef.current = restoredAutoPauseStartedAt;
-      autoPausedRef.current = restoredAutoPaused;
-      setAutoPaused(restoredAutoPaused);
-      setElapsedSec(
-        computeElapsedSec(
-          saved.runStartedAt,
-          saved.pausedAccumMs,
-          restoredAutoPauseStartedAt,
-        ),
-      );
-      setStatus("running");
-      pendingResumeWatchRef.current = true;
+      const rawIdlePausedAt = idleAutoPauseAt(idleAnchorRef.current, Date.now());
+      const idlePausedAt = rawIdlePausedAt != null ? clampIdlePauseAt(rawIdlePausedAt) : null;
+      if (idlePausedAt != null) {
+        // 백그라운드에 30분+ 방치된 세션 — 운동 종료를 잊은 것으로 보고 앵커 시각으로
+        // 소급해 일시정지 상태로 복원한다. 재개/종료는 사용자가 결정한다(자동 재개 없음).
+        pauseStartedRef.current = idlePausedAt;
+        autoPausedRef.current = true;
+        setAutoPaused(true);
+        setElapsedSec(
+          computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, idlePausedAt),
+        );
+        setStatus("paused");
+      } else {
+        pauseStartedRef.current = null;
+        autoPausedRef.current = false;
+        setAutoPaused(false);
+        setElapsedSec(computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null));
+        setStatus("running");
+        pendingResumeWatchRef.current = true;
+      }
     } else {
-      // 자동 정지 뒤 사용자가 수동 일시정지 버튼을 누른 상태라면 종료 시각 보정 힌트는 유지한다.
+      // 일시정지 중 재구성 — 자동 일시정지였다면 배너·종료 시각 보정을 위해 플래그 유지.
       autoPausedRef.current = saved.autoPaused === true;
-      setAutoPaused(false);
+      setAutoPaused(saved.autoPaused === true);
       pauseStartedRef.current = saved.pauseStartedAt;
       setElapsedSec(
         computeElapsedSec(
@@ -464,6 +437,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       );
       setStatus("paused");
     }
+    // clampIdlePauseAt은 의존성 없는 안정 콜백 — 마운트 1회 복원이라 빈 배열을 유지한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -518,6 +493,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setPath([]);
     distanceAccumRef.current = 0;
     lastPathPointRef.current = null;
+    lastAppendWallMsRef.current = null;
     reanchorNextRef.current = false;
     setDistanceM(0);
     setElapsedSec(0);
@@ -527,8 +503,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     pauseStartedRef.current = null;
     runStartedRef.current = now;
     autoPausedRef.current = false;
-    lastMovementAtRef.current = now;
-    stationarySinceRef.current = null;
+    idleAnchorRef.current = { timeMs: now, distanceM: 0 };
     setAutoPaused(false);
     lastRawPosRef.current = null;
     lastPosTimeRef.current = null;
@@ -554,6 +529,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
         // 쌓기 시작했거나(초기 포인트 유실·거리 어긋남 방지) 그 사이 종료됐다면 시드하지 않는다.
         if (statusRef.current === "running" && lastPathPointRef.current == null) {
           lastPathPointRef.current = p;
+          lastAppendWallMsRef.current = Date.now();
           setPath((prev) => (prev.length > 0 ? prev : [p]));
         }
       },
@@ -564,12 +540,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
 
   const pause = useCallback(() => {
     if (statusRef.current !== "running") return;
-    // 자동 일시정지 상태에서 사용자가 버튼을 누르면 기존 정지 시작 시각을 보존한다.
-    // 그래야 귀가 후 몇 시간 뒤 종료해도 활동 종료 시각과 페이스가 집 도착 시점에 맞는다.
-    if (!autoPausedRef.current) {
-      pauseStartedRef.current = Date.now();
-    }
-    stationarySinceRef.current = null;
+    pauseStartedRef.current = Date.now();
     setAutoPaused(false);
     setStatus("paused");
     clearWatch();
@@ -593,8 +564,8 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
       pauseStartedRef.current = null;
     }
     autoPausedRef.current = false;
-    lastMovementAtRef.current = now;
-    stationarySinceRef.current = null;
+    // 방치 판정 창도 새로 시작 — 일시정지 직전의 무이동 구간이 재개 직후 발동으로 이어지지 않게.
+    idleAnchorRef.current = { timeMs: now, distanceM: distanceAccumRef.current };
     setAutoPaused(false);
     // 치팅 상태 리셋 — 재개 후 새로 측정
     vehicleStateRef.current = resetVehicleState();
@@ -614,19 +585,12 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     }
 
     const now = Date.now();
-    // 백그라운드에서 JS 타이머가 멈췄다가 종료 버튼과 함께 깨어난 경우도 마지막으로 보정한다.
-    if (
-      statusRef.current === "running" &&
-      !autoPausedRef.current &&
-      lastPathPointRef.current != null
-    ) {
-      const inferred = autoPauseStartedAt({
-        lastMovementAt: lastMovementAtRef.current,
-        stationarySinceAt: stationarySinceRef.current,
-        nowMs: now,
-      });
+    // 백그라운드에서 JS 타이머가 멈췄다가 종료 버튼과 함께 깨어난 경우도 마지막으로 보정한다 —
+    // 방치 창(30분)이 이미 넘어 있으면 종료 시각·활동시간을 앵커 시각으로 소급한다.
+    if (statusRef.current === "running" && idleAnchorRef.current != null) {
+      const inferred = idleAutoPauseAt(idleAnchorRef.current, now);
       if (inferred != null) {
-        pauseStartedRef.current = inferred;
+        pauseStartedRef.current = clampIdlePauseAt(inferred);
         autoPausedRef.current = true;
       }
     }
@@ -669,11 +633,11 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     pausedAccumRef.current = 0;
     runStartedRef.current = null;
     autoPausedRef.current = false;
-    lastMovementAtRef.current = null;
-    stationarySinceRef.current = null;
+    idleAnchorRef.current = null;
     vehicleStateRef.current = resetVehicleState();
     distanceAccumRef.current = 0;
     lastPathPointRef.current = null;
+    lastAppendWallMsRef.current = null;
     reanchorNextRef.current = false;
     setStatus("idle");
     setPath([]);
@@ -683,7 +647,7 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setAutoPaused(false);
 
     return snapshot;
-  }, [clearWatch, position]);
+  }, [clearWatch, position, clampIdlePauseAt]);
 
   return {
     status,
