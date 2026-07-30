@@ -40,7 +40,7 @@ export default function ChallengesPage() {
   const lang = showAllLangs ? undefined : locale;
 
   const result = useChallengeListInfinite(user, lang, phaseFilter, waitForAuth);
-  const { size, setSize, error, data: pages } = result;
+  const { size, setSize, error, isLoading, data: pages } = result;
   const itemCount = pages ? pages.flatMap((p) => p.items).length : 0;
 
   usePageScrollRestore(STORE_KEY, itemCount);
@@ -65,10 +65,13 @@ export default function ChallengesPage() {
     savePageState(STORE_KEY, { size: 1 });
   }, [phaseFilter, lang, setSize]);
 
-  // ── 상태 변경 시 저장 ────────────────────────────────────────────────
+  // ── 상태 저장 ────────────────────────────────────────────────────────
+  // phase·showAllLangs는 사용자가 직접 조작한 핸들러에서만 저장한다 — 아래 자동 완화가
+  // 바꾼 값까지 저장하면, 사용자가 켠 적 없는 "모든 언어·종료 탭"이 다음 방문의 초기
+  // 상태로 굳는다. size(무한스크롤 페이지 수)만 변화를 따라 저장한다.
   useEffect(() => {
-    savePageState(STORE_KEY, { phase: phaseFilter, size, showAllLangs });
-  }, [phaseFilter, size, showAllLangs]);
+    savePageState(STORE_KEY, { size });
+  }, [size]);
 
   // ── 목록이 비면 단계적으로 조건을 완화한다 ──────────────────────────
   // ① 언어 필터 해제 → ② 그래도 비면 종료 탭. 각각 1회만(ref) — 사용자가 되돌리면 존중.
@@ -76,10 +79,14 @@ export default function ChallengesPage() {
   // ①이 필요한 이유: 시스템이 자동 생성하는 온램프 레이스는 langCd가 "ko" 고정이라
   // (ChallengeService.createOfficialRace) 다른 언어 사용자는 언어 필터를 풀지 않으면
   // 참가 가능한 레이스가 하나도 안 보인다 — 온보딩 CTA가 빈 화면으로 끝나게 된다.
+  //
+  // isLoading 가드가 없으면 단계가 즉시 연쇄한다: keepPreviousData 때문에 ①로 키가
+  // 바뀌어도 pages는 직전(빈) 목록을 그대로 반환하므로, 새 응답을 기다리지 않으면
+  // ②까지 한 번에 발화해 정작 보여줘야 할 전체 언어 active 목록을 건너뛴다.
   const autoAllLangsRef = useRef(false);
   const autoSwitchedRef = useRef(false);
   useEffect(() => {
-    if (waitForAuth || error) return;
+    if (waitForAuth || error || isLoading) return;
     const lastPage = pages?.[pages.length - 1];
     // 완전히 로드된 빈 목록(더 불러올 것 없음)일 때만.
     const fullyEmpty = pages != null && itemCount === 0 && lastPage != null && !lastPage.hasNext;
@@ -94,7 +101,7 @@ export default function ChallengesPage() {
       autoSwitchedRef.current = true;
       setPhaseFilter("ended");
     }
-  }, [pages, itemCount, phaseFilter, showAllLangs, waitForAuth, error]);
+  }, [pages, itemCount, phaseFilter, showAllLangs, waitForAuth, error, isLoading]);
 
   const filterLabel: Record<RacePhaseFilterValue, string> = useMemo(
     () => ({
@@ -142,7 +149,10 @@ export default function ChallengesPage() {
           <div className="text-base font-semibold">{t.races_list_heading}</div>
           <RacePhaseFilter
             value={phaseFilter}
-            onChange={setPhaseFilter}
+            onChange={(v) => {
+              setPhaseFilter(v);
+              savePageState(STORE_KEY, { phase: v });
+            }}
             labels={filterLabel}
             ariaLabel={t.races_filter_label}
           />
@@ -150,7 +160,10 @@ export default function ChallengesPage() {
             <input
               type="checkbox"
               checked={showAllLangs}
-              onChange={(e) => setShowAllLangs(e.target.checked)}
+              onChange={(e) => {
+                setShowAllLangs(e.target.checked);
+                savePageState(STORE_KEY, { showAllLangs: e.target.checked });
+              }}
               className="h-4 w-4 rounded border-zinc-300"
             />
             {t.races_show_all_langs}

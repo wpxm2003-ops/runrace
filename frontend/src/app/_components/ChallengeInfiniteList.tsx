@@ -26,12 +26,15 @@ export function ChallengeInfiniteList({
   emptyLabel,
   skeletonCount = 3,
   showJoinedBadge = false,
+  showCrewBadge = true,
   forceLoading = false,
 }: {
   result: InfiniteResult;
   emptyLabel: string;
   skeletonCount?: number;
   showJoinedBadge?: boolean;
+  /** 크루 레이스 전용 화면에선 끈다 — 전 행이 크루 레이스라 라벨이 정보가 아니다. */
+  showCrewBadge?: boolean;
   /** 인증 복원 대기 등으로 아직 fetch를 시작하지 않은 동안 빈 상태 대신 스켈레톤을 보여준다. */
   forceLoading?: boolean;
 }) {
@@ -53,7 +56,12 @@ export function ChallengeInfiniteList({
       ) : (
         <>
           {items.map((c) => (
-            <ChallengeListItem key={c.id} challenge={c} showJoinedBadge={showJoinedBadge} />
+            <ChallengeListItem
+              key={c.id}
+              challenge={c}
+              showJoinedBadge={showJoinedBadge}
+              showCrewBadge={showCrewBadge}
+            />
           ))}
           {hasNext ? (
             <div ref={sentinelRef} className="py-3 text-center text-sm text-zinc-400">

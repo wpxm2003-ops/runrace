@@ -15,9 +15,15 @@ import { nativeNavigate } from "@/lib/nativeNav";
 type Props = {
   challenge: ChallengeListItemType;
   showJoinedBadge?: boolean;
+  /** 크루 레이스 전용 화면에선 끈다 — 전 행이 크루 레이스라 라벨이 정보가 아니다. */
+  showCrewBadge?: boolean;
 };
 
-export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Props) {
+export function ChallengeListItem({
+  challenge: c,
+  showJoinedBadge = false,
+  showCrewBadge = true,
+}: Props) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
   const { user } = useAuthUser();
@@ -49,7 +55,7 @@ export function ChallengeListItem({ challenge: c, showJoinedBadge = false }: Pro
       <div className="mt-1 flex items-center gap-1.5 text-sm text-zinc-600">
         <span>{t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}</span>
         {/* 크루 전용 표시 — 내 레이스 목록은 공개·크루 레이스가 섞여 나와 구분이 필요하다. */}
-        {c.crewOnly ? <Badge tone="brown">{t.races_crew_badge}</Badge> : null}
+        {showCrewBadge && c.crewOnly ? <Badge tone="brown">{t.races_crew_badge}</Badge> : null}
         {/* 경품 표시 — 상태가 아니라 레이스 속성이라 목표·인원 줄에 둔다(제목 줄 혼잡·색 충돌 회피). */}
         {c.hasPrize ? (
           <span

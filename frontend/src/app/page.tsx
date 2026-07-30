@@ -60,7 +60,7 @@ function HomeStats() {
               <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">
                 {streak.current}
                 <span className="ml-1 text-sm font-semibold text-zinc-400">
-                  {t.home_streak_unit}
+                  {t.home_streak_unit(streak.current)}
                 </span>
               </p>
               <p className="mt-0.5 text-xs text-zinc-400">

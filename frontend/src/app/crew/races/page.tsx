@@ -87,6 +87,7 @@ export default function CrewRacesPage() {
           emptyLabel={t.crew_races_empty}
           skeletonCount={3}
           showJoinedBadge
+          showCrewBadge={false}
           forceLoading={loading || !user}
         />
       </Card>

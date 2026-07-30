@@ -438,6 +438,12 @@ export default function WorkoutPage() {
               suspect: t.workout_vehicle_suspect,
               recovering: t.workout_vehicle_recovering,
             };
+            // GPS 오류가 최우선 — 콜백이 끊긴 상태에선 tier·자동멈춤 배너가 전부
+            // 낡은 정보이고, 특히 "움직이면 자동 재개" 안내는 재개가 불가능한 상황을
+            // 가려 사용자를 오도한다(권한 회수 후 복원 등).
+            if (session.geoError) {
+              return <div className={`${base} bg-red-50 text-red-700`}>{session.geoError}</div>;
+            }
             if (tier && cls[tier]) {
               return <div className={`${base} ${cls[tier]}`}>{msg[tier]}</div>;
             }
@@ -447,9 +453,6 @@ export default function WorkoutPage() {
                   {t.workout_auto_paused}
                 </div>
               );
-            }
-            if (session.geoError) {
-              return <div className={`${base} bg-red-50 text-red-700`}>{session.geoError}</div>;
             }
             return null;
           })()}

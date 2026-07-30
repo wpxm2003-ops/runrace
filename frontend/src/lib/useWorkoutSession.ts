@@ -310,6 +310,14 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
           stationarySinceRef.current = null;
         }
       } else {
+        // suspect 단계는 "탈것 확정 전"이라 경로를 계속 기록한다는 약속(배너 문구)이
+        // 있다 — 실제 변위가 이어지는 동안은 이동 시각도 갱신해, 고속 스퍼트(내리막
+        // 21km/h+)가 15초 지속될 때 자동멈춤이 오발동해 시계·경로가 끊기는 것을 막는다.
+        // confirmed·weak_gps는 갱신하지 않아 15초 뒤 의도대로 멈춘다 — 운동 종료를
+        // 깜빡한 채 지하철·차량에 타면 페이스가 오염되는 것을 막는 게 자동멈춤의 목적.
+        if (vehicle.tier === "suspect" && last != null && shouldAppendPoint(last, point)) {
+          lastMovementAtRef.current = now;
+        }
         stationarySinceRef.current = null;
       }
 
@@ -415,8 +423,14 @@ export function useWorkoutSession(bgNotification?: { title: string; message: str
     setDistanceM(restoredDistance);
 
     if (saved.status === "running") {
-      const restoredAutoPauseStartedAt =
-        saved.autoPaused && saved.pauseStartedAt != null
+      // 경로가 0포인트면 자동멈춤을 추론하지 않는다 — 재개 판정(shouldAutoResume)이
+      // 앵커 포인트를 요구해서, 앵커 없이 멈추면 영원히 재개될 수 없는 데드락이 된다
+      // (라이브 발동 쪽 lastPathPoint null 가드와 같은 이유의 복원판. GPS 콜드스타트
+      // 중 WebView가 재구성되는 경우가 정확히 이 경로다).
+      const canInferAutoPause = saved.path.length > 0;
+      const restoredAutoPauseStartedAt = !canInferAutoPause
+        ? null
+        : saved.autoPaused && saved.pauseStartedAt != null
           ? saved.pauseStartedAt
           : autoPauseStartedAt({
               lastMovementAt: lastMovementAtRef.current,

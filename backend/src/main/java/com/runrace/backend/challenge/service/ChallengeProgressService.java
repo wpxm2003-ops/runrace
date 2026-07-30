@@ -142,7 +142,7 @@ public class ChallengeProgressService {
     BigDecimal goal = challenge.getGoalKm();
 
     member.addDistance(deltaKm, now);
-    onMemberProgress(member, next, now, allChallengeMembers);
+    onMemberProgress(member, next, allChallengeMembers);
     challengeMemberRepository.save(member);
 
     publishMilestoneEvents(member, prevKm, next, goal, allChallengeMembers);
@@ -161,14 +161,19 @@ public class ChallengeProgressService {
    * applyDistanceToMemberWithContext 에서 호출된다(진행 중 트랜잭션 전제).
    */
   private void onMemberProgress(ChallengeMember member, BigDecimal nextTotalKm,
-                                 OffsetDateTime now, List<ChallengeMember> allMembers) {
+                                 List<ChallengeMember> allMembers) {
     Challenge challenge = member.getChallenge();
     if (nextTotalKm.compareTo(challenge.getGoalKm()) < 0 || member.getFinishedAt() != null) {
       return;
     }
 
-    member.markFinished(now);
-    AppUser winner = RaceFinalizationService.resolveWinner(challenge, allMembers, now);
+    // 완주 시각은 반드시 잠금 획득 "이후"의 현재 시각이어야 한다. 호출자 진입 시점의
+    // now를 재사용하면 잠금 대기 중 먼저 커밋된 완주자보다 과거 시각이 찍혀, 커밋
+    // 순서(declareWinner의 승자)와 finishedAt 순서(final_rank·전적·등수 경품)가
+    // 어긋날 수 있다 — 호출자 now로 통일하고 싶어도 하지 말 것(의도된 별도 now).
+    OffsetDateTime finishedAt = OffsetDateTime.now();
+    member.markFinished(finishedAt);
+    AppUser winner = RaceFinalizationService.resolveWinner(challenge, allMembers, finishedAt);
     if (winner != null) {
       challenge.declareWinner(winner);
     }
