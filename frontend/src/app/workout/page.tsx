@@ -107,6 +107,8 @@ export default function WorkoutPage() {
   const [showIosNotice, setShowIosNotice] = useState(false);
   const [ghost, setGhost] = useState<GhostSelection | null>(null);
   const [ghostPickerOpen, setGhostPickerOpen] = useState(false);
+  const currentUserUidRef = useRef(user?.uid ?? null);
+  currentUserUidRef.current = user?.uid ?? null;
 
   const active = session.status !== "idle";
 
@@ -207,6 +209,7 @@ export default function WorkoutPage() {
 
   const saveSnapshot = useCallback(
     async (
+      ownerUid: string,
       snapshot: WorkoutFinishSnapshot,
       ghostWorkoutId: number | null,
       ghostResult: GhostRaceResult | null,
@@ -214,7 +217,10 @@ export default function WorkoutPage() {
       showNsmCta: boolean,
       nsmLog: NsmSessionLogBody | null,
     ) => {
-      if (!user) return;
+      // 종료 확인창·재시도 중 계정이 바뀌었으면 새 계정 토큰으로 이전 계정의 런을
+      // 저장하지 않는다. 호출 시 캡처한 UID와 현재 Firebase 사용자가 모두 같아야 한다.
+      if (!user || user.uid !== ownerUid) return;
+      const ownerUser = user;
       setSaveError(null);
       setSaving(true);
       try {
@@ -222,8 +228,12 @@ export default function WorkoutPage() {
         const bestSegments = computeBestSegments(snapshot.path);
         const persistedGhostResult = ghostResult ? normalizeGhostRaceResult(ghostResult) : null;
         const res = await withRetry(
-          () =>
-            createWorkout(
+          () => {
+            // 3초 재시도 대기 중 계정이 바뀌었으면 더는 네트워크 요청을 만들지 않는다.
+            if (currentUserUidRef.current !== ownerUid) {
+              throw new Error("workout_owner_changed");
+            }
+            return createWorkout(
               {
                 clientWorkoutId: snapshot.clientWorkoutId,
                 startedAt: snapshot.startedAt,
@@ -237,14 +247,15 @@ export default function WorkoutPage() {
                 ghostWorkoutId,
                 ghostResult: persistedGhostResult,
               },
-              user,
-            ),
+              ownerUser,
+            );
+          },
           3,
           3000,
         );
         // sub-T 세션 수행 기록 — best-effort. 실패해도 런 저장은 이미 끝났으므로 흐름을 막지 않는다.
         if (nsmLog) {
-          void logNsmSession({ ...nsmLog, workoutId: res.id }, user).catch(() => {});
+          void logNsmSession({ ...nsmLog, workoutId: res.id }, ownerUser).catch(() => {});
         }
         const distanceKm = snapshot.distanceM / 1000;
         void track("running_end", {
@@ -267,27 +278,31 @@ export default function WorkoutPage() {
         // 이전에 실패해 보관해둔 다른 런을 폐기하면 그 기록은 영구 유실된다.
         setPendingSave((prev) => (prev && prev.snapshot === snapshot ? null : prev));
         clearPendingWorkoutSaveIfMatches(snapshot.clientWorkoutId);
-        setCelebration({
-          recordId: res.id,
-          snapshot,
-          personalBest: res.personalBest ?? null,
-          achievements: res.achievements ?? [],
-          ghostResult,
-          ghostLabel,
-          showNsmCta,
-        });
+        if (currentUserUidRef.current === ownerUid) {
+          setCelebration({
+            recordId: res.id,
+            snapshot,
+            personalBest: res.personalBest ?? null,
+            achievements: res.achievements ?? [],
+            ghostResult,
+            ghostLabel,
+            showNsmCta,
+          });
+        }
       } catch {
         // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
-        setSaveError(t.workout_save_failed);
-        setPendingSave({
-          ownerUid: user.uid,
-          snapshot,
-          ghostWorkoutId,
-          ghostResult,
-          ghostLabel,
-          showNsmCta,
-          nsmLog,
-        });
+        if (currentUserUidRef.current === ownerUid) {
+          setSaveError(t.workout_save_failed);
+          setPendingSave({
+            ownerUid,
+            snapshot,
+            ghostWorkoutId,
+            ghostResult,
+            ghostLabel,
+            showNsmCta,
+            nsmLog,
+          });
+        }
       } finally {
         setSaving(false);
       }
@@ -297,6 +312,7 @@ export default function WorkoutPage() {
 
   const handleStop = useCallback(async () => {
     if (!user) return;
+    const ownerUid = user.uid;
 
     // distanceM은 미터 단위 — 이동 거리가 사실상 없을 때(1m 미만)만 저장 확인
     if (session.distanceM < 1) {
@@ -306,19 +322,21 @@ export default function WorkoutPage() {
         confirmLabel: t.save,
         cancelLabel: t.cancel,
       });
+      if (currentUserUidRef.current !== ownerUid) return;
       if (!ok) {
-        session.stop();
+        session.stop(ownerUid);
         setSaveError(null);
         setGhost(null);
         return;
       }
     }
 
-    const snapshot = session.stop();
+    const snapshot = session.stop(ownerUid);
+    if (!snapshot) return;
     // 반드시 clearNsmProgress()보다 먼저 — 지운 뒤에는 몇 렙을 했는지 알 방법이 없다.
     const nsmLog = buildNsmLog(nsmToday);
     clearNsmProgress(); // 런 종료 — NSM 렙 진행 정리
-    if (!snapshot || snapshot.path.length === 0) {
+    if (snapshot.path.length === 0) {
       setSaveError(t.workout_no_route);
       setGhost(null);
       return;
@@ -336,7 +354,7 @@ export default function WorkoutPage() {
     setGhost(null); // 유령은 매 런마다 새로 고른다(등록형 라이벌 아님)
     // POST 전에 먼저 로컬에 남겨 둔다 — 도중에 앱이 죽어도 이 스냅샷은 살아남는다.
     savePendingWorkoutSave({
-      ownerUid: user.uid,
+      ownerUid,
       snapshot,
       ghostWorkoutId,
       ghostResult,
@@ -344,7 +362,15 @@ export default function WorkoutPage() {
       showNsmCta,
       nsmLog,
     });
-    await saveSnapshot(snapshot, ghostWorkoutId, ghostResult, ghostLabel, showNsmCta, nsmLog);
+    await saveSnapshot(
+      ownerUid,
+      snapshot,
+      ghostWorkoutId,
+      ghostResult,
+      ghostLabel,
+      showNsmCta,
+      nsmLog,
+    );
   }, [
     session,
     user,
@@ -418,7 +444,7 @@ export default function WorkoutPage() {
             onComplete={() => {
               setCounting(false);
               clearNsmProgress(); // 새 런 시작 — 이전 NSM 렙 진행 초기화
-              session.start();
+              session.start(user.uid);
             }}
           />
         ) : null}
@@ -543,6 +569,7 @@ export default function WorkoutPage() {
               type="button"
               onClick={() =>
                 saveSnapshot(
+                  pendingSave.ownerUid,
                   pendingSave.snapshot,
                   pendingSave.ghostWorkoutId,
                   pendingSave.ghostResult,
@@ -563,8 +590,8 @@ export default function WorkoutPage() {
             distanceM={session.distanceM}
             paceLabel={session.paceLabel}
             onStart={() => setCounting(true)}
-            onPause={session.pause}
-            onResume={session.resume}
+            onPause={() => session.pause(user.uid)}
+            onResume={() => session.resume(user.uid)}
             onStop={handleStop}
             stopDisabled={saving}
           />

@@ -2,6 +2,8 @@ import type { IdleAnchor, LatLng } from "./workoutTrack";
 import { sessionJson } from "./safeStorage";
 
 export type PersistedWorkout = {
+  /** 운동 시작 시점의 Firebase UID. 다른 계정으로는 복원·저장할 수 없다. */
+  ownerUid: string;
   status: "running" | "paused";
   path: LatLng[];
   /**
@@ -31,7 +33,7 @@ export function saveWorkout(data: Omit<PersistedWorkout, "savedAt">): void {
   store.set({ ...data, savedAt: Date.now() });
 }
 
-export function loadWorkout(): PersistedWorkout | null {
+function loadWorkout(): PersistedWorkout | null {
   const data = store.get();
   if (!data) return null;
   if (Date.now() - data.savedAt > MAX_AGE_MS) {
@@ -39,6 +41,17 @@ export function loadWorkout(): PersistedWorkout | null {
     return null;
   }
   return data;
+}
+
+/**
+ * 저장 시점의 Firebase UID가 현재 인증 사용자와 정확히 일치할 때만 복원한다.
+ *
+ * 다른 계정 데이터와 ownerUid가 없던 구버전 저장본은 지우지 않고 숨긴다. 소유자를
+ * 추측해 현재 계정에 붙이면 이 함수가 막으려는 계정 간 GPS 오귀속을 다시 만들 수 있다.
+ */
+export function loadWorkoutForOwner(ownerUid: string): PersistedWorkout | null {
+  const data = loadWorkout();
+  return data?.ownerUid === ownerUid ? data : null;
 }
 
 export function clearWorkout(): void {

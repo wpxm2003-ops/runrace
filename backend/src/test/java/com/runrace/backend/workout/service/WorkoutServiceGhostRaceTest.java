@@ -59,6 +59,7 @@ class WorkoutServiceGhostRaceTest {
         challengeWorkoutRepository,
         indoorRunApprovalRepository,
         imageUploadService,
+        null, // personalBestRepository — 이 테스트 경로는 삭제를 타지 않는다
         shoeService,
         eventPublisher,
         new ObjectMapper());

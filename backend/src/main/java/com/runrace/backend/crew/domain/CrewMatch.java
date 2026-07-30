@@ -70,6 +70,14 @@ public class CrewMatch {
   @Column(name = "winner_crew_id")
   private Long winnerCrewId;
 
+  /** 종료 확정 시점의 도전 크루 합산 거리(m). 미확정·구 데이터면 null(실시간 집계 폴백). */
+  @Column(name = "challenger_distance_m")
+  private Long challengerDistanceM;
+
+  /** 종료 확정 시점의 상대 크루 합산 거리(m). 미확정·구 데이터면 null(실시간 집계 폴백). */
+  @Column(name = "opponent_distance_m")
+  private Long opponentDistanceM;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -84,11 +92,17 @@ public class CrewMatch {
     this.status = Status.DECLINED;
   }
 
-  /** 종료 확정 — 승자 크루 기록(무승부면 null). 이미 확정됐으면 무시. */
-  public void finish(Long winnerCrewId) {
+  /**
+   * 종료 확정 — 승자와 함께 <b>양측 최종 거리도 스냅샷으로 고정</b>한다(무승부면 승자 null).
+   * 점수를 박아두지 않으면 종료 후 운동 삭제·늦은 저장으로 표시 점수만 움직여
+   * 고정된 승자와 모순되는 화면이 나온다. 이미 확정됐으면 무시(멱등).
+   */
+  public void finish(Long winnerCrewId, long challengerDistanceM, long opponentDistanceM) {
     if (!this.isEnded) {
       this.isEnded = true;
       this.winnerCrewId = winnerCrewId;
+      this.challengerDistanceM = challengerDistanceM;
+      this.opponentDistanceM = opponentDistanceM;
     }
   }
 

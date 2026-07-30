@@ -7,9 +7,18 @@ import static com.runrace.backend.challenge.service.RaceFinalizationService.topB
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.runrace.backend.challenge.domain.ApprovalStatus;
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
+import com.runrace.backend.challenge.domain.ChallengeWorkout;
+import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
+import com.runrace.backend.challenge.repository.ChallengeRepository;
+import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.user.domain.AppUser;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -17,8 +26,10 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.springframework.context.ApplicationEventPublisher;
 
-/** 레이스 순위·우승자 결정 순수 로직 테스트(부작용 없는 정적 메서드만 대상). */
+/** 레이스 순위·우승자 결정 규칙과 종료 확정 부작용의 회귀 테스트. */
 class RaceFinalizationServiceTest {
 
   private static final OffsetDateTime T0 = OffsetDateTime.parse("2026-01-01T00:00:00Z");
@@ -41,6 +52,44 @@ class RaceFinalizationServiceTest {
 
   private static List<String> nicks(List<ChallengeMember> ms) {
     return ms.stream().map(m -> m.getUser().getNickname()).toList();
+  }
+
+  @Test
+  void 종료확정은_승인대기_실내런만_거부저장한_뒤_경품을_추첨한다() {
+    ChallengeRepository challengeRepository = mock(ChallengeRepository.class);
+    ChallengeMemberRepository memberRepository = mock(ChallengeMemberRepository.class);
+    ChallengeWorkoutRepository workoutRepository = mock(ChallengeWorkoutRepository.class);
+    ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    PrizeDrawingService prizeDrawingService = mock(PrizeDrawingService.class);
+    RaceFinalizationService service = new RaceFinalizationService(
+        challengeRepository,
+        memberRepository,
+        workoutRepository,
+        eventPublisher,
+        prizeDrawingService);
+
+    Challenge challenge = Challenge.builder().id(10L).endAt(T0).build();
+    ChallengeWorkout pending = ChallengeWorkout.builder()
+        .id(100L)
+        .approvalStatus(ApprovalStatus.PENDING)
+        .build();
+    ChallengeWorkout approved = ChallengeWorkout.builder()
+        .id(101L)
+        .approvalStatus(ApprovalStatus.APPROVED)
+        .build();
+    when(workoutRepository.findAllByChallengeIdAndApprovalStatus(
+        10L, ApprovalStatus.PENDING)).thenReturn(List.of(pending));
+
+    service.finalizeRace(challenge, List.of(), null);
+
+    assertEquals(ApprovalStatus.REJECTED, pending.getApprovalStatus());
+    assertEquals(ApprovalStatus.APPROVED, approved.getApprovalStatus());
+    InOrder order = inOrder(workoutRepository, prizeDrawingService);
+    order.verify(workoutRepository)
+        .findAllByChallengeIdAndApprovalStatus(10L, ApprovalStatus.PENDING);
+    order.verify(workoutRepository).saveAll(List.of(pending));
+    order.verify(prizeDrawingService).drawIfNeeded(challenge, List.of());
+    verify(challengeRepository).save(challenge);
   }
 
   @Nested

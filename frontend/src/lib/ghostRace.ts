@@ -1,7 +1,6 @@
 import {
   creditedPathDistanceMeters,
-  haversineMeters,
-  MAP_GAP_THRESHOLD_M,
+  creditedSegmentMeters,
   type LatLng,
 } from "./workoutTrack";
 
@@ -24,8 +23,7 @@ function activePoints(path: LatLng[]): (LatLng & { t: number })[] {
  * "주파"한 것으로 계산돼 이길 수 없는 유령이 된다(공정성 붕괴).
  */
 function creditedSegMeters(a: LatLng, b: LatLng): number {
-  const seg = haversineMeters(a, b);
-  return seg > MAP_GAP_THRESHOLD_M ? 0 : seg;
+  return creditedSegmentMeters(a, b);
 }
 
 /**
@@ -124,6 +122,13 @@ export function ghostPositionAtElapsed(ghostPath: LatLng[], elapsedMs: number): 
     const t0 = pts[i - 1].t;
     const t1 = pts[i].t;
     if (at <= t1) {
+      if (pts[i].breakBefore === true) {
+        // 일시정지·GPS 복구 중 이동한 재정박 구간은 달려간 선이 아니다.
+        // 단절 시각 전까지는 이전 위치에 머물고, 도달 시점에 새 위치로 점프한다.
+        return at < t1
+          ? { lat: pts[i - 1].lat, lng: pts[i - 1].lng }
+          : { lat: pts[i].lat, lng: pts[i].lng };
+      }
       const frac = t1 > t0 ? (at - t0) / (t1 - t0) : 0;
       return {
         lat: pts[i - 1].lat + frac * (pts[i].lat - pts[i - 1].lat),

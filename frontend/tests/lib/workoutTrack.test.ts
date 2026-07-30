@@ -13,7 +13,7 @@ import {
   slideIdleAnchor,
   splitPathAtGaps,
 } from "@/lib/workoutTrack";
-import type { LatLng, VehicleDetectState } from "@/lib/workoutTrack";
+import type { IdleAnchor, LatLng, VehicleDetectState } from "@/lib/workoutTrack";
 
 describe("formatClock", () => {
   it("1시간 미만은 mm:ss", () => {
@@ -40,12 +40,78 @@ describe("estimateCalories", () => {
 });
 
 describe("방치 자동 일시정지", () => {
-  it("창 안에 기준 거리(100m) 이상 나아가야 앵커가 현재로 밀린다", () => {
-    const anchor = { timeMs: 0, distanceM: 500 };
-    // 99m 전진 — 앵커 유지(같은 객체)
-    expect(slideIdleAnchor(anchor, 60_000, 599)).toBe(anchor);
-    // 정확히 100m 전진 — 창을 새로 시작
-    expect(slideIdleAnchor(anchor, 60_000, 600)).toEqual({ timeMs: 60_000, distanceM: 600 });
+  const atMeters = (meters: number): LatLng => ({
+    // 위도 1°를 보수적으로 111km로 잡아 경계값 50m가 부동소수 오차로 바로 아래가 되지 않게 한다.
+    lat: meters / 111_000,
+    lng: 0,
+  });
+
+  it("첫 양호 fix는 원래 판정 시각을 유지한 채 공간 기준점만 심는다", () => {
+    expect(slideIdleAnchor(
+      { timeMs: 1_000, distanceM: 500 },
+      20_000,
+      500,
+      atMeters(0),
+    )).toEqual({
+      timeMs: 1_000,
+      distanceM: 500,
+      position: atMeters(0),
+      maxDisplacementM: 0,
+    });
+  });
+
+  it("누적 100m와 공간 폭 50m를 함께 채워야 창을 새로 시작한다", () => {
+    const anchor = {
+      timeMs: 0,
+      distanceM: 500,
+      position: atMeters(0),
+      maxDisplacementM: 0,
+    };
+    const shortProgress = slideIdleAnchor(anchor, 30_000, 599, atMeters(60));
+    expect(shortProgress.timeMs).toBe(0); // 누적거리 99m
+
+    expect(slideIdleAnchor(shortProgress, 60_000, 600, atMeters(60))).toEqual({
+      timeMs: 60_000,
+      distanceM: 600,
+      position: atMeters(60),
+      maxDisplacementM: 0,
+    });
+  });
+
+  it("5~10m GPS 왕복 드리프트는 누적거리가 100m를 넘어도 창을 갱신하지 않는다", () => {
+    let anchor: IdleAnchor = {
+      timeMs: 1_000,
+      distanceM: 0,
+      position: atMeters(0),
+      maxDisplacementM: 0,
+    };
+    for (let i = 1; i <= 30; i++) {
+      anchor = slideIdleAnchor(
+        anchor,
+        i * 60_000,
+        i * 8,
+        atMeters(i % 2 === 0 ? -4 : 4),
+      );
+    }
+    expect(anchor.timeMs).toBe(1_000);
+    expect(anchor.distanceM).toBe(0);
+    expect(anchor.maxDisplacementM).toBeLessThan(10);
+  });
+
+  it("50m 셔틀 왕복은 누적 100m 실제 이동으로 인정한다", () => {
+    const anchor = {
+      timeMs: 0,
+      distanceM: 0,
+      position: atMeters(0),
+      maxDisplacementM: 0,
+    };
+    const outbound = slideIdleAnchor(anchor, 5 * 60_000, 50, atMeters(50));
+    expect(outbound.timeMs).toBe(0);
+    expect(outbound.maxDisplacementM).toBeGreaterThanOrEqual(49);
+
+    const returned = slideIdleAnchor(outbound, 10 * 60_000, 100, atMeters(0));
+    expect(returned.timeMs).toBe(10 * 60_000);
+    expect(returned.distanceM).toBe(100);
   });
 
   it("30분간 기준 거리를 못 채우면 앵커 시각으로 소급해 발동한다", () => {
@@ -57,11 +123,16 @@ describe("방치 자동 일시정지", () => {
   });
 
   it("주기적으로 100m를 채우는 러닝은 아무리 길어도 발동하지 않는다", () => {
-    let anchor = { timeMs: 0, distanceM: 0 };
-    // 10분마다 100m씩(아주 느린 산책 수준) 3시간 진행
+    let anchor: IdleAnchor = {
+      timeMs: 0,
+      distanceM: 0,
+      position: atMeters(0),
+      maxDisplacementM: 0,
+    };
+    // 10분마다 100m씩(아주 느린 산책 수준) 3시간 직선 진행
     for (let i = 1; i <= 18; i++) {
       const now = i * 10 * 60_000;
-      anchor = slideIdleAnchor(anchor, now, i * 100);
+      anchor = slideIdleAnchor(anchor, now, i * 100, atMeters(i * 100));
       expect(idleAutoPauseAt(anchor, now)).toBeNull();
     }
   });
@@ -104,6 +175,18 @@ describe("splitPathAtGaps", () => {
     const path = [close(0), close(0.0005)];
     expect(splitPathAtGaps(path).gapLines).toEqual([]);
     expect(splitPathAtGaps(path, 50).gapLines).toEqual([path]);
+  });
+
+  it("120m 이하라도 breakBefore면 재정박 단절로 표시한다", () => {
+    const path: LatLng[] = [
+      { lat: 0, lng: 0 },
+      { lat: 0.0004, lng: 0, breakBefore: true },
+      { lat: 0.0008, lng: 0 },
+    ];
+    expect(splitPathAtGaps(path)).toEqual({
+      solidLines: [[path[1], path[2]]],
+      gapLines: [[path[0], path[1]]],
+    });
   });
 });
 
@@ -278,6 +361,17 @@ describe("creditedPathDistanceMeters — 갭 제외 누적 거리", () => {
     expect(credited).toBeGreaterThan(1050);
     expect(credited).toBeLessThan(1150);
   });
+
+  it("120m 이하 재정박 구간도 breakBefore면 거리에서 제외한다", () => {
+    const path: LatLng[] = [
+      tp(0, 0),
+      { ...tp(0.0005, 30), breakBefore: true },
+      tp(0.001, 60),
+    ];
+    const credited = creditedPathDistanceMeters(path);
+    expect(credited).toBeGreaterThan(50);
+    expect(credited).toBeLessThan(60);
+  });
 });
 
 describe("computeKmSplits — 추적 끊김", () => {
@@ -313,6 +407,21 @@ describe("computeBestSegments — 추적 끊김", () => {
     for (let i = 0; i <= 20; i++) path.push(tp(i * STEP_DEG, i * 36));
     const bStart = 20 * STEP_DEG + GAP_DEG;
     for (let j = 1; j <= 20; j++) path.push(tp(bStart + (j - 1) * STEP_DEG, 20 * 36 + 60 + j * 36));
+    expect(computeBestSegments(path)).toEqual({});
+  });
+
+  it("120m 이하 재정박도 가로질러 PB 구간을 만들 수 없다", () => {
+    // 각 연속 구간은 약 2km라 3km PB가 성립하지 않는다. 중간 50m는 120m보다 작지만
+    // 일시정지 후 재정박된 점이므로 두 구간을 합쳐서는 안 된다.
+    const path: LatLng[] = [];
+    for (let i = 0; i <= 20; i++) path.push(tp(i * STEP_DEG, i * 36));
+    const secondStart = 20 * STEP_DEG + 0.0005;
+    for (let j = 1; j <= 20; j++) {
+      path.push({
+        ...tp(secondStart + (j - 1) * STEP_DEG, 20 * 36 + j * 36),
+        ...(j === 1 ? { breakBefore: true } : {}),
+      });
+    }
     expect(computeBestSegments(path)).toEqual({});
   });
 });

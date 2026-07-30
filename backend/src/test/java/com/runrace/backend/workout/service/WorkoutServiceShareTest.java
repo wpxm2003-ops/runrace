@@ -1,6 +1,7 @@
 package com.runrace.backend.workout.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -18,13 +19,44 @@ class WorkoutServiceShareTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final WorkoutService service =
-      new WorkoutService(null, null, null, null, null, null, null, null, null, null, objectMapper);
+      new WorkoutService(null, null, null, null, null, null, null, null, null, null, null, objectMapper);
 
   private String toJson(List<WorkoutService.PathPoint> points) {
     try {
       return objectMapper.writeValueAsString(points);
     } catch (JsonProcessingException e) {
       throw new IllegalStateException(e);
+    }
+  }
+
+  @Nested class 경로_단절_마커_호환성 {
+    @Test void breakBefore가_저장_JSON에서_응답까지_보존된다() {
+      List<WorkoutService.PathPoint> original = List.of(
+          new WorkoutService.PathPoint(37.0, 127.0, 0L),
+          new WorkoutService.PathPoint(37.0005, 127.0, 1_000L, null, true));
+
+      List<PathPointDto> result = service.toPath(toJson(original));
+
+      assertEquals(2, result.size());
+      assertEquals(Boolean.TRUE, result.get(1).breakBefore());
+      assertEquals(1_000L, result.get(1).t());
+    }
+
+    @Test void 일반_좌표에는_null_마커를_직렬화하지_않고_true만_저장한다() {
+      String ordinary = toJson(List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L)));
+      String marked = toJson(List.of(
+          new WorkoutService.PathPoint(37.0005, 127.0, 1_000L, null, true)));
+
+      assertFalse(ordinary.contains("breakBefore"));
+      assertTrue(marked.contains("\"breakBefore\":true"));
+    }
+
+    @Test void 구형_JSON에_breakBefore가_없으면_null로_읽는다() {
+      List<PathPointDto> result =
+          service.toPath("[{\"lat\":37.0,\"lng\":127.0,\"t\":0,\"ele\":null}]");
+
+      assertEquals(1, result.size());
+      assertEquals(null, result.get(0).breakBefore());
     }
   }
 

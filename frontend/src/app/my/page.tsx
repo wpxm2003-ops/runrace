@@ -1,6 +1,7 @@
 "use client";
 
 import type { User } from "firebase/auth";
+import { toast } from "sonner";
 import { NavRowButton } from "@/app/_components/NavRowButton";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
@@ -15,12 +16,14 @@ import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 
 /** 인증 확정 후에만 마운트 → SWR 훅이 로딩 단계에서 중복 기동되지 않음 */
 function MyPageContent({ user }: { user: User }) {
   const { t } = useLocale();
   const { data: me, isLoading: meLoading } = useMe(user);
   const confirm = useConfirm();
+  const session = useWorkoutSessionContext();
 
   return (
     <PageLayout title={t.my_title} titleSuffix={<MySettingsGear />}>
@@ -45,6 +48,10 @@ function MyPageContent({ user }: { user: User }) {
       <button
         type="button"
         onClick={async () => {
+          if (session.status !== "idle") {
+            toast.error(t.account_delete_blocked_workout_active);
+            return;
+          }
           const ok = await confirm({
             title: t.my_delete_account_title,
             message: t.my_delete_account_message,

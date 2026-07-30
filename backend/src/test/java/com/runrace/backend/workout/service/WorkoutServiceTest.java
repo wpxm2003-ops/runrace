@@ -53,7 +53,7 @@ class WorkoutServiceTest {
     // WorkoutService를 직접 new 하면 의존성이 null이지만,
     // 검증 예외는 의존성 접근 전에 던져지므로 NullPointerException 없이 실행된다.
     private final WorkoutService service =
-        new WorkoutService(null, null, null, null, null, null, null, null, null, null, null);
+        new WorkoutService(null, null, null, null, null, null, null, null, null, null, null, null);
 
     private final AuthPrincipal p = new AuthPrincipal(UUID.randomUUID(), "uid");
 
@@ -114,7 +114,7 @@ class WorkoutServiceTest {
 
   @Nested class UpdateMemoValidation {
     private final WorkoutService service =
-        new WorkoutService(null, null, null, null, null, null, null, null, null, null, null);
+        new WorkoutService(null, null, null, null, null, null, null, null, null, null, null, null);
 
     private final AuthPrincipal p = new AuthPrincipal(UUID.randomUUID(), "uid");
 
@@ -142,7 +142,7 @@ class WorkoutServiceTest {
 
   @Nested class CreateValidation {
     private final WorkoutService service =
-        new WorkoutService(null, null, null, null, null, null, null, null, null, null, null);
+        new WorkoutService(null, null, null, null, null, null, null, null, null, null, null, null);
 
     private final AuthPrincipal p = new AuthPrincipal(UUID.randomUUID(), "uid");
     private final java.time.OffsetDateTime T = java.time.OffsetDateTime.parse("2026-01-01T00:00:00Z");
@@ -257,6 +257,17 @@ class WorkoutServiceTest {
                   new WorkoutService.PathPoint(37.001, 127.001, 1_000L)),
               null, null, null));
       assertEquals("path_point_invalid", ex.code());
+    }
+
+    @Test void breakBefore_마커가_있어도_t가_비내림차순이면_입력검증을_통과한다() {
+      java.util.List<WorkoutService.PathPoint> path = java.util.List.of(
+          new WorkoutService.PathPoint(37.0, 127.0, 1_000L),
+          new WorkoutService.PathPoint(37.0005, 127.0, 1_000L, null, true));
+
+      // 동일 t는 기존 계약대로 허용하고, breakBefore는 좌표·시간 검증 의미를 바꾸지 않는다.
+      assertThrows(NullPointerException.class,
+          () -> service.create(p, T, T.plusSeconds(10), 5, 10, 1, null,
+              path, null, null, null));
     }
 
     // t가 없는 포인트(구형 기록)는 순서 검사를 건너뛰고 통과해야 한다.

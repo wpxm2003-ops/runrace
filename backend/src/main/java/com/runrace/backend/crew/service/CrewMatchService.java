@@ -369,6 +369,15 @@ public class CrewMatchService {
     Comparator<RosterRow> byDistance = Comparator.comparingLong(RosterRow::distanceM).reversed();
     challengerRows.sort(byDistance);
     opponentRows.sort(byDistance);
+
+    // 종료 확정된 매치는 확정 시점 스냅샷을 쓴다 — 그 뒤의 운동 삭제·늦은 저장으로
+    // 합계만 움직여 고정된 승자와 모순되는 화면이 나오지 않게 한다.
+    // (개인별 행은 참고용이라 실시간 값을 그대로 두고, 승패를 가르는 합계만 고정한다.)
+    // 스냅샷 이전에 확정된 구 데이터는 null이라 실시간 집계로 폴백한다.
+    if (match.isEnded()) {
+      if (match.getChallengerDistanceM() != null) challengerSum = match.getChallengerDistanceM();
+      if (match.getOpponentDistanceM() != null) opponentSum = match.getOpponentDistanceM();
+    }
     return new RosterBoard(challengerRows, opponentRows, challengerSum, opponentSum);
   }
 
@@ -491,7 +500,7 @@ public class CrewMatchService {
     Long winner = challengerSum > opponentSum
         ? challengerId
         : (opponentSum > challengerSum ? match.getOpponentCrew().getId() : null);
-    match.finish(winner);
+    match.finish(winner, challengerSum, opponentSum);
     crewMatchRepository.save(match);
     publishMatchEnded(match, rosters, winner);
   }
@@ -533,9 +542,21 @@ public class CrewMatchService {
   }
 
   private CrewMatchSummary toSummary(CrewMatch match, Long myCrewId, OffsetDateTime now) {
+    boolean myCrewIsChallenger = match.getChallengerCrew().getId().equals(myCrewId);
     long myDist = 0;
     long opDist = 0;
-    if (match.getStartAt() != null) {
+    // 종료 확정분은 상세와 같은 스냅샷을 쓴다. 내 크루가 상대편이면 양측 값을 뒤집어
+    // DTO의 my/opponent 관점에 맞춘다. 구 데이터(null)는 기존 실시간 집계로 폴백한다.
+    if (match.isEnded()
+        && match.getChallengerDistanceM() != null
+        && match.getOpponentDistanceM() != null) {
+      myDist = myCrewIsChallenger
+          ? match.getChallengerDistanceM()
+          : match.getOpponentDistanceM();
+      opDist = myCrewIsChallenger
+          ? match.getOpponentDistanceM()
+          : match.getChallengerDistanceM();
+    } else if (match.getStartAt() != null) {
       List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
       Map<UUID, Long> byUser = memberDistances(match, rosters, now);
       for (CrewMatchRoster r : rosters) {
@@ -552,7 +573,7 @@ public class CrewMatchService {
         derivedStatus(match, now),
         match.getChallengerCrew().getName(),
         match.getOpponentCrew().getName(),
-        match.getChallengerCrew().getId().equals(myCrewId),
+        myCrewIsChallenger,
         match.getRosterSize(),
         IsoTime.formatOrNull(match.getStartAt()),
         IsoTime.formatOrNull(match.getEndAt()),

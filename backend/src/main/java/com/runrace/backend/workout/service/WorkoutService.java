@@ -1,5 +1,6 @@
 package com.runrace.backend.workout.service;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
@@ -25,6 +26,7 @@ import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.PreviousWorkoutDto;
 import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
+import com.runrace.backend.workout.repository.PersonalBestRepository;
 import com.runrace.backend.workout.repository.WorkoutComparisonItem;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.Duration;
@@ -84,6 +86,7 @@ public class WorkoutService {
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ImageUploadService imageUploadService;
+  private final PersonalBestRepository personalBestRepository;
   private final ShoeService shoeService;
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
@@ -586,6 +589,10 @@ public class WorkoutService {
             .orElseThrow(() -> ApiException.notFound("workout_not_found"));
     // 레이스에 반영된 거리 먼저 차감 (cascade 삭제 전에 호출해야 함)
     challengeProgressService.reverseWorkoutDistance(session.getId());
+    // 이 운동이 근거인 개인 기록도 함께 삭제한다. personal_best.workout_id는 ON DELETE가
+    // 없는 FK라(V33) 남겨두면 삭제가 통째로 롤백된다. 기록의 근거가 사라지면 기록도
+    // 사라지는 게 정합이며(레이스 거리 차감과 같은 철학), 다음 달성 시 다시 등록된다.
+    personalBestRepository.deleteAll(personalBestRepository.findAllByWorkoutId(session.getId()));
     String imageUrl = session.getImageUrl();
     workoutSessionRepository.delete(session);
     // S3 삭제는 커밋 후 처리 — 트랜잭션 내 네트워크 I/O로 인한 커넥션 점유 방지
@@ -649,7 +656,12 @@ public class WorkoutService {
   /** 저장 직전 좌표를 6자리로 반올림한다(거리·페이스는 클라이언트 계산값을 쓰므로 영향 없음). */
   private static List<PathPoint> roundCoords(List<PathPoint> path) {
     return path.stream()
-        .map(p -> new PathPoint(roundCoord(p.lat()), roundCoord(p.lng()), p.t(), roundElevation(p.ele())))
+        .map(p -> new PathPoint(
+            roundCoord(p.lat()),
+            roundCoord(p.lng()),
+            p.t(),
+            roundElevation(p.ele()),
+            p.breakBefore()))
         .toList();
   }
 
@@ -675,7 +687,7 @@ public class WorkoutService {
   /** 저장된 경로 JSON을 응답용 좌표 목록으로 변환한다(상세·공유 응답 공통). */
   public List<PathPointDto> toPath(String pathJson) {
     return parsePath(pathJson).stream()
-        .map(p -> new PathPointDto(p.lat(), p.lng(), p.t(), p.ele()))
+        .map(p -> new PathPointDto(p.lat(), p.lng(), p.t(), p.ele(), p.breakBefore()))
         .toList();
   }
 
@@ -697,6 +709,10 @@ public class WorkoutService {
     return 2 * 6_371_000 * Math.asin(Math.sqrt(clampedH));
   }
 
+  private static double creditedPathMeters(PathPointDto a, PathPointDto b) {
+    return Boolean.TRUE.equals(b.breakBefore()) ? 0 : haversineMeters(a, b);
+  }
+
   /**
    * 공유용 경로 — 시작·종료 {@value #SHARE_PATH_TRUNCATE_M}m 구간을 잘라 거주지 추론을 어렵게 한다.
    * 잘라내고 남는 중간 구간이 2점 미만이면(짧은 왕복 러닝 등) 통째로 빈 경로를 반환한다 —
@@ -709,13 +725,13 @@ public class WorkoutService {
     int startIdx = 0;
     double acc = 0;
     while (startIdx < path.size() - 1 && acc < SHARE_PATH_TRUNCATE_M) {
-      acc += haversineMeters(path.get(startIdx), path.get(startIdx + 1));
+      acc += creditedPathMeters(path.get(startIdx), path.get(startIdx + 1));
       startIdx++;
     }
     int endIdx = path.size() - 1;
     acc = 0;
     while (endIdx > 0 && acc < SHARE_PATH_TRUNCATE_M) {
-      acc += haversineMeters(path.get(endIdx - 1), path.get(endIdx));
+      acc += creditedPathMeters(path.get(endIdx - 1), path.get(endIdx));
       endIdx--;
     }
     if (endIdx <= startIdx) return List.of();
@@ -728,9 +744,16 @@ public class WorkoutService {
     return (int) Math.round(durationSec / (distanceM / 1000.0));
   }
 
-  public record PathPoint(double lat, double lng, Long t, Double ele) {
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record PathPoint(
+      double lat, double lng, Long t, Double ele, Boolean breakBefore) {
+
     public PathPoint(double lat, double lng, Long t) {
-      this(lat, lng, t, null);
+      this(lat, lng, t, null, null);
+    }
+
+    public PathPoint(double lat, double lng, Long t, Double ele) {
+      this(lat, lng, t, ele, null);
     }
   }
 }

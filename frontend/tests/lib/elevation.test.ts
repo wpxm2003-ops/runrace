@@ -63,4 +63,23 @@ describe("computeElevationStats", () => {
     expect(stats!.totalAscentM).toBeGreaterThan(0);
     expect(stats!.totalDescentM).toBe(0);
   });
+
+  it("재정박 단절 구간의 거리·고도 점프를 이동거리나 상승고도로 합치지 않는다", () => {
+    const points: LatLng[] = [
+      point(127.0000, 10),
+      point(127.0001, 10),
+      point(127.0002, 10),
+      { ...point(127.0007, 100), breakBefore: true }, // 약 44m 이동·90m 고도차는 일시정지 중
+      point(127.0008, 100),
+      point(127.0009, 100),
+    ];
+
+    const stats = computeElevationStats(points);
+
+    expect(stats).not.toBeNull();
+    expect(stats!.totalAscentM).toBe(0);
+    expect(stats!.totalDescentM).toBe(0);
+    // 두 연속 구간의 실제 네 개 구간만 누적되고, 재정박 약 44m는 빠져야 한다.
+    expect(stats!.profile[stats!.profile.length - 1].distanceM).toBeLessThan(40);
+  });
 });

@@ -39,6 +39,8 @@ export const translations = {
     nav_profile: "내정보",
     nav_main_menu: "주요 메뉴",
     header_logout: "로그아웃",
+    logout_blocked_workout_active: "운동을 종료한 뒤 로그아웃해 주세요.",
+    account_delete_blocked_workout_active: "운동을 종료한 뒤 계정을 삭제해 주세요.",
     header_login: "로그인",
 
     // ── 홈 ────────────────────────────────
@@ -1099,6 +1101,8 @@ export const translations = {
     nav_profile: "Profile",
     nav_main_menu: "Main menu",
     header_logout: "Sign out",
+    logout_blocked_workout_active: "Finish your workout before signing out.",
+    account_delete_blocked_workout_active: "Finish your workout before deleting your account.",
     header_login: "Sign in",
 
     // ── 홈 ────────────────────────────────
@@ -2156,6 +2160,8 @@ export const translations = {
     nav_profile: "Perfil",
     nav_main_menu: "Menú",
     header_logout: "Salir",
+    logout_blocked_workout_active: "Finaliza tu entrenamiento antes de cerrar sesión.",
+    account_delete_blocked_workout_active: "Finaliza tu entrenamiento antes de eliminar tu cuenta.",
     header_login: "Entrar",
 
     // ── Inicio ────────────────────────────
@@ -3213,6 +3219,8 @@ export const translations = {
     nav_profile: "マイページ",
     nav_main_menu: "メニュー",
     header_logout: "ログアウト",
+    logout_blocked_workout_active: "ランを終了してからログアウトしてください。",
+    account_delete_blocked_workout_active: "ランを終了してからアカウントを削除してください。",
     header_login: "ログイン",
 
     // ── ホーム ────────────────────────────
@@ -4271,6 +4279,8 @@ export const translations = {
     nav_profile: "我的",
     nav_main_menu: "菜单",
     header_logout: "退出",
+    logout_blocked_workout_active: "请先结束本次跑步再退出登录。",
+    account_delete_blocked_workout_active: "请先结束本次跑步再删除账号。",
     header_login: "登录",
 
     // ── 首页 ──────────────────────────────

@@ -1,9 +1,12 @@
 package com.runrace.backend.challenge.service;
 
+import com.runrace.backend.challenge.domain.ApprovalStatus;
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
+import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
+import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.event.ChallengeEvents.ChallengeEndedEvent;
 import com.runrace.backend.user.domain.AppUser;
 import java.math.BigDecimal;
@@ -26,6 +29,7 @@ import org.springframework.stereotype.Service;
 public class RaceFinalizationService {
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
+  private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final PrizeDrawingService prizeDrawingService;
 
@@ -130,12 +134,28 @@ public class RaceFinalizationService {
     if (anyRan(members)) {
       assignFinalRanks(members);
     }
+    closePendingIndoorRuns(challenge.getId());
     prizeDrawingService.drawIfNeeded(challenge, members);
     challengeRepository.save(challenge);
     eventPublisher.publishEvent(new ChallengeEndedEvent(
         challenge.getId(),
         winner != null ? winner.getNickname() : null,
         members.stream().map(m -> m.getUser().getId()).toList()));
+  }
+
+  /**
+   * 종료 시점의 승인대기 실내런을 전부 REJECTED로 닫는다.
+   *
+   * <p>종료된 레이스의 거리·순위·경품은 불변이라 이제 와서 승인돼도 반영될 수 없다
+   * ({@link IndoorApprovalService#applyApprovedIndoorRun}가 종료를 확인하고 거부한다).
+   * 닫지 않으면 무투표·부분투표 건이 종료된 레이스의 승인대기 목록에 영원히 남는다.
+   */
+  private void closePendingIndoorRuns(Long challengeId) {
+    List<ChallengeWorkout> pending = challengeWorkoutRepository
+        .findAllByChallengeIdAndApprovalStatus(challengeId, ApprovalStatus.PENDING);
+    if (pending.isEmpty()) return;
+    pending.forEach(ChallengeWorkout::reject);
+    challengeWorkoutRepository.saveAll(pending);
   }
 
   /**

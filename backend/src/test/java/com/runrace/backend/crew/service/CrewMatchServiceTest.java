@@ -385,6 +385,71 @@ class CrewMatchServiceTest {
     }
   }
 
+  @Nested class FinalScoreSnapshot {
+    @Test void 종료된_요약은_내_크루가_상대편이어도_확정점수를_내_관점으로_뒤집는다() {
+      Crew mine = crew(1L, leaderId, "우리크루");
+      Crew challenger = crew(2L, UUID.randomUUID(), "도전크루");
+      when(crewMemberRepository.findByUserId(leaderId))
+          .thenReturn(Optional.of(member(mine, leaderId)));
+
+      OffsetDateTime matchStart = OffsetDateTime.now().minusDays(8);
+      CrewMatch match = CrewMatch.builder()
+          .id(10L).challengerCrew(challenger).opponentCrew(mine)
+          .rosterSize(3).startAt(matchStart).endAt(matchStart.plusDays(7))
+          .createdAt(matchStart.minusDays(1)).build();
+      match.accept();
+      match.finish(2L, 12_000, 9_000);
+
+      when(crewMatchRepository.findActiveByCrewId(eq(1L), any())).thenReturn(List.of());
+      when(crewMatchRepository.findEndedByCrewId(eq(1L), any(Pageable.class)))
+          .thenReturn(List.of(match));
+
+      var response = service.myMatches(leaderId);
+
+      assertFalse(response.lastEnded().myCrewIsChallenger());
+      assertEquals(9_000, response.lastEnded().myCrewDistanceM());
+      assertEquals(12_000, response.lastEnded().opponentCrewDistanceM());
+      assertEquals("LOSS", response.lastEnded().result());
+      // 스냅샷이 있으면 종료 후 바뀔 수 있는 운동 기록을 다시 읽지 않는다.
+      verify(crewMatchRosterRepository, never()).findAllByMatchId(10L);
+      verify(workoutSessionRepository, never())
+          .aggregateDistanceBetweenByType(anyList(), any(), any(), any());
+    }
+
+    @Test void 종료된_상세는_합계만_확정점수를_쓰고_개인별_행은_실시간값을_유지한다() {
+      Crew mine = crew(1L, leaderId, "우리크루");
+      Crew opponent = crew(2L, UUID.randomUUID(), "상대크루");
+      when(crewMemberRepository.findByUserId(leaderId))
+          .thenReturn(Optional.of(member(mine, leaderId)));
+
+      OffsetDateTime matchStart = OffsetDateTime.now().minusDays(8);
+      CrewMatch match = CrewMatch.builder()
+          .id(10L).challengerCrew(mine).opponentCrew(opponent)
+          .rosterSize(1).startAt(matchStart).endAt(matchStart.plusDays(7))
+          .createdAt(matchStart.minusDays(1)).build();
+      match.accept();
+      match.finish(1L, 30_000, 20_000);
+
+      UUID myRunner = UUID.randomUUID();
+      UUID opRunner = UUID.randomUUID();
+      when(crewMatchRepository.findByIdWithCrews(10L)).thenReturn(Optional.of(match));
+      when(crewMatchRosterRepository.findAllByMatchId(10L)).thenReturn(List.of(
+          CrewMatchRoster.builder().match(match).crewId(1L).user(user(myRunner)).build(),
+          CrewMatchRoster.builder().match(match).crewId(2L).user(user(opRunner)).build()));
+      when(workoutSessionRepository.aggregateDistanceBetweenByType(anyList(), any(), any(), any()))
+          .thenReturn(List.of(
+              agg(myRunner, 7_000),
+              agg(opRunner, 6_000)));
+
+      var response = service.detail(leaderId, 10L);
+
+      assertEquals(30_000, response.challengerDistanceM());
+      assertEquals(20_000, response.opponentDistanceM());
+      assertEquals(7_000, response.challengerRoster().get(0).distanceM());
+      assertEquals(6_000, response.opponentRoster().get(0).distanceM());
+    }
+  }
+
   // ── 배치 진입점(CrewMatchScheduler가 호출) ──────────────────────────────
 
   @Nested class Scheduler {
@@ -427,7 +492,7 @@ class CrewMatchServiceTest {
           .rosterSize(3).startAt(matchStart).endAt(matchStart.plusDays(7))
           .createdAt(matchStart.minusDays(1)).build();
       match.accept();
-      match.finish(1L);
+      match.finish(1L, 5_000, 3_000);
       when(crewMatchRepository.findByIdWithCrews(10L)).thenReturn(Optional.of(match));
 
       assertFalse(service.finalizeIfTimeEnded(10L, OffsetDateTime.now()));

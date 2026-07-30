@@ -1,6 +1,12 @@
-import { User } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { redirectToLogin } from "@/lib/auth";
-import { getAccessToken, storeAccessToken, clearAccessToken } from "@/lib/accessToken";
+import { auth } from "@/lib/firebase";
+import {
+  getAccessToken,
+  getStoredAuthUid,
+  storeAccessToken,
+  clearAccessToken,
+} from "@/lib/accessToken";
 import { compressImageForUpload } from "@/lib/compressImage";
 import { ApiError } from "./apiError";
 
@@ -56,7 +62,9 @@ export async function publicPost<T>(path: string, body: unknown): Promise<T> {
 async function authHeaders(user: User, forceRefresh = false) {
   if (!forceRefresh) {
     const stored = getAccessToken();
-    if (stored) {
+    // localStorage JWT는 함께 저장한 Firebase UID가 호출자의 UID와 정확히 같을 때만 쓴다.
+    // 계정 전환 직후의 낡은 비동기 요청이 새 계정 JWT로 전송되는 것을 막는다.
+    if (stored && getStoredAuthUid() === user.uid) {
       return { "Content-Type": "application/json", Authorization: `Bearer ${stored}` };
     }
   }
@@ -77,12 +85,25 @@ export async function exchangeFirebaseTokenForJwt(user: User, forceRefresh = fal
   });
   if (res.ok) {
     const data = (await res.json()) as { accessToken?: string; firebaseUid?: string };
-    if (data.accessToken && data.firebaseUid) storeAccessToken(data.accessToken, data.firebaseUid);
+    // 교환 응답이 돌아오는 사이 로그아웃/계정 전환이 일어날 수 있다. 요청 사용자와
+    // 현재 Firebase 사용자, 백엔드가 확인한 UID가 모두 같을 때만 전역 JWT를 갱신한다.
+    if (
+      data.accessToken
+      && data.firebaseUid === user.uid
+      && auth.currentUser?.uid === user.uid
+    ) {
+      storeAccessToken(data.accessToken, data.firebaseUid);
+    }
   }
 }
 
 /** JWT 만료(401) 시 Firebase 토큰으로 새 JWT를 발급받아 저장한다. */
 async function refreshAccessToken(user: User): Promise<{ "Content-Type": string; Authorization: string }> {
+  // 호출자가 현재 저장 JWT의 소유자가 아니면 다른 계정 토큰을 지우거나 덮지 않는다.
+  // 해당 Firebase User의 토큰으로만 한 번 재시도한다.
+  if (getStoredAuthUid() !== user.uid) {
+    return await authHeaders(user, true);
+  }
   clearAccessToken();
   try {
     await exchangeFirebaseTokenForJwt(user, true);
@@ -154,7 +175,7 @@ export async function publicFetch<T>(
   // 저장된 JWT가 있으면 user 객체 없이도 인증 헤더를 즉시 구성한다.
   // → 콜드 스타트에서 Firebase 초기화 전에도 인증된 fetch 가능.
   const storedToken = getAccessToken();
-  if (storedToken) {
+  if (storedToken && (!user || getStoredAuthUid() === user.uid)) {
     headers.Authorization = `Bearer ${storedToken}`;
   } else if (user) {
     Object.assign(headers, await authHeaders(user));

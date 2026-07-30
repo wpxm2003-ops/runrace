@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/app/_components/ui/Skeleton";
+import { toast } from "sonner";
 import { logout } from "@/lib/auth";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { LOCALES, type Locale, useLocale } from "@/lib/i18n";
+import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 
 function LanguagePicker({ locale, setLocale }: { locale: Locale; setLocale: (l: Locale) => void }) {
   const [open, setOpen] = useState(false);
@@ -58,8 +60,21 @@ function LanguagePicker({ locale, setLocale }: { locale: Locale; setLocale: (l: 
 export function SiteHeader() {
   const { user, loading, hint } = useAuthUser();
   const { locale, t, setLocale } = useLocale();
+  const session = useWorkoutSessionContext();
 
   const showLoggedIn = user != null || (loading && hint);
+
+  /**
+   * 진행 중인 운동이 있으면 실수로 세션을 중단하지 않도록 UX 단계에서 로그아웃을 막는다.
+   * 외부 인증 변경은 세션 계층에서도 소유자 검증 후 원래 계정의 일시정지 기록으로 보존한다.
+   */
+  function handleLogout() {
+    if (session.status !== "idle") {
+      toast.error(t.logout_blocked_workout_active);
+      return;
+    }
+    void logout();
+  }
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
@@ -72,7 +87,7 @@ export function SiteHeader() {
           {showLoggedIn ? (
             <button
               type="button"
-              onClick={() => logout()}
+              onClick={handleLogout}
               className="text-zinc-600 hover:text-zinc-900 hover:underline"
             >
               {t.header_logout}

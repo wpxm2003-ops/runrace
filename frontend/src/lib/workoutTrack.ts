@@ -1,5 +1,15 @@
-/** lat/lng에 러닝 시작 후 경과 ms(t)를 함께 저장한다. 구형 기록은 t가 없을 수 있다. */
-export type LatLng = { lat: number; lng: number; t?: number; ele?: number };
+/**
+ * lat/lng에 러닝 시작 후 경과 ms(t)를 함께 저장한다. 구형 기록은 t가 없을 수 있다.
+ * breakBefore는 일시정지·GPS 복구 뒤 첫 점처럼 직전 점과 거리를 이어서는 안 되는
+ * 명시적 경로 단절이다. 거리와 무관하게 서버 왕복 후에도 보존한다.
+ */
+export type LatLng = {
+  lat: number;
+  lng: number;
+  t?: number;
+  ele?: number;
+  breakBefore?: boolean;
+};
 
 export type WorkoutStatus = "idle" | "running" | "paused";
 
@@ -20,7 +30,7 @@ const EARTH_RADIUS_M = 6_371_000;
 /**
  * 방치 자동 일시정지 — "운동 종료를 잊은" 세션 감지 전용.
  *
- * 이 창(기본 30분) 동안 인정 거리가 {@link IDLE_AUTO_PAUSE_MIN_PROGRESS_M}에 못 미치면
+ * 이 창(기본 30분) 동안 누적 인정 거리와 최소 공간 폭을 함께 채우지 못하면
  * 러닝이 아니라 방치(귀가·탑승 후 미종료)로 보고 수동 일시정지와 같은 상태로 전환한다.
  * 재개는 사용자가 직접 한다(자동 재개 없음).
  *
@@ -32,19 +42,59 @@ const EARTH_RADIUS_M = 6_371_000;
 export const IDLE_AUTO_PAUSE_WINDOW_MS = 30 * 60_000;
 /** 창 안에 이만큼도 못 나아가면 방치로 판정한다(가장 느린 산책도 30분에 1km+는 간다). */
 export const IDLE_AUTO_PAUSE_MIN_PROGRESS_M = 100;
+/** 누적 거리와 함께 요구할 최소 공간 폭 — 5~10m GPS 왕복 드리프트를 실제 이동과 구분한다. */
+export const IDLE_AUTO_PAUSE_MIN_SPAN_M = 50;
 
-/** 방치 판정 기준점 — 마지막으로 "충분한 전진"이 확인된 시각과 그때의 누적 인정 거리. */
-export type IdleAnchor = { timeMs: number; distanceM: number };
+type GeoPoint = { lat: number; lng: number };
 
-/** 앵커 이후 기준 거리 이상 나아갔으면 앵커를 현재로 민다(판정 창을 새로 시작). */
+/**
+ * 방치 판정 기준점 — 마지막으로 충분한 이동이 확인된 시각·거리·공간 범위.
+ * 단순 누적거리만 쓰면 GPS가 좁은 범위에서 왕복해도 창이 갱신되므로, 앵커 위치로부터
+ * 관측된 최대 변위도 함께 보존한다.
+ */
+export type IdleAnchor = {
+  timeMs: number;
+  distanceM: number;
+  position?: GeoPoint;
+  maxDisplacementM?: number;
+};
+
+/**
+ * 누적 인정거리 100m와 공간 폭 50m를 모두 채웠으면 창을 새로 시작한다.
+ * 첫 양호한 fix는 시각을 바꾸지 않고 위치만 심는다. 50m 셔틀·작은 트랙은 살리면서,
+ * 서로 5~10m 떨어진 GPS 오차점이 왕복해 누적 100m를 넘어도 창은 갱신하지 않는다.
+ */
 export function slideIdleAnchor(
   anchor: IdleAnchor,
   nowMs: number,
   distanceM: number,
+  position: GeoPoint,
 ): IdleAnchor {
-  return distanceM - anchor.distanceM >= IDLE_AUTO_PAUSE_MIN_PROGRESS_M
-    ? { timeMs: nowMs, distanceM }
-    : anchor;
+  if (!anchor.position) {
+    return {
+      ...anchor,
+      position: { lat: position.lat, lng: position.lng },
+      maxDisplacementM: 0,
+    };
+  }
+  const maxDisplacementM = Math.max(
+    anchor.maxDisplacementM ?? 0,
+    haversineMeters(anchor.position, position),
+  );
+  if (
+    distanceM - anchor.distanceM >= IDLE_AUTO_PAUSE_MIN_PROGRESS_M
+    && maxDisplacementM >= IDLE_AUTO_PAUSE_MIN_SPAN_M
+  ) {
+    return {
+      timeMs: nowMs,
+      distanceM,
+      position: { lat: position.lat, lng: position.lng },
+      maxDisplacementM: 0,
+    };
+  }
+  return maxDisplacementM === anchor.maxDisplacementM
+    ? anchor
+    : { ...anchor, maxDisplacementM };
 }
 
 /**
@@ -87,14 +137,34 @@ export function creditedPathDistanceMeters(
 ): number {
   let sum = 0;
   for (let i = 1; i < points.length; i++) {
-    const seg = haversineMeters(points[i - 1], points[i]);
-    if (seg <= gapThresholdM) sum += seg;
+    sum += creditedSegmentMeters(points[i - 1], points[i], gapThresholdM);
   }
   return sum;
 }
 
 /** 연속 두 점 사이가 이 거리(m)를 넘으면 지도에서 추적 끊김(점선)으로 본다. */
 export const MAP_GAP_THRESHOLD_M = 120;
+
+/** 명시적 재정박 또는 큰 GPS 점프면 직전 점과 거리를 이어 계산하지 않는다. */
+export function isPathBreak(
+  previous: LatLng,
+  current: LatLng,
+  gapThresholdM: number = MAP_GAP_THRESHOLD_M,
+): boolean {
+  return current.breakBefore === true
+    || haversineMeters(previous, current) > gapThresholdM;
+}
+
+/** 라이브 거리와 동일하게 경로 단절을 0m로 처리한 한 구간의 인정 거리. */
+export function creditedSegmentMeters(
+  previous: LatLng,
+  current: LatLng,
+  gapThresholdM: number = MAP_GAP_THRESHOLD_M,
+): number {
+  return isPathBreak(previous, current, gapThresholdM)
+    ? 0
+    : haversineMeters(previous, current);
+}
 
 export type PathSegments = { solidLines: LatLng[][]; gapLines: LatLng[][] };
 
@@ -112,7 +182,7 @@ export function splitPathAtGaps(
   let run: LatLng[] = [];
   for (let i = 0; i < path.length; i++) {
     if (i === 0) { run = [path[0]]; continue; }
-    if (haversineMeters(path[i - 1], path[i]) > gapThresholdM) {
+    if (isPathBreak(path[i - 1], path[i], gapThresholdM)) {
       if (run.length >= 2) solidLines.push(run);
       gapLines.push([path[i - 1], path[i]]);
       run = [path[i]];
@@ -590,10 +660,9 @@ export function computeKmSplits(path: LatLng[]): KmSplit[] {
   let cumM = 0;
 
   for (let i = 1; i < pts.length; i++) {
-    const rawSeg = haversineMeters(pts[i - 1], pts[i]);
-    // 추적 끊김(>120m) 구간은 거리 0으로 취급 — 라이브 거리 집계(재정박)와 일치시키고,
+    // 명시적 재정박·추적 끊김(>120m) 구간은 거리 0으로 취급 — 라이브 거리 집계와 일치시키고,
     // 끊김을 직선으로 이어 구간 페이스가 실제보다 빨라지는 것을 막는다(시간은 흐른 대로 반영).
-    const seg = rawSeg > MAP_GAP_THRESHOLD_M ? 0 : rawSeg;
+    const seg = creditedSegmentMeters(pts[i - 1], pts[i]);
     const tPrev = pts[i - 1].t!;
     const tCurr = pts[i].t!;
     const prevCumM = cumM;
@@ -640,13 +709,13 @@ export function computeBestSegments(path: LatLng[]): Record<string, number> {
   const pts = path.filter((p) => p.t != null);
   if (pts.length < 2) return {};
 
-  // 추적 끊김(>120m)을 가로지르는 윈도우 금지 — 지하철·일시정지 중 이동을 직선으로 이으면
+  // 명시적 재정박·추적 끊김(>120m)을 가로지르는 윈도우 금지 — 지하철·일시정지 중 이동을 직선으로 이으면
   // 비현실적으로 빠른 구간이 만들어져 가짜 PB가 서버에 등록된다(PB→NSM·유령까지 오염).
   // 끊김 없는 연속 구간별로만 최고 구간을 찾는다.
   const subpaths: LatLng[][] = [];
   let run: LatLng[] = [pts[0]];
   for (let i = 1; i < pts.length; i++) {
-    if (haversineMeters(pts[i - 1], pts[i]) > MAP_GAP_THRESHOLD_M) {
+    if (isPathBreak(pts[i - 1], pts[i])) {
       if (run.length >= 2) subpaths.push(run);
       run = [pts[i]];
     } else {

@@ -296,4 +296,28 @@ describe("고스트 갭 처리", () => {
     expect(result!.overlapDistanceM).toBeLessThan(800);
     expect(result!.overlapDistanceM).toBeGreaterThan(760);
   });
+
+  it("120m 이하 재정박 구간도 유령 거리로 다시 합산하지 않는다", () => {
+    const path: LatLng[] = [
+      { lat: 0, lng: 0, t: 0 },
+      { lat: 0.001, lng: 0, t: 10_000 },
+      { lat: 0.0015, lng: 0, t: 20_000, breakBefore: true }, // 약 56m 재정박
+      { lat: 0.0025, lng: 0, t: 30_000 },
+    ];
+    const total = ghostDistanceAtElapsed(path, 999_999);
+    // 인정 구간은 111m + 111m. marker가 없으면 중간 약 56m까지 더해진다.
+    expect(total).toBeGreaterThan(215);
+    expect(total).toBeLessThan(230);
+  });
+
+  it("재정박 시각 전에는 고스트가 단절 구간을 직선으로 가로질러 재생되지 않는다", () => {
+    const path: LatLng[] = [
+      { lat: 0, lng: 0, t: 0 },
+      { lat: 0.001, lng: 0, t: 10_000 },
+      { lat: 0.0015, lng: 0, t: 20_000, breakBefore: true },
+      { lat: 0.0025, lng: 0, t: 30_000 },
+    ];
+    expect(ghostPositionAtElapsed(path, 15_000)).toEqual({ lat: 0.001, lng: 0 });
+    expect(ghostPositionAtElapsed(path, 20_000)).toEqual({ lat: 0.0015, lng: 0 });
+  });
 });

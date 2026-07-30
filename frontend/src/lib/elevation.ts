@@ -1,4 +1,8 @@
-import { haversineMeters, type LatLng } from "./workoutTrack";
+import {
+  creditedSegmentMeters,
+  isPathBreak,
+  type LatLng,
+} from "./workoutTrack";
 
 export type ElevationProfilePoint = {
   distanceM: number;
@@ -76,26 +80,42 @@ function ascentDescent(smoothed: ElevationProfilePoint[]): { totalAscentM: numbe
 }
 
 export function computeElevationStats(path: LatLng[]): ElevationStats | null {
-  const profile: ElevationProfilePoint[] = [];
+  const segments: ElevationProfilePoint[][] = [[]];
   let distanceM = 0;
 
   for (let i = 0; i < path.length; i++) {
-    if (i > 0) distanceM += haversineMeters(path[i - 1], path[i]);
+    if (i > 0) {
+      if (isPathBreak(path[i - 1], path[i])) {
+        segments.push([]);
+      } else {
+        distanceM += creditedSegmentMeters(path[i - 1], path[i]);
+      }
+    }
     const elevationM = path[i].ele;
     if (validElevation(elevationM)) {
-      profile.push({ distanceM, elevationM });
+      segments[segments.length - 1].push({ distanceM, elevationM });
     }
   }
 
-  if (profile.length < MIN_VALID_POINTS) return null;
+  // 단절 양쪽을 하나의 스무딩 창·상승/하강 추세로 합치면 일시정지 중 위치·고도 이동이
+  // 실제 등반으로 잡힌다. 각 연속 구간을 독립적으로 평활·집계한다.
+  const smoothedSegments = segments
+    .filter((segment) => segment.length >= MIN_VALID_POINTS)
+    .map(smoothProfile);
+  if (smoothedSegments.length === 0) return null;
 
-  const smoothed = smoothProfile(profile);
-  const { totalAscentM, totalDescentM } = ascentDescent(smoothed);
-  let minElevationM = smoothed[0].elevationM;
-  let maxElevationM = smoothed[0].elevationM;
-  for (const point of smoothed) {
-    minElevationM = Math.min(minElevationM, point.elevationM);
-    maxElevationM = Math.max(maxElevationM, point.elevationM);
+  let totalAscentM = 0;
+  let totalDescentM = 0;
+  let minElevationM = smoothedSegments[0][0].elevationM;
+  let maxElevationM = smoothedSegments[0][0].elevationM;
+  for (const segment of smoothedSegments) {
+    const delta = ascentDescent(segment);
+    totalAscentM += delta.totalAscentM;
+    totalDescentM += delta.totalDescentM;
+    for (const point of segment) {
+      minElevationM = Math.min(minElevationM, point.elevationM);
+      maxElevationM = Math.max(maxElevationM, point.elevationM);
+    }
   }
 
   if (maxElevationM - minElevationM < 1) return null;
@@ -105,6 +125,6 @@ export function computeElevationStats(path: LatLng[]): ElevationStats | null {
     totalDescentM,
     minElevationM,
     maxElevationM,
-    profile: smoothed,
+    profile: smoothedSegments.flat(),
   };
 }
