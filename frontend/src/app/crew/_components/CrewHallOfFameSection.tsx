@@ -7,7 +7,7 @@ import { useCrewInsights } from "@/lib/api";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { ShowMoreToggle } from "./ShowMoreToggle";
+import { ShowMoreToggle } from "@/app/_components/ui/ShowMoreToggle";
 
 /** 접힌 상태에서 보여줄 최근 개월 수 — 나머지는 펼치기로 확인한다. */
 const COLLAPSED_MONTHS = 3;
@@ -50,7 +50,7 @@ export function CrewHallOfFameSection({ user }: { user: User }) {
           open={expanded}
           onToggle={() => setExpanded((v) => !v)}
           moreLabel={t.crew_hof_show_more(hiddenCount)}
-          lessLabel={t.crew_hof_show_less}
+          lessLabel={t.list_show_less}
         />
       ) : null}
     </Card>

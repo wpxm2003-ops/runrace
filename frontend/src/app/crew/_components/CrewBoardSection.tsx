@@ -12,7 +12,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { toast } from "sonner";
 import { BoardRow } from "./BoardRow";
-import { ShowMoreToggle } from "./ShowMoreToggle";
+import { ShowMoreToggle } from "@/app/_components/ui/ShowMoreToggle";
 
 /** 접힌 상태에서 보여줄 상위 순위 수 — 나머지는 펼치기로 확인한다. */
 const COLLAPSED_RANKS = 5;
@@ -111,8 +111,8 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
         <ShowMoreToggle
           open={expanded}
           onToggle={() => setExpanded((v) => !v)}
-          moreLabel={t.crew_board_show_more(hiddenCount)}
-          lessLabel={t.crew_board_show_less}
+          moreLabel={t.list_show_more_people(hiddenCount)}
+          lessLabel={t.list_show_less}
         />
       ) : null}
     </Card>

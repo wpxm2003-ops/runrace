@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
+import { ShowMoreToggle } from "@/app/_components/ui/ShowMoreToggle";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistanceAmount } from "@/lib/units";
@@ -15,6 +16,9 @@ import type { ChallengeMember } from "@/lib/api/types";
 export type HeadToHeadMap = Map<string, { wins: number; losses: number }>;
 
 const MEDALS = ["🥇", "🥈", "🥉"] as const;
+
+/** 접힌 상태에서 보여줄 상위 순위 수 — 참여 인원이 최대 50명까지 늘 수 있어 나머지는 펼치기로 본다. */
+const COLLAPSED_RANKS = 5;
 
 /** 순위 배지: 1~3위는 메달, 그 외(또는 메달 비표시)는 숫자 원형. */
 const RankBadge = memo(function RankBadge({
@@ -250,11 +254,16 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
 }: ChallengeLeaderboardProps) {
   const { t } = useLocale();
   const { unit } = useUnit();
+  const [expanded, setExpanded] = useState(false);
   const heading = !hasStarted
     ? t.detail_progress_scheduled
     : hasEnded
     ? t.detail_progress_ended
     : t.detail_progress;
+
+  // 서버가 순위 순으로 내려주므로 앞에서 자르면 곧 상위 순위다.
+  const hiddenCount = members.length - COLLAPSED_RANKS;
+  const visibleMembers = expanded ? members : members.slice(0, COLLAPSED_RANKS);
 
   return (
     <Card className="mt-6">
@@ -264,7 +273,7 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
           <ResultSummary members={members} myUserId={myUserId} unit={unit} />
         ) : null}
         <div className="flex flex-col gap-3">
-          {members.map((m, idx) => {
+          {visibleMembers.map((m, idx) => {
             const hasProgress = Number(m.totalKm) > 0;
             return (
             <MemberRow
@@ -283,6 +292,14 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
             );
           })}
         </div>
+        {hiddenCount > 0 ? (
+          <ShowMoreToggle
+            open={expanded}
+            onToggle={() => setExpanded((v) => !v)}
+            moreLabel={t.list_show_more_people(hiddenCount)}
+            lessLabel={t.list_show_less}
+          />
+        ) : null}
       </div>
     </Card>
   );
