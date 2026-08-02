@@ -23,8 +23,11 @@ const MIN_ELEVATION_DELTA_M = 3;
 const MAX_VERTICAL_ACCURACY_M = 15;
 /** 수직 정확도 미제공 기기는 수평 정확도로 대신 거른다(수직 오차는 통상 수평의 2~3배). */
 const MAX_HORIZONTAL_ACCURACY_FALLBACK_M = 20;
-/** 거리 리샘플 버킷 폭. 짧은 런은 10m 고정, 긴 런은 총거리/400으로 넓혀 포인트 수를 억제. */
-const RESAMPLE_MIN_BUCKET_M = 10;
+/**
+ * 거리 리샘플 버킷 폭. 짧은 런은 25m 고정, 긴 런은 총거리/400으로 넓혀 포인트 수를 억제.
+ * 25m(1Hz 조깅 기준 샘플 ~15개)는 버킷 중앙값이 상관 드리프트까지 상당 부분 누르는 폭이다.
+ */
+const RESAMPLE_MIN_BUCKET_M = 25;
 const RESAMPLE_TARGET_BUCKETS = 400;
 
 function validElevation(value: number | undefined): value is number {
@@ -83,22 +86,72 @@ function resampleByDistance(
     }));
 }
 
-/** 버킷 하나를 통째로 오염시킨 단발 스파이크 제거(중앙값-of-3). 양 끝점은 그대로 둔다. */
-function suppressSpikes(points: ElevationProfilePoint[]): ElevationProfilePoint[] {
+/** 이동 중앙값(반경 2 = 창 5). 몇 버킷짜리 스파이크는 제거하고 완만한 경사 추세는 보존한다. */
+function rollingMedian(points: ElevationProfilePoint[]): ElevationProfilePoint[] {
   if (points.length < 3) return points;
-  return points.map((point, i) => {
-    if (i === 0 || i === points.length - 1) return point;
+  return points.map((point, index) => {
+    const from = Math.max(0, index - 2);
+    const to = Math.min(points.length - 1, index + 2);
     return {
       ...point,
-      elevationM: median([points[i - 1].elevationM, point.elevationM, points[i + 1].elevationM]),
+      elevationM: median(points.slice(from, to + 1).map((p) => p.elevationM)),
+    };
+  });
+}
+
+/** 러닝 코스에서 물리적으로 가능한 최대 경사(30%). 이를 넘는 고도 변화는 GPS 오차다. */
+const MAX_RUN_GRADE = 0.3;
+/** 세그먼트 시작 후 이 거리까지는 후방 클램프(수렴 이후 데이터 기준)를 우선 신뢰한다. */
+const COLD_START_TRUST_M = 300;
+
+function gradeClampForward(points: ElevationProfilePoint[]): number[] {
+  const out = new Array<number>(points.length);
+  out[0] = points[0].elevationM;
+  for (let i = 1; i < points.length; i++) {
+    const maxDelta = MAX_RUN_GRADE * Math.max(1, points[i].distanceM - points[i - 1].distanceM);
+    const prev = out[i - 1];
+    out[i] = Math.min(prev + maxDelta, Math.max(prev - maxDelta, points[i].elevationM));
+  }
+  return out;
+}
+
+function gradeClampBackward(points: ElevationProfilePoint[]): number[] {
+  const n = points.length;
+  const out = new Array<number>(n);
+  out[n - 1] = points[n - 1].elevationM;
+  for (let i = n - 2; i >= 0; i--) {
+    const maxDelta = MAX_RUN_GRADE * Math.max(1, points[i + 1].distanceM - points[i].distanceM);
+    const next = out[i + 1];
+    out[i] = Math.min(next + maxDelta, Math.max(next - maxDelta, points[i].elevationM));
+  }
+  return out;
+}
+
+/**
+ * 콜드스타트 고도 드리프트 억제. 러닝에서 불가능한 경사(30% 초과)를 양방향 클램프로
+ * 깎되, 세그먼트 시작 300m까지는 후방 클램프를 우선한다 — GPS 고도는 시작(재개) 직후가
+ * 가장 부정확하고, 수렴 이후 데이터에서 되짚어야 그 오차가 드러난다.
+ * 30% 이하의 실제 언덕은 두 클램프 모두 원본을 그대로 통과시키므로 영향이 없다.
+ */
+function suppressColdStartDrift(points: ElevationProfilePoint[]): ElevationProfilePoint[] {
+  if (points.length < 3) return points;
+  const forward = gradeClampForward(points);
+  const backward = gradeClampBackward(points);
+  const startM = points[0].distanceM;
+  return points.map((point, i) => {
+    const rel = point.distanceM - startM;
+    const backwardWeight = rel >= COLD_START_TRUST_M ? 0.5 : 1 - (rel / COLD_START_TRUST_M) * 0.5;
+    return {
+      ...point,
+      elevationM: backward[i] * backwardWeight + forward[i] * (1 - backwardWeight),
     };
   });
 }
 
 function smoothProfile(points: ElevationProfilePoint[]): ElevationProfilePoint[] {
   return points.map((point, index) => {
-    const from = Math.max(0, index - 2);
-    const to = Math.min(points.length - 1, index + 2);
+    const from = Math.max(0, index - 3);
+    const to = Math.min(points.length - 1, index + 3);
     let sum = 0;
     let count = 0;
     for (let i = from; i <= to; i++) {
@@ -174,7 +227,9 @@ export function computeElevationStats(path: LatLng[]): ElevationStats | null {
   const bucketM = Math.max(RESAMPLE_MIN_BUCKET_M, distanceM / RESAMPLE_TARGET_BUCKETS);
   const smoothedSegments = segments
     .filter((segment) => segment.length >= MIN_VALID_POINTS)
-    .map((segment) => smoothProfile(suppressSpikes(resampleByDistance(segment, bucketM))));
+    .map((segment) =>
+      smoothProfile(suppressColdStartDrift(rollingMedian(resampleByDistance(segment, bucketM)))),
+    );
   if (smoothedSegments.length === 0) return null;
 
   let totalAscentM = 0;

@@ -6,6 +6,35 @@ function point(lng: number, ele?: number): LatLng {
   return ele == null ? { lat: 37, lng } : { lat: 37, lng, ele };
 }
 
+/** 결정적 PRNG — 시뮬레이션 테스트가 매 실행 동일한 노이즈를 재현하게 한다. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** 1Hz·보폭 1.7m(≈10분/km) GPS 트랙 합성. AR(1) 고도 드리프트(정상 σ≈2.9m) 포함. */
+function simulateTrack(
+  seed: number,
+  samples: number,
+  terrain: (distanceM: number) => number,
+  coldStart: (sampleIndex: number) => number = () => 0,
+): LatLng[] {
+  const rand = mulberry32(seed);
+  const points: LatLng[] = [];
+  let drift = 0;
+  for (let i = 0; i < samples; i++) {
+    drift = drift * 0.98 + (rand() - 0.5) * 2;
+    points.push(point(127 + i * 0.0000191, 100 + terrain(i * 1.7) + drift + coldStart(i)));
+  }
+  return points;
+}
+
 describe("computeElevationStats", () => {
   it("returns null when the path has no elevation data", () => {
     expect(computeElevationStats([point(127), point(127.001), point(127.002)])).toBeNull();
@@ -91,6 +120,38 @@ describe("computeElevationStats", () => {
     for (let i = 0; i < 50; i++) points.push(point(127 + i * 0.0001, i === 10 ? 140 : 100));
 
     expect(computeElevationStats(points)).toBeNull();
+  });
+
+  it("콜드스타트 진동 + GPS 드리프트가 있는 평지 코스는 거의 평평하게 정리된다", () => {
+    // 실측 회귀: 평지로만 달렸는데 초반 고도가 수십 m 요동치고, 상대 스케일 차트 전체가
+    // 산길처럼 그려졌다. 첫 2분간 감쇠 진동(최대 22m)을 포함한 3km 평지 합성 트랙에서
+    // 필터 후 잔여 고도 범위가 작아야(수 m) 차트가 평지로 읽힌다.
+    const points = simulateTrack(
+      42,
+      1800,
+      () => 0,
+      (i) => 22 * Math.exp(-i / 40) * Math.cos(i / 7),
+    );
+
+    const stats = computeElevationStats(points);
+    const range = stats ? stats.maxElevationM - stats.minElevationM : 0;
+    const ascent = stats ? stats.totalAscentM : 0;
+    expect(range).toBeLessThan(8);
+    expect(ascent).toBeLessThan(15);
+  });
+
+  it("실제 언덕(완만한 경사)은 필터를 강화해도 상승고도·범위가 보존된다", () => {
+    // 800m에 걸쳐 30m 오르는 3.75% 경사 — 경사 클램프(30%)·중앙값·평활을 다 거쳐도
+    // 실제 지형은 살아남아야 한다.
+    const points = simulateTrack(7, 1800, (d) =>
+      d < 800 ? 0 : d < 1600 ? (d - 800) * 0.0375 : d < 2400 ? 30 - (d - 1600) * 0.0375 : 0,
+    );
+
+    const stats = computeElevationStats(points);
+    expect(stats).not.toBeNull();
+    expect(stats!.totalAscentM).toBeGreaterThan(20);
+    expect(stats!.totalAscentM).toBeLessThan(45);
+    expect(stats!.maxElevationM - stats!.minElevationM).toBeGreaterThan(20);
   });
 });
 

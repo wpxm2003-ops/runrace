@@ -27,16 +27,15 @@ export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
 
   if (workoutType === "INDOOR" || distanceM < 3000) return null;
 
-  const splits = computeKmSplits(path);
+  // 마지막 미완 구간(<900m)은 제외 — 짧은 꼬리 조각이 '가장 빨랐던 구간'을 차지하고
+  // 목록 맨 아래에 또 나타나, 요약 카드와 중복돼 보이는 문제가 있었다.
+  const splits = computeKmSplits(path).filter((s) => s.distanceM >= 900);
   if (splits.length === 0) return null;
 
   const fastest = splits.reduce((a, b) => (a.paceSec < b.paceSec ? a : b));
   const slowest = splits.reduce((a, b) => (a.paceSec > b.paceSec ? a : b));
 
-  const kmLabel = (s: KmSplit) =>
-    s.distanceM < 900
-      ? `${(s.distanceM / 1000).toFixed(2)} km`
-      : `${s.km} km`;
+  const kmLabel = (s: KmSplit) => `${s.km} km`;
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
@@ -60,9 +59,8 @@ export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between border-t border-zinc-100 px-4 py-2.5 text-xs text-zinc-400 hover:bg-zinc-50"
+        className="flex w-full items-center justify-end border-t border-zinc-100 px-4 py-2.5 text-xs text-zinc-400 hover:bg-zinc-50"
       >
-        <span>{t.km_split_col_km}</span>
         <span>{open ? t.km_split_hide : t.km_split_show}</span>
       </button>
 

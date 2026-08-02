@@ -11,7 +11,9 @@ const CHART_W = 320;
 const CHART_H = 96;
 const PAD_X = 10;
 const PAD_Y = 10;
-const MIN_DISPLAY_RANGE_M = 20;
+// 평지 코스의 잔여 GPS 드리프트(수 m)가 차트를 꽉 채워 산길처럼 보이지 않게,
+// 표시 범위 하한을 넉넉히 잡는다. 실제 언덕 코스(범위 30m+)는 영향 없음.
+const MIN_DISPLAY_RANGE_M = 30;
 
 function toChartPoints(
   profile: { distanceM: number; elevationM: number }[],
