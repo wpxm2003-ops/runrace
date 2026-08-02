@@ -202,16 +202,33 @@ export function invalidatePrizes(challengeId: number) {
   invalidateByPrefix("prizes", challengeId);
 }
 
-/** 닉네임 변경 후 닉네임이 노출되는 SWR 캐시를 재검증한다. */
+/**
+ * 내 닉네임이 실제로 담기는 캐시의 키 접두사.
+ *
+ * 레이스 목록(challenges-page·challenges-mine-page)은 여기 없다 — ChallengeListItem에
+ * 닉네임 필드가 아예 없다. (예전 코드는 존재하지 않는 "challenges" 접두사를 검사해
+ * 아무것도 무효화하지 못했다. 접두사를 고치는 게 아니라 뺀 이유가 이것이다.)
+ * 라이벌 목록도 제외 — 상대 닉네임만 담아 내 변경과 무관하다.
+ */
+const NICKNAME_BEARING_PREFIXES = new Set([
+  "me", // 내 정보
+  "challenge", // 순위표·참여자 운동기록·승인 목록 (uid가 2~3번째 자리)
+  "crew-me", // 크루 월간 보드의 내 행
+  "crew-insights", // 명예의 전당·잔디 닉네임
+  "crew-detail", // 공개 크루 상세의 leaderNickname
+  "crew-match", // 대항전 로스터 닉네임
+]);
+
+/** 닉네임 변경 후 내 닉네임이 노출되는 SWR 캐시를 재검증한다. */
 export function invalidateAfterNicknameChange(userId: string) {
   void appMutate(
     (key) => {
       if (!Array.isArray(key)) return false;
-      const [head, a, b, c] = key;
-      if (head === "me" && a === userId) return true;
-      if (head === "challenges" && (a === userId || a === "mine")) return true;
-      if (head === "challenge" && (b === userId || c === userId)) return true;
-      return false;
+      const head = key[0];
+      // uid가 키의 몇 번째에 오는지는 훅마다 다르므로(2번째·3번째·4번째) 포함 여부로 본다.
+      return typeof head === "string"
+        && NICKNAME_BEARING_PREFIXES.has(head)
+        && key.includes(userId);
     },
     undefined,
     { revalidate: true },

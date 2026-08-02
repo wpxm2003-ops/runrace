@@ -69,17 +69,22 @@ public interface CrewMemberRepository extends JpaRepository<CrewMember, Long> {
     UUID getUserId();
   }
 
-  /** 명예의 전당 — KST 월별·멤버별 거리 합산(가입 시점 이후만). 서비스에서 월별 1위를 뽑는다. */
+  /**
+   * 명예의 전당 — KST 월별·멤버별 거리 합산(가입 시점 이후만). 서비스에서 월별 1위를 뽑는다.
+   * {@code from}은 노출 개월 수만큼만 거슬러 올라간 하한이다 — 이게 없으면 12개월치만 쓰면서
+   * 크루 생성 이래 전 기록을 매번 훑는다(결과는 동일, 스캔량만 무한히 증가).
+   */
   @Query(value = """
       select to_char(w.started_at at time zone 'Asia/Seoul', 'YYYY-MM') as "ym",
              w.user_id as "userId",
              sum(w.distance_m) as "distanceM"
       from workout_session w
       join crew_member m on m.user_id = w.user_id
-      where m.crew_id = :crewId and w.started_at >= m.joined_at
+      where m.crew_id = :crewId and w.started_at >= m.joined_at and w.started_at >= :from
       group by 1, 2
       """, nativeQuery = true)
-  List<MonthlyMemberAgg> aggregateMonthlyMemberDistance(@Param("crewId") Long crewId);
+  List<MonthlyMemberAgg> aggregateMonthlyMemberDistance(
+      @Param("crewId") Long crewId, @Param("from") OffsetDateTime from);
 
   /** {@link #aggregateMonthlyMemberDistance} 결과 투영. */
   interface MonthlyMemberAgg {

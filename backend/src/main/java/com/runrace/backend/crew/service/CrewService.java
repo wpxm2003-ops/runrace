@@ -77,6 +77,9 @@ public class CrewService {
 
   /** 월간 보드 경계의 단일 기준 — 기존 운동일 집계와 동일하게 KST를 쓴다. */
   private static final ZoneId KST = KstTime.ZONE;
+
+  /** 명예의 전당에 노출할 완결 개월 수 — 조회 하한과 표시 개수가 함께 쓰는 단일 출처. */
+  private static final int HALL_OF_FAME_MONTHS = 12;
   /** 초대 코드 문자 — 혼동되는 I·L·O·0·1 제외. */
   private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   private static final int CODE_LEN = 6;
@@ -210,7 +213,10 @@ public class CrewService {
     OffsetDateTime heatmapFrom = monthStartKst();
 
     List<CrewInsightsResponse.DayCell> heatmap = buildHeatmap(crew.getId(), members, heatmapFrom);
-    List<CrewInsightsResponse.HallEntry> hallOfFame = buildHallOfFame(crew.getId(), members);
+    // 이번 달(진행 중)은 어차피 제외하므로, 이번 달 1일에서 노출 개월 수만큼 거슬러 올라가면
+    // 완결된 달이 정확히 HALL_OF_FAME_MONTHS개 들어온다.
+    List<CrewInsightsResponse.HallEntry> hallOfFame =
+        buildHallOfFame(crew.getId(), members, heatmapFrom.minusMonths(HALL_OF_FAME_MONTHS));
 
     return new CrewInsightsResponse(
         heatmapFrom.atZoneSameInstant(KST).toLocalDate().toString(),
@@ -240,8 +246,13 @@ public class CrewService {
         .toList();
   }
 
-  /** 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대 12개. */
-  private List<CrewInsightsResponse.HallEntry> buildHallOfFame(Long crewId, List<CrewMember> members) {
+  /**
+   * 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대
+   * {@value #HALL_OF_FAME_MONTHS}개. {@code from}은 그 개월 수에서 계산된 조회 하한이라
+   * 아래 limit과 같은 상수를 공유해야 한다(한쪽만 바꾸면 개수가 어긋난다).
+   */
+  private List<CrewInsightsResponse.HallEntry> buildHallOfFame(
+      Long crewId, List<CrewMember> members, OffsetDateTime from) {
     Map<UUID, String> nicknames = new HashMap<>();
     for (CrewMember m : members) {
       nicknames.put(m.getUser().getId(), m.getUser().getNickname());
@@ -249,7 +260,7 @@ public class CrewService {
 
     String currentYm = LocalDate.now(KST).toString().substring(0, 7);
     Map<String, CrewInsightsResponse.HallEntry> bestByMonth = new HashMap<>();
-    for (var row : crewMemberRepository.aggregateMonthlyMemberDistance(crewId)) {
+    for (var row : crewMemberRepository.aggregateMonthlyMemberDistance(crewId, from)) {
       if (row.getYm().compareTo(currentYm) >= 0) {
         continue;
       }
@@ -261,7 +272,7 @@ public class CrewService {
     }
     return bestByMonth.values().stream()
         .sorted(Comparator.comparing(CrewInsightsResponse.HallEntry::month).reversed())
-        .limit(12)
+        .limit(HALL_OF_FAME_MONTHS)
         .toList();
   }
 
