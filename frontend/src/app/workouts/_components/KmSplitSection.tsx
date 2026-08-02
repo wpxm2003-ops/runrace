@@ -22,23 +22,6 @@ function paceChangeLabel(delta: number, t: Translations): string {
   return abs >= 60 ? formatPaceSecPerUnit(abs) : `${Math.round(abs)}${t.km_split_sec_unit}`;
 }
 
-function enduranceVerdict(
-  splits: KmSplit[],
-  t: Translations,
-): { text: string; positive: boolean } | null {
-  const full = splits.filter((s) => s.distanceM >= 900);
-  if (full.length < 2) return null;
-  const first = full[0];
-  const last = full[full.length - 1];
-  const diff = last.paceSec - first.paceSec;
-  const absDiff = Math.abs(diff);
-  if (absDiff < 5) return null;
-  if (diff < 0) {
-    return { text: t.km_split_verdict_faster(paceChangeLabel(absDiff, t)), positive: true };
-  }
-  return { text: t.km_split_verdict_slower(paceChangeLabel(absDiff, t)), positive: false };
-}
-
 export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -49,7 +32,6 @@ export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
 
   const fastest = splits.reduce((a, b) => (a.paceSec < b.paceSec ? a : b));
   const slowest = splits.reduce((a, b) => (a.paceSec > b.paceSec ? a : b));
-  const verdict = enduranceVerdict(splits, t);
 
   const kmLabel = (s: KmSplit) =>
     s.distanceM < 900
@@ -61,7 +43,7 @@ export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
       <div className="p-4 pb-3">
         <p className="text-sm font-medium text-zinc-800 mb-3">{t.km_split_title}</p>
 
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="grid grid-cols-2 gap-2">
           <div className="rounded-lg bg-emerald-50 px-3 py-2.5">
             <p className="text-xs text-emerald-700 mb-1">{t.km_split_fastest}</p>
             <p className="text-sm font-medium text-emerald-900">{kmLabel(fastest)}</p>
@@ -73,19 +55,6 @@ export function KmSplitSection({ path, distanceM, workoutType, t }: Props) {
             <p className="text-xs font-mono text-orange-700 mt-0.5">{paceLabel(slowest.paceSec)}</p>
           </div>
         </div>
-
-        {verdict && (
-          <div
-            className={[
-              "rounded-lg px-3 py-2 text-xs",
-              verdict.positive
-                ? "bg-blue-50 text-blue-700"
-                : "bg-zinc-100 text-zinc-500",
-            ].join(" ")}
-          >
-            {verdict.text}
-          </div>
-        )}
       </div>
 
       <button

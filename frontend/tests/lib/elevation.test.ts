@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeElevationStats } from "@/lib/elevation";
+import { computeElevationStats, trustedAltitude } from "@/lib/elevation";
 import type { LatLng } from "@/lib/workoutTrack";
 
 function point(lng: number, ele?: number): LatLng {
@@ -81,5 +81,33 @@ describe("computeElevationStats", () => {
     expect(stats!.totalDescentM).toBe(0);
     // 두 연속 구간의 실제 네 개 구간만 누적되고, 재정박 약 44m는 빠져야 한다.
     expect(stats!.profile[stats!.profile.length - 1].distanceM).toBeLessThan(40);
+  });
+
+  it("평지에 단발 GPS 스파이크가 껴도 가짜 언덕을 만들지 않는다", () => {
+    // 실측 회귀: 튄 고도 샘플 하나가 min-max 상대 스케일 차트 전체를 산길처럼 보이게 했다.
+    // 평지(100m) 50포인트 중 한 점만 140m로 튄 경로 — 리샘플 중앙값+스파이크 필터가 걸러내
+    // 고도 변화 1m 미만(=사실상 평지) 판정으로 null이 나와야 한다.
+    const points: LatLng[] = [];
+    for (let i = 0; i < 50; i++) points.push(point(127 + i * 0.0001, i === 10 ? 140 : 100));
+
+    expect(computeElevationStats(points)).toBeNull();
+  });
+});
+
+describe("trustedAltitude", () => {
+  it("수직 정확도가 나쁜 고도(콜드스타트 수렴 전)는 버린다", () => {
+    expect(trustedAltitude(85, 40, 8)).toBeUndefined();
+    expect(trustedAltitude(85, 10, 8)).toBe(85);
+  });
+
+  it("수직 정확도 미제공 기기는 수평 정확도로 대신 거른다", () => {
+    expect(trustedAltitude(85, null, 35)).toBeUndefined();
+    expect(trustedAltitude(85, null, 10)).toBe(85);
+    expect(trustedAltitude(85, null, null)).toBe(85);
+  });
+
+  it("고도 값 자체가 없거나 무효면 undefined", () => {
+    expect(trustedAltitude(null, 5, 5)).toBeUndefined();
+    expect(trustedAltitude(Number.NaN, 5, 5)).toBeUndefined();
   });
 });

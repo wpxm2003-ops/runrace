@@ -11,6 +11,8 @@ export type GeoCoords = {
   accuracy: number;
   speed: number | null;
   altitude: number | null;
+  /** 수직 정확도(m). 미제공 시 null — 고도 신뢰 판정에 사용. */
+  altitudeAccuracy: number | null;
 };
 
 type PositionCallback = (coords: GeoCoords) => void;
@@ -43,13 +45,13 @@ export async function startBackgroundWatch(
           return;
         }
         if (position) {
-          const p = position as typeof position & { altitude?: number | null };
           onPosition({
             latitude: position.latitude,
             longitude: position.longitude,
             accuracy: position.accuracy,
             speed: position.speed ?? null,
-            altitude: p.altitude ?? null,
+            altitude: position.altitude ?? null,
+            altitudeAccuracy: position.altitudeAccuracy ?? null,
           });
         }
       },
@@ -69,6 +71,7 @@ export async function startBackgroundWatch(
         accuracy: pos.coords.accuracy,
         speed: pos.coords.speed,
         altitude: pos.coords.altitude,
+        altitudeAccuracy: pos.coords.altitudeAccuracy,
       });
     },
     (err) => onError(err.message),

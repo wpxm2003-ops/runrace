@@ -22,6 +22,7 @@ import {
   type WorkoutFinishSnapshot,
   type WorkoutStatus,
 } from "./workoutTrack";
+import { trustedAltitude } from "./elevation";
 import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersistence";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
@@ -309,10 +310,17 @@ export function useWorkoutSession(
     (coords: GeoCoords) => {
       if (!isCurrentSessionOwner() || statusRef.current !== "running") return;
       setGeoError(null);
-      const altitude =
-        coords.altitude != null && Number.isFinite(coords.altitude)
-          ? coords.altitude
-          : undefined;
+      const now = Date.now();
+      const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
+      // 고도는 첫 양호 fix 이전(콜드스타트 수렴 중)이거나 수직 정확도가 나쁘면 싣지 않는다 —
+      // 수평은 멀쩡해 보여도 고도 수렴은 더 늦어서, 초반 고도 스파이크가 프로필을 오염시킨다.
+      const altitude = vehicleStateRef.current.hasHadGoodFix
+        ? trustedAltitude(
+            coords.altitude,
+            normalizeGpsAccuracyM(coords.altitudeAccuracy),
+            accuracyM,
+          )
+        : undefined;
       const point: LatLng = {
         lat: coords.latitude,
         lng: coords.longitude,
@@ -320,8 +328,6 @@ export function useWorkoutSession(
       };
       setPosition(point);
 
-      const now = Date.now();
-      const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
       const speedMps = peekSpeedMps(coords, point, now);
 
       const accuracyRecent = pushAccuracySample(
@@ -731,14 +737,10 @@ export function useWorkoutSession(
         ) {
           return;
         }
-        const altitude =
-          pos.coords.altitude != null && Number.isFinite(pos.coords.altitude)
-            ? pos.coords.altitude
-            : undefined;
+        // 시드 포인트에는 고도를 싣지 않는다 — 시작 직후 fix의 고도는 수렴 전이라 신뢰 불가.
         const p: LatLng = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-          ...(altitude != null ? { ele: altitude } : {}),
           // 시작 기준점에도 t를 부여 — 유령 격차·구간 기록이 첫 포인트부터 t에 의존한다.
           t: runStartedRef.current != null ? Date.now() - runStartedRef.current : 0,
         };
