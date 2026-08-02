@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { mutate } from "swr";
 import { useMe } from "@/lib/api";
 import { updateLanguage } from "@/lib/api/auth";
 import { useLocale } from "@/lib/i18n";
@@ -14,7 +13,8 @@ import { useAuthUser } from "@/lib/useAuthUser";
 export function LanguageSync() {
   const { user } = useAuthUser();
   const { locale } = useLocale();
-  const { data: me } = useMe(user);
+  // 전역 mutate는 커스텀 provider 캐시에 닿지 않으므로, 훅에 바인딩된 mutate로 갱신한다.
+  const { data: me, mutate: mutateMe } = useMe(user);
   const syncingRef = useRef(false);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function LanguageSync() {
     syncingRef.current = true;
     updateLanguage(user, locale)
       .then((updated) => {
-        void mutate(["me", user.uid], updated, { revalidate: false });
+        void mutateMe(updated, { revalidate: false });
       })
       .catch(() => {
         // 실패 시 다음 effect에서 재시도
@@ -33,7 +33,7 @@ export function LanguageSync() {
       .finally(() => {
         syncingRef.current = false;
       });
-  }, [user, me, locale]);
+  }, [user, me, locale, mutateMe]);
 
   return null;
 }

@@ -3,8 +3,9 @@
  * stale-while-revalidate — 캐시된 데이터를 즉시 보여주고 백그라운드에서 갱신한다.
  * 쓰기(참여/투표/기록 등) 후에는 각 invalidate* 헬퍼로 즉시 재검증한다.
  */
-import useSWR, { mutate as globalMutate, unstable_serialize } from "swr";
+import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
+import { appMutate } from "@/lib/swrMutate";
 import type { User } from "firebase/auth";
 import type { CrewRegion, WorkoutDetail } from "./types";
 import { reportClientError } from "./errors";
@@ -58,7 +59,7 @@ function cacheUid(user?: User | null, anonymous: string | null = null): string |
 
 /** [prefix, id, ...] 키 캐시 무효화. id 생략 시 prefix 전체. */
 function invalidateByPrefix(prefix: string, id?: string | number) {
-  void globalMutate(
+  void appMutate(
     (key) => Array.isArray(key) && key[0] === prefix && (id === undefined || key[1] === id),
   );
 }
@@ -174,7 +175,7 @@ export function useChallengeDetail(id: number | null, user?: User | null) {
  * 비우면 뒤로가기로 목록에 돌아왔을 때 캐시가 없어 스켈레톤이 다시 뜬다.
  */
 export function invalidateChallengeLists() {
-  void globalMutate(
+  void appMutate(
     (key) =>
       Array.isArray(key) &&
       (key[0] === "challenges-page" || key[0] === "challenges-mine-page"),
@@ -183,7 +184,7 @@ export function invalidateChallengeLists() {
 
 /** 레이스 참여자 운동기록 목록을 갱신한다 (실내러닝 승인 반영 후). */
 export function invalidateChallengeWorkouts(challengeId: number, userId: string) {
-  return globalMutate(unstable_serialize(["challenge", challengeId, "workouts", userId]));
+  return appMutate(["challenge", challengeId, "workouts", userId]);
 }
 
 /** 레이스 경품 목록 — S3 키는 응답에 없다(uid로는 사용자별 캐시 분리만 한다). */
@@ -203,7 +204,7 @@ export function invalidatePrizes(challengeId: number) {
 
 /** 닉네임 변경 후 닉네임이 노출되는 SWR 캐시를 재검증한다. */
 export function invalidateAfterNicknameChange(userId: string) {
-  void globalMutate(
+  void appMutate(
     (key) => {
       if (!Array.isArray(key)) return false;
       const [head, a, b, c] = key;
@@ -540,9 +541,9 @@ export function useWorkoutListByYear(user: User | null, year: number) {
 }
 
 export function invalidateWorkoutLists(userId: string, year?: number) {
-  void globalMutate(["workouts", "summary", userId]);
+  void appMutate(["workouts", "summary", userId]);
   if (year != null) {
-    void globalMutate(["workouts", userId, year]);
+    void appMutate(["workouts", userId, year]);
   }
 }
 
@@ -558,7 +559,7 @@ export function useWorkoutDetail(workoutId: number | null, user: User | null) {
 }
 
 export function invalidateWorkoutDetail(workoutId: number, userId: string) {
-  void globalMutate(["workout", workoutId, userId]);
+  void appMutate(["workout", workoutId, userId]);
 }
 
 /**
@@ -567,7 +568,7 @@ export function invalidateWorkoutDetail(workoutId: number, userId: string) {
  * (GET 응답이 느리거나 일시적으로 옛 값을 줄 때 UI가 되돌아가는 것 방지).
  */
 export function patchWorkoutDetailImage(workoutId: number, userId: string, imageUrl: string | null) {
-  void globalMutate(
+  void appMutate(
     ["workout", workoutId, userId],
     (cur?: WorkoutDetail) => (cur ? { ...cur, imageUrl } : cur),
     { revalidate: false },

@@ -19,10 +19,21 @@ import { isNativeApp } from "@/lib/nativeNav";
 import { FcmBootstrap } from "./FcmBootstrap";
 import { LanguageSync } from "./LanguageSync";
 import { NavProgressProvider } from "./NavProgressProvider";
-import { SWRConfig } from "swr";
+import { SWRConfig, useSWRConfig } from "swr";
 import { createSwrCacheProvider } from "@/lib/swrCacheProvider";
+import { bindAppMutate } from "@/lib/swrMutate";
 import { Toaster } from "sonner";
 import { useEffect } from "react";
+
+/**
+ * SWRConfig(provider) 안쪽 캐시의 mutate를 전역 invalidate* 헬퍼(appMutate)에 연결한다.
+ * effect가 아닌 렌더 시점에 주입하는 이유: 형제·자식들의 effect보다 먼저 실행돼
+ * 마운트 직후의 무효화도 앱 캐시에 닿는다. 같은 함수 참조의 재할당이라 멱등하다.
+ */
+function SwrMutateBinder() {
+  bindAppMutate(useSWRConfig().mutate);
+  return null;
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -64,6 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SWRConfig value={{ provider: createSwrCacheProvider }}>
+    <SwrMutateBinder />
     <AuthProvider>
     <LocaleProvider>
     <UnitProvider>
