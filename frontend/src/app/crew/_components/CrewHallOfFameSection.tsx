@@ -1,25 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
 import { useCrewInsights } from "@/lib/api";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { ShowMoreToggle } from "./ShowMoreToggle";
 
-/** 명예의 전당 — 월별 MVP 히스토리(완결된 달만). */
+/** 접힌 상태에서 보여줄 최근 개월 수 — 나머지는 펼치기로 확인한다. */
+const COLLAPSED_MONTHS = 3;
+
+/** 명예의 전당 — 월별 MVP 히스토리(완결된 달만, 최신월 우선 최대 12개월). */
 export function CrewHallOfFameSection({ user }: { user: User }) {
   const { t } = useLocale();
   const { unit } = useUnit();
+  const [expanded, setExpanded] = useState(false);
   const { data: insights } = useCrewInsights(user, true);
   const hallOfFame = insights?.hallOfFame ?? [];
   if (hallOfFame.length === 0) return null;
+
+  const hiddenCount = hallOfFame.length - COLLAPSED_MONTHS;
+  const visible = expanded ? hallOfFame : hallOfFame.slice(0, COLLAPSED_MONTHS);
 
   return (
     <Card className="mt-4">
       <div className="text-base font-semibold">{t.crew_hof_heading}</div>
       <div className="mt-2 divide-y divide-zinc-100">
-        {hallOfFame.map((h) => (
+        {visible.map((h) => (
           <div key={h.month} className="flex items-center justify-between gap-3 py-2.5">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="shrink-0 text-sm">🏆</span>
@@ -36,6 +45,14 @@ export function CrewHallOfFameSection({ user }: { user: User }) {
           </div>
         ))}
       </div>
+      {hiddenCount > 0 ? (
+        <ShowMoreToggle
+          open={expanded}
+          onToggle={() => setExpanded((v) => !v)}
+          moreLabel={t.crew_hof_show_more(hiddenCount)}
+          lessLabel={t.crew_hof_show_less}
+        />
+      ) : null}
     </Card>
   );
 }

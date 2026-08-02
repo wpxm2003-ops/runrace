@@ -12,6 +12,10 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { toast } from "sonner";
 import { BoardRow } from "./BoardRow";
+import { ShowMoreToggle } from "./ShowMoreToggle";
+
+/** 접힌 상태에서 보여줄 상위 순위 수 — 나머지는 펼치기로 확인한다. */
+const COLLAPSED_RANKS = 5;
 
 /** 이번 달 보드 — 크루원이 매일 확인하는 핵심(총거리·목표·멤버 넛지)이라 크루 홈 최상단. */
 export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User }) {
@@ -19,6 +23,7 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
   const { unit } = useUnit();
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
   const [nudgingId, setNudgingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const monthTotalM = crew.members.reduce((sum, m) => sum + m.monthDistanceM, 0);
   const goalM = crew.monthGoalKm != null ? crew.monthGoalKm * 1000 : null;
@@ -28,6 +33,10 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
   const crewGoalPercent = crew.members.length > 0
     ? Math.round((goalAchievers / crew.members.length) * 100)
     : 0;
+
+  // 백엔드가 이번 달 거리 내림차순으로 정렬해 내려주므로 앞에서 자르면 곧 상위 순위다.
+  const hiddenCount = crew.members.length - COLLAPSED_RANKS;
+  const visibleMembers = expanded ? crew.members : crew.members.slice(0, COLLAPSED_RANKS);
 
   async function onNudge(targetUserId: string, variant: number) {
     if (nudgingId) return;
@@ -82,7 +91,7 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
         </div>
       ) : null}
       <div className="mt-2 divide-y divide-zinc-100">
-        {crew.members.map((m, i) => (
+        {visibleMembers.map((m, i) => (
           <BoardRow
             key={m.userId}
             rank={i + 1}
@@ -98,6 +107,14 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
           />
         ))}
       </div>
+      {hiddenCount > 0 ? (
+        <ShowMoreToggle
+          open={expanded}
+          onToggle={() => setExpanded((v) => !v)}
+          moreLabel={t.crew_board_show_more(hiddenCount)}
+          lessLabel={t.crew_board_show_less}
+        />
+      ) : null}
     </Card>
   );
 }
