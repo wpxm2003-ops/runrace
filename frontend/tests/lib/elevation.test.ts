@@ -156,9 +156,16 @@ describe("computeElevationStats", () => {
 });
 
 describe("trustedAltitude", () => {
-  it("수직 정확도가 나쁜 고도(콜드스타트 수렴 전)는 버린다", () => {
+  it("수직 정확도가 명백히 나쁜 고도(콜드스타트 수렴 전)는 버린다", () => {
     expect(trustedAltitude(85, 40, 8)).toBeUndefined();
     expect(trustedAltitude(85, 10, 8)).toBe(85);
+  });
+
+  it("실기기가 일상적으로 보고하는 중간 품질(15~30m)은 버리지 않는다", () => {
+    // 실측 회귀: 문턱을 15m로 조였더니 새 기록의 고도 샘플이 통째로 버려져 차트가 망가졌다.
+    // 중간 품질 노이즈는 표시 단계 필터가 처리하므로 수집 단계에서는 통과시켜야 한다.
+    expect(trustedAltitude(85, 25, 8)).toBe(85);
+    expect(trustedAltitude(85, 30, 8)).toBe(85);
   });
 
   it("수직 정확도 미제공 기기는 수평 정확도로 대신 거른다", () => {

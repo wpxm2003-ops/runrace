@@ -19,10 +19,16 @@ export type ElevationStats = {
 
 const MIN_VALID_POINTS = 3;
 const MIN_ELEVATION_DELTA_M = 3;
-/** GPS 수직 오차가 이보다 크면 고도를 기록하지 않는다(콜드스타트 수렴 전 값이 주로 걸림). */
-const MAX_VERTICAL_ACCURACY_M = 15;
+/**
+ * GPS 수직 오차가 이보다 크면 고도를 기록하지 않는다.
+ * 명백한 쓰레기(콜드스타트 수렴 전 30~80m대)만 거르는 느슨한 선 — 실기기는 야외에서도
+ * 15~30m를 일상적으로 보고하므로 더 조이면 고도 샘플이 통째로 버려져 차트가 망가진다
+ * (실측 회귀). 중간 품질 노이즈는 표시 단계의 중앙값·경사 클램프가 처리한다.
+ * 앱의 약한 GPS 판정선(GPS_ACCURACY_PAUSE_M=30)과 같은 값.
+ */
+const MAX_VERTICAL_ACCURACY_M = 30;
 /** 수직 정확도 미제공 기기는 수평 정확도로 대신 거른다(수직 오차는 통상 수평의 2~3배). */
-const MAX_HORIZONTAL_ACCURACY_FALLBACK_M = 20;
+const MAX_HORIZONTAL_ACCURACY_FALLBACK_M = 30;
 /**
  * 거리 리샘플 버킷 폭. 짧은 런은 25m 고정, 긴 런은 총거리/400으로 넓혀 포인트 수를 억제.
  * 25m(1Hz 조깅 기준 샘플 ~15개)는 버킷 중앙값이 상관 드리프트까지 상당 부분 누르는 폭이다.
