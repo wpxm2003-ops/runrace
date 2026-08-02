@@ -9,6 +9,7 @@ import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.user.domain.QAppUser;
 import com.runrace.backend.workout.domain.QWorkoutSession;
+import com.runrace.backend.workout.domain.WorkoutType;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -71,7 +72,7 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
     // 목록에 필요한 스칼라 컬럼만 projection해 path_json을 읽지 않는다.
     List<Tuple> rows = query
         .select(user.id, user.nickname, ws.startedAt, ws.endedAt,
-            ws.durationSec, ws.distanceM, cw.appliedDistanceM)
+            ws.durationSec, ws.distanceM, cw.appliedDistanceM, ws.workoutType)
         .from(cw)
         .join(cw.workoutSession, ws)
         .join(cw.user, user)
@@ -82,6 +83,7 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
     return rows.stream()
         .map(t -> {
           String nickname = t.get(user.nickname);
+          WorkoutType type = t.get(ws.workoutType);
           return new ChallengeWorkoutListItem(
               t.get(user.id),
               nickname != null ? nickname : "탈퇴한 러너", // AppUser.getDisplayNickname()과 동일
@@ -89,7 +91,8 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
               IsoTime.format(t.get(ws.endedAt)),
               t.get(ws.durationSec),
               t.get(ws.distanceM),
-              t.get(cw.appliedDistanceM));
+              t.get(cw.appliedDistanceM),
+              (type != null ? type : WorkoutType.GPS).name());
         })
         .toList();
   }

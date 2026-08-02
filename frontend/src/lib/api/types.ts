@@ -315,6 +315,7 @@ export type ChallengeWorkoutListItem = {
   durationSec: number;
   distanceM: number;
   appliedDistanceM: number;
+  workoutType: WorkoutType;
 };
 
 export type ActiveCount = { activeCount: number; maxActive: number };

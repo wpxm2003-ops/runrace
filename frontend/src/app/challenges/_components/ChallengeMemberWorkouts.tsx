@@ -47,6 +47,12 @@ export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
               <p className="col-start-1 row-start-1 self-center truncate text-sm font-medium text-zinc-900">
                 {w.nickname ?? t.no_name}
               </p>
+              {/* 닉네임 아래 빈 칸(1열 2행)에 실내런 표시 — GPS 기록은 표시가 없다. */}
+              {w.workoutType === "INDOOR" ? (
+                <p className="col-start-1 row-start-2 truncate text-xs text-zinc-400">
+                  - {t.indoor_badge}
+                </p>
+              ) : null}
               <p className="col-start-2 row-start-1 text-right text-xs tabular-nums text-zinc-500">
                 {formatDateTimeMinute(w.startedAt, locale)}
               </p>

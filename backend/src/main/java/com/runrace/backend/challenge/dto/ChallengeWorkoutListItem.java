@@ -14,4 +14,6 @@ public record ChallengeWorkoutListItem(
     String endedAt,
     int durationSec,
     int distanceM,
-    int appliedDistanceM) {}
+    int appliedDistanceM,
+    /** "GPS" | "INDOOR" — 목록에서 실내런을 구분해 표시한다(경로·좌표는 포함하지 않는다). */
+    String workoutType) {}
