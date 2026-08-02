@@ -290,6 +290,12 @@ public class WorkoutService {
 
     // 실내러닝도 활성 신발에 귀속(신발 마모는 승인 여부와 무관)
     shoeService.attributeActiveShoe(principal.userId(), saved);
+
+    // 라이벌 도발 푸시 — 실외와 동일하게 저장 시점 발행(AFTER_COMMIT 리스너가 처리).
+    // 레이스 승인 대기는 레이스 거리 반영 절차일 뿐, 운동 기록 자체는 이 시점에 확정된다.
+    eventPublisher.publishEvent(new WorkoutEvents.WorkoutSavedEvent(
+        principal.userId(), user.getNickname(), distanceM));
+
     return new SavedWorkout(saved, false);
   }
 

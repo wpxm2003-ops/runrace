@@ -19,6 +19,7 @@ import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.crew.service.CrewMatchService;
+import com.runrace.backend.event.WorkoutEvents;
 import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
@@ -131,7 +132,8 @@ class WorkoutServiceIdempotencyTest {
     assertSame(existing, result.session());
     assertTrue(result.deduplicated());
     verify(workoutRepository, never()).save(any());
-    verifyNoInteractions(indoorApprovalService, shoeService);
+    // 재시도에서 이벤트가 다시 발행되면 라이벌 푸시가 중복 발송된다.
+    verifyNoInteractions(indoorApprovalService, shoeService, eventPublisher);
   }
 
   /**
@@ -151,6 +153,22 @@ class WorkoutServiceIdempotencyTest {
 
     assertFalse(result.deduplicated());
     verify(workoutRepository).save(any(WorkoutSession.class));
+  }
+
+  /** 실내런도 저장 시점에 라이벌 도발 푸시 이벤트를 발행한다(실외와 동일 계약). */
+  @Test
+  void freshIndoorSavePublishesWorkoutSavedEvent() {
+    UUID clientWorkoutId = UUID.randomUUID();
+    OffsetDateTime startedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    when(user.getNickname()).thenReturn("러너");
+    when(workoutRepository.findByUserIdAndClientWorkoutId(userId, clientWorkoutId))
+        .thenReturn(Optional.empty());
+    when(workoutRepository.save(any(WorkoutSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, clientWorkoutId);
+
+    verify(eventPublisher).publishEvent(
+        new WorkoutEvents.WorkoutSavedEvent(userId, "러너", 2_000));
   }
 
   @Test

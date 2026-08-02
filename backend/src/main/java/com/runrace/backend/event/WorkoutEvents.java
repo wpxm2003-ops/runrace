@@ -23,8 +23,9 @@ public final class WorkoutEvents {
   ) {}
 
   /**
-   * 실외 운동 저장 완료 — 라이벌 도발 푸시 발송용.
+   * 운동 저장 완료(실외 GPS·실내런 공통) — 라이벌 도발 푸시 발송용.
    * userId를 라이벌로 등록한 모든 사용자에게 AFTER_COMMIT으로 발송한다.
+   * 같은 라이벌 알림은 리스너가 하루 1회로 제한한다.
    */
   public record WorkoutSavedEvent(UUID userId, String nickname, int distanceM) {}
 
