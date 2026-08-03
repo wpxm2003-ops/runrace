@@ -17,51 +17,35 @@ function HomeMenuItem({
   title,
   badge,
   subtitle,
-  dark = false,
 }: {
   href: string;
   icon: string;
   title: string;
   badge?: string;
   subtitle?: string;
-  dark?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-xl p-3.5 shadow-sm transition ${
-        dark ? "bg-zinc-900 hover:bg-zinc-800" : "bg-white hover:bg-zinc-50"
-      }`}
+      className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm transition hover:bg-zinc-50"
     >
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${
-          dark ? "bg-white/10" : "bg-zinc-100"
-        }`}
-      >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-base">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={`block text-sm font-semibold ${dark ? "text-white" : "text-zinc-900"}`}>
+        <span className="block text-sm font-semibold text-zinc-900">
           {title}
           {badge ? (
-            <span
-              className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                dark ? "bg-white/10 text-zinc-300" : "bg-zinc-100 text-zinc-500"
-              }`}
-            >
+            <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
               {badge}
             </span>
           ) : null}
         </span>
         {subtitle ? (
-          <span className={`mt-0.5 block text-xs ${dark ? "text-zinc-400" : "text-zinc-500"}`}>
-            {subtitle}
-          </span>
+          <span className="mt-0.5 block text-xs text-zinc-500">{subtitle}</span>
         ) : null}
       </span>
-      <span className={`text-lg leading-none ${dark ? "text-zinc-500" : "text-zinc-300"}`} aria-hidden="true">
-        ›
-      </span>
+      <span className="text-lg leading-none text-zinc-300" aria-hidden="true">›</span>
     </Link>
   );
 }
@@ -138,12 +122,12 @@ export default function Home() {
       <div className="mt-2">
         <HomeStats />
         <div className="grid gap-2">
-          <HomeMenuItem href="/workout/indoor" icon="🏃" title={t.indoor_title} subtitle={t.indoor_subtitle} />
-          <HomeMenuItem href="/crew" icon="👥" title={t.crew_title} badge="beta" />
-          <HomeMenuItem href="/training" icon="📈" title={t.nsm_title} badge="beta" />
+          <HomeMenuItem href="/workout/indoor" icon="🏃‍♂️" title={t.indoor_title} subtitle={t.indoor_subtitle} />
+          <HomeMenuItem href="/crew" icon="🔥" title={t.crew_title} badge="beta" />
+          <HomeMenuItem href="/training" icon="🎯" title={t.nsm_title} badge="beta" />
           <HomeMenuItem href="/tools" icon="🧮" title={t.home_tools_card_title} />
-          <HomeMenuItem href="/guides" icon="📘" title={t.guide_list_title} />
-          <HomeMenuItem href="/feedback" icon="💬" title={t.feedback_home_title} />
+          <HomeMenuItem href="/guides" icon="📖" title={t.guide_list_title} />
+          <HomeMenuItem href="/feedback" icon="📢" title={t.feedback_home_title} />
         </div>
       </div>
     </PageLayout>

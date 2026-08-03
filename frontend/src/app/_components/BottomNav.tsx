@@ -130,12 +130,17 @@ export function BottomNav() {
       <div className="mx-auto flex h-16 max-w-2xl items-stretch justify-around px-2">
         {items.map((item) => {
           const active = item.isActive(activePath);
+          const isWorkout = item.id === "workout";
           return (
             <a
               key={item.id}
               href={item.href}
               className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] ${
-                active ? "font-semibold text-zinc-900" : "text-zinc-500"
+                isWorkout
+                  ? "border-x border-zinc-200 bg-zinc-100 font-semibold text-zinc-900"
+                  : active
+                    ? "font-semibold text-zinc-900"
+                    : "text-zinc-500"
               }`}
             >
               <NavIcon>{item.icon}</NavIcon>
