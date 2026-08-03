@@ -557,7 +557,8 @@ export default function WorkoutPage() {
                 onClick={() => setGhostPickerOpen(true)}
                 className="mb-3 flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
               >
-                👻 {t.ghost_chip_label}
+                <span className="min-w-0 flex-1 text-left">👻 {t.ghost_chip_label}</span>
+                <span className="text-lg leading-none text-zinc-300" aria-hidden="true">›</span>
               </button>
             )
           ) : null}
