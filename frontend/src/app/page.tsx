@@ -11,6 +11,52 @@ import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { WelcomeOnboarding } from "@/app/_components/WelcomeOnboarding";
 
+function HomeMenuItem({
+  href,
+  icon,
+  title,
+  badge,
+  dark = false,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  badge?: string;
+  dark?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 rounded-xl p-3.5 shadow-sm transition ${
+        dark ? "bg-zinc-900 hover:bg-zinc-800" : "bg-white hover:bg-zinc-50"
+      }`}
+    >
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${
+          dark ? "bg-white/10" : "bg-zinc-100"
+        }`}
+      >
+        {icon}
+      </span>
+      <span className={`min-w-0 flex-1 text-sm font-semibold ${dark ? "text-white" : "text-zinc-900"}`}>
+        {title}
+        {badge ? (
+          <span
+            className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+              dark ? "bg-white/10 text-zinc-300" : "bg-zinc-100 text-zinc-500"
+            }`}
+          >
+            {badge}
+          </span>
+        ) : null}
+      </span>
+      <span className={`text-lg leading-none ${dark ? "text-zinc-500" : "text-zinc-300"}`} aria-hidden="true">
+        ›
+      </span>
+    </Link>
+  );
+}
+
 function HomeStats() {
   const { t } = useLocale();
   const { user, loading: authLoading, hint } = useAuthUser();
@@ -82,37 +128,13 @@ export default function Home() {
       <WelcomeOnboarding />
       <div className="mt-2">
         <HomeStats />
-        <div className="grid gap-3">
-          <Link href="/workout/indoor" className="rounded-2xl bg-zinc-900 p-5 shadow-sm hover:bg-zinc-800">
-            <div className="text-base font-semibold text-white">{t.indoor_title}</div>
-            <div className="mt-1 text-sm text-zinc-400">{t.indoor_subtitle}</div>
-          </Link>
-          <Link href="/crew" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-            <div className="text-base font-semibold">
-              {t.crew_title}
-              <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">beta</span>
-            </div>
-            <div className="mt-1 text-sm text-zinc-600">{t.crew_home_card_desc}</div>
-          </Link>
-          <Link href="/training" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-            <div className="text-base font-semibold">
-              {t.nsm_title}
-              <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">beta</span>
-            </div>
-            <div className="mt-1 text-sm text-zinc-600">{t.nsm_home_desc}</div>
-          </Link>
-          <Link href="/tools" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-            <div className="text-base font-semibold">{t.home_tools_card_title}</div>
-            <div className="mt-1 text-sm text-zinc-600">{t.home_tools_card_desc}</div>
-          </Link>
-          <Link href="/guides" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-            <div className="text-base font-semibold">{t.guide_list_title}</div>
-            <div className="mt-1 text-sm text-zinc-600">{t.home_guide_card_desc}</div>
-          </Link>
-          <Link href="/feedback" className="rounded-2xl bg-white p-5 shadow-sm hover:bg-zinc-50">
-            <div className="text-base font-semibold text-zinc-900">{t.feedback_home_title}</div>
-            <p className="mt-1 text-sm text-zinc-600">{t.feedback_home_desc}</p>
-          </Link>
+        <div className="grid gap-2">
+          <HomeMenuItem href="/workout/indoor" icon="🏃" title={t.indoor_title} dark />
+          <HomeMenuItem href="/crew" icon="👥" title={t.crew_title} badge="beta" />
+          <HomeMenuItem href="/training" icon="📈" title={t.nsm_title} badge="beta" />
+          <HomeMenuItem href="/tools" icon="🧮" title={t.home_tools_card_title} />
+          <HomeMenuItem href="/guides" icon="📘" title={t.guide_list_title} />
+          <HomeMenuItem href="/feedback" icon="💬" title={t.feedback_home_title} />
         </div>
       </div>
     </PageLayout>
