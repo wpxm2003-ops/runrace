@@ -115,7 +115,7 @@ export default function AdminDashboardPage() {
 
       <section className="mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <div><h2 className="font-semibold text-zinc-900">최근 운동기록</h2><p className="mt-1 text-xs text-zinc-400">노광고 · 방지훈 기록 제외 · 생성일 기준 최신 10개</p></div>
+          <div><h2 className="font-semibold text-zinc-900">최근 운동기록</h2><p className="mt-1 text-xs text-zinc-400">노광고 · 방지훈 · 배하영 기록 제외 · 생성일 기준 최신 10개</p></div>
           <span className="text-sm tabular-nums text-zinc-400">{dashboard.workouts.length}개</span>
         </div>
         <div className="overflow-x-auto">

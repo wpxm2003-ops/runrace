@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class AdminDashboardController {
-  private static final List<String> EXCLUDED_DISPLAY_NAMES = List.of("노광고", "방지훈");
+  private static final List<String> EXCLUDED_DISPLAY_NAMES = List.of("노광고", "방지훈", "배하영");
 
   private final AppUserRepository appUserRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
@@ -35,7 +35,7 @@ public class AdminDashboardController {
   @Value("${runrace.admin.firebase-uids:}")
   private String adminFirebaseUids;
 
-  @Value("${runrace.admin.display-names:노광고,방지훈}")
+  @Value("${runrace.admin.display-names:노광고,방지훈,배하영}")
   private String adminDisplayNames;
 
   @GetMapping("/dashboard")
