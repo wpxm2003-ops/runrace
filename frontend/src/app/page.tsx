@@ -16,12 +16,14 @@ function HomeMenuItem({
   icon,
   title,
   badge,
+  subtitle,
   dark = false,
 }: {
   href: string;
   icon: string;
   title: string;
   badge?: string;
+  subtitle?: string;
   dark?: boolean;
 }) {
   return (
@@ -38,15 +40,22 @@ function HomeMenuItem({
       >
         {icon}
       </span>
-      <span className={`min-w-0 flex-1 text-sm font-semibold ${dark ? "text-white" : "text-zinc-900"}`}>
-        {title}
-        {badge ? (
-          <span
-            className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-              dark ? "bg-white/10 text-zinc-300" : "bg-zinc-100 text-zinc-500"
-            }`}
-          >
-            {badge}
+      <span className="min-w-0 flex-1">
+        <span className={`block text-sm font-semibold ${dark ? "text-white" : "text-zinc-900"}`}>
+          {title}
+          {badge ? (
+            <span
+              className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                dark ? "bg-white/10 text-zinc-300" : "bg-zinc-100 text-zinc-500"
+              }`}
+            >
+              {badge}
+            </span>
+          ) : null}
+        </span>
+        {subtitle ? (
+          <span className={`mt-0.5 block text-xs ${dark ? "text-zinc-400" : "text-zinc-500"}`}>
+            {subtitle}
           </span>
         ) : null}
       </span>
@@ -129,7 +138,7 @@ export default function Home() {
       <div className="mt-2">
         <HomeStats />
         <div className="grid gap-2">
-          <HomeMenuItem href="/workout/indoor" icon="🏃" title={t.indoor_title} dark />
+          <HomeMenuItem href="/workout/indoor" icon="🏃" title={t.indoor_title} subtitle={t.indoor_subtitle} />
           <HomeMenuItem href="/crew" icon="👥" title={t.crew_title} badge="beta" />
           <HomeMenuItem href="/training" icon="📈" title={t.nsm_title} badge="beta" />
           <HomeMenuItem href="/tools" icon="🧮" title={t.home_tools_card_title} />
