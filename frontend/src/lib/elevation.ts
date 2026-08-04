@@ -36,6 +36,25 @@ const MAX_HORIZONTAL_ACCURACY_FALLBACK_M = 30;
 const RESAMPLE_MIN_BUCKET_M = 25;
 const RESAMPLE_TARGET_BUCKETS = 400;
 
+/**
+ * 중앙값·평활 창의 최대 폭(m)과, 총거리 대비 상한 비율.
+ *
+ * 창을 거리 고정값으로만 잡으면 짧은 코스에서 창 하나가 경로의 상당 부분을 덮어
+ * 실제 지형이 통째로 뭉개진다(실측 회귀: 1km 걷기의 200m·6m 굴다리 딥이 잔여 깊이
+ * 0.1m로 소멸 — 같은 필터로 3km 코스는 보존율 90%+). GPS 노이즈를 누르는 데 필요한
+ * 창은 거리 스케일로 정해지지만, 그 창이 경로를 지배하면 안 되므로 비율 상한을 함께 건다.
+ */
+const MEDIAN_WINDOW_MAX_M = 125;
+const MEDIAN_WINDOW_MAX_FRACTION = 1 / 16;
+const SMOOTH_WINDOW_MAX_M = 175;
+const SMOOTH_WINDOW_MAX_FRACTION = 1 / 12;
+
+/** 창 폭(m)을 버킷 개수 기준 반경으로 환산한다(최소 1 — 창을 아예 없애진 않는다). */
+function windowRadius(totalDistanceM: number, bucketM: number, maxM: number, maxFraction: number): number {
+  const windowM = Math.min(maxM, Math.max(bucketM, totalDistanceM * maxFraction));
+  return Math.max(1, Math.round((windowM / bucketM - 1) / 2));
+}
+
 function validElevation(value: number | undefined): value is number {
   return value != null && Number.isFinite(value) && value > -500 && value < 9000;
 }
@@ -92,12 +111,12 @@ function resampleByDistance(
     }));
 }
 
-/** 이동 중앙값(반경 2 = 창 5). 몇 버킷짜리 스파이크는 제거하고 완만한 경사 추세는 보존한다. */
-function rollingMedian(points: ElevationProfilePoint[]): ElevationProfilePoint[] {
+/** 이동 중앙값. 몇 버킷짜리 스파이크는 제거하고 완만한 경사 추세는 보존한다. */
+function rollingMedian(points: ElevationProfilePoint[], radius: number): ElevationProfilePoint[] {
   if (points.length < 3) return points;
   return points.map((point, index) => {
-    const from = Math.max(0, index - 2);
-    const to = Math.min(points.length - 1, index + 2);
+    const from = Math.max(0, index - radius);
+    const to = Math.min(points.length - 1, index + radius);
     return {
       ...point,
       elevationM: median(points.slice(from, to + 1).map((p) => p.elevationM)),
@@ -154,10 +173,10 @@ function suppressColdStartDrift(points: ElevationProfilePoint[]): ElevationProfi
   });
 }
 
-function smoothProfile(points: ElevationProfilePoint[]): ElevationProfilePoint[] {
+function smoothProfile(points: ElevationProfilePoint[], radius: number): ElevationProfilePoint[] {
   return points.map((point, index) => {
-    const from = Math.max(0, index - 3);
-    const to = Math.min(points.length - 1, index + 3);
+    const from = Math.max(0, index - radius);
+    const to = Math.min(points.length - 1, index + radius);
     let sum = 0;
     let count = 0;
     for (let i = from; i <= to; i++) {
@@ -231,10 +250,16 @@ export function computeElevationStats(path: LatLng[]): ElevationStats | null {
   // 실제 등반으로 잡힌다. 각 연속 구간을 독립적으로 리샘플·평활·집계한다.
   // 버킷 폭은 총 거리 기준 하나로 고정 — 구간마다 달라지면 같은 런 안에서 해상도가 어긋난다.
   const bucketM = Math.max(RESAMPLE_MIN_BUCKET_M, distanceM / RESAMPLE_TARGET_BUCKETS);
+  // 창 폭은 세그먼트가 아니라 총 거리 기준 — 버킷 폭과 같은 이유로 런 안에서 하나로 고정한다.
+  const medianRadius = windowRadius(distanceM, bucketM, MEDIAN_WINDOW_MAX_M, MEDIAN_WINDOW_MAX_FRACTION);
+  const smoothRadius = windowRadius(distanceM, bucketM, SMOOTH_WINDOW_MAX_M, SMOOTH_WINDOW_MAX_FRACTION);
   const smoothedSegments = segments
     .filter((segment) => segment.length >= MIN_VALID_POINTS)
     .map((segment) =>
-      smoothProfile(suppressColdStartDrift(rollingMedian(resampleByDistance(segment, bucketM)))),
+      smoothProfile(
+        suppressColdStartDrift(rollingMedian(resampleByDistance(segment, bucketM), medianRadius)),
+        smoothRadius,
+      ),
     );
   if (smoothedSegments.length === 0) return null;
 

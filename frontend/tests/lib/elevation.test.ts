@@ -140,6 +140,32 @@ describe("computeElevationStats", () => {
     expect(ascent).toBeLessThan(15);
   });
 
+  it("짧은 코스(1km) 중간의 내려갔다 올라오는 구간이 뭉개지지 않는다", () => {
+    // 실측 회귀(잠실 1km 걷기): 중간에 내려갔다 올라오는 굴다리 구간이 차트에 전혀 안 나왔다.
+    // 원인은 중앙값·평활 창이 거리 고정값(125m·175m)이라, 1km 코스에서는 창 하나가 경로의
+    // 17.5%를 덮어 실제 지형을 지워버린 것. 창을 총거리 비율로도 제한해 해결했다.
+    // 노이즈 없는 합성 지형으로 "필터가 지형을 얼마나 깎는가"만 측정한다.
+    const points: LatLng[] = [];
+    for (let i = 0; i < 630; i++) {
+      const d = i * 1.6;
+      // 400~600m 구간에서 6m 내려갔다 올라오는 V자 딥
+      const drop = d < 400 || d > 600 ? 0 : d < 500 ? -((d - 400) / 100) * 6 : -6 + ((d - 500) / 100) * 6;
+      points.push({ lat: 37, lng: 127 + i * 0.000018, ele: 20 + drop });
+    }
+
+    const stats = computeElevationStats(points);
+    expect(stats).not.toBeNull();
+
+    const inDip = stats!.profile.filter((p) => p.distanceM >= 400 && p.distanceM <= 600);
+    const outside = stats!.profile.filter((p) => p.distanceM < 400 || p.distanceM > 600);
+    const keptDepth =
+      Math.max(...outside.map((p) => p.elevationM)) - Math.min(...inDip.map((p) => p.elevationM));
+
+    // 고치기 전에는 2.9m(48%)까지 깎여 차트에서 보이지 않았다. 원래 6m의 3분의 2 이상 보존.
+    expect(keptDepth).toBeGreaterThan(4);
+    expect(stats!.totalDescentM).toBeGreaterThan(4);
+  });
+
   it("실제 언덕(완만한 경사)은 필터를 강화해도 상승고도·범위가 보존된다", () => {
     // 800m에 걸쳐 30m 오르는 3.75% 경사 — 경사 클램프(30%)·중앙값·평활을 다 거쳐도
     // 실제 지형은 살아남아야 한다.
