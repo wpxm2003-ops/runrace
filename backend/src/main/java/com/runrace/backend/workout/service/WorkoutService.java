@@ -21,6 +21,7 @@ import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
+import com.runrace.backend.workout.elevation.TerrainElevationSource;
 import com.runrace.backend.workout.dto.GhostRaceResultDto;
 import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.dto.PreviousWorkoutDto;
@@ -34,16 +35,19 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WorkoutService {
   /** 평균 페이스를 계산할 최소 거리(m) — 그 미만은 의미 있는 페이스를 산출하지 않는다. */
   static final int MIN_DISTANCE_FOR_PACE_M = 10;
@@ -90,6 +94,7 @@ public class WorkoutService {
   private final ShoeService shoeService;
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
+  private final TerrainElevationSource terrainElevationSource;
 
   /**
    * 저장 결과 — {@code deduplicated}면 clientWorkoutId가 이미 저장된 요청이라 새로 쓴 것이 없다.
@@ -610,12 +615,48 @@ public class WorkoutService {
   /** 좌표 저장 정밀도(소수 6자리 ≈ 0.11m). GPS 오차(3~5m)보다 충분히 정밀하면서 저장 용량을 줄인다. */
   private static final double COORD_SCALE = 1_000_000d;
 
-  private String toJson(List<PathPoint> path) {
+  String toJson(List<PathPoint> path) {
     try {
+      // 원본 GPS 고도를 보존해야 DEM 교체·장애·데이터셋 변경 시 언제든 다시 보정할 수 있다.
       return objectMapper.writeValueAsString(roundCoords(path));
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("path_json_encode_failed", e);
     }
+  }
+
+  /**
+   * 경로 전체를 좌표 기준 지형고로 교체한다.
+   *
+   * <p>DEM과 GPS 고도를 포인트 단위로 섞으면 타일 경계에서 서로 다른 기준면과 GPS 드리프트가
+   * 수직 점프로 나타난다. 따라서 한 점이라도 DEM 값을 얻지 못하면 이 경로 전체를 원본 GPS로
+   * 유지한다. 조회 시 적용하므로 기존 기록도 같은 규칙으로 보정되고, 저장된 원본은 훼손되지 않는다.
+   */
+  List<PathPoint> withTerrainElevation(List<PathPoint> path) {
+    if (!terrainElevationSource.isEnabled() || path.isEmpty()) return path;
+
+    List<Double> elevations = new ArrayList<>(path.size());
+    try {
+      for (PathPoint point : path) {
+        Double terrain = terrainElevationSource.elevationAt(point.lat(), point.lng());
+        if (terrain == null || !Double.isFinite(terrain)) {
+          log.debug("DEM coverage incomplete; keeping the original GPS elevation (points={})", path.size());
+          return path;
+        }
+        elevations.add(terrain);
+      }
+    } catch (RuntimeException e) {
+      // 고도 보정은 부가 기능이다. 타일 장애가 운동 상세 조회까지 깨뜨리면 안 된다.
+      log.warn("DEM lookup failed; keeping the original GPS elevation (points={})", path.size(), e);
+      return path;
+    }
+
+    List<PathPoint> corrected = new ArrayList<>(path.size());
+    for (int i = 0; i < path.size(); i++) {
+      PathPoint point = path.get(i);
+      corrected.add(new PathPoint(
+          point.lat(), point.lng(), point.t(), elevations.get(i), point.breakBefore()));
+    }
+    return List.copyOf(corrected);
   }
 
   /**
@@ -692,8 +733,9 @@ public class WorkoutService {
 
   /** 저장된 경로 JSON을 응답용 좌표 목록으로 변환한다(상세·공유 응답 공통). */
   public List<PathPointDto> toPath(String pathJson) {
-    return parsePath(pathJson).stream()
-        .map(p -> new PathPointDto(p.lat(), p.lng(), p.t(), p.ele(), p.breakBefore()))
+    return withTerrainElevation(parsePath(pathJson)).stream()
+        .map(p -> new PathPointDto(
+            p.lat(), p.lng(), p.t(), roundElevation(p.ele()), p.breakBefore()))
         .toList();
   }
 

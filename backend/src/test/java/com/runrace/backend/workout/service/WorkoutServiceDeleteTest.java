@@ -66,7 +66,8 @@ class WorkoutServiceDeleteTest {
         personalBestRepository,
         shoeService,
         eventPublisher,
-        new ObjectMapper());
+        new ObjectMapper(),
+        com.runrace.backend.workout.elevation.TerrainElevationSource.disabled());
     userId = UUID.randomUUID();
     principal = new AuthPrincipal(userId, "uid");
   }

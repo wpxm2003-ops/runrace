@@ -58,6 +58,14 @@ app:
       bucket: runrace-prod-seoul-2026
 
 runrace:
+  elevation:
+    # SRTM .hgt 타일 디렉터리(예: /opt/runrace/dem). 비어 있으면 상세 화면 지형고 보정을 끄고
+    # 저장된 원본 GPS 고도를 응답한다.
+    dem-dir: ${DEM_DIR:}
+    # 운영에서는 true로 두어 타일 누락 상태로 조용히 기동하지 못하게 한다.
+    required: ${DEM_REQUIRED:false}
+    # 메모리 매핑은 힙 밖에 남으므로 서비스가 방문한 전 세계 타일을 무제한 보관하지 않는다.
+    max-cached-tiles: ${DEM_MAX_CACHED_TILES:32}
   admin:
     # Comma-separated Firebase UIDs allowed to open /sb.
     firebase-uids: ${ADMIN_FIREBASE_UIDS:}

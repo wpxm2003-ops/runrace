@@ -211,6 +211,37 @@ sudo systemctl daemon-reload
 sudo systemctl restart runrace
 ```
 
+### SRTM 고도 타일
+
+운영 서버는 운동 상세 조회 시 저장된 GPS 원본 고도를 SRTM 지형고로 교정한다. 원본 경로는
+DB에 그대로 남고, 한 좌표라도 DEM 범위를 벗어나면 해당 운동 전체가 GPS 원본으로 표시된다.
+DEM과 GPS를 한 차트 안에서 섞지는 않는다.
+
+압축을 푼 `.hgt` 파일을 `/home/ec2-user/runrace-dem`에 둔다. 파일명은
+`N37E127.hgt` 형식이어야 하며 아래 두 SRTM 규격만 허용한다.
+
+- 3 arc-second: `1201 x 1201`, `2,884,802 bytes`
+- 1 arc-second: `3601 x 3601`, `25,934,402 bytes`
+
+백엔드 배포 스크립트는 AWS Open Data의 Mapzen Skadi 타일에서 위도 `N33~N38`,
+경도 `E124~E131`의 한국 영역 48개를 내려받아 크기를 검증한다. 이미 정상 크기로 설치된
+타일은 다시 받지 않는다. 수동 설치 시에도 같은 스크립트를 사용한다.
+
+```bash
+bash scripts/install-korea-dem.sh /home/ec2-user/runrace-dem
+```
+
+`/etc/systemd/system/runrace.service`의 `[Service]`에 다음을 추가한다.
+
+```ini
+Environment=DEM_DIR=/home/ec2-user/runrace-dem
+Environment=DEM_REQUIRED=true
+Environment=DEM_MAX_CACHED_TILES=32
+```
+
+`DEM_REQUIRED=true`이면 경로가 없거나 정상 타일이 하나도 없을 때 백엔드가 기동하지 않는다.
+반영 후 `journalctl -u runrace -n 100`에서 `DEM 지형고 보정 활성`과 인식된 타일 수를 확인한다.
+
 ---
 
 ## 트러블슈팅
