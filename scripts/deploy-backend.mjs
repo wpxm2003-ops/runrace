@@ -35,7 +35,7 @@ const steps = [
   ["재시작", ssh("sudo systemctl restart runrace")],
   [
     "기동 확인",
-    ssh("curl -fsS --retry 10 --retry-delay 2 --retry-connrefused http://localhost:8081/actuator/health"),
+    ssh("curl -fsS --retry 30 --retry-delay 2 --retry-connrefused http://localhost:8081/actuator/health"),
   ],
 ];
 
