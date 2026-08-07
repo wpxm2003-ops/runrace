@@ -61,12 +61,12 @@ export function CrewRacesSection({ user }: { user: User }) {
                     </div>
                     <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-500">
                       <span>{t.races_goal_members(formatGoalDistance(r.goalKm, unit), r.memberCount)}</span>
-                      {/* 경품 표시 — 목록 아이템과 동일하게 목표·인원 줄에(상태 뱃지와 분리). */}
-                      {r.hasPrize ? (
+                      {/* 내기·경품 표시 — 목록 아이템과 동일하게 목표·인원 줄에 둔다. */}
+                      {r.hasPrize || r.hasStake ? (
                         <span
                           role="img"
-                          aria-label={t.races_prize_badge}
-                          title={t.races_prize_badge}
+                          aria-label={r.hasPrize ? t.races_prize_badge : t.detail_stake_label}
+                          title={r.hasPrize ? t.races_prize_badge : t.detail_stake_label}
                           className="shrink-0 leading-none"
                         >
                           🎁

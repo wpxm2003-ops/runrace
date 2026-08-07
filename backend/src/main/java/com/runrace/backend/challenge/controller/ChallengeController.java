@@ -237,6 +237,7 @@ public class ChallengeController {
         isOwner,
         memberIds.contains(challenge.getId()),
         prizeIds.contains(challenge.getId()),
+        challenge.getStake() != null && !challenge.getStake().isBlank(),
         challenge.getCrewId() != null);
   }
 

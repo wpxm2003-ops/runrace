@@ -20,6 +20,8 @@ export type ChallengeListItem = {
   isMember: boolean;
   /** 경품이 하나라도 걸린 레이스인지 — 목록 '경품' 뱃지용. */
   hasPrize: boolean;
+  /** 내기 문구가 걸린 레이스인지 — 목록 선물 아이콘용. */
+  hasStake: boolean;
   /** 크루 전용 레이스인지 — 목록 '크루' 라벨용(내 레이스는 공개·크루 레이스가 섞여 나온다). */
   crewOnly: boolean;
 };

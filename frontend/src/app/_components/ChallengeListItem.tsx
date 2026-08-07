@@ -56,12 +56,12 @@ export function ChallengeListItem({
         <span>{t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}</span>
         {/* 크루 전용 표시 — 내 레이스 목록은 공개·크루 레이스가 섞여 나와 구분이 필요하다. */}
         {showCrewBadge && c.crewOnly ? <Badge tone="brown">{t.races_crew_badge}</Badge> : null}
-        {/* 경품 표시 — 상태가 아니라 레이스 속성이라 목표·인원 줄에 둔다(제목 줄 혼잡·색 충돌 회피). */}
-        {c.hasPrize ? (
+        {/* 내기·경품 표시 — 상태가 아니라 레이스 속성이라 목표·인원 줄에 둔다. */}
+        {c.hasPrize || c.hasStake ? (
           <span
             role="img"
-            aria-label={t.races_prize_badge}
-            title={t.races_prize_badge}
+            aria-label={c.hasPrize ? t.races_prize_badge : t.detail_stake_label}
+            title={c.hasPrize ? t.races_prize_badge : t.detail_stake_label}
             className="shrink-0 leading-none"
           >
             🎁
