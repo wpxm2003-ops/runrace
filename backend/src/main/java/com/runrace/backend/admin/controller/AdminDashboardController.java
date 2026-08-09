@@ -83,10 +83,14 @@ public class AdminDashboardController {
       List<MemberRow> members, List<WorkoutRow> workouts, List<FeedbackRow> feedback) {}
 
   public record MemberRow(
-      String displayName, String provider, boolean pushEnabled, String createdAt) {
+      String displayName, String nickname, String provider, boolean pushEnabled, String createdAt) {
     static MemberRow from(AppUser user) {
       return new MemberRow(
-          user.getDisplayName(), user.getProvider(), user.isPushEnabled(), IsoTime.format(user.getCreatedAt()));
+          user.getDisplayName(),
+          user.getNickname(),
+          user.getProvider(),
+          user.isPushEnabled(),
+          IsoTime.format(user.getCreatedAt()));
     }
   }
 

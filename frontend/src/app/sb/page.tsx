@@ -100,13 +100,37 @@ export default function AdminDashboardPage() {
           <span className="text-sm tabular-nums text-zinc-400">{dashboard.members.length}명</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left text-sm">
+          <table className="w-full min-w-[800px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs font-medium text-zinc-500">
-              <tr><th className="px-5 py-3">디스플레이네임</th><th className="px-5 py-3">가입매체</th><th className="px-5 py-3">앱푸시여부</th><th className="px-5 py-3">가입일</th></tr>
+              <tr>
+                <th className="px-5 py-3">디스플레이네임</th>
+                <th className="px-5 py-3">닉네임</th>
+                <th className="px-5 py-3">가입매체</th>
+                <th className="px-5 py-3">앱푸시여부</th>
+                <th className="px-5 py-3">가입일</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {dashboard.members.length === 0 ? <tr><td colSpan={4}><EmptyState>가입자가 없습니다.</EmptyState></td></tr> : dashboard.members.map((member, index) => (
-                <tr key={`${member.createdAt}-${index}`} className="hover:bg-zinc-50"><td className="px-5 py-3.5 font-medium text-zinc-900">{member.displayName || "(이름 없음)"}</td><td className="px-5 py-3.5 text-zinc-600">{member.provider || "-"}</td><td className="px-5 py-3.5"><span className={`rounded-full px-2 py-1 text-xs font-medium ${member.pushEnabled ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>{member.pushEnabled ? "허용" : "미허용"}</span></td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(member.createdAt)}</td></tr>
+              {dashboard.members.length === 0 ? (
+                <tr><td colSpan={5}><EmptyState>가입자가 없습니다.</EmptyState></td></tr>
+              ) : dashboard.members.map((member, index) => (
+                <tr key={`${member.createdAt}-${index}`} className="hover:bg-zinc-50">
+                  <td className="px-5 py-3.5 font-medium text-zinc-900">
+                    {member.displayName || "(이름 없음)"}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-700">
+                    {member.nickname || "(닉네임 없음)"}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-600">{member.provider || "-"}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${member.pushEnabled ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>
+                      {member.pushEnabled ? "허용" : "미허용"}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">
+                    {dateTime(member.createdAt)}
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>

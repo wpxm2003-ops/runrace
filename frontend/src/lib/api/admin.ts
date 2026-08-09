@@ -3,6 +3,7 @@ import { apiFetch } from "./client";
 
 export type AdminMember = {
   displayName: string | null;
+  nickname: string | null;
   provider: string | null;
   pushEnabled: boolean;
   createdAt: string;
