@@ -9,6 +9,7 @@ import {
   haversineMeters,
   idleAutoPauseAt,
   normalizeGpsAccuracyM,
+  pickWorkoutStartSeed,
   creditedPathDistanceMeters,
   pushAccuracySample,
   shouldAppendPoint,
@@ -19,7 +20,9 @@ import {
   type VehicleTier,
   geolocationBlockedReason,
   geolocationErrorMessage,
+  WORKOUT_START_FIX_MAX_AGE_MS,
   type WorkoutFinishSnapshot,
+  type WorkoutStartFix,
   type WorkoutStatus,
 } from "./workoutTrack";
 import { trustedAltitude } from "./elevation";
@@ -34,6 +37,7 @@ import { createClientWorkoutId } from "./workoutRequestId";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const SAVE_INTERVAL_MS = 10_000;
+const WARMUP_FIX_BUFFER_SIZE = 6;
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────────────
 function computeElapsedSec(
@@ -112,6 +116,8 @@ export function useWorkoutSession(
   const restoreAttemptedUidRef = useRef<string | null>(null);
   /** 방치 자동 일시정지 기준점 — 마지막으로 충분한 전진(100m)이 확인된 시각·누적 거리. */
   const idleAnchorRef = useRef<IdleAnchor | null>(null);
+  /** 시작 직전의 양호한 GPS 한 점을 녹화 시작점으로 넘기기 위한 짧은 예열 버퍼. */
+  const warmupFixesRef = useRef<WorkoutStartFix[]>([]);
 
   // ── 탈것 Tiered 감지 레프 ─────────────────────────────────────────────────
   const vehicleStateRef = useRef<VehicleDetectState>(resetVehicleState());
@@ -232,6 +238,7 @@ export function useWorkoutSession(
     runStartedRef.current = null;
     autoPausedRef.current = false;
     idleAnchorRef.current = null;
+    warmupFixesRef.current = [];
     vehicleStateRef.current = resetVehicleState();
     distanceAccumRef.current = 0;
     lastPathPointRef.current = null;
@@ -638,6 +645,7 @@ export function useWorkoutSession(
     let cancelled = false;
     let watchId: number | null = null;
     const warmupUid = authState.currentUid;
+    warmupFixesRef.current = [];
 
     async function warmUp() {
       const blocked = geolocationBlockedReason();
@@ -658,6 +666,18 @@ export function useWorkoutSession(
           ) {
             return;
           }
+          const receivedAtMs = Date.now();
+          warmupFixesRef.current = [
+            ...warmupFixesRef.current,
+            {
+              ownerUid: warmupUid,
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracyM: normalizeGpsAccuracyM(pos.coords.accuracy),
+              fixAtMs: pos.timestamp,
+              receivedAtMs,
+            },
+          ].slice(-WARMUP_FIX_BUFFER_SIZE);
           setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           setGeoError(null);
         },
@@ -677,6 +697,7 @@ export function useWorkoutSession(
     warmUp();
     return () => {
       cancelled = true;
+      warmupFixesRef.current = [];
       if (watchId != null && typeof navigator !== "undefined" && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchId);
       }
@@ -699,13 +720,20 @@ export function useWorkoutSession(
       return;
     }
     const now = Date.now();
+    const startSeed = pickWorkoutStartSeed(
+      warmupFixesRef.current,
+      expectedUid,
+      now,
+    );
+    warmupFixesRef.current = [];
+    const initialPath = startSeed ? [startSeed] : [];
     sessionOwnerUidRef.current = expectedUid;
     restoreAttemptedUidRef.current = expectedUid;
-    setPath([]);
-    pathRef.current = [];
+    setPath(initialPath);
+    pathRef.current = initialPath;
     distanceAccumRef.current = 0;
-    lastPathPointRef.current = null;
-    lastAppendWallMsRef.current = null;
+    lastPathPointRef.current = startSeed;
+    lastAppendWallMsRef.current = startSeed ? now : null;
     reanchorNextRef.current = false;
     setDistanceM(0);
     setElapsedSec(0);
@@ -715,17 +743,23 @@ export function useWorkoutSession(
     pauseStartedRef.current = null;
     runStartedRef.current = now;
     autoPausedRef.current = false;
-    idleAnchorRef.current = { timeMs: now, distanceM: 0 };
+    idleAnchorRef.current = startSeed
+      ? slideIdleAnchor({ timeMs: now, distanceM: 0 }, now, 0, startSeed)
+      : { timeMs: now, distanceM: 0 };
     setAutoPaused(false);
-    lastRawPosRef.current = null;
-    lastPosTimeRef.current = null;
+    // 첫 라이브 fix의 OS speed가 비어도 seed→fix 속도를 검증해 GPS 점프를 거리로 세지 않는다.
+    lastRawPosRef.current = startSeed;
+    lastPosTimeRef.current = startSeed ? now : null;
     setStatus("running");
     statusRef.current = "running";
+    if (startSeed) setPosition(startSeed);
     startWatch();
     // 같은 계정에서 직전 런을 끝내고 곧바로 새 런을 시작해도, 직전 getCurrentPosition
     // 콜백이 새 런의 첫 좌표로 들어오지 않도록 워처 세대를 함께 고정한다.
     const seedWatchSeq = watchSeqRef.current;
     void track("running_start");
+
+    if (startSeed) return;
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -737,19 +771,41 @@ export function useWorkoutSession(
         ) {
           return;
         }
+        const receivedAtMs = Date.now();
+        const selected = pickWorkoutStartSeed(
+          [{
+            ownerUid: expectedUid,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracyM: normalizeGpsAccuracyM(pos.coords.accuracy),
+            fixAtMs: pos.timestamp,
+            receivedAtMs,
+          }],
+          expectedUid,
+          receivedAtMs,
+        );
+        if (!selected) return;
         // 시드 포인트에는 고도를 싣지 않는다 — 시작 직후 fix의 고도는 수렴 전이라 신뢰 불가.
         const p: LatLng = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          // 시작 기준점에도 t를 부여 — 유령 격차·구간 기록이 첫 포인트부터 t에 의존한다.
-          t: runStartedRef.current != null ? Date.now() - runStartedRef.current : 0,
+          ...selected,
+          // 시작 후에 얻은 콜드스타트 좌표는 실제 획득 시각을 기록한다.
+          t: runStartedRef.current != null ? receivedAtMs - runStartedRef.current : 0,
         };
         setPosition(p);
         // 콜백이 GPS 워치보다 늦게 도착할 수 있다(최대 15초). 이미 워치가 경로를
         // 쌓기 시작했거나(초기 포인트 유실·거리 어긋남 방지) 그 사이 종료됐다면 시드하지 않는다.
         lastPathPointRef.current = p;
-        lastAppendWallMsRef.current = Date.now();
-        setPath((prev) => (prev.length > 0 ? prev : [p]));
+        lastAppendWallMsRef.current = receivedAtMs;
+        lastRawPosRef.current = p;
+        lastPosTimeRef.current = receivedAtMs;
+        idleAnchorRef.current = slideIdleAnchor(
+          { timeMs: runStartedRef.current ?? receivedAtMs, distanceM: 0 },
+          receivedAtMs,
+          0,
+          p,
+        );
+        pathRef.current = [p];
+        setPath([p]);
       },
       (err) => {
         if (
@@ -760,7 +816,11 @@ export function useWorkoutSession(
           setGeoError(geolocationErrorMessage(err));
         }
       },
-      { enableHighAccuracy: true, timeout: 15000 },
+      {
+        enableHighAccuracy: true,
+        maximumAge: WORKOUT_START_FIX_MAX_AGE_MS,
+        timeout: 15_000,
+      },
     );
   }, [isCurrentSessionOwner, startWatch]);
 

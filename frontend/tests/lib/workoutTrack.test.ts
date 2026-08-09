@@ -10,10 +10,107 @@ import {
   idleAutoPauseAt,
   pathBoundsKey,
   pathDistanceMeters,
+  pickWorkoutStartSeed,
   slideIdleAnchor,
   splitPathAtGaps,
+  WORKOUT_START_FIX_MAX_ACCURACY_M,
+  WORKOUT_START_FIX_MAX_AGE_MS,
 } from "@/lib/workoutTrack";
-import type { IdleAnchor, LatLng, VehicleDetectState } from "@/lib/workoutTrack";
+import type {
+  IdleAnchor,
+  LatLng,
+  VehicleDetectState,
+  WorkoutStartFix,
+} from "@/lib/workoutTrack";
+
+describe("pickWorkoutStartSeed", () => {
+  const OWNER_UID = "runner-a";
+  const STARTED_AT_MS = 100_000;
+
+  const fix = (overrides: Partial<WorkoutStartFix> = {}): WorkoutStartFix => ({
+    ownerUid: OWNER_UID,
+    lat: 37.5665,
+    lng: 126.978,
+    accuracyM: 10,
+    fixAtMs: STARTED_AT_MS - 1_000,
+    receivedAtMs: STARTED_AT_MS - 900,
+    ...overrides,
+  });
+
+  it("정확도와 신선도가 허용 경계와 같으면 시작점으로 사용한다", () => {
+    expect(pickWorkoutStartSeed([
+      fix({
+        accuracyM: WORKOUT_START_FIX_MAX_ACCURACY_M,
+        fixAtMs: STARTED_AT_MS - WORKOUT_START_FIX_MAX_AGE_MS,
+        receivedAtMs: STARTED_AT_MS - WORKOUT_START_FIX_MAX_AGE_MS,
+      }),
+    ], OWNER_UID, STARTED_AT_MS)).toEqual({
+      lat: 37.5665,
+      lng: 126.978,
+      t: 0,
+    });
+  });
+
+  it.each([
+    ["측정 시각이 오래됨", { fixAtMs: STARTED_AT_MS - WORKOUT_START_FIX_MAX_AGE_MS - 1 }],
+    ["수신 시각이 오래됨", { receivedAtMs: STARTED_AT_MS - WORKOUT_START_FIX_MAX_AGE_MS - 1 }],
+    ["측정 시각이 시작 이후임", { fixAtMs: STARTED_AT_MS + 1 }],
+    ["수신 시각이 시작 이후임", { receivedAtMs: STARTED_AT_MS + 1 }],
+  ])("%s이면 거절한다", (_label, overrides) => {
+    expect(pickWorkoutStartSeed([fix(overrides)], OWNER_UID, STARTED_AT_MS)).toBeNull();
+  });
+
+  it.each([
+    ["null", null],
+    ["NaN", Number.NaN],
+    ["음수", -1],
+    ["허용치를 초과", WORKOUT_START_FIX_MAX_ACCURACY_M + 0.1],
+  ])("정확도가 %s이면 거절한다", (_label, accuracyM) => {
+    expect(pickWorkoutStartSeed([
+      fix({ accuracyM }),
+    ], OWNER_UID, STARTED_AT_MS)).toBeNull();
+  });
+
+  it.each([
+    ["위도 NaN", { lat: Number.NaN }],
+    ["위도 하한 미만", { lat: -90.001 }],
+    ["위도 상한 초과", { lat: 90.001 }],
+    ["경도 NaN", { lng: Number.NaN }],
+    ["경도 하한 미만", { lng: -180.001 }],
+    ["경도 상한 초과", { lng: 180.001 }],
+    ["측정 시각 NaN", { fixAtMs: Number.NaN }],
+    ["수신 시각 NaN", { receivedAtMs: Number.NaN }],
+  ])("%s 좌표 후보는 거절한다", (_label, overrides) => {
+    expect(pickWorkoutStartSeed([fix(overrides)], OWNER_UID, STARTED_AT_MS)).toBeNull();
+  });
+
+  it("다른 사용자의 예열 좌표는 거절한다", () => {
+    expect(pickWorkoutStartSeed([
+      fix({ ownerUid: "runner-b" }),
+    ], OWNER_UID, STARTED_AT_MS)).toBeNull();
+  });
+
+  it("가장 최신 후보가 부정확하면 직전의 신선하고 양호한 좌표를 고른다", () => {
+    expect(pickWorkoutStartSeed([
+      fix({ lat: 37.1, lng: 127.1, fixAtMs: STARTED_AT_MS - 2_000 }),
+      fix({ lat: 37.2, lng: 127.2, accuracyM: 50, fixAtMs: STARTED_AT_MS - 500 }),
+    ], OWNER_UID, STARTED_AT_MS)).toEqual({ lat: 37.1, lng: 127.1, t: 0 });
+  });
+
+  it("시작 전 여러 유효 좌표 중 마지막 한 점만 t=0 시작점으로 반환한다", () => {
+    const fixes = [
+      fix({ lat: 37.1, lng: 127.1, fixAtMs: STARTED_AT_MS - 2_000 }),
+      fix({ lat: 37.2, lng: 127.2, fixAtMs: STARTED_AT_MS - 1_000 }),
+      fix({ lat: 37.3, lng: 127.3, fixAtMs: STARTED_AT_MS - 100 }),
+    ];
+
+    expect(pickWorkoutStartSeed(fixes, OWNER_UID, STARTED_AT_MS)).toEqual({
+      lat: 37.3,
+      lng: 127.3,
+      t: 0,
+    });
+  });
+});
 
 describe("formatClock", () => {
   it("1시간 미만은 mm:ss", () => {

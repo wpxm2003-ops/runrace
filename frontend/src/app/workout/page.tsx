@@ -441,11 +441,11 @@ export default function WorkoutPage() {
         />
         {counting ? (
           <WorkoutCountdown
-            onComplete={() => {
-              setCounting(false);
+            onGo={() => {
               clearNsmProgress(); // 새 런 시작 — 이전 NSM 렙 진행 초기화
               session.start(user.uid);
             }}
+            onComplete={() => setCounting(false)}
           />
         ) : null}
         <div className="absolute left-3 right-3 top-3 z-10 flex flex-col gap-2">

@@ -24,6 +24,69 @@ export type WorkoutFinishSnapshot = {
   path: LatLng[];
 };
 
+/** 운동 시작 직전 GPS 예열에서 얻은 위치 후보. */
+export type WorkoutStartFix = {
+  ownerUid: string;
+  lat: number;
+  lng: number;
+  accuracyM: number | null;
+  /** 위치 제공자가 실제로 측정한 벽시계 시각. */
+  fixAtMs: number;
+  /** 앱이 콜백을 받은 벽시계 시각. */
+  receivedAtMs: number;
+};
+
+/** 시작점으로 재사용할 수 있는 예열 좌표의 최대 나이. */
+// 버튼 후 GO까지 2.7초이므로, 버튼 직전에 받은 fix도 여유 있게 유효해야 한다.
+export const WORKOUT_START_FIX_MAX_AGE_MS = 5_000;
+/** 시작점은 차량 감지의 "양호 GPS" 기준과 같은 정확도만 허용한다. */
+export const WORKOUT_START_FIX_MAX_ACCURACY_M = 20;
+
+/**
+ * 시작 시각에 가장 가까운 양호한 예열 좌표 한 점만 고른다.
+ * 예열 후보들 사이의 이동은 더하지 않고 반환한 한 점을 t=0 기준점으로만 사용한다.
+ */
+export function pickWorkoutStartSeed(
+  fixes: readonly WorkoutStartFix[],
+  ownerUid: string,
+  startedAtMs: number,
+  maxAgeMs: number = WORKOUT_START_FIX_MAX_AGE_MS,
+): LatLng | null {
+  if (!Number.isFinite(startedAtMs) || !Number.isFinite(maxAgeMs) || maxAgeMs < 0) {
+    return null;
+  }
+
+  for (let i = fixes.length - 1; i >= 0; i--) {
+    const fix = fixes[i];
+    const fixAgeMs = startedAtMs - fix.fixAtMs;
+    const receiptAgeMs = startedAtMs - fix.receivedAtMs;
+    if (
+      fix.ownerUid !== ownerUid
+      || !Number.isFinite(fix.lat)
+      || fix.lat < -90
+      || fix.lat > 90
+      || !Number.isFinite(fix.lng)
+      || fix.lng < -180
+      || fix.lng > 180
+      || fix.accuracyM == null
+      || !Number.isFinite(fix.accuracyM)
+      || fix.accuracyM < 0
+      || fix.accuracyM > WORKOUT_START_FIX_MAX_ACCURACY_M
+      || !Number.isFinite(fix.fixAtMs)
+      || !Number.isFinite(fix.receivedAtMs)
+      || fixAgeMs < 0
+      || receiptAgeMs < 0
+      || fixAgeMs > maxAgeMs
+      || receiptAgeMs > maxAgeMs
+    ) {
+      continue;
+    }
+    return { lat: fix.lat, lng: fix.lng, t: 0 };
+  }
+
+  return null;
+}
+
 const MIN_MOVE_METERS = 4;
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -221,7 +284,7 @@ const GPS_ACCURACY_PAUSE_M = 30;
 const GPS_ACCURACY_SUSTAINED_M = 25;
 const GPS_ACCURACY_AVG_WINDOW_MS = 5_000;
 /** 복귀 시 양호 GPS (들어갈 때보다 엄격 — 점프 방지) */
-const GPS_ACCURACY_GOOD_M = 20;
+const GPS_ACCURACY_GOOD_M = WORKOUT_START_FIX_MAX_ACCURACY_M;
 /** Weak/No-Fix 15초+ → confirmed(지하철 의심) */
 const WEAK_GPS_FORCE_CONFIRM_MS = 15_000;
 /** accuracy 나쁨 + 속도 ≥ 8km/h → 즉시 Weak (GPS·속도 모순) */

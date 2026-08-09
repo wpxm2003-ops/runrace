@@ -3,25 +3,31 @@
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
+  onGo: () => void;
   onComplete: () => void;
 };
 
 const STEP_MS = 900;
 const TOTAL_MS = 3 * STEP_MS; // 2700ms
 
-export function WorkoutCountdown({ onComplete }: Props) {
+export function WorkoutCountdown({ onGo, onComplete }: Props) {
   const [step, setStep] = useState<number>(3);
+  const onGoRef = useRef(onGo);
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
+    onGoRef.current = onGo;
     onCompleteRef.current = onComplete;
-  }, [onComplete]);
+  }, [onGo, onComplete]);
 
   useEffect(() => {
     const timers = [
       window.setTimeout(() => setStep(2), STEP_MS),
       window.setTimeout(() => setStep(1), 2 * STEP_MS),
-      window.setTimeout(() => setStep(0), 3 * STEP_MS),
+      window.setTimeout(() => {
+        setStep(0);
+        onGoRef.current();
+      }, 3 * STEP_MS),
       window.setTimeout(() => onCompleteRef.current(), 4 * STEP_MS),
     ];
 

@@ -37,7 +37,8 @@ export async function startBackgroundWatch(
         backgroundMessage: notificationMessage,
         requestPermissions: true,
         stale: false,
-        distanceFilter: 10,
+        // 앱의 4m 경로 저장 문턱과 맞춰, 느린 출발도 수초 안에 화면과 거리에 반영한다.
+        distanceFilter: 5,
       },
       (position, error) => {
         if (error) {

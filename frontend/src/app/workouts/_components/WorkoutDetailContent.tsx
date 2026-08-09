@@ -21,7 +21,6 @@ import { parseWorkoutIdFromPath } from "@/lib/workoutRoute";
 import { ShareButton } from "@/app/_components/ShareButton";
 import { WorkoutPhotoButton } from "@/app/_components/WorkoutPhotoButton";
 import { WorkoutMemoButton } from "@/app/_components/WorkoutMemoButton";
-import { ElevationSection } from "./ElevationSection";
 import { KmSplitSection } from "./KmSplitSection";
 import type { WorkoutDetail } from "@/lib/api/types";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -227,19 +226,14 @@ export default function WorkoutDetailContent() {
           </div>
 
           {detail.path.length > 0 ? (
-            <>
-              <div className="mt-4">
-                <ElevationSection path={detail.path} />
-              </div>
-              <div className="mt-4">
-                <KmSplitSection
-                  path={detail.path}
-                  distanceM={detail.distanceM}
-                  workoutType={detail.workoutType}
-                  t={t}
-                />
-              </div>
-            </>
+            <div className="mt-4">
+              <KmSplitSection
+                path={detail.path}
+                distanceM={detail.distanceM}
+                workoutType={detail.workoutType}
+                t={t}
+              />
+            </div>
           ) : null}
 
           {user ? (
