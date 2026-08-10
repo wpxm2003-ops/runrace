@@ -31,3 +31,7 @@ export function getChallengePreview(id: number | null | undefined): ChallengeLis
   if (id == null) return null;
   return previews.get(id) ?? null;
 }
+
+export function clearChallengePreview(id: number | null | undefined): void {
+  if (id != null) previews.delete(id);
+}

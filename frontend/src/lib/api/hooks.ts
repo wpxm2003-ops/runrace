@@ -8,6 +8,10 @@ import useSWRInfinite from "swr/infinite";
 import { appMutate } from "@/lib/swrMutate";
 import type { User } from "firebase/auth";
 import type { CrewRegion, WorkoutDetail } from "./types";
+import {
+  isChallengeListCacheKey,
+  removeChallengeFromListCache,
+} from "@/lib/challengeListCache";
 import { reportClientError } from "./errors";
 import {
   fetchChallengesPage,
@@ -179,6 +183,15 @@ export function invalidateChallengeLists() {
     (key) =>
       Array.isArray(key) &&
       (key[0] === "challenges-page" || key[0] === "challenges-mine-page"),
+  );
+}
+
+/** Remove a race confirmed missing by the detail API from every list cache immediately. */
+export function removeChallengeFromCachedLists(challengeId: number) {
+  return appMutate(
+    isChallengeListCacheKey,
+    (cached) => removeChallengeFromListCache(cached, challengeId),
+    { revalidate: true },
   );
 }
 

@@ -4,6 +4,17 @@ const STORAGE_KEY = "runrace_swr_cache";
 
 type CacheEntry = { data: unknown };
 
+const VOLATILE_LIST_PREFIXES = [
+  "challenges-page",
+  "challenges-mine-page",
+  "crew-races",
+] as const;
+
+/** Server-side batches can remove races, so race lists must not survive an app restart. */
+export function isPersistentSwrCacheKey(key: string): boolean {
+  return !VOLATILE_LIST_PREFIXES.some((prefix) => key.includes(`@"${prefix}",`));
+}
+
 /**
  * SWR 영구 캐시 프로바이더 (localStorage 기반).
  *
@@ -19,7 +30,8 @@ export function createSwrCacheProvider(): Map<string, CacheEntry> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      map = new Map(JSON.parse(raw) as [string, CacheEntry][]);
+      const entries = JSON.parse(raw) as [string, CacheEntry][];
+      map = new Map(entries.filter(([key]) => isPersistentSwrCacheKey(key)));
     }
   } catch {}
 
@@ -27,6 +39,7 @@ export function createSwrCacheProvider(): Map<string, CacheEntry> {
     try {
       const entries: [string, CacheEntry][] = [];
       for (const [key, value] of map.entries()) {
+        if (!isPersistentSwrCacheKey(key)) continue;
         // error나 undefined data는 저장하지 않는다
         if ((value as { data?: unknown })?.data !== undefined) {
           entries.push([key, { data: (value as { data: unknown }).data }]);

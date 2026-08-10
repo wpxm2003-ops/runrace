@@ -14,11 +14,13 @@ import {
   leaveChallenge,
   invalidateChallengeLists,
   invalidateCrewRaces,
+  isNotFoundError,
   nudgeMember,
   useChallengeDetail,
   useHeadToHead,
   mapErrorMessage,
   reportAndDisplay,
+  removeChallengeFromCachedLists,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
 import { track } from "@/lib/analytics";
@@ -27,7 +29,7 @@ import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { getAppUrl } from "@/lib/appUrl";
 import { challengeEditHref, parseChallengeIdFromPath } from "@/lib/challengeRoute";
-import { getChallengePreview } from "@/lib/challengePreview";
+import { clearChallengePreview, getChallengePreview } from "@/lib/challengePreview";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
 import { ChallengePrizes } from "@/app/challenges/_components/ChallengePrizes";
 import {
@@ -137,6 +139,12 @@ export default function ChallengeDetailContent() {
   }, [headToHeadRows]);
 
   const error = firstErrorMessage(actionError, fetchErrorMessage(fetchError, t.detail_not_found));
+
+  useEffect(() => {
+    if (!id || !isNotFoundError(fetchError)) return;
+    clearChallengePreview(id);
+    void removeChallengeFromCachedLists(id);
+  }, [fetchError, id]);
 
   // 액션 피드백(콕 찌르기·참여/탈퇴 등) 에러는 5초 뒤 자동으로 지운다. 로드 실패(fetchError)는 유지.
   useEffect(() => {
