@@ -50,10 +50,25 @@ const SMOOTH_WINDOW_MAX_M = 175;
 const SMOOTH_WINDOW_MAX_FRACTION = 1 / 12;
 
 /**
- * DEM 프로필 평활 반경(버킷). SRTM 1-arcsec 격자는 약 30m라 25m 버킷으로 리샘플하면
- * 보간 계단이 남는다 — 그것만 다듬을 최소 폭이고, 실제 지형은 건드리지 않는다.
+ * DEM 평활 창(m)과, 그 뒤 지형으로 인정할 최소 고저차.
+ *
+ * SRTM 격자 노이즈는 셀 스케일(30m)에서 진동하고 실제 경사는 저주파다. 창을 넓힐수록
+ * 노이즈만 빠르게 잦아든다 — 실측(평지 4km):
+ *
+ *   창 폭      100m    250m    400m    600m
+ *   평지 σ=2m  4.4m    3.7m    2.4m    1.4m
+ *   평지 σ=3m  6.6m    5.5m    3.6m    2.2m
+ *   진짜 +5m   6.8m    5.3m    4.7m    4.0m
+ *   진짜 +8m  11.7m    9.4m    8.4m    7.2m
+ *
+ * 600m에서 평지(1.4~2.2m)와 진짜 5m 경사(4.0m)가 갈린다. 그래서 넓게 평활한 뒤
+ * 3m 미만이면 평지로 보고 아무것도 그리지 않는다. 600m보다 짧은 기복은 뭉개지지만,
+ * 30m 격자로는 애초에 그 크기를 노이즈와 구분할 수 없다.
  */
-const DEM_SMOOTH_RADIUS = 1;
+const DEM_SMOOTH_WINDOW_MAX_M = 600;
+const DEM_SMOOTH_WINDOW_MIN_M = 150;
+const DEM_SMOOTH_WINDOW_FRACTION = 1 / 6;
+const DEM_MIN_REAL_RANGE_M = 3;
 
 /**
  * 노이즈 판별용 무거운 평활 창(m)과, 그 뒤 살아남아야 하는 상승고도 비율.
@@ -313,14 +328,20 @@ export function computeElevationStats(
   // 창 폭은 세그먼트가 아니라 총 거리 기준 — 버킷 폭과 같은 이유로 런 안에서 하나로 고정한다.
   const medianRadius = windowRadius(distanceM, bucketM, MEDIAN_WINDOW_MAX_M, MEDIAN_WINDOW_MAX_FRACTION);
   const smoothRadius = windowRadius(distanceM, bucketM, SMOOTH_WINDOW_MAX_M, SMOOTH_WINDOW_MAX_FRACTION);
+  // DEM 창은 짧은 코스에서도 최소 폭을 지킨다 — 노이즈 진폭은 코스 길이가 아니라 셀 크기로 정해진다.
+  const demWindowM = Math.min(
+    DEM_SMOOTH_WINDOW_MAX_M,
+    Math.max(DEM_SMOOTH_WINDOW_MIN_M, distanceM * DEM_SMOOTH_WINDOW_FRACTION),
+  );
+  const demSmoothRadius = Math.max(1, Math.round(demWindowM / bucketM / 2));
   const smoothedSegments = segments
     .filter((segment) => segment.length >= MIN_VALID_POINTS)
     .map((segment) => {
       const resampled = resampleByDistance(segment, bucketM);
       if (source === "dem") {
-        // DEM 값에는 스파이크도 콜드스타트 드리프트도 없다 — 둘을 겨냥한 중앙값·경사 클램프를
-        // 걸면 없는 오차 대신 실제 지형을 깎는다. 격자 양자화와 보간 계단만 최소한으로 다듬는다.
-        return smoothProfile(resampled, DEM_SMOOTH_RADIUS);
+        // DEM 값에는 스파이크도 콜드스타트 드리프트도 없다 — 둘을 겨냥한 중앙값·경사 클램프
+        // 대신, 격자 노이즈만 빠지고 실제 경사는 남는 넓은 창으로 추세를 뽑는다.
+        return smoothProfile(resampled, demSmoothRadius);
       }
       return smoothProfile(
         suppressColdStartDrift(rollingMedian(resampled, medianRadius)),
@@ -343,8 +364,14 @@ export function computeElevationStats(
     }
   }
 
-  if (maxElevationM - minElevationM < 1) return null;
-  if (isNoiseDominated(smoothedSegments, totalAscentM, bucketM, distanceM)) return null;
+  const rangeM = maxElevationM - minElevationM;
+  if (rangeM < 1) return null;
+  // DEM은 넓은 창으로 이미 추세만 남았다 — 그 뒤에도 남는 고저차가 작으면 지형이 아니라
+  // 격자 노이즈의 잔여분이다(평지 실측 1.4~2.2m). 주파수 판별은 GPS 경로에만 쓴다.
+  if (source === "dem" && rangeM < DEM_MIN_REAL_RANGE_M) return null;
+  if (source !== "dem" && isNoiseDominated(smoothedSegments, totalAscentM, bucketM, distanceM)) {
+    return null;
+  }
 
   return {
     totalAscentM,
