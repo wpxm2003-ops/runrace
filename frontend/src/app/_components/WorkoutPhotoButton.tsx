@@ -7,6 +7,7 @@ import { Button } from "@/app/_components/ui/Button";
 import { updateWorkoutImage, uploadImage, patchWorkoutDetailImage, mapErrorMessage } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
+import { saveBlobLocally } from "@/lib/storyCard";
 import {
   WorkoutPhotoEditor,
   readAsDataURL,
@@ -34,6 +35,7 @@ export function WorkoutPhotoButton({
   const { t } = useLocale();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(imageUrl);
   const [editing, setEditing] = useState<
@@ -101,6 +103,22 @@ export function WorkoutPhotoButton({
       toast.error(t.error_occurred);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onDownload() {
+    if (!url || busy || downloading) return;
+    setDownloading(true);
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`image_download_${response.status}`);
+      const blob = await response.blob();
+      const result = await saveBlobLocally(blob, `runrace-workout-${workoutId}`, ".jpg");
+      if (result === "saved") toast.success(t.photo_saved);
+    } catch {
+      toast.error(t.error_occurred);
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -172,15 +190,23 @@ export function WorkoutPhotoButton({
           >
             <Button
               variant="secondary"
-              disabled={busy}
+              disabled={busy || downloading}
               onClick={pickFile}
               className="h-11 flex-1 bg-white"
             >
               {t.indoor_field_image_change}
             </Button>
             <Button
+              variant="secondary"
+              disabled={busy || downloading}
+              onClick={onDownload}
+              className="h-11 flex-1 bg-white"
+            >
+              {downloading ? t.photo_card_busy : t.photo_card_download}
+            </Button>
+            <Button
               variant="destructive"
-              disabled={busy}
+              disabled={busy || downloading}
               onClick={onDelete}
               className="h-11 flex-1 bg-white"
             >
