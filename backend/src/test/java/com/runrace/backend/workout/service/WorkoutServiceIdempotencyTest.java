@@ -71,8 +71,7 @@ class WorkoutServiceIdempotencyTest {
         null, // personalBestRepository — 이 테스트 경로는 삭제를 타지 않는다
         shoeService,
         eventPublisher,
-        new ObjectMapper(),
-        com.runrace.backend.workout.elevation.TerrainElevationSource.disabled());
+        new ObjectMapper());
     userId = UUID.randomUUID();
     principal = new AuthPrincipal(userId, "uid");
     when(userRepository.getRequiredForUpdate(userId)).thenReturn(user);

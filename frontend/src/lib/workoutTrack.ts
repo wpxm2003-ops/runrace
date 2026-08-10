@@ -7,7 +7,6 @@ export type LatLng = {
   lat: number;
   lng: number;
   t?: number;
-  ele?: number;
   breakBefore?: boolean;
 };
 

@@ -407,15 +407,8 @@ export type WorkoutSummary = {
   maxStreakDays: number;
 };
 
-/**
- * 경로에 실린 고도의 출처. GPS 원본은 지형과 오차를 구분할 수 없어 차트로 그리면 안 된다 —
- * 값만 봐서는 판단할 수 없어 서버가 알려준다. 구형 서버 응답에는 없을 수 있다.
- */
-export type ElevationSource = "DEM" | "GPS" | "NONE";
-
 export type WorkoutDetail = WorkoutListItem & {
   path: LatLng[];
-  elevationSource?: ElevationSource;
   imageUrl: string | null;
   memo?: string | null;
   /** 이 러닝에 귀속된 신발. 없으면 null. */
@@ -606,7 +599,6 @@ export type WorkoutShare = {
   avgPaceSecPerKm: number | null;
   startedAt: string;
   path: LatLng[];
-  elevationSource?: ElevationSource;
   workoutType: WorkoutType;
   imageUrl: string | null;
 };

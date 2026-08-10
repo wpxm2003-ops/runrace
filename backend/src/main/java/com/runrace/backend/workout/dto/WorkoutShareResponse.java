@@ -2,7 +2,6 @@ package com.runrace.backend.workout.dto;
 
 import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.workout.domain.WorkoutSession;
-import com.runrace.backend.workout.elevation.ElevationSource;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -15,12 +14,9 @@ public record WorkoutShareResponse(
     String startedAt,
     List<PathPointDto> path,
     String workoutType,
-    String imageUrl,
-    /** 고도 출처 — DEM일 때만 클라이언트가 고도를 표시한다. */
-    String elevationSource) {
+    String imageUrl) {
 
-  public static WorkoutShareResponse from(
-      WorkoutSession session, List<PathPointDto> path, ElevationSource elevationSource) {
+  public static WorkoutShareResponse from(WorkoutSession session, List<PathPointDto> path) {
     return new WorkoutShareResponse(
         session.getDurationSec(),
         session.getDistanceM(),
@@ -29,7 +25,6 @@ public record WorkoutShareResponse(
         IsoTime.format(session.getStartedAt().truncatedTo(ChronoUnit.HOURS)),
         path,
         session.getWorkoutType().name(),
-        session.getImageUrl(),
-        elevationSource.name());
+        session.getImageUrl());
   }
 }

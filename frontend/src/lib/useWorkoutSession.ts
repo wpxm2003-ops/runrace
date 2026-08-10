@@ -25,7 +25,6 @@ import {
   type WorkoutStartFix,
   type WorkoutStatus,
 } from "./workoutTrack";
-import { trustedAltitude } from "./elevation";
 import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersistence";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
@@ -319,19 +318,9 @@ export function useWorkoutSession(
       setGeoError(null);
       const now = Date.now();
       const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
-      // 고도는 첫 양호 fix 이전(콜드스타트 수렴 중)이거나 수직 정확도가 나쁘면 싣지 않는다 —
-      // 수평은 멀쩡해 보여도 고도 수렴은 더 늦어서, 초반 고도 스파이크가 프로필을 오염시킨다.
-      const altitude = vehicleStateRef.current.hasHadGoodFix
-        ? trustedAltitude(
-            coords.altitude,
-            normalizeGpsAccuracyM(coords.altitudeAccuracy),
-            accuracyM,
-          )
-        : undefined;
       const point: LatLng = {
         lat: coords.latitude,
         lng: coords.longitude,
-        ...(altitude != null ? { ele: altitude } : {}),
       };
       setPosition(point);
 

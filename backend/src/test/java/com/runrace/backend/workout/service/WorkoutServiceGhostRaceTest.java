@@ -62,8 +62,7 @@ class WorkoutServiceGhostRaceTest {
         null, // personalBestRepository — 이 테스트 경로는 삭제를 타지 않는다
         shoeService,
         eventPublisher,
-        new ObjectMapper(),
-        com.runrace.backend.workout.elevation.TerrainElevationSource.disabled());
+        new ObjectMapper());
 
     OffsetDateTime startedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
     GhostRaceResultDto result =

@@ -19,15 +19,6 @@ const steps = [
   // EC2가 아닌 로컬에서 돌려 원격 빌드 시간은 그대로 둔다. -o(오프라인)로 빠르게.
   ["테스트(로컬)", `"${MVNW}" -o test`, BACKEND_DIR],
   ["코드 받기", ssh(`cd ${REMOTE_DIR} && git pull origin main`)],
-  ["한국 DEM 준비", ssh(`cd ${REMOTE_DIR} && bash scripts/install-korea-dem.sh`)],
-  ["systemd drop-in 디렉터리", ssh("sudo mkdir -p /etc/systemd/system/runrace.service.d")],
-  [
-    "DEM 서비스 설정",
-    ssh(
-      `sudo install -m 0644 ${REMOTE_DIR}/infra/systemd/runrace-elevation.conf /etc/systemd/system/runrace.service.d/elevation.conf`,
-    ),
-  ],
-  ["systemd 설정 반영", ssh("sudo systemctl daemon-reload")],
   [
     "빌드",
     ssh(`cd ${REMOTE_DIR}/backend && MAVEN_OPTS=-Xmx512m ./mvnw -q clean package -DskipTests`),

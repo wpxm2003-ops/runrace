@@ -2,7 +2,6 @@ package com.runrace.backend.workout.dto;
 
 import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.workout.domain.WorkoutSession;
-import com.runrace.backend.workout.elevation.ElevationSource;
 import java.util.List;
 
 public record WorkoutDetailResponse(
@@ -18,12 +17,9 @@ public record WorkoutDetailResponse(
     String imageUrl,
     String memo,
     Long shoeId,
-    String shoeName,
-    /** 고도 출처 — DEM일 때만 클라이언트가 고도를 표시한다. */
-    String elevationSource) {
+    String shoeName) {
 
-  public static WorkoutDetailResponse from(
-      WorkoutSession session, List<PathPointDto> path, ElevationSource elevationSource) {
+  public static WorkoutDetailResponse from(WorkoutSession session, List<PathPointDto> path) {
     var shoe = session.getShoe();
     return new WorkoutDetailResponse(
         session.getId(),
@@ -38,7 +34,6 @@ public record WorkoutDetailResponse(
         session.getImageUrl(),
         session.getMemo(),
         shoe != null ? shoe.getId() : null,
-        shoe != null ? shoe.displayName() : null,
-        elevationSource.name());
+        shoe != null ? shoe.displayName() : null);
   }
 }
