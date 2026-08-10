@@ -196,6 +196,49 @@ describe("computeElevationStats", () => {
     expect(dipDepth(dem)).toBeGreaterThan(4.5);
   });
 
+  describe("DEM 격자 노이즈 판별", () => {
+    /** SRTM 30m 격자 흉내 — 셀마다 고정 오차(공간 무상관), 같은 셀은 항상 같은 값. */
+    function srtmPath(cellNoiseM: number, terrain: (d: number) => number): LatLng[] {
+      const rand = mulberry32(7);
+      const cache = new Map<number, number>();
+      const points: LatLng[] = [];
+      for (let d = 0; d < 4000; d += 4) {
+        const cell = Math.floor(d / 30);
+        let noise = cache.get(cell);
+        if (noise === undefined) {
+          // Box-Muller
+          const u = Math.max(1e-9, rand());
+          noise = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand()) * cellNoiseM;
+          cache.set(cell, noise);
+        }
+        points.push({ lat: 37, lng: 127 + d * 0.0000113, ele: terrain(d) + noise });
+      }
+      return points;
+    }
+
+    it("평지 위의 SRTM 셀 노이즈는 차트를 만들지 않는다", () => {
+      // 실측 회귀: 잠실 4km 걷기가 +7m 톱니로 그려졌다. 평지에 셀 노이즈만 얹으면
+      // 고저차 5.7~14.3m, 상승 44~268m가 나온다 — 전부 지형이 아니라 격자 오차다.
+      for (const cellNoise of [2, 3, 5]) {
+        expect(computeElevationStats(srtmPath(cellNoise, () => 20), "dem")).toBeNull();
+      }
+    });
+
+    it("같은 노이즈 위의 진짜 언덕은 그대로 표시한다", () => {
+      // 노이즈를 걸러내겠다고 실제 지형까지 숨기면 기능이 죽는다.
+      const cases: [string, number, (d: number) => number][] = [
+        ["완만한 언덕 +30m", 2, (d) => 20 + (d < 800 ? 0 : d < 1600 ? (d - 800) * 0.0375 : 30)],
+        ["작은 언덕 +10m", 2, (d) => 20 + (d < 1000 ? 0 : d < 1400 ? (d - 1000) * 0.025 : 10)],
+        ["언덕 왕복 +60m", 3, (d) => 20 + (d < 2000 ? d * 0.03 : 60 - (d - 2000) * 0.03)],
+        ["연속 등반 +150m", 3, (d) => 20 + d * 0.0375],
+      ];
+      for (const [label, cellNoise, terrain] of cases) {
+        const stats = computeElevationStats(srtmPath(cellNoise, terrain), "dem");
+        expect(stats, label).not.toBeNull();
+      }
+    });
+  });
+
   it("기본 인자는 GPS 모드 — 출처를 안 넘긴 호출부의 동작이 바뀌지 않는다", () => {
     const points: LatLng[] = [];
     for (let i = 0; i < 200; i++) {

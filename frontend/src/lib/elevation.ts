@@ -44,16 +44,37 @@ const RESAMPLE_TARGET_BUCKETS = 400;
  * 0.1m로 소멸 — 같은 필터로 3km 코스는 보존율 90%+). GPS 노이즈를 누르는 데 필요한
  * 창은 거리 스케일로 정해지지만, 그 창이 경로를 지배하면 안 되므로 비율 상한을 함께 건다.
  */
+const MEDIAN_WINDOW_MAX_M = 125;
+const MEDIAN_WINDOW_MAX_FRACTION = 1 / 16;
+const SMOOTH_WINDOW_MAX_M = 175;
+const SMOOTH_WINDOW_MAX_FRACTION = 1 / 12;
+
 /**
  * DEM 프로필 평활 반경(버킷). SRTM 1-arcsec 격자는 약 30m라 25m 버킷으로 리샘플하면
  * 보간 계단이 남는다 — 그것만 다듬을 최소 폭이고, 실제 지형은 건드리지 않는다.
  */
 const DEM_SMOOTH_RADIUS = 1;
 
-const MEDIAN_WINDOW_MAX_M = 125;
-const MEDIAN_WINDOW_MAX_FRACTION = 1 / 16;
-const SMOOTH_WINDOW_MAX_M = 175;
-const SMOOTH_WINDOW_MAX_FRACTION = 1 / 12;
+/**
+ * 노이즈 판별용 무거운 평활 창(m)과, 그 뒤 살아남아야 하는 상승고도 비율.
+ *
+ * SRTM은 bare-earth DTM이 아니라 30m 격자 DSM이라, 도심 고층 단지에서는 건물 반사와
+ * 레이더 스페클이 셀 단위(±2~3m)로 섞인다. 실측: 완전한 평지 4km가 셀 노이즈 σ=2m만으로
+ * 고저차 5.7m·상승 44m, σ=3m면 고저차 8.6m·상승 122m로 그려진다. 잠실 4km 실기록이
+ * 정확히 이 범위(+7m)였다.
+ *
+ * 고저차만으로 자르면 진짜 10m 언덕까지 숨는다. 대신 주파수로 가른다 — 격자 노이즈는
+ * 셀 스케일에서 진동하므로 250m 창으로 뭉개면 상승분이 대부분 사라지고, 실제 지형은
+ * 수백 m에 걸쳐 변하므로 그대로 남는다. 0.35는 실측 스윕에서 정한 값 —
+ * 노이즈(σ=2·3·5m)는 전부 걸러지고 진짜 +10m 언덕은 통과하는 지점이다.
+ */
+const NOISE_TEST_WINDOW_M = 250;
+const NOISE_ASCENT_SURVIVAL_MIN = 0.35;
+/**
+ * 이 거리보다 짧으면 판별을 건너뛴다. 250m 창이 경로의 상당 부분을 덮으면 지형이든
+ * 노이즈든 똑같이 뭉개져서 둘을 가를 수 없다 — 창 6개 길이는 있어야 의미가 생긴다.
+ */
+const NOISE_TEST_MIN_DISTANCE_M = NOISE_TEST_WINDOW_M * 6;
 
 /** 창 폭(m)을 버킷 개수 기준 반경으로 환산한다(최소 1 — 창을 아예 없애진 않는다). */
 function windowRadius(totalDistanceM: number, bucketM: number, maxM: number, maxFraction: number): number {
@@ -242,6 +263,28 @@ function ascentDescent(smoothed: ElevationProfilePoint[]): { totalAscentM: numbe
  */
 export type ElevationDataSource = "dem" | "gps";
 
+/**
+ * 프로필이 지형이 아니라 격자 노이즈인지 판정한다.
+ *
+ * 상승고도를 원본과 "무겁게 평활한 것"에서 각각 재서, 평활 후 대부분이 사라지면 그 상승분은
+ * 고주파 성분 — 즉 DEM 셀 노이즈다. 실제 언덕은 250m 창에도 거의 그대로 남는다.
+ * 고저차 문턱값과 달리, 작지만 진짜인 언덕을 숨기지 않으면서 톱니만 걸러낸다.
+ */
+function isNoiseDominated(
+  segments: ElevationProfilePoint[][],
+  totalAscentM: number,
+  bucketM: number,
+  distanceM: number,
+): boolean {
+  if (totalAscentM <= 0 || distanceM < NOISE_TEST_MIN_DISTANCE_M) return false;
+  const radius = Math.max(1, Math.round(NOISE_TEST_WINDOW_M / bucketM / 2));
+  let survivingAscentM = 0;
+  for (const segment of segments) {
+    survivingAscentM += ascentDescent(smoothProfile(segment, radius)).totalAscentM;
+  }
+  return survivingAscentM / totalAscentM < NOISE_ASCENT_SURVIVAL_MIN;
+}
+
 export function computeElevationStats(
   path: LatLng[],
   source: ElevationDataSource = "gps",
@@ -301,6 +344,7 @@ export function computeElevationStats(
   }
 
   if (maxElevationM - minElevationM < 1) return null;
+  if (isNoiseDominated(smoothedSegments, totalAscentM, bucketM, distanceM)) return null;
 
   return {
     totalAscentM,
