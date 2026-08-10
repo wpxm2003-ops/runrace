@@ -21,6 +21,7 @@ import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
+import com.runrace.backend.workout.elevation.ElevationSource;
 import com.runrace.backend.workout.elevation.TerrainElevationSource;
 import com.runrace.backend.workout.dto.GhostRaceResultDto;
 import com.runrace.backend.workout.dto.PathPointDto;
@@ -624,30 +625,38 @@ public class WorkoutService {
     }
   }
 
+  /** 고도 보정 결과 — 경로와, 그 경로에 실린 고도의 출처. */
+  record ResolvedPath(List<PathPoint> points, ElevationSource elevationSource) {}
+
   /**
    * 경로 전체를 좌표 기준 지형고로 교체한다.
    *
    * <p>DEM과 GPS 고도를 포인트 단위로 섞으면 타일 경계에서 서로 다른 기준면과 GPS 드리프트가
    * 수직 점프로 나타난다. 따라서 한 점이라도 DEM 값을 얻지 못하면 이 경로 전체를 원본 GPS로
    * 유지한다. 조회 시 적용하므로 기존 기록도 같은 규칙으로 보정되고, 저장된 원본은 훼손되지 않는다.
+   *
+   * <p>교체 성공 여부를 함께 돌려준다 — 클라이언트는 DEM일 때만 고도를 표시해야 하고,
+   * 그 판단을 하려면 값만 봐서는 알 수 없기 때문이다.
    */
-  List<PathPoint> withTerrainElevation(List<PathPoint> path) {
-    if (!terrainElevationSource.isEnabled() || path.isEmpty()) return path;
+  ResolvedPath withTerrainElevation(List<PathPoint> path) {
+    if (!terrainElevationSource.isEnabled() || path.isEmpty()) {
+      return new ResolvedPath(path, gpsElevationSource(path));
+    }
 
     List<Double> elevations = new ArrayList<>(path.size());
     try {
       for (PathPoint point : path) {
         Double terrain = terrainElevationSource.elevationAt(point.lat(), point.lng());
         if (terrain == null || !Double.isFinite(terrain)) {
-          log.debug("DEM coverage incomplete; keeping the original GPS elevation (points={})", path.size());
-          return path;
+          log.info("DEM coverage incomplete; keeping the original GPS elevation (points={})", path.size());
+          return new ResolvedPath(path, gpsElevationSource(path));
         }
         elevations.add(terrain);
       }
     } catch (RuntimeException e) {
       // 고도 보정은 부가 기능이다. 타일 장애가 운동 상세 조회까지 깨뜨리면 안 된다.
       log.warn("DEM lookup failed; keeping the original GPS elevation (points={})", path.size(), e);
-      return path;
+      return new ResolvedPath(path, gpsElevationSource(path));
     }
 
     List<PathPoint> corrected = new ArrayList<>(path.size());
@@ -656,7 +665,13 @@ public class WorkoutService {
       corrected.add(new PathPoint(
           point.lat(), point.lng(), point.t(), elevations.get(i), point.breakBefore()));
     }
-    return List.copyOf(corrected);
+    return new ResolvedPath(List.copyOf(corrected), ElevationSource.DEM);
+  }
+
+  /** DEM을 적용하지 못했을 때의 출처 — 원본에 고도가 하나도 없으면 GPS가 아니라 "없음"이다. */
+  private static ElevationSource gpsElevationSource(List<PathPoint> path) {
+    boolean hasElevation = path.stream().anyMatch(p -> p.ele() != null);
+    return hasElevation ? ElevationSource.GPS : ElevationSource.NONE;
   }
 
   /**
@@ -731,17 +746,23 @@ public class WorkoutService {
     }
   }
 
+  /** 응답용 경로 — 좌표 목록과 고도 출처. */
+  public record PathWithElevation(List<PathPointDto> path, ElevationSource elevationSource) {}
+
   /** 저장된 경로 JSON을 응답용 좌표 목록으로 변환한다(상세·공유 응답 공통). */
-  public List<PathPointDto> toPath(String pathJson) {
-    return withTerrainElevation(parsePath(pathJson)).stream()
+  public PathWithElevation toPath(String pathJson) {
+    ResolvedPath resolved = withTerrainElevation(parsePath(pathJson));
+    List<PathPointDto> points = resolved.points().stream()
         .map(p -> new PathPointDto(
             p.lat(), p.lng(), p.t(), roundElevation(p.ele()), p.breakBefore()))
         .toList();
+    return new PathWithElevation(points, resolved.elevationSource());
   }
 
   /** 공유 페이지 전용 — {@link #toPath}에 프라이버시 절단을 더한 것. */
-  public List<PathPointDto> toSharePath(String pathJson) {
-    return truncateForShare(toPath(pathJson));
+  public PathWithElevation toSharePath(String pathJson) {
+    PathWithElevation full = toPath(pathJson);
+    return new PathWithElevation(truncateForShare(full.path()), full.elevationSource());
   }
 
   private static double haversineMeters(PathPointDto a, PathPointDto b) {

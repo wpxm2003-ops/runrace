@@ -3,10 +3,13 @@
 import { computeElevationStats } from "@/lib/elevation";
 import { useUnit } from "@/lib/UnitContext";
 import { formatElevation } from "@/lib/units";
+import type { ElevationSource } from "@/lib/api/types";
 import type { LatLng } from "@/lib/workoutTrack";
 
 type Props = {
   path: LatLng[];
+  /** 서버가 알려준 고도 출처. DEM이 아니면 아무것도 그리지 않는다. */
+  elevationSource: ElevationSource | undefined;
 };
 
 const CHART_W = 320;
@@ -53,9 +56,11 @@ function buildAreaPath(points: (readonly [number, number])[]): string {
   return `${line} L ${last[0].toFixed(1)} ${CHART_H - PAD_Y} L ${first[0].toFixed(1)} ${CHART_H - PAD_Y} Z`;
 }
 
-export function ElevationSection({ path }: Props) {
+export function ElevationSection({ path, elevationSource }: Props) {
   const { unit } = useUnit();
-  const stats = computeElevationStats(path);
+  // DEM 지형고일 때만 그린다. GPS 원본은 지형과 수직 오차를 구분할 수 없어(평지 10분 걷기가
+  // 7~31m 언덕으로 그려진 실측이 있다) 어떤 필터로도 표시 가능한 값이 되지 않는다.
+  const stats = elevationSource === "DEM" ? computeElevationStats(path, "dem") : null;
   if (!stats) return null;
 
   const points = toChartPoints(stats.profile);

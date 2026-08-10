@@ -35,7 +35,7 @@ class WorkoutServiceShareTest {
           new WorkoutService.PathPoint(37.0, 127.0, 0L),
           new WorkoutService.PathPoint(37.0005, 127.0, 1_000L, null, true));
 
-      List<PathPointDto> result = service.toPath(toJson(original));
+      List<PathPointDto> result = service.toPath(toJson(original)).path();
 
       assertEquals(2, result.size());
       assertEquals(Boolean.TRUE, result.get(1).breakBefore());
@@ -53,7 +53,7 @@ class WorkoutServiceShareTest {
 
     @Test void 구형_JSON에_breakBefore가_없으면_null로_읽는다() {
       List<PathPointDto> result =
-          service.toPath("[{\"lat\":37.0,\"lng\":127.0,\"t\":0,\"ele\":null}]");
+          service.toPath("[{\"lat\":37.0,\"lng\":127.0,\"t\":0,\"ele\":null}]").path();
 
       assertEquals(1, result.size());
       assertEquals(null, result.get(0).breakBefore());
@@ -68,7 +68,7 @@ class WorkoutServiceShareTest {
             .toList();
 
     @Test void 시작과_끝이_잘리고_중간은_남는다() {
-      List<PathPointDto> result = service.toSharePath(toJson(original));
+      List<PathPointDto> result = service.toSharePath(toJson(original)).path();
 
       assertTrue(result.size() < original.size(), "양 끝이 잘려 원본보다 짧아야 한다");
       assertTrue(result.size() > 0, "중간 구간은 남아야 한다");
@@ -95,7 +95,7 @@ class WorkoutServiceShareTest {
         new WorkoutService.PathPoint(37.0000, 127.0, 4L));
 
     @Test void 전체가_빈_경로가_된다() {
-      List<PathPointDto> result = service.toSharePath(toJson(original));
+      List<PathPointDto> result = service.toSharePath(toJson(original)).path();
       assertEquals(List.of(), result);
     }
   }
@@ -105,12 +105,12 @@ class WorkoutServiceShareTest {
     @Test void 한_점짜리_경로는_빈_경로가_된다() {
       List<WorkoutService.PathPoint> original =
           List.of(new WorkoutService.PathPoint(37.0, 127.0, 0L));
-      List<PathPointDto> result = service.toSharePath(toJson(original));
+      List<PathPointDto> result = service.toSharePath(toJson(original)).path();
       assertEquals(List.of(), result);
     }
 
     @Test void 빈_경로는_그대로_반환한다() {
-      List<PathPointDto> result = service.toSharePath(toJson(List.of()));
+      List<PathPointDto> result = service.toSharePath(toJson(List.of())).path();
       assertEquals(List.of(), result);
     }
   }

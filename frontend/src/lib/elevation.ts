@@ -44,6 +44,12 @@ const RESAMPLE_TARGET_BUCKETS = 400;
  * 0.1m로 소멸 — 같은 필터로 3km 코스는 보존율 90%+). GPS 노이즈를 누르는 데 필요한
  * 창은 거리 스케일로 정해지지만, 그 창이 경로를 지배하면 안 되므로 비율 상한을 함께 건다.
  */
+/**
+ * DEM 프로필 평활 반경(버킷). SRTM 1-arcsec 격자는 약 30m라 25m 버킷으로 리샘플하면
+ * 보간 계단이 남는다 — 그것만 다듬을 최소 폭이고, 실제 지형은 건드리지 않는다.
+ */
+const DEM_SMOOTH_RADIUS = 1;
+
 const MEDIAN_WINDOW_MAX_M = 125;
 const MEDIAN_WINDOW_MAX_FRACTION = 1 / 16;
 const SMOOTH_WINDOW_MAX_M = 175;
@@ -228,7 +234,18 @@ function ascentDescent(smoothed: ElevationProfilePoint[]): { totalAscentM: numbe
   return { totalAscentM, totalDescentM };
 }
 
-export function computeElevationStats(path: LatLng[]): ElevationStats | null {
+/**
+ * 고도 값의 출처. 필터 강도를 여기서 가른다.
+ *
+ * `gps`의 무거운 중앙값·평활·경사 클램프는 GPS 수직 오차를 겨냥해 튜닝된 것이라,
+ * DEM처럼 이미 결정적이고 깨끗한 값에 그대로 걸면 실제 지형만 깎아먹는다.
+ */
+export type ElevationDataSource = "dem" | "gps";
+
+export function computeElevationStats(
+  path: LatLng[],
+  source: ElevationDataSource = "gps",
+): ElevationStats | null {
   const segments: ElevationProfilePoint[][] = [[]];
   let distanceM = 0;
 
@@ -255,12 +272,18 @@ export function computeElevationStats(path: LatLng[]): ElevationStats | null {
   const smoothRadius = windowRadius(distanceM, bucketM, SMOOTH_WINDOW_MAX_M, SMOOTH_WINDOW_MAX_FRACTION);
   const smoothedSegments = segments
     .filter((segment) => segment.length >= MIN_VALID_POINTS)
-    .map((segment) =>
-      smoothProfile(
-        suppressColdStartDrift(rollingMedian(resampleByDistance(segment, bucketM), medianRadius)),
+    .map((segment) => {
+      const resampled = resampleByDistance(segment, bucketM);
+      if (source === "dem") {
+        // DEM 값에는 스파이크도 콜드스타트 드리프트도 없다 — 둘을 겨냥한 중앙값·경사 클램프를
+        // 걸면 없는 오차 대신 실제 지형을 깎는다. 격자 양자화와 보간 계단만 최소한으로 다듬는다.
+        return smoothProfile(resampled, DEM_SMOOTH_RADIUS);
+      }
+      return smoothProfile(
+        suppressColdStartDrift(rollingMedian(resampled, medianRadius)),
         smoothRadius,
-      ),
-    );
+      );
+    });
   if (smoothedSegments.length === 0) return null;
 
   let totalAscentM = 0;

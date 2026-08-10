@@ -166,6 +166,45 @@ describe("computeElevationStats", () => {
     expect(stats!.totalDescentM).toBeGreaterThan(4);
   });
 
+  it("DEM 모드는 GPS용 필터를 걸지 않아 실제 지형을 더 잘 보존한다", () => {
+    // DEM 값에는 스파이크도 콜드스타트 드리프트도 없다. GPS용 중앙값·경사 클램프를 그대로
+    // 걸면 없는 오차 대신 실제 지형만 깎인다. 1km 코스의 200m·6m 딥으로 두 모드를 비교한다.
+    const points: LatLng[] = [];
+    for (let i = 0; i < 630; i++) {
+      const d = i * 1.6;
+      const drop =
+        d < 400 || d > 600 ? 0 : d < 500 ? -((d - 400) / 100) * 6 : -6 + ((d - 500) / 100) * 6;
+      points.push({ lat: 37, lng: 127 + i * 0.000018, ele: 20 + drop });
+    }
+
+    const dipDepth = (stats: ReturnType<typeof computeElevationStats>) => {
+      const inDip = stats!.profile.filter((p) => p.distanceM >= 400 && p.distanceM <= 600);
+      const outside = stats!.profile.filter((p) => p.distanceM < 400 || p.distanceM > 600);
+      return (
+        Math.max(...outside.map((p) => p.elevationM)) - Math.min(...inDip.map((p) => p.elevationM))
+      );
+    };
+
+    const gps = computeElevationStats(points, "gps");
+    const dem = computeElevationStats(points, "dem");
+    expect(gps).not.toBeNull();
+    expect(dem).not.toBeNull();
+
+    // DEM 모드가 원래 6m에 더 가깝게 남긴다. 남은 감쇠는 V자 꼭짓점을 75m 평활 창이
+    // 둥글게 깎는 몫으로, 실제 DEM 지형은 이보다 완만해서 손실이 더 작다.
+    expect(dipDepth(dem)).toBeGreaterThan(dipDepth(gps));
+    expect(dipDepth(dem)).toBeGreaterThan(4.5);
+  });
+
+  it("기본 인자는 GPS 모드 — 출처를 안 넘긴 호출부의 동작이 바뀌지 않는다", () => {
+    const points: LatLng[] = [];
+    for (let i = 0; i < 200; i++) {
+      points.push({ lat: 37, lng: 127 + i * 0.0001, ele: 100 + i * 0.1 });
+    }
+
+    expect(computeElevationStats(points)).toEqual(computeElevationStats(points, "gps"));
+  });
+
   it("실제 언덕(완만한 경사)은 필터를 강화해도 상승고도·범위가 보존된다", () => {
     // 800m에 걸쳐 30m 오르는 3.75% 경사 — 경사 클램프(30%)·중앙값·평활을 다 거쳐도
     // 실제 지형은 살아남아야 한다.

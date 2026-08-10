@@ -23,7 +23,7 @@ class WorkoutShareResponseTest {
         .pathJson("[]")
         .build();
 
-    WorkoutShareResponse response = WorkoutShareResponse.from(session, List.of());
+    WorkoutShareResponse response = WorkoutShareResponse.from(session, List.of(), com.runrace.backend.workout.elevation.ElevationSource.NONE);
 
     assertEquals("2026-07-29T14:00Z", response.startedAt());
   }
@@ -37,7 +37,7 @@ class WorkoutShareResponseTest {
         .pathJson("[]")
         .build();
 
-    WorkoutShareResponse response = WorkoutShareResponse.from(session, List.of());
+    WorkoutShareResponse response = WorkoutShareResponse.from(session, List.of(), com.runrace.backend.workout.elevation.ElevationSource.NONE);
 
     assertEquals("2026-07-29T09:00Z", response.startedAt());
   }

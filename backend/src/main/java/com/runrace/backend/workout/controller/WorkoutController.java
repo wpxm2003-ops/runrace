@@ -178,16 +178,18 @@ public class WorkoutController {
   public ResponseEntity<WorkoutDetailResponse> detail(
       AuthPrincipal principal, @PathVariable("id") Long id) {
     WorkoutSession session = workoutService.getForUser(principal.userId(), id);
+    var resolved = workoutService.toPath(session.getPathJson());
     return ResponseEntity.ok(
-        WorkoutDetailResponse.from(session, workoutService.toPath(session.getPathJson())));
+        WorkoutDetailResponse.from(session, resolved.path(), resolved.elevationSource()));
   }
 
   /** 공개 공유 페이지 — 인증 불필요. */
   @GetMapping("/{id:" + ID_PATH + "}/share")
   public ResponseEntity<WorkoutShareResponse> share(@PathVariable("id") Long id) {
     WorkoutSession session = workoutService.getForShare(id);
+    var resolved = workoutService.toSharePath(session.getPathJson());
     return ResponseEntity.ok(
-        WorkoutShareResponse.from(session, workoutService.toSharePath(session.getPathJson())));
+        WorkoutShareResponse.from(session, resolved.path(), resolved.elevationSource()));
   }
 
   @GetMapping("/{id:" + ID_PATH + "}/comparison")
