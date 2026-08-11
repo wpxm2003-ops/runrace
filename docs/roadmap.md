@@ -1,7 +1,7 @@
 # RunRace 경쟁 기능 로드맵
 
 > 상태: **P0·P3·P4 출시 완료 — 남아있는 계획은 P1·P2 둘뿐** (작성 2026-06-11 · 갱신 2026-07-28)
-> 관련: [product-positioning.md](product-positioning.md) (포지셔닝 근거) · [health-sync-design.md](health-sync-design.md) (병렬 트랙, 보류) · [nsm-roadmap.md](nsm-roadmap.md) (NSM 훈련 코칭 축 — N3에서 P3 크루와 결합) · [fun-ideas-backlog.md](fun-ideas-backlog.md) (P0~P4 위/밖에 얹는 재미·게임필 레이어 아이디어 풀)
+> 관련: [product-positioning.md](product-positioning.md) (포지셔닝 근거) · [health-sync-design.md](health-sync-design.md) (병렬 트랙, 보류) · [nsm-roadmap.md](nsm-roadmap.md) (NSM 훈련 코칭 축 — N3에서 P3 크루와 결합) · [fun-ideas-backlog.md](fun-ideas-backlog.md) (P0~P4 위/밖에 얹는 재미·게임필 레이어 아이디어 풀) · [globalization-todo.md](globalization-todo.md) (글로벌 대응 남은 항목 — 축과 무관하게 상시)
 > 전제: "경쟁 게임 레이어"가 핵심 강점. 추적은 아웃소싱, 경쟁·재미·관계만 소유. (positioning §3)
 > 읽는 법: 출시된 단계(P0·P3·P4)는 **결정 로그**다 — 무엇을 만들었는지는 코드가 말하므로 여기엔 왜 그렇게 정했고 무엇을 기각했는지만 남긴다. 미착수 단계(P1·P2)는 코드에 0줄이라 **여기가 유일한 원본**이다.
 

@@ -170,6 +170,24 @@ export function idleAutoPauseAt(anchor: IdleAnchor, nowMs: number): number | nul
   return nowMs - anchor.timeMs >= IDLE_AUTO_PAUSE_WINDOW_MS ? anchor.timeMs : null;
 }
 
+/**
+ * 카카오맵이 실제로 지도를 그려주는 범위(한반도 + 주변 도서). 제주(33.1)·울릉/독도(131.9)까지 덮는다.
+ *
+ * 지도 공급자를 언어로 고르면 안 되는 이유: 해외여행 중 뛴 한국어 사용자에게 카카오맵이 뜨는데
+ * 국외는 타일이 없어 빈 화면이 된다. 라이브 화면뿐 아니라 기록 상세도 같은 컴포넌트라
+ * 그 기록은 영구히 지도가 안 보인다. 언어가 아니라 좌표로 고른다.
+ */
+const KOREA_BOUNDS = { minLat: 33, maxLat: 39, minLng: 124, maxLng: 132 };
+
+export function isInKorea(point: LatLng): boolean {
+  return (
+    point.lat >= KOREA_BOUNDS.minLat
+    && point.lat <= KOREA_BOUNDS.maxLat
+    && point.lng >= KOREA_BOUNDS.minLng
+    && point.lng <= KOREA_BOUNDS.maxLng
+  );
+}
+
 export function haversineMeters(a: LatLng, b: LatLng): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);

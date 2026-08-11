@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { pageMetadata, pageTitle } from "@/lib/seo";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "./_components/AppShell";
@@ -19,13 +20,15 @@ const APP_URL = getAppUrl();
 const SITE_DESCRIPTION =
   "GPS로 러닝을 기록하고 페이스를 분석하고, 친구·크루와 거리 대결까지. 러닝이 게임이 되는 무료 러닝 앱 RunRace.";
 
+const HOME_META = pageMetadata("home", "ko");
+
 export const metadata: Metadata = {
+  ...HOME_META,
   metadataBase: new URL(APP_URL),
   title: {
-    default: "RunRace — 친구와 함께하는 러닝 기록·대결 앱",
+    default: pageTitle("home", "ko"),
     template: "%s | RunRace",
   },
-  description: SITE_DESCRIPTION,
   keywords: ["러닝 앱", "러닝 기록", "페이스 계산기", "러닝 크루", "러닝 대결", "마라톤 훈련"],
   manifest: "/manifest.webmanifest",
   // iOS 홈 화면 추가 시 전체화면(standalone) PWA로 실행
@@ -37,14 +40,6 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icons/icon-192.webp",
     apple: "/icons/icon-192.webp",
-  },
-  openGraph: {
-    title: "RunRace",
-    description: "🏃 RunRace — 기록과 경쟁, 친구와 함께",
-    url: APP_URL,
-    siteName: "RunRace",
-    type: "website",
-    images: [{ url: `${APP_URL}/og-image.png`, width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
@@ -63,7 +58,9 @@ const APP_JSON_LD = {
   description: SITE_DESCRIPTION,
   applicationCategory: "HealthApplication",
   operatingSystem: "Android, iOS, Web",
-  offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
+  // 전 지역 무료. 가격이 0이라 통화는 표시에 쓰이지 않지만, schema.org가 price와 짝을 요구한다 —
+  // 특정 국가 통화(KRW)를 박으면 "한국에서만 파는 앱"으로 읽히므로 국제 기준 통화를 쓴다.
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
 };
 
 export const viewport: Viewport = {

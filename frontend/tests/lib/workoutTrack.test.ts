@@ -12,6 +12,7 @@ import {
   pathDistanceMeters,
   pickWorkoutStartSeed,
   slideIdleAnchor,
+  isInKorea,
   splitPathAtGaps,
   WORKOUT_START_FIX_MAX_ACCURACY_M,
   WORKOUT_START_FIX_MAX_AGE_MS,
@@ -520,5 +521,20 @@ describe("computeBestSegments — 추적 끊김", () => {
       });
     }
     expect(computeBestSegments(path)).toEqual({});
+  });
+});
+
+describe("isInKorea — 지도 공급자 선택 기준", () => {
+  it("국내 좌표는 true", () => {
+    expect(isInKorea({ lat: 37.5, lng: 127.0 })).toBe(true); // 서울
+    expect(isInKorea({ lat: 33.4, lng: 126.5 })).toBe(true); // 제주
+    expect(isInKorea({ lat: 37.24, lng: 131.86 })).toBe(true); // 독도
+  });
+
+  it("국외 좌표는 false — 카카오맵은 국외 타일이 없어 빈 지도가 된다", () => {
+    expect(isInKorea({ lat: 14.6, lng: 120.98 })).toBe(false); // 마닐라
+    expect(isInKorea({ lat: 35.68, lng: 139.69 })).toBe(false); // 도쿄
+    expect(isInKorea({ lat: 40.71, lng: -74.0 })).toBe(false); // 뉴욕
+    expect(isInKorea({ lat: -33.87, lng: 151.2 })).toBe(false); // 시드니
   });
 });
