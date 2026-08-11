@@ -158,6 +158,11 @@ class AchievementServiceTest {
     @Test void 소급_실내런도_누적_성과에는_포함하지만_현재기간_성과는_제외() {
       stubSummary(50, 101_000);
       OffsetDateTime lastYear = OffsetDateTime.now().minusYears(1);
+      when(workoutRepo.countRunsAtLeastDistanceSince(any(), any(), anyInt(), any()))
+          .thenReturn(1L, 0L, 0L, 0L);
+      when(workoutRepo.countByUserIdAndStartedAtLocalGreaterThanEqual(any(), any()))
+          .thenReturn(1L);
+      when(workoutRepo.currentStreakDaysForUser(userId)).thenReturn(7);
 
       var result = codes(service.evaluate(userId, runAt(5_000, lastYear)));
 

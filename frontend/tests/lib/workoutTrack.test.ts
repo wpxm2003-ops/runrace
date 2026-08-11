@@ -542,6 +542,8 @@ describe("isInKorea — 지도 공급자 선택 기준", () => {
     // 실측 리뷰 회귀: 단일 박스(33~39, 124~132)는 후쿠오카를 한국으로 판정했다.
     expect(isInKorea({ lat: 33.59, lng: 130.4 })).toBe(false); // 후쿠오카
     expect(isInKorea({ lat: 34.2, lng: 129.29 })).toBe(false); // 대마도 이즈하라
+    expect(isInKorea({ lat: 33.37, lng: 129.55 })).toBe(false); // 히라도
+    expect(isInKorea({ lat: 33.75, lng: 129.68 })).toBe(false); // 이키
     expect(isInKorea({ lat: 33.25, lng: 129.87 })).toBe(false); // 사세보
   });
 

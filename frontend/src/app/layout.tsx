@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { pageMetadata, pageTitle } from "@/lib/seo";
+import { pageTitle } from "@/lib/seo";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "./_components/AppShell";
@@ -20,15 +20,13 @@ const APP_URL = getAppUrl();
 const SITE_DESCRIPTION =
   "GPS로 러닝을 기록하고 페이스를 분석하고, 친구·크루와 거리 대결까지. 러닝이 게임이 되는 무료 러닝 앱 RunRace.";
 
-const HOME_META = pageMetadata("home", "ko");
-
 export const metadata: Metadata = {
-  ...HOME_META,
   metadataBase: new URL(APP_URL),
   title: {
     default: pageTitle("home", "ko"),
     template: "%s | RunRace",
   },
+  description: SITE_DESCRIPTION,
   keywords: ["러닝 앱", "러닝 기록", "페이스 계산기", "러닝 크루", "러닝 대결", "마라톤 훈련"],
   manifest: "/manifest.webmanifest",
   // iOS 홈 화면 추가 시 전체화면(standalone) PWA로 실행

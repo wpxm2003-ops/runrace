@@ -183,14 +183,20 @@ export function idleAutoPauseAt(anchor: IdleAnchor, nowMs: number): number | nul
  */
 const KOREA_MAINLAND = { minLat: 33, maxLat: 38.75, minLng: 124.5, maxLng: 129.7 };
 const KOREA_ULLEUNG_DOKDO = { minLat: 36.9, maxLat: 37.7, minLng: 130.6, maxLng: 132.0 };
-const TSUSHIMA = { minLat: 34.05, maxLat: 34.75, minLng: 129.1, maxLng: 129.55 };
+// Hirado, Iki and Tsushima sit inside the coarse mainland rectangle but are in Japan.
+const JAPAN_NORTHWEST_ISLANDS = {
+  minLat: 33.0,
+  maxLat: 34.85,
+  minLng: 128.8,
+  maxLng: 129.7,
+};
 
 function inBox(p: LatLng, b: { minLat: number; maxLat: number; minLng: number; maxLng: number }): boolean {
   return p.lat >= b.minLat && p.lat <= b.maxLat && p.lng >= b.minLng && p.lng <= b.maxLng;
 }
 
 export function isInKorea(point: LatLng): boolean {
-  if (inBox(point, TSUSHIMA)) return false;
+  if (inBox(point, JAPAN_NORTHWEST_ISLANDS)) return false;
   return inBox(point, KOREA_MAINLAND) || inBox(point, KOREA_ULLEUNG_DOKDO);
 }
 

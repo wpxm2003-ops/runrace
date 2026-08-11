@@ -60,14 +60,14 @@ public class AchievementService {
 
     List<Scored> out = new ArrayList<>();
 
-    // 오늘/이번 주 경계는 이 운동의 현지 날짜(패턴 A) 기준 — 사용자의 "오늘"은 서버가 모르지만,
-    // 방금 저장된 운동의 기기 날짜가 곧 그 사용자의 오늘이다.
+    // 현재 기간 성과는 서버 운영 기준(KST)으로 판정한다. 저장된 운동 날짜에서 경계를 만들면
+    // 모든 과거 운동이 자기 날짜의 "오늘/올해"에 포함되는 항진식이 되어 소급 기록도 성과를 만든다.
+    LocalDate today = LocalDate.now(KST);
     LocalDate refDate = saved.getStartedAtLocal().toLocalDate();
-    LocalDateTime todayStart = refDate.atStartOfDay();
-    LocalDateTime weekStart = refDate.with(DayOfWeek.MONDAY).atStartOfDay();
+    LocalDateTime todayStart = today.atStartOfDay();
     // 크루 성과는 공동 마감이라 KST 유지 — 크루 월간 보드와 같은 경계를 써야 순위가 맞는다.
     OffsetDateTime monthStart =
-        LocalDate.now(KST).withDayOfMonth(1).atStartOfDay(KST).toOffsetDateTime();
+        today.withDayOfMonth(1).atStartOfDay(KST).toOffsetDateTime();
 
     WorkoutSessionRepository.WorkoutSummaryAggregate agg =
         workoutRepository.aggregateForUser(userId);
@@ -78,8 +78,8 @@ public class AchievementService {
     if (totalRuns <= 1) {
       out.add(new Scored(100, Achievement.of("FIRST_RUN")));
     } else {
-      addDistanceRecord(out, userId, saved, weekStart);
-      if (!saved.getStartedAtLocal().isBefore(todayStart)) {
+      addDistanceRecord(out, userId, saved, today);
+      if (refDate.equals(today)) {
         addStreak(out, userId, todayStart);
       }
       addTotalDistanceMilestone(out, distanceM, totalDistanceM);
@@ -99,7 +99,7 @@ public class AchievementService {
 
   /** 역대 > 올해 > 최근 30일 > 이번 주 순으로 가장 강한 "최장 거리" 하나만 추가. */
   private void addDistanceRecord(
-      List<Scored> out, UUID userId, WorkoutSession saved, LocalDateTime weekStart) {
+      List<Scored> out, UUID userId, WorkoutSession saved, LocalDate today) {
     int distanceM = saved.getDistanceM();
     if (distanceM < MIN_RECORD_DISTANCE_M) return;
     Long id = saved.getId();
@@ -108,18 +108,19 @@ public class AchievementService {
       out.add(new Scored(90, Achievement.of("ALL_TIME_DISTANCE", distanceM)));
       return;
     }
-    LocalDateTime yearStart =
-        saved.getStartedAtLocal().toLocalDate().withDayOfMonth(1).withMonth(1).atStartOfDay();
+    LocalDateTime yearStart = today.withDayOfYear(1).atStartOfDay();
     if (!saved.getStartedAtLocal().isBefore(yearStart)
         && isLongestSince(userId, id, distanceM, yearStart)) {
       out.add(new Scored(70, Achievement.of("YEAR_DISTANCE", distanceM)));
       return;
     }
-    LocalDateTime thirtyDaysAgo = saved.getStartedAtLocal().minusDays(30);
-    if (isLongestSince(userId, id, distanceM, thirtyDaysAgo)) {
+    LocalDateTime thirtyDaysAgo = today.minusDays(30).atStartOfDay();
+    if (!saved.getStartedAtLocal().isBefore(thirtyDaysAgo)
+        && isLongestSince(userId, id, distanceM, thirtyDaysAgo)) {
       out.add(new Scored(60, Achievement.of("MONTH30_DISTANCE", distanceM)));
       return;
     }
+    LocalDateTime weekStart = today.with(DayOfWeek.MONDAY).atStartOfDay();
     if (!saved.getStartedAtLocal().isBefore(weekStart)
         && isLongestSince(userId, id, distanceM, weekStart)) {
       out.add(new Scored(50, Achievement.of("WEEK_DISTANCE", distanceM)));

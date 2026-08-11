@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useMe } from "@/lib/api";
 import { updateLanguage } from "@/lib/api/auth";
 import { useLocale } from "@/lib/i18n";
+import { shouldSyncLocaleToServer } from "@/lib/i18n/localeSource";
 import { useAuthUser } from "@/lib/useAuthUser";
 
 /**
@@ -12,13 +13,14 @@ import { useAuthUser } from "@/lib/useAuthUser";
  */
 export function LanguageSync() {
   const { user } = useAuthUser();
-  const { locale } = useLocale();
+  const { locale, localeSource } = useLocale();
   // 전역 mutate는 커스텀 provider 캐시에 닿지 않으므로, 훅에 바인딩된 mutate로 갱신한다.
   const { data: me, mutate: mutateMe } = useMe(user);
   const syncingRef = useRef(false);
 
   useEffect(() => {
     if (!user || !me) return;
+    if (!shouldSyncLocaleToServer(localeSource)) return;
     if (me.langCd === locale) return;
     if (syncingRef.current) return;
 
@@ -33,7 +35,7 @@ export function LanguageSync() {
       .finally(() => {
         syncingRef.current = false;
       });
-  }, [user, me, locale, mutateMe]);
+  }, [user, me, locale, localeSource, mutateMe]);
 
   return null;
 }

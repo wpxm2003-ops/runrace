@@ -165,6 +165,28 @@ export function pageMetadata(page: SeoPage, locale: Locale): Metadata {
   };
 }
 
+/** Metadata for a concrete child route that should not inherit its parent's canonical URL. */
+export function pageMetadataAtPath(
+  page: SeoPage,
+  locale: Locale,
+  path: string,
+): Metadata {
+  const { title, description } = COPY[locale][page];
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: {
+      title,
+      description,
+      url: path,
+      siteName: "RunRace",
+      type: "website",
+      images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    },
+  };
+}
+
 /** 접두사 URL을 갖는 언어들(`app/en`, `app/ja` …). 한국어는 접두사 없는 기존 경로가 담당한다. */
 export const PREFIXED_LOCALES: Locale[] = LOCALES.map((l) => l.code).filter(
   (code) => code !== "ko",

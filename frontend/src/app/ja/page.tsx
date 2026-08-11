@@ -2,7 +2,7 @@
 // 라우트를 명시적으로 두는 이유: 루트에 [locale] 동적 세그먼트를 쓰면 /records 같은 기존 경로와
 // 매칭이 모호해지고, 린트의 내부 링크 검사도 모든 경로를 이 세그먼트로 오인한다.
 import type { Metadata } from "next";
-import HomeContent from "@/app/page";
+import HomeContent from "@/app/_components/HomeContent";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata("home", "ja");
