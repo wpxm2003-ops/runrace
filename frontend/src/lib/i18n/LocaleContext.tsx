@@ -28,9 +28,9 @@ function localeFromPath(pathname: string): Locale | null {
 }
 
 function getInitialLocale(pathname: string): Locale {
-  if (typeof window === "undefined") return "ko";
   const fromPath = localeFromPath(pathname);
   if (fromPath) return fromPath;
+  if (typeof window === "undefined") return "ko";
   const stored = localStorage.getItem(STORAGE_KEY);
   if (isSupported(stored)) return stored;
   // 저장된 선호가 없으면 브라우저 언어로 추측 (예: "zh-CN" → zh, "es-ES" → es)
@@ -49,7 +49,13 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [locale, setLocaleState] = useState<Locale>("ko");
+  // 경로 로케일은 렌더 시점에 동기로 계산한다 — 프리렌더에서도 usePathname이 실제 경로를
+  // 주므로, 이렇게 해야 /en의 정적 HTML 본문이 영어로 구워진다(초기값을 "ko"로 두고 effect로
+  // 바꾸면 정적 본문은 한국어인데 메타데이터만 영어인 어긋난 신호가 크롤러에 나간다).
+  // 하이드레이션도 같은 pathname으로 같은 값을 얻어 서버·클라이언트가 일치한다.
+  const [locale, setLocaleState] = useState<Locale>(
+    () => localeFromPath(pathname) ?? "ko",
+  );
 
   useEffect(() => {
     setLocaleState(getInitialLocale(pathname));
