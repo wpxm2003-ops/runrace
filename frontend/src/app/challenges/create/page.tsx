@@ -20,6 +20,7 @@ import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { isCrewAvailable } from "@/lib/crewAccess";
 import { useUnit } from "@/lib/UnitContext";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useEffect, useState } from "react";
@@ -35,10 +36,13 @@ export default function CreateChallengePage() {
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
   // 크루 홈에서 진입(?crew=1)하면 크루 내부 레이스로 생성 — 마운트 후 읽어 hydration mismatch 방지.
+  // 크루가 공개되지 않은 로케일에서는 쿼리를 직접 붙여도 무시한다 — 허용하면 본인이 볼 수 없는
+  // 크루 전용 레이스가 만들어진다(크루 화면은 라우트 가드로 막혀 있다).
   const [crewMode, setCrewMode] = useState(false);
   useEffect(() => {
+    if (!isCrewAvailable(locale)) return;
     setCrewMode(new URLSearchParams(window.location.search).get("crew") === "1");
-  }, []);
+  }, [locale]);
 
   const { labels, hints, validationMsgs, validateOptions } = useChallengeFormMessages(1);
   const form = useChallengeForm({

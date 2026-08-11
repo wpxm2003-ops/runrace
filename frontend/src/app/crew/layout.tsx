@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CrewLocaleGate } from "./_components/CrewLocaleGate";
 
 /** 크루 화면은 로그인 필수 앱 화면이라 색인 제외(공유 미리보기 유지를 위해 크롤링은 허용). */
 export const metadata: Metadata = {
@@ -6,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function CrewLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <CrewLocaleGate>{children}</CrewLocaleGate>;
 }

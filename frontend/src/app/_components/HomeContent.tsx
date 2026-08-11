@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { useLocale } from "@/lib/i18n";
+import { isCrewAvailable } from "@/lib/crewAccess";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { useWorkoutListByYear } from "@/lib/api";
 import { aggregateWorkouts, filterWorkoutsByMonth, computeStreak } from "@/lib/workoutStats";
@@ -114,7 +115,7 @@ function HomeStats() {
 }
 
 export default function HomeContent() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   return (
     <PageLayout>
@@ -123,7 +124,9 @@ export default function HomeContent() {
         <HomeStats />
         <div className="grid gap-2">
           <HomeMenuItem href="/workout/indoor" icon="🏃‍♂️" title={t.indoor_title} subtitle={t.indoor_subtitle} />
-          <HomeMenuItem href="/crew" icon="🔥" title={t.crew_title} badge="beta" />
+          {isCrewAvailable(locale) ? (
+            <HomeMenuItem href="/crew" icon="🔥" title={t.crew_title} badge="beta" />
+          ) : null}
           <HomeMenuItem href="/training" icon="🎯" title={t.nsm_title} badge="beta" />
           <HomeMenuItem href="/tools" icon="🧮" title={t.home_tools_card_title} />
           <HomeMenuItem href="/guides" icon="📖" title={t.guide_list_title} />
