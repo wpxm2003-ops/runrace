@@ -179,10 +179,15 @@ export function useChallengeDetail(id: number | null, user?: User | null) {
  * 비우면 뒤로가기로 목록에 돌아왔을 때 캐시가 없어 스켈레톤이 다시 뜬다.
  */
 export function invalidateChallengeLists() {
+  // 배열 페이지 키 + useSWRInfinite 집계("$inf$…") 키를 함께 재검증한다 —
+  // 집계 키를 빼면 화면이 읽는 데이터가 갱신되지 않는다.
   void appMutate(
     (key) =>
-      Array.isArray(key) &&
-      (key[0] === "challenges-page" || key[0] === "challenges-mine-page"),
+      (Array.isArray(key) &&
+        (key[0] === "challenges-page" || key[0] === "challenges-mine-page")) ||
+      (typeof key === "string" &&
+        key.startsWith("$inf$") &&
+        (key.includes('"challenges-page"') || key.includes('"challenges-mine-page"'))),
   );
 }
 
@@ -192,6 +197,18 @@ export function removeChallengeFromCachedLists(challengeId: number) {
     isChallengeListCacheKey,
     (cached) => removeChallengeFromListCache(cached, challengeId),
     { revalidate: true },
+  );
+}
+
+/**
+ * 404 확정된 레이스의 상세 캐시 제거. SWR은 fetch가 실패해도 이전 성공 데이터를 유지하므로,
+ * 이걸 비우지 않으면 삭제된 레이스의 상세·관리 버튼이 화면에 계속 남는다.
+ */
+export function clearChallengeDetailCache(challengeId: number) {
+  return appMutate(
+    (key) => Array.isArray(key) && key[0] === "challenge" && key[1] === challengeId && key.length === 3,
+    undefined,
+    { revalidate: false },
   );
 }
 

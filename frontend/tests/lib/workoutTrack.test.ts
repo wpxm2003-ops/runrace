@@ -537,4 +537,20 @@ describe("isInKorea — 지도 공급자 선택 기준", () => {
     expect(isInKorea({ lat: 40.71, lng: -74.0 })).toBe(false); // 뉴욕
     expect(isInKorea({ lat: -33.87, lng: 151.2 })).toBe(false); // 시드니
   });
+
+  it("직사각형 하나로는 한국이던 일본 서부 — 후쿠오카·대마도는 false", () => {
+    // 실측 리뷰 회귀: 단일 박스(33~39, 124~132)는 후쿠오카를 한국으로 판정했다.
+    expect(isInKorea({ lat: 33.59, lng: 130.4 })).toBe(false); // 후쿠오카
+    expect(isInKorea({ lat: 34.2, lng: 129.29 })).toBe(false); // 대마도 이즈하라
+    expect(isInKorea({ lat: 33.25, lng: 129.87 })).toBe(false); // 사세보
+  });
+
+  it("본토 경계의 한국 좌표는 유지된다", () => {
+    expect(isInKorea({ lat: 35.15, lng: 129.11 })).toBe(true); // 부산 광안리
+    expect(isInKorea({ lat: 36.02, lng: 129.36 })).toBe(true); // 포항
+    expect(isInKorea({ lat: 33.2, lng: 126.25 })).toBe(true); // 제주 서귀포 서부
+    expect(isInKorea({ lat: 34.07, lng: 125.12 })).toBe(true); // 가거도(서남단)
+    expect(isInKorea({ lat: 38.5, lng: 128.43 })).toBe(true); // 고성(동북단)
+    expect(isInKorea({ lat: 37.5, lng: 130.87 })).toBe(true); // 울릉도
+  });
 });

@@ -113,7 +113,10 @@ export function WorkoutPhotoButton({
       const response = await fetch(url, { cache: "no-store" });
       if (!response.ok) throw new Error(`image_download_${response.status}`);
       const blob = await response.blob();
-      const result = await saveBlobLocally(blob, `runrace-workout-${workoutId}`, ".jpg");
+      // 확장자는 실제 형식에서 — 전부 .jpg로 저장하면 PNG/WebP 원본이 확장자와 어긋난다.
+      const ext =
+        blob.type === "image/png" ? ".png" : blob.type === "image/webp" ? ".webp" : ".jpg";
+      const result = await saveBlobLocally(blob, `runrace-workout-${workoutId}`, ext);
       if (result === "saved") toast.success(t.photo_saved);
     } catch {
       toast.error(t.error_occurred);

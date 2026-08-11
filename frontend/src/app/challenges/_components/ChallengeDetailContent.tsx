@@ -21,6 +21,7 @@ import {
   mapErrorMessage,
   reportAndDisplay,
   removeChallengeFromCachedLists,
+  clearChallengeDetailCache,
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
 import { track } from "@/lib/analytics";
@@ -144,6 +145,9 @@ export default function ChallengeDetailContent() {
     if (!id || !isNotFoundError(fetchError)) return;
     clearChallengePreview(id);
     void removeChallengeFromCachedLists(id);
+    // SWR은 404여도 이전 성공 데이터를 유지한다 — 비우지 않으면 삭제된 레이스의
+    // 상세와 관리 버튼이 계속 렌더된다.
+    void clearChallengeDetailCache(id);
   }, [fetchError, id]);
 
   // 액션 피드백(콕 찌르기·참여/탈퇴 등) 에러는 5초 뒤 자동으로 지운다. 로드 실패(fetchError)는 유지.

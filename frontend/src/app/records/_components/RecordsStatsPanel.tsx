@@ -12,6 +12,7 @@ import {
   dayOfWeekDistribution,
   monthBests,
   monthComparison,
+  workoutDayKey,
 } from "@/lib/workoutStats";
 import { useMemo } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
@@ -67,7 +68,8 @@ export function RecordsStatsPanel({
   const bests = useMemo(() => monthBests(monthItems), [monthItems]);
   const monthAgg = useMemo(() => aggregateWorkouts(monthItems), [monthItems]);
   const activeDays = useMemo(
-    () => Array.from(new Set(monthItems.map((w) => new Date(w.startedAt).getDate()))),
+    // 박제된 현지 날짜(패턴 A) 기준 — 뷰어 타임존 변환이면 여행 시 하루 밀린다.
+    () => Array.from(new Set(monthItems.map((w) => Number(workoutDayKey(w).slice(8, 10))))),
     [monthItems],
   );
   // 결산 카드 캘린더용 — 일요일 시작 7개 요일 라벨

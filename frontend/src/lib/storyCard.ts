@@ -53,7 +53,7 @@ export async function captureCardBlob(
 export async function saveBlobLocally(
   blob: Blob,
   fileNamePrefix: string,
-  ext: ".png" | ".jpg" = ".png",
+  ext: ".png" | ".jpg" | ".webp" = ".png",
 ): Promise<"saved" | "aborted"> {
   const { Capacitor } = await import("@capacitor/core");
   if (Capacitor.isNativePlatform()) {

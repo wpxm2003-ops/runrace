@@ -171,21 +171,27 @@ export function idleAutoPauseAt(anchor: IdleAnchor, nowMs: number): number | nul
 }
 
 /**
- * 카카오맵이 실제로 지도를 그려주는 범위(한반도 + 주변 도서). 제주(33.1)·울릉/독도(131.9)까지 덮는다.
+ * 카카오맵이 실제로 지도를 그려주는 범위(한반도 + 주변 도서).
  *
  * 지도 공급자를 언어로 고르면 안 되는 이유: 해외여행 중 뛴 한국어 사용자에게 카카오맵이 뜨는데
  * 국외는 타일이 없어 빈 화면이 된다. 라이브 화면뿐 아니라 기록 상세도 같은 컴포넌트라
  * 그 기록은 영구히 지도가 안 보인다. 언어가 아니라 좌표로 고른다.
+ *
+ * 단일 직사각형(33~39, 124~132)은 후쿠오카(33.6, 130.4)까지 한국으로 판정했다(실측 리뷰 지적).
+ * 본토+제주(경도 129.7까지)와 울릉·독도만 따로 덮고, 본토 박스 남동쪽에 걸리는
+ * 대마도(34.1~34.7, 129.2~129.5)는 명시적으로 제외한다.
  */
-const KOREA_BOUNDS = { minLat: 33, maxLat: 39, minLng: 124, maxLng: 132 };
+const KOREA_MAINLAND = { minLat: 33, maxLat: 38.75, minLng: 124.5, maxLng: 129.7 };
+const KOREA_ULLEUNG_DOKDO = { minLat: 36.9, maxLat: 37.7, minLng: 130.6, maxLng: 132.0 };
+const TSUSHIMA = { minLat: 34.05, maxLat: 34.75, minLng: 129.1, maxLng: 129.55 };
+
+function inBox(p: LatLng, b: { minLat: number; maxLat: number; minLng: number; maxLng: number }): boolean {
+  return p.lat >= b.minLat && p.lat <= b.maxLat && p.lng >= b.minLng && p.lng <= b.maxLng;
+}
 
 export function isInKorea(point: LatLng): boolean {
-  return (
-    point.lat >= KOREA_BOUNDS.minLat
-    && point.lat <= KOREA_BOUNDS.maxLat
-    && point.lng >= KOREA_BOUNDS.minLng
-    && point.lng <= KOREA_BOUNDS.maxLng
-  );
+  if (inBox(point, TSUSHIMA)) return false;
+  return inBox(point, KOREA_MAINLAND) || inBox(point, KOREA_ULLEUNG_DOKDO);
 }
 
 export function haversineMeters(a: LatLng, b: LatLng): number {
