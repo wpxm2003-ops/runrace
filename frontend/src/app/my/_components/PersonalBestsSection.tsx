@@ -1,6 +1,7 @@
 "use client";
 
 import type { User } from "firebase/auth";
+import Link from "next/link";
 import { usePersonalBests } from "@/lib/api";
 import type { PersonalBestRow } from "@/lib/api/types";
 import { formatHms } from "@/lib/paceMath";
@@ -43,9 +44,9 @@ export function PersonalBestsSection({ user }: { user: User }) {
         {pbs.map((pb) => {
           const totalSec = pbTotalSec(pb);
           return (
-            <div key={pb.distanceKey} className="flex items-center justify-between gap-3 py-2">
+            <div key={pb.distanceKey} className="flex items-center gap-3 py-2">
               <span className="text-sm text-zinc-600">{pbLabel(pb.distanceKey, t)}</span>
-              <span className="flex items-baseline gap-2">
+              <span className="ml-auto flex items-baseline gap-2">
                 <span className="text-sm font-semibold tabular-nums text-zinc-900">
                   {formatHms(totalSec)}
                 </span>
@@ -53,6 +54,13 @@ export function PersonalBestsSection({ user }: { user: User }) {
                   {formatPace(pb.distanceM, totalSec, unit)}
                 </span>
               </span>
+              <Link
+                href={`/workouts/${pb.workoutId}`}
+                aria-label={`${pbLabel(pb.distanceKey, t)} ${t.workout_detail_title}`}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-lg text-zinc-400 transition-colors hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <span aria-hidden="true">&gt;</span>
+              </Link>
             </div>
           );
         })}

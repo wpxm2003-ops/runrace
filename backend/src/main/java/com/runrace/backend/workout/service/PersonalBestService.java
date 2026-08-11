@@ -33,6 +33,7 @@ public class PersonalBestService {
             pb.getDistanceKey(),
             pb.getBestPaceSec(),
             pb.getDistanceM(),
+            pb.getWorkoutId(),
             IsoTime.format(pb.getAchievedAt())))
         .toList();
   }

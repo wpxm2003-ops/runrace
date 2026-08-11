@@ -507,6 +507,7 @@ export type PersonalBestRow = {
   distanceKey: string;
   bestPaceSec: number;
   distanceM: number;
+  workoutId: number;
   achievedAt: string;
 };
 

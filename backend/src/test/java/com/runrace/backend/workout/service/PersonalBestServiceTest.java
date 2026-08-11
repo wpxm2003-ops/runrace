@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.runrace.backend.workout.domain.PersonalBest;
 import com.runrace.backend.workout.repository.PersonalBestRepository;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +23,16 @@ class PersonalBestServiceTest {
   private final PersonalBestRepository repo = mock(PersonalBestRepository.class);
   private final PersonalBestService service = new PersonalBestService(repo);
   private final UUID userId = UUID.randomUUID();
+
+  @Test void listForUserIncludesSourceWorkoutId() {
+    var personalBest = PersonalBest.of(userId, "5k", 300, 5_000, 42L);
+    when(repo.findAllByUserId(userId)).thenReturn(List.of(personalBest));
+
+    var result = service.listForUser(userId);
+
+    assertEquals(1, result.size());
+    assertEquals(42L, result.getFirst().workoutId());
+  }
 
   @Nested class Evaluate {
 

@@ -8,4 +8,5 @@ public record PersonalBestRow(
     String distanceKey,
     int bestPaceSec,
     int distanceM,
+    Long workoutId,
     String achievedAt) {}
