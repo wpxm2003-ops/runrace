@@ -38,6 +38,7 @@ function makeSnapshot(clientWorkoutId: string): WorkoutFinishSnapshot {
   return {
     clientWorkoutId,
     startedAt: "2026-07-29T00:00:00.000Z",
+    startedAtLocal: "2026-07-29T09:00:00",
     endedAt: "2026-07-29T00:30:00.000Z",
     durationSec: 1800,
     distanceM: 5000,

@@ -388,6 +388,8 @@ export type WorkoutType = "GPS" | "INDOOR";
 export type WorkoutListItem = {
   id: number;
   startedAt: string;
+  /** 기기 벽시계 시작 시각(타임존 없음). 달력·잔디의 날짜 그루핑 기준. 캐시된 구응답엔 없다. */
+  startedAtLocal?: string;
   endedAt: string;
   durationSec: number;
   distanceM: number;
@@ -434,6 +436,8 @@ export type WorkoutComparison = {
 export type WorkoutCreateBody = {
   clientWorkoutId: string;
   startedAt: string;
+  /** 시작 시각의 기기 벽시계(타임존 없음). */
+  startedAtLocal: string;
   endedAt: string;
   durationSec: number;
   distanceM: number;
@@ -455,6 +459,8 @@ export type IndoorRunCreateBody = {
   distanceM: number;
   durationSec: number;
   startedAt: string;
+  /** 시작 시각의 기기 벽시계(타임존 없음). */
+  startedAtLocal: string;
   imageUrl: string | null;
 };
 

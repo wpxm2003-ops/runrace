@@ -15,6 +15,8 @@ export type WorkoutStatus = "idle" | "running" | "paused";
 export type WorkoutFinishSnapshot = {
   clientWorkoutId: string;
   startedAt: string;
+  /** 시작 시각의 기기 벽시계(타임존 없음) — 서버가 날짜 집계 기준으로 박제한다. */
+  startedAtLocal: string;
   endedAt: string;
   durationSec: number;
   distanceM: number;

@@ -114,6 +114,19 @@ export function todayIso(): string {
 }
 
 /**
+ * 기기 벽시계 "YYYY-MM-DDTHH:mm:ss"(타임존 없음). 운동 저장 시 서버로 보내는 패턴 A 값 —
+ * 잔디·스트릭·달력의 날짜가 이 벽시계에서 나오므로, UTC 변환(toISOString) 없이
+ * 기기의 로컬 필드를 그대로 쓴다.
+ */
+export function toWallClockIso(input: number | Date): string {
+  const d = typeof input === "number" ? new Date(input) : input;
+  return (
+    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` +
+    `T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+  );
+}
+
+/**
  * datetime ISO(오프셋 포함) → KST 기준 date-only "YYYY-MM-DD".
  * en-CA locale 포맷이 그대로 ISO 날짜 순서라 파싱 없이 바로 쓴다.
  * 폼 기본값처럼 "이 시각이 KST로 며칠인지"가 필요할 때 전용(단순 slice(0,10)은

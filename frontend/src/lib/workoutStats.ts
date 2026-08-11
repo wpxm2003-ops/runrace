@@ -20,6 +20,22 @@ export function localDateKey(iso: string): string {
   return ymdKey(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
+/**
+ * 운동의 날짜 키 — 서버가 박제한 기기 벽시계(startedAtLocal, 패턴 A)를 우선한다.
+ * 뷰어의 현재 타임존으로 변환(localDateKey)하면 여행·이주 시 과거 기록의 날짜가 밀리지만,
+ * 박제된 값은 뛴 그 순간의 날짜라 변하지 않는다. 구응답 캐시에는 없어 폴백을 둔다.
+ */
+export function workoutDayKey(w: Pick<WorkoutListItem, "startedAt" | "startedAtLocal">): string {
+  return w.startedAtLocal ? w.startedAtLocal.slice(0, 10) : localDateKey(w.startedAt);
+}
+
+/** 운동의 벽시계 Date — 요일 분포·시각 표시에 사용. 박제 값 우선, 없으면 뷰어 로컬 변환. */
+function workoutWallClock(w: Pick<WorkoutListItem, "startedAt" | "startedAtLocal">): Date {
+  // 오프셋 없는 "YYYY-MM-DDTHH:mm:ss"는 new Date()가 뷰어 타임존으로 해석하지만,
+  // 벽시계 필드(연·월·일·시·요일)는 그대로 보존된다 — 여기서 필요한 건 그 필드뿐이다.
+  return new Date(w.startedAtLocal ?? w.startedAt);
+}
+
 export function aggregateWorkouts(items: WorkoutListItem[]): WorkoutAggregate {
   let totalDistanceM = 0;
   let totalDurationSec = 0;
@@ -30,7 +46,7 @@ export function aggregateWorkouts(items: WorkoutListItem[]): WorkoutAggregate {
     totalDistanceM += w.distanceM;
     totalDurationSec += w.durationSec;
     totalCalories += w.calories;
-    days.add(localDateKey(w.startedAt));
+    days.add(workoutDayKey(w));
   }
 
   const avgPaceSecPerKm =
@@ -54,7 +70,7 @@ export function filterWorkoutsByMonth(
   month: number,
 ): WorkoutListItem[] {
   return items.filter((w) => {
-    const d = new Date(w.startedAt);
+    const d = workoutWallClock(w);
     return d.getFullYear() === year && d.getMonth() === month;
   });
 }
@@ -64,7 +80,7 @@ export function workoutsOnDate(
   dateKey: string,
 ): WorkoutListItem[] {
   return items
-    .filter((w) => localDateKey(w.startedAt) === dateKey)
+    .filter((w) => workoutDayKey(w) === dateKey)
     .sort(
       (a, b) =>
         new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime(),
@@ -72,7 +88,7 @@ export function workoutsOnDate(
 }
 
 export function workoutDateKeys(items: WorkoutListItem[]): Set<string> {
-  return new Set(items.map((w) => localDateKey(w.startedAt)));
+  return new Set(items.map((w) => workoutDayKey(w)));
 }
 
 // ── 통계 패널용 ───────────────────────────────────────────────────────
@@ -81,7 +97,7 @@ export function workoutDateKeys(items: WorkoutListItem[]): Set<string> {
 export function dayOfWeekDistribution(items: WorkoutListItem[]): number[] {
   const counts = new Array(7).fill(0);
   for (const w of items) {
-    const day = new Date(w.startedAt).getDay(); // 0=Sun
+    const day = workoutWallClock(w).getDay(); // 0=Sun
     counts[day === 0 ? 6 : day - 1]++;
   }
   return counts;
@@ -140,7 +156,7 @@ function longestConsecutiveDays(sortedKeys: string[]): number {
 /** items 범위 내 최장 연속 운동일 — today 없이 순수 최장만 반환. 월별 패널용. */
 export function longestStreak(items: WorkoutListItem[]): number {
   if (items.length === 0) return 0;
-  const sorted = Array.from(new Set(items.map((w) => localDateKey(w.startedAt)))).sort();
+  const sorted = Array.from(new Set(items.map((w) => workoutDayKey(w)))).sort();
   return longestConsecutiveDays(sorted);
 }
 
@@ -148,7 +164,7 @@ export function longestStreak(items: WorkoutListItem[]): number {
 export function computeStreak(items: WorkoutListItem[], today: Date): StreakResult {
   if (items.length === 0) return { current: 0, longest: 0 };
 
-  const dateSet = new Set(items.map((w) => localDateKey(w.startedAt)));
+  const dateSet = new Set(items.map((w) => workoutDayKey(w)));
 
   // 오늘 또는 어제부터 역으로 연속일 카운트
   const todayKey = localDateKey(today.toISOString());

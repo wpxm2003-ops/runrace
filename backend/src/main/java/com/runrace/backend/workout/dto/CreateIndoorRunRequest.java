@@ -8,5 +8,7 @@ public record CreateIndoorRunRequest(
     int distanceM,
     int durationSec,
     String startedAt,
+    /** 시작 시각의 기기 벽시계 "YYYY-MM-DDTHH:mm:ss"(타임존 없음). 구클라이언트는 null. */
+    String startedAtLocal,
     String imageUrl   // 이미지 업로드 후 받은 URL (nullable)
 ) {}

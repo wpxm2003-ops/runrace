@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -43,6 +44,13 @@ public class WorkoutSession {
 
   @Column(name = "started_at", nullable = false)
   private OffsetDateTime startedAt;
+
+  /**
+   * 시작 시각의 기기 현지 벽시계(타임존 없음). 잔디·스트릭·달력 등 개인 날짜 집계의 기준 —
+   * 뛴 그 순간·그 장소의 날짜를 박제해, 언어 설정·거주지·조회 시점 타임존과 무관하게 유지한다.
+   */
+  @Column(name = "started_at_local", nullable = false)
+  private LocalDateTime startedAtLocal;
 
   @Column(name = "ended_at", nullable = false)
   private OffsetDateTime endedAt;

@@ -222,7 +222,7 @@ export default function WorkoutDetailContent() {
           </div>
 
           <div className="mt-4">
-            <WorkoutTimeRange startedAt={detail.startedAt} endedAt={detail.endedAt} t={t} locale={locale} />
+            <WorkoutTimeRange startedAt={detail.startedAt} startedAtLocal={detail.startedAtLocal} endedAt={detail.endedAt} t={t} locale={locale} />
           </div>
 
           {detail.path.length > 0 ? (

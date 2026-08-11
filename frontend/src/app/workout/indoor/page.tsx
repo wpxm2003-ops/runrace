@@ -11,6 +11,7 @@ import { withRetry } from "@/lib/retry";
 import { workoutStartedAtFromPhotoEnd } from "@/lib/imageExif";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
+import { toWallClockIso } from "@/lib/format";
 import { useUnit } from "@/lib/UnitContext";
 import { metersFromInput } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
@@ -114,12 +115,14 @@ export default function IndoorRunPage() {
           : new Date().toISOString();
       }
       const { clientWorkoutId, imageUrl, startedAt } = pending;
+      // 벽시계는 그 순간의 기기 로컬 필드에서 — 잔디·달력 날짜가 이 값에서 나온다.
+      const startedAtLocal = toWallClockIso(new Date(startedAt));
 
       // 1차 방어: 3초 간격 3회 자동 재시도 (서버 재시작·네트워크 깜빡임 흡수)
       const res = await withRetry(
         () =>
           createIndoorRun(
-            { clientWorkoutId, distanceM: distM, durationSec, startedAt, imageUrl },
+            { clientWorkoutId, distanceM: distM, durationSec, startedAt, startedAtLocal, imageUrl },
             user,
           ),
         3,

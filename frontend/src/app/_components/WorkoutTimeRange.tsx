@@ -1,4 +1,4 @@
-import { formatDate, formatTimeHms, isSameLocalDay } from "@/lib/format";
+import { formatDate, formatTimeHms, isSameLocalDay, toWallClockIso } from "@/lib/format";
 import type { Translations } from "@/lib/i18n/translations";
 
 function labelText(label: string): string {
@@ -7,6 +7,8 @@ function labelText(label: string): string {
 
 type Props = {
   startedAt: string;
+  /** 기기 벽시계(타임존 없음). 있으면 뷰어 타임존 변환 대신 기록된 현지 시각을 보여준다. */
+  startedAtLocal?: string;
   endedAt: string;
   t: Translations;
   locale: string;
@@ -35,7 +37,16 @@ function DateTimeCell({ label, iso, locale }: { label: string; iso: string; loca
   );
 }
 
-export function WorkoutTimeRange({ startedAt, endedAt, t, locale }: Props) {
+export function WorkoutTimeRange({ startedAt, startedAtLocal, endedAt, t, locale }: Props) {
+  // 패턴 A: 뛴 그 순간의 벽시계를 보여준다. 여행 후 돌아와서 봐도 "그날 그 시각" 그대로다.
+  // 종료 벽시계는 시작 벽시계 + 실제 경과(UTC 차)로 유도한다 — 별도 필드가 필요 없다.
+  // (오프셋 없는 문자열은 new Date가 뷰어 타임존으로 해석하지만, 여기서 쓰는 건
+  //  벽시계 필드뿐이라 어떤 타임존에서 계산해도 같은 결과가 나온다.)
+  if (startedAtLocal) {
+    const elapsedMs = new Date(endedAt).getTime() - new Date(startedAt).getTime();
+    startedAt = startedAtLocal;
+    endedAt = toWallClockIso(new Date(startedAtLocal).getTime() + elapsedMs);
+  }
   const startLabel = labelText(t.workout_start_label);
   const endLabel = labelText(t.workout_end_label);
 

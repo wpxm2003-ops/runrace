@@ -71,6 +71,7 @@ class WorkoutServiceGhostRaceTest {
     service.create(
         new AuthPrincipal(userId, "uid"),
         startedAt,
+        null, // startedAtLocal — 구클라이언트 폴백 경로
         startedAt.plusSeconds(1_000),
         1_000,
         50,

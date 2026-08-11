@@ -28,6 +28,7 @@ import {
 import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersistence";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
+import { toWallClockIso } from "./format";
 import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
 import { track } from "./analytics";
 import { Capacitor } from "@capacitor/core";
@@ -886,6 +887,7 @@ export function useWorkoutSession(
         : now;
     const endedAt = new Date(effectiveEndedAt).toISOString();
     const startedAt = new Date(runStartedRef.current).toISOString();
+    const startedAtLocal = toWallClockIso(runStartedRef.current);
     const finalElapsed = computeElapsedSec(
       runStartedRef.current,
       pausedAccumRef.current,
@@ -902,6 +904,7 @@ export function useWorkoutSession(
     const snapshot: WorkoutFinishSnapshot = {
       clientWorkoutId: createClientWorkoutId(),
       startedAt,
+      startedAtLocal,
       endedAt,
       durationSec: Math.max(1, finalElapsed),
       distanceM: finalDistance,

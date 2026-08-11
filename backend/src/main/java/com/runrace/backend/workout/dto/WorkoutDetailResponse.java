@@ -7,6 +7,8 @@ import java.util.List;
 public record WorkoutDetailResponse(
     Long id,
     String startedAt,
+    /** 기기 벽시계 시작 시각(타임존 없음). 기록된 현지 시각 표시·날짜 그루핑 기준. */
+    String startedAtLocal,
     String endedAt,
     int durationSec,
     int distanceM,
@@ -24,6 +26,7 @@ public record WorkoutDetailResponse(
     return new WorkoutDetailResponse(
         session.getId(),
         IsoTime.format(session.getStartedAt()),
+        session.getStartedAtLocal().toString(),
         IsoTime.format(session.getEndedAt()),
         session.getDurationSec(),
         session.getDistanceM(),

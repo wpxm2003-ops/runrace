@@ -90,6 +90,7 @@ class WorkoutServiceIdempotencyTest {
     WorkoutService.SavedWorkout result = service.create(
         principal,
         startedAt,
+        null, // startedAtLocal — 구클라이언트 폴백 경로
         endedAt,
         300,
         50,
@@ -127,7 +128,7 @@ class WorkoutServiceIdempotencyTest {
         .thenReturn(Optional.of(existing));
 
     WorkoutService.SavedWorkout result =
-        service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, clientWorkoutId);
+        service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, null, clientWorkoutId);
 
     assertSame(existing, result.session());
     assertTrue(result.deduplicated());
@@ -149,7 +150,7 @@ class WorkoutServiceIdempotencyTest {
     when(workoutRepository.save(any(WorkoutSession.class))).thenAnswer(inv -> inv.getArgument(0));
 
     WorkoutService.SavedWorkout result =
-        service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, clientWorkoutId);
+        service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, null, clientWorkoutId);
 
     assertFalse(result.deduplicated());
     verify(workoutRepository).save(any(WorkoutSession.class));
@@ -165,7 +166,7 @@ class WorkoutServiceIdempotencyTest {
         .thenReturn(Optional.empty());
     when(workoutRepository.save(any(WorkoutSession.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, clientWorkoutId);
+    service.createIndoor(principal, 2_000, 600, startedAt.toString(), null, null, clientWorkoutId);
 
     verify(eventPublisher).publishEvent(
         new WorkoutEvents.WorkoutSavedEvent(userId, "러너", 2_000));
@@ -193,6 +194,7 @@ class WorkoutServiceIdempotencyTest {
         () -> service.create(
             principal,
             startedAt,
+        null, // startedAtLocal — 구클라이언트 폴백 경로
             startedAt.plusSeconds(300),
             300,
             45,

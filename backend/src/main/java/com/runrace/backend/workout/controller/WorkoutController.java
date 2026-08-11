@@ -63,6 +63,7 @@ public class WorkoutController {
         workoutService.create(
             principal,
             OffsetDateTime.parse(body.startedAt()),
+            body.startedAtLocal(),
             OffsetDateTime.parse(body.endedAt()),
             body.durationSec(),
             body.distanceM(),
@@ -110,6 +111,7 @@ public class WorkoutController {
         body.distanceM(),
         body.durationSec(),
         body.startedAt(),
+        body.startedAtLocal(),
         body.imageUrl(),
         body.clientWorkoutId());
     WorkoutSession session = result.session();
@@ -164,6 +166,7 @@ public class WorkoutController {
                     new WorkoutListItem(
                         session.getId(),
                         IsoTime.format(session.getStartedAt()),
+                        session.getStartedAtLocal().toString(),
                         IsoTime.format(session.getEndedAt()),
                         session.getDurationSec(),
                         session.getDistanceM(),

@@ -31,8 +31,10 @@ import com.runrace.backend.workout.repository.WorkoutComparisonItem;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -107,6 +109,7 @@ public class WorkoutService {
   public SavedWorkout create(
       AuthPrincipal principal,
       OffsetDateTime startedAt,
+      String startedAtLocal,
       OffsetDateTime endedAt,
       int durationSec,
       int distanceM,
@@ -139,6 +142,7 @@ public class WorkoutService {
         user,
         clientWorkoutId,
         startedAt,
+        resolveStartedAtLocal(startedAtLocal, startedAt),
         endedAt,
         durationSec,
         distanceM,
@@ -245,6 +249,7 @@ public class WorkoutService {
       AppUser user,
       UUID clientWorkoutId,
       OffsetDateTime startedAt,
+      LocalDateTime startedAtLocal,
       OffsetDateTime endedAt,
       int durationSec,
       int distanceM,
@@ -256,6 +261,7 @@ public class WorkoutService {
         .user(user)
         .clientWorkoutId(clientWorkoutId)
         .startedAt(startedAt)
+        .startedAtLocal(startedAtLocal)
         .endedAt(endedAt)
         .durationSec(durationSec)
         .distanceM(distanceM)
@@ -274,6 +280,7 @@ public class WorkoutService {
       int distanceM,
       int durationSec,
       String startedAt,
+      String startedAtLocal,
       String imageUrl,
       UUID clientWorkoutId) {
     // 입력 검증 — 비정상·조작 값 차단
@@ -286,7 +293,7 @@ public class WorkoutService {
         principal.userId(), clientWorkoutId, distanceM, durationSec, start, imageUrl);
     if (existing != null) return new SavedWorkout(existing, true);
     WorkoutSession saved = saveIndoorSession(
-        user, clientWorkoutId, distanceM, durationSec, start, imageUrl);
+        user, clientWorkoutId, distanceM, durationSec, start, startedAtLocal, imageUrl);
 
     // 참가 중인 레이스마다 구성원 승인 대기 생성 — 승인돼야 레이스 거리로 반영된다
     indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
@@ -330,12 +337,38 @@ public class WorkoutService {
     return start;
   }
 
+  /** 실존 UTC 오프셋 범위(분). 벽시계-UTC 차가 이 밖이면 시계 조작·버그 값으로 본다. */
+  private static final long MIN_UTC_OFFSET_MIN = -12 * 60;
+  private static final long MAX_UTC_OFFSET_MIN = 14 * 60;
+
+  /**
+   * 기기 벽시계(패턴 A: 활동의 로컬 날짜를 활동에 박제) 파싱.
+   *
+   * <p>벽시계와 UTC 순간의 차는 그 기기의 UTC 오프셋이어야 하므로, 실존 오프셋 범위를 벗어난
+   * 값은 버린다 — 날짜 조작으로 스트릭·잔디를 꾸미는 것을 막는다. 값이 없거나(구클라이언트)
+   * 무효면 KST 변환 폴백: 기존 저장 동작과 동일해 하위호환이 유지된다.
+   */
+  static LocalDateTime resolveStartedAtLocal(String startedAtLocal, OffsetDateTime startedAt) {
+    if (startedAtLocal != null && !startedAtLocal.isBlank()) {
+      try {
+        LocalDateTime local = LocalDateTime.parse(startedAtLocal);
+        long offsetMin = Duration.between(
+            startedAt.toInstant(), local.atOffset(ZoneOffset.UTC).toInstant()).toMinutes();
+        if (offsetMin >= MIN_UTC_OFFSET_MIN && offsetMin <= MAX_UTC_OFFSET_MIN) return local;
+      } catch (DateTimeParseException ignored) {
+        // 폴백으로 진행
+      }
+    }
+    return startedAt.atZoneSameInstant(KstTime.ZONE).toLocalDateTime();
+  }
+
   private WorkoutSession saveIndoorSession(
       AppUser user,
       UUID clientWorkoutId,
       int distanceM,
       int durationSec,
       OffsetDateTime start,
+      String startedAtLocal,
       String imageUrl) {
     OffsetDateTime end = start.plusSeconds(durationSec);
 
@@ -347,6 +380,7 @@ public class WorkoutService {
         .clientWorkoutId(clientWorkoutId)
         .workoutType(WorkoutType.INDOOR)
         .startedAt(start)
+        .startedAtLocal(resolveStartedAtLocal(startedAtLocal, start))
         .endedAt(end)
         .durationSec(durationSec)
         .distanceM(distanceM)
@@ -466,8 +500,6 @@ public class WorkoutService {
         .orElseThrow(() -> ApiException.notFound("workout_not_found"));
   }
 
-  private static final ZoneId LIST_ZONE = KstTime.ZONE;
-
   @Transactional(readOnly = true)
   public WorkoutSummaryResponse summaryForUser(UUID userId) {
     WorkoutSessionRepository.WorkoutSummaryAggregate agg =
@@ -490,13 +522,12 @@ public class WorkoutService {
   }
 
   @Transactional(readOnly = true)
+  /** 기록 달력 연도 경계 — 기기 현지 날짜(started_at_local) 기준. 달력의 "2026년"과 일치한다. */
   public List<WorkoutSessionRepository.WorkoutListView> listForUserInYear(UUID userId, int year) {
-    OffsetDateTime from =
-        LocalDate.of(year, 1, 1).atStartOfDay(LIST_ZONE).toOffsetDateTime();
-    OffsetDateTime to =
-        LocalDate.of(year + 1, 1, 1).atStartOfDay(LIST_ZONE).toOffsetDateTime();
+    LocalDateTime from = LocalDate.of(year, 1, 1).atStartOfDay();
+    LocalDateTime to = LocalDate.of(year + 1, 1, 1).atStartOfDay();
     return workoutSessionRepository
-        .findListByUserIdAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtDesc(
+        .findListByUserIdAndStartedAtLocalGreaterThanEqualAndStartedAtLocalLessThanOrderByStartedAtLocalDesc(
             userId, from, to);
   }
 

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMember;
+import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.dto.Achievement;
@@ -42,6 +43,8 @@ class AchievementServiceTest {
         .distanceM(distanceM)
         .durationSec(1800)
         .startedAt(startedAt)
+        // 실제 저장 경로(resolveStartedAtLocal)와 동일한 KST 폴백 벽시계
+        .startedAtLocal(startedAt.atZoneSameInstant(KstTime.ZONE).toLocalDateTime())
         .endedAt(startedAt.plusMinutes(30))
         .build();
   }
@@ -61,7 +64,7 @@ class AchievementServiceTest {
   @BeforeEach void 기본_스텁() {
     // 기본값: 기록 아님, 연속일 없음, 크루 미소속.
     when(workoutRepo.countRunsAtLeastDistanceSince(any(), any(), anyInt(), any())).thenReturn(5L);
-    when(workoutRepo.countByUserIdAndStartedAtGreaterThanEqual(any(), any())).thenReturn(1L);
+    when(workoutRepo.countByUserIdAndStartedAtLocalGreaterThanEqual(any(), any())).thenReturn(1L);
     when(workoutRepo.currentStreakDaysForUser(any())).thenReturn(1);
     when(crewRepo.findByUserId(any())).thenReturn(Optional.empty());
   }
@@ -87,7 +90,7 @@ class AchievementServiceTest {
       stubSummary(30, 100_000);
       when(workoutRepo.countRunsAtLeastDistanceSince(any(), any(), anyInt(), any())).thenReturn(0L);
       when(workoutRepo.currentStreakDaysForUser(userId)).thenReturn(7);
-      when(workoutRepo.countByUserIdAndStartedAtGreaterThanEqual(any(), any())).thenReturn(1L, 3L);
+      when(workoutRepo.countByUserIdAndStartedAtLocalGreaterThanEqual(any(), any())).thenReturn(1L, 3L);
 
       assertEquals(3, service.evaluate(userId, run(10_000)).size());
     }
@@ -108,7 +111,7 @@ class AchievementServiceTest {
       when(workoutRepo.countRunsAtLeastDistanceSince(any(), any(), anyInt(), any())).thenReturn(0L);
       when(workoutRepo.countRunsAtLeastDistanceSince(
           eq(userId), any(), anyInt(),
-          eq(java.time.Instant.EPOCH.atZone(com.runrace.backend.common.KstTime.ZONE).toOffsetDateTime())))
+          eq(java.time.LocalDateTime.of(1970, 1, 1, 0, 0))))
           .thenReturn(2L);
 
       var result = codes(service.evaluate(userId, run(12_000)));
@@ -143,7 +146,7 @@ class AchievementServiceTest {
 
     @Test void 같은_날_두번째_러닝은_연속일_성과를_재발화하지_않는다() {
       stubSummary(10, 50_000);
-      when(workoutRepo.countByUserIdAndStartedAtGreaterThanEqual(any(), any())).thenReturn(2L);
+      when(workoutRepo.countByUserIdAndStartedAtLocalGreaterThanEqual(any(), any())).thenReturn(2L);
       when(workoutRepo.currentStreakDaysForUser(userId)).thenReturn(7);
 
       assertFalse(codes(service.evaluate(userId, run(5_000))).contains("STREAK"));

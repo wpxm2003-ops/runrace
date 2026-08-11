@@ -237,6 +237,7 @@ export default function WorkoutPage() {
               {
                 clientWorkoutId: snapshot.clientWorkoutId,
                 startedAt: snapshot.startedAt,
+                startedAtLocal: snapshot.startedAtLocal,
                 endedAt: snapshot.endedAt,
                 durationSec: snapshot.durationSec,
                 distanceM: snapshot.distanceM,
