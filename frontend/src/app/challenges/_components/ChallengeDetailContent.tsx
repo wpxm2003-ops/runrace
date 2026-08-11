@@ -30,6 +30,7 @@ import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
 import { getAppUrl } from "@/lib/appUrl";
 import { challengeEditHref, parseChallengeIdFromPath } from "@/lib/challengeRoute";
+import { selectChallengeDetailForRender } from "@/lib/challengeDetailState";
 import { clearChallengePreview, getChallengePreview } from "@/lib/challengePreview";
 import { ChallengeMemberWorkouts } from "@/app/challenges/_components/ChallengeMemberWorkouts";
 import { ChallengePrizes } from "@/app/challenges/_components/ChallengePrizes";
@@ -96,6 +97,7 @@ export default function ChallengeDetailContent() {
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const [nudgingId, setNudgingId] = useState<string | null>(null);
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
+  const [notFoundId, setNotFoundId] = useState<number | null>(null);
 
   const id = useRouteId(parseChallengeIdFromPath);
 
@@ -107,14 +109,22 @@ export default function ChallengeDetailContent() {
   const waitForAuth = authLoading && authHint && !getStoredAuthUid();
 
   const {
-    data: detail,
+    data: cachedDetail,
     isLoading,
     error: fetchError,
     mutate,
-  } = useChallengeDetail(id, user);
+  } = useChallengeDetail(notFoundId === id ? null : id, user);
+
+  const fetchedNotFound = id != null && isNotFoundError(fetchError);
+  const { notFound, detail } = selectChallengeDetailForRender(
+    id,
+    notFoundId,
+    fetchedNotFound,
+    cachedDetail,
+  );
 
   // 목록에서 막 탭한 레이스라면, 상세 응답 전에 목록 데이터로 헤더를 즉시 그려 체감 속도를 높인다.
-  const preview = detail ? null : getChallengePreview(id);
+  const preview = notFound || detail ? null : getChallengePreview(id);
 
   const { pendingApprovals, rejectedApprovals, votingId, onVote } = useIndoorRunApprovals({
     id,
@@ -139,16 +149,25 @@ export default function ChallengeDetailContent() {
     return map;
   }, [headToHeadRows]);
 
-  const error = firstErrorMessage(actionError, fetchErrorMessage(fetchError, t.detail_not_found));
+  const error = notFound
+    ? t.detail_not_found
+    : firstErrorMessage(actionError, fetchErrorMessage(fetchError, t.detail_not_found));
 
   useEffect(() => {
-    if (!id || !isNotFoundError(fetchError)) return;
+    if (id == null || !fetchedNotFound || notFoundId === id) return;
+    setNotFoundId(id);
+  }, [fetchedNotFound, id, notFoundId]);
+
+  useEffect(() => {
+    if (id == null || notFoundId !== id) return;
+    setMenuOpen(false);
+    setExpandedImageUrl(null);
     clearChallengePreview(id);
     void removeChallengeFromCachedLists(id);
     // SWR은 404여도 이전 성공 데이터를 유지한다 — 비우지 않으면 삭제된 레이스의
     // 상세와 관리 버튼이 계속 렌더된다.
     void clearChallengeDetailCache(id);
-  }, [fetchError, id]);
+  }, [id, notFoundId]);
 
   // 액션 피드백(콕 찌르기·참여/탈퇴 등) 에러는 5초 뒤 자동으로 지운다. 로드 실패(fetchError)는 유지.
   useEffect(() => {
@@ -294,7 +313,7 @@ export default function ChallengeDetailContent() {
     >
       {error ? <Alert className="mb-4 whitespace-pre-line">{error}</Alert> : null}
 
-      {isLoading || waitForAuth || !detail ? (
+      {notFound ? null : isLoading || waitForAuth || !detail ? (
         preview ? (
           // 목록에서 넘어온 미리보기로 헤더를 즉시 표시 + 순위표는 스켈레톤
           <>
@@ -456,7 +475,7 @@ export default function ChallengeDetailContent() {
 
         </>
       )}
-      {expandedImageUrl ? (
+      {!notFound && expandedImageUrl ? (
         <ImageLightbox
           imageUrls={[expandedImageUrl]}
           alt={t.indoor_field_image}

@@ -5,12 +5,12 @@
  */
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import { appMutate } from "@/lib/swrMutate";
+import { appMutate, getAppCacheKeys } from "@/lib/swrMutate";
 import type { User } from "firebase/auth";
 import type { CrewRegion, WorkoutDetail } from "./types";
 import {
-  isChallengeListCacheKey,
-  removeChallengeFromListCache,
+  removeChallengeFromListCaches,
+  revalidateChallengeInfiniteListCaches,
 } from "@/lib/challengeListCache";
 import { reportClientError } from "./errors";
 import {
@@ -179,25 +179,15 @@ export function useChallengeDetail(id: number | null, user?: User | null) {
  * 비우면 뒤로가기로 목록에 돌아왔을 때 캐시가 없어 스켈레톤이 다시 뜬다.
  */
 export function invalidateChallengeLists() {
-  // 배열 페이지 키 + useSWRInfinite 집계("$inf$…") 키를 함께 재검증한다 —
-  // 집계 키를 빼면 화면이 읽는 데이터가 갱신되지 않는다.
-  void appMutate(
-    (key) =>
-      (Array.isArray(key) &&
-        (key[0] === "challenges-page" || key[0] === "challenges-mine-page")) ||
-      (typeof key === "string" &&
-        key.startsWith("$inf$") &&
-        (key.includes('"challenges-page"') || key.includes('"challenges-mine-page"'))),
-  );
+  void revalidateChallengeInfiniteListCaches(appMutate, getAppCacheKeys(), [
+    "challenges-page",
+    "challenges-mine-page",
+  ]);
 }
 
 /** Remove a race confirmed missing by the detail API from every list cache immediately. */
 export function removeChallengeFromCachedLists(challengeId: number) {
-  return appMutate(
-    isChallengeListCacheKey,
-    (cached) => removeChallengeFromListCache(cached, challengeId),
-    { revalidate: true },
-  );
+  return removeChallengeFromListCaches(appMutate, getAppCacheKeys(), challengeId);
 }
 
 /**
@@ -375,7 +365,17 @@ export function useCrewRaceListInfinite(user: User | null, phase: string) {
 
 /** 크루 레이스 생성 후 크루 홈 레이스 목록 재검증. */
 export function invalidateCrewRaces(userId: string) {
-  invalidateByPrefix("crew-races", userId);
+  const cacheKeys = getAppCacheKeys();
+  void Promise.all([
+    appMutate(
+      (key) =>
+        Array.isArray(key) &&
+        key[0] === "crew-races" &&
+        key[1] === userId &&
+        key[2] === "home",
+    ),
+    revalidateChallengeInfiniteListCaches(appMutate, cacheKeys, ["crew-races"]),
+  ]);
 }
 
 /** 크루 홈 대항전 섹션 — 크루 소속일 때만 조회(enabled). */

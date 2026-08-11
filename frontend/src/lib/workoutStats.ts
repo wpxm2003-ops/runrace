@@ -29,6 +29,13 @@ export function workoutDayKey(w: Pick<WorkoutListItem, "startedAt" | "startedAtL
   return w.startedAtLocal ? w.startedAtLocal.slice(0, 10) : localDateKey(w.startedAt);
 }
 
+/** Use the wall-clock time captured on the recording device when it is available. */
+export function workoutStartedAtForDisplay(
+  w: Pick<WorkoutListItem, "startedAt" | "startedAtLocal">,
+): string {
+  return w.startedAtLocal ?? w.startedAt;
+}
+
 /** 운동의 벽시계 Date — 요일 분포·시각 표시에 사용. 박제 값 우선, 없으면 뷰어 로컬 변환. */
 function workoutWallClock(w: Pick<WorkoutListItem, "startedAt" | "startedAtLocal">): Date {
   // 오프셋 없는 "YYYY-MM-DDTHH:mm:ss"는 new Date()가 뷰어 타임존으로 해석하지만,

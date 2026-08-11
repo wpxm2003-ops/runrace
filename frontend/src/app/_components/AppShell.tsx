@@ -21,7 +21,7 @@ import { LanguageSync } from "./LanguageSync";
 import { NavProgressProvider } from "./NavProgressProvider";
 import { SWRConfig, useSWRConfig } from "swr";
 import { createSwrCacheProvider } from "@/lib/swrCacheProvider";
-import { bindAppMutate } from "@/lib/swrMutate";
+import { bindAppCache, bindAppMutate } from "@/lib/swrMutate";
 import { Toaster } from "sonner";
 import { useEffect } from "react";
 
@@ -31,7 +31,9 @@ import { useEffect } from "react";
  * 마운트 직후의 무효화도 앱 캐시에 닿는다. 같은 함수 참조의 재할당이라 멱등하다.
  */
 function SwrMutateBinder() {
-  bindAppMutate(useSWRConfig().mutate);
+  const { cache, mutate } = useSWRConfig();
+  bindAppMutate(mutate);
+  bindAppCache(cache);
   return null;
 }
 

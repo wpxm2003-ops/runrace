@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { workoutDayKey, workoutsOnDate, dayOfWeekDistribution } from "@/lib/workoutStats";
+import {
+  workoutDayKey,
+  workoutsOnDate,
+  dayOfWeekDistribution,
+  workoutStartedAtForDisplay,
+} from "@/lib/workoutStats";
 import type { WorkoutListItem } from "@/lib/api/types";
 
 function item(startedAt: string, startedAtLocal?: string): WorkoutListItem {
@@ -17,6 +22,17 @@ function item(startedAt: string, startedAtLocal?: string): WorkoutListItem {
 }
 
 describe("workoutDayKey — 패턴 A 날짜 박제", () => {
+  it("uses the recorded wall-clock time for display and falls back for legacy data", () => {
+    expect(
+      workoutStartedAtForDisplay(
+        item("2026-08-12T00:00:00Z", "2026-08-11T20:00:00"),
+      ),
+    ).toBe("2026-08-11T20:00:00");
+    expect(workoutStartedAtForDisplay(item("2026-08-12T00:00:00Z"))).toBe(
+      "2026-08-12T00:00:00Z",
+    );
+  });
+
   it("서버가 박제한 벽시계 날짜를 그대로 쓴다 — 뷰어 타임존과 무관", () => {
     // 마닐라(UTC+8) 8/11 저녁 8시 런. UTC로는 8/11 12:00.
     // 뷰어가 어디에 있든(KST면 localDateKey는 8/11 21시로 같은 날이지만, 뉴욕이면 8/11 08시)

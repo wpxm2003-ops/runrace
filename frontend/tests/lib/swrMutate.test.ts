@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { mutate as defaultMutate } from "swr";
-import { appMutate, bindAppMutate } from "@/lib/swrMutate";
+import {
+  appMutate,
+  bindAppCache,
+  bindAppMutate,
+  getAppCacheKeys,
+} from "@/lib/swrMutate";
 
 /**
  * 앱은 SWRConfig 커스텀 provider를 쓰므로 "swr"의 전역 mutate는 앱 캐시에 닿지 않는다.
@@ -25,6 +30,17 @@ describe("swrMutate", () => {
       expect(calls).toEqual([[key]]);
     } finally {
       bindAppMutate(defaultMutate);
+    }
+  });
+
+  it("reads keys from the bound app cache provider", () => {
+    const key = "$inf$@\"challenges-page\",null,\"ko\",\"active\",0,";
+    const cache = new Map<string, never>([[key, undefined as never]]);
+    bindAppCache(cache);
+    try {
+      expect(getAppCacheKeys()).toEqual([key]);
+    } finally {
+      bindAppCache(null);
     }
   });
 });

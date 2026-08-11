@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { useWorkoutListByYear, fetchWorkout } from "@/lib/api";
 import type { WorkoutListItem } from "@/lib/api/types";
-import { monthBests } from "@/lib/workoutStats";
+import { monthBests, workoutStartedAtForDisplay } from "@/lib/workoutStats";
 import { MIN_GHOST_CANDIDATE_M, ensureGhostTimestamps } from "@/lib/ghostRace";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
@@ -70,7 +70,7 @@ function Row({
           ) : null}
         </div>
         <div className="mt-0.5 text-xs text-zinc-400">
-          {formatMonthDayTime(item.startedAt, locale)}
+          {formatMonthDayTime(workoutStartedAtForDisplay(item), locale)}
         </div>
       </div>
     </button>

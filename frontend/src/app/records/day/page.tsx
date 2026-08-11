@@ -16,7 +16,11 @@ import { isRecordDateKey } from "@/lib/recordsRoute";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
-import { aggregateWorkouts, workoutsOnDate } from "@/lib/workoutStats";
+import {
+  aggregateWorkouts,
+  workoutsOnDate,
+  workoutStartedAtForDisplay,
+} from "@/lib/workoutStats";
 import { formatClock } from "@/lib/workoutTrack";
 
 function useDateParam(): string | null {
@@ -60,7 +64,7 @@ function WorkoutDayCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-zinc-900">
-            {formatDateTime(workout.startedAt, locale)}
+            {formatDateTime(workoutStartedAtForDisplay(workout), locale)}
           </div>
           {workout.workoutType === "INDOOR" ? (
             <div className="mt-1 inline-flex rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-600">

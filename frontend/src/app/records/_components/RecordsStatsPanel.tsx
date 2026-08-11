@@ -13,6 +13,7 @@ import {
   monthBests,
   monthComparison,
   workoutDayKey,
+  workoutStartedAtForDisplay,
 } from "@/lib/workoutStats";
 import { useMemo } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
@@ -210,7 +211,7 @@ export function RecordsStatsPanel({
               <BestCard
                 label={t.stats_best_distance}
                 value={bests.longestRun ? formatDistance(bests.longestRun.distanceM, unit) : null}
-                datetime={bests.longestRun ? formatMonthDayTime(bests.longestRun.startedAt, locale) : null}
+                datetime={bests.longestRun ? formatMonthDayTime(workoutStartedAtForDisplay(bests.longestRun), locale) : null}
                 noData={t.stats_no_data}
               />
               <BestCard
@@ -218,7 +219,7 @@ export function RecordsStatsPanel({
                 value={bests.fastestPace?.avgPaceSecPerKm
                   ? formatPace(1000, bests.fastestPace.avgPaceSecPerKm, unit)
                   : null}
-                datetime={bests.fastestPace ? formatMonthDayTime(bests.fastestPace.startedAt, locale) : null}
+                datetime={bests.fastestPace ? formatMonthDayTime(workoutStartedAtForDisplay(bests.fastestPace), locale) : null}
                 noData={t.stats_no_data}
               />
             </div>

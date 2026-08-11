@@ -1,7 +1,7 @@
 "use client";
 
 import { mutate as defaultMutate } from "swr";
-import type { ScopedMutator } from "swr";
+import type { Cache, ScopedMutator } from "swr";
 
 /**
  * 앱 캐시에 바인딩된 mutate.
@@ -17,7 +17,17 @@ import type { ScopedMutator } from "swr";
  * 쪽에서도 주입 이후의 값을 읽는다.
  */
 export let appMutate: ScopedMutator = defaultMutate;
+let appCache: Pick<Cache, "keys"> | null = null;
 
 export function bindAppMutate(mutator: ScopedMutator): void {
   appMutate = mutator;
+}
+
+export function bindAppCache(cache: Pick<Cache, "keys"> | null): void {
+  appCache = cache;
+}
+
+/** Snapshot serialized keys from the same custom provider used by appMutate. */
+export function getAppCacheKeys(): string[] {
+  return appCache ? Array.from(appCache.keys()) : [];
 }
