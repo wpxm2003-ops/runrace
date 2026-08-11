@@ -25,6 +25,9 @@ public interface ChallengeMemberRepositoryCustom {
 
   List<ChallengeMember> findAllByChallengeIdIn(List<Long> challengeIds);
 
+  /** 진행 중인 레이스를 운동한 사용자와 함께 참가 중인 다른 사용자 목록. */
+  List<SharedRaceParticipant> findSharedActiveRaceParticipants(UUID userId, OffsetDateTime now);
+
   /** 레이스별 멤버 수 — challengeId → count. 목록 API N+1 방지용. */
   Map<Long, Long> memberCountsByChallengeId(List<Long> ids);
 
@@ -40,4 +43,6 @@ public interface ChallengeMemberRepositoryCustom {
 
   /** 한 레이스에서 나와 상대의 확정 순위 한 쌍. */
   record HeadToHeadPair(UUID opponentId, int myRank, int opRank) {}
+
+  record SharedRaceParticipant(UUID userId, Long challengeId) {}
 }

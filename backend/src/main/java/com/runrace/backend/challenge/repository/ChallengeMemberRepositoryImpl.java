@@ -78,6 +78,28 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
   }
 
   @Override
+  public List<SharedRaceParticipant> findSharedActiveRaceParticipants(UUID userId, OffsetDateTime now) {
+    QChallengeMember me = new QChallengeMember("raceWorkoutActor");
+    QChallengeMember participant = new QChallengeMember("raceWorkoutParticipant");
+    return query
+        .select(participant.user.id, participant.challenge.id)
+        .from(me)
+        .join(participant).on(participant.challenge.id.eq(me.challenge.id))
+        .where(
+            me.user.id.eq(userId),
+            participant.user.id.ne(userId),
+            me.challenge.startAt.loe(now),
+            me.challenge.endAt.isNull().or(me.challenge.endAt.goe(now)),
+            me.challenge.isEnded.isFalse())
+        .orderBy(participant.user.id.asc(), participant.challenge.id.asc())
+        .fetch()
+        .stream()
+        .map(row -> new SharedRaceParticipant(
+            row.get(participant.user.id), row.get(participant.challenge.id)))
+        .toList();
+  }
+
+  @Override
   public Map<Long, Long> memberCountsByChallengeId(List<Long> ids) {
     List<Tuple> rows = query.select(member.challenge.id, member.count())
         .from(member)

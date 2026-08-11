@@ -1,11 +1,14 @@
 package com.runrace.backend.notification;
 
 import com.runrace.backend.event.WorkoutEvents;
+import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.push.service.PushService;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.upload.ImageUploadService;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -17,10 +20,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class WorkoutNotifications {
 
   private static final int RIVAL_VARIANTS = 5;
+  private static final int DAILY_RACE_NOTIFICATION_LIMIT = 3;
+  private static final String RACE_WORKOUT_PUSH_TYPE = "race_workout";
 
   private final PushService pushService;
   private final ImageUploadService imageUploadService;
   private final RivalRepository rivalRepository;
+  private final ChallengeMemberRepository challengeMemberRepository;
   private final SystemPushHistoryRepository systemPushHistoryRepository;
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -46,14 +52,35 @@ public class WorkoutNotifications {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onWorkoutSaved(WorkoutEvents.WorkoutSavedEvent event) {
     var toNotify = rivalRepository.findUserIdsWhoHaveMeAsRival(event.userId());
-    if (toNotify.isEmpty()) return;
-
     String distanceKm = String.format("%.1f", event.distanceM() / 1000.0);
+    OffsetDateTime now = OffsetDateTime.now();
+    OffsetDateTime todayStart = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+
+    // 여러 레이스를 함께 뛰더라도 같은 운동으로 수신자에게 푸시는 한 번만 보낸다.
+    Map<java.util.UUID, Long> sharedRaceByUser = new LinkedHashMap<>();
+    challengeMemberRepository.findSharedActiveRaceParticipants(event.userId(), now)
+        .forEach(row -> sharedRaceByUser.putIfAbsent(row.userId(), row.challengeId()));
+
+    for (var entry : sharedRaceByUser.entrySet()) {
+      long sentToday = systemPushHistoryRepository.countByUserIdAndPushTypeAndSentAtAfter(
+          entry.getKey(), RACE_WORKOUT_PUSH_TYPE, todayStart);
+      if (sentToday >= DAILY_RACE_NOTIFICATION_LIMIT) continue;
+
+      String bodyKey = sentToday == DAILY_RACE_NOTIFICATION_LIMIT - 1
+          ? "race.workout.last"
+          : "race.workout.body";
+      pushService.sendLocalized(entry.getKey(), "race.workout.title", bodyKey,
+          event.nickname(), distanceKm, "/challenges/" + entry.getValue(), RACE_WORKOUT_PUSH_TYPE);
+    }
+
+    if (toNotify.isEmpty()) return;
     String pushType = "rival_workout:" + event.userId();
-    OffsetDateTime todayStart = OffsetDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
     String bodyKey = NotificationVariants.randomKey("rival.workout.", RIVAL_VARIANTS);
 
     for (var userId : toNotify) {
+      // 같은 진행 중 레이스 참가자는 레이스 알림 대상이므로 라이벌 알림을 중복 발송하지 않는다.
+      // 일일 3회 한도에 도달한 뒤에도 라이벌 알림으로 우회하지 않는다.
+      if (sharedRaceByUser.containsKey(userId)) continue;
       if (systemPushHistoryRepository.existsByUserIdAndPushTypeAndSentAtAfter(userId, pushType, todayStart)) {
         continue;
       }

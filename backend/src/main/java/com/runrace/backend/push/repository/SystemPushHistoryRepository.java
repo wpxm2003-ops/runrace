@@ -16,6 +16,9 @@ public interface SystemPushHistoryRepository extends JpaRepository<SystemPushHis
   /** 특정 pushType으로 발송한 적이 있는지 — 신발 교체 알림(신발당 1회) 중복 방지용. */
   boolean existsByUserIdAndPushType(UUID userId, String pushType);
 
+  long countByUserIdAndPushTypeAndSentAtAfter(
+      UUID userId, String pushType, OffsetDateTime after);
+
   @Query("""
       SELECT COUNT(h) FROM SystemPushHistory h
       WHERE h.userId = :userId
