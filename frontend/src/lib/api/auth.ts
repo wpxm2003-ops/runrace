@@ -23,14 +23,6 @@ export function updateNickname(user: User, nickname: string): Promise<MeResponse
   });
 }
 
-export function updateLanguage(user: User, langCd: string): Promise<MeResponse> {
-  return apiFetch<MeResponse>("/api/me/language", {
-    method: "PATCH",
-    user,
-    body: { langCd },
-  });
-}
-
 export function updatePreferences(
   user: User,
   preferences: { langCd?: string; timeZone?: string },

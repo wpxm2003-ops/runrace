@@ -56,11 +56,6 @@ export function updateWorkoutMemo(id: number, memo: string, user: User) {
   return apiFetch<void>(`/api/workouts/${id}/memo`, { method: "PATCH", user, body: { memo } });
 }
 
-/** 러닝의 신발 귀속 변경. shoeId가 null이면 해제. */
-export function updateWorkoutShoe(id: number, shoeId: number | null, user: User) {
-  return apiFetch<void>(`/api/workouts/${id}/shoe`, { method: "PATCH", user, body: { shoeId } });
-}
-
 /** 운동 사진(imageUrl) 설정·교체·삭제. imageUrl이 null이면 삭제. */
 export function updateWorkoutImage(id: number, imageUrl: string | null, user: User) {
   return apiFetch<void>(`/api/workouts/${id}/image`, { method: "PATCH", user, body: { imageUrl } });

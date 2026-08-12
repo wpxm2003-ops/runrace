@@ -50,6 +50,13 @@ public class AuthController {
     return ResponseEntity.ok(MeResponse.from(user));
   }
 
+  /**
+   * @deprecated 언어·타임존을 함께 받는 {@code PATCH /me/preferences}로 대체됐다(2026-08-12).
+   *     현재 웹/앱 클라이언트는 이 경로를 호출하지 않지만, 이미 배포된 구버전 앱이 아직
+   *     호출하므로 남겨 둔다. 구버전 사용률이 충분히 떨어지면 이 메서드와
+   *     {@code LanguageUpdateRequest}·{@code AccountService.updateLanguage}를 함께 제거할 것.
+   */
+  @Deprecated
   @PatchMapping("/me/language")
   public ResponseEntity<MeResponse> updateLanguage(
       AuthPrincipal principal, @RequestBody LanguageUpdateRequest body) {

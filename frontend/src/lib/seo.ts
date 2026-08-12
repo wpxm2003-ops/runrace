@@ -10,6 +10,11 @@ import { LOCALES, type Locale } from "@/lib/i18n/translations";
  *
  * 대상은 로그인 없이 들어오는 페이지뿐이다. 앱 내부 화면은 SEO가 필요 없어 라우트를 늘리지 않는다.
  * 한국어는 접두사 없는 기존 경로(`/guides`)를 그대로 쓴다 — 현재 색인을 깨지 않기 위해서다.
+ *
+ * 라우트는 `app/en`·`app/ja`처럼 **명시적 디렉터리**로 둔다(각 page.tsx는 이 표에서 메타데이터를
+ * 받고 한국어 페이지 컴포넌트를 그대로 재export한다). 루트에 `[locale]` 동적 세그먼트를 쓰면
+ * `/records` 같은 기존 경로와 매칭이 모호해지고, 린트의 내부 링크 검사도 모든 경로를 그 세그먼트로
+ * 오인한다(실측). 언어가 4개뿐이라 명시적 디렉터리가 더 싸고 안전하다.
  */
 export type SeoPage = "home" | "guides" | "privacy" | "paceCalculator";
 

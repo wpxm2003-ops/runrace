@@ -309,11 +309,6 @@ export function useRivals(user: User | null) {
   );
 }
 
-/** 라이벌 등록/해제 후 목록 재검증. */
-export function invalidateRivals(userId: string) {
-  invalidateByPrefix("rivals", userId);
-}
-
 // ── 크루 ─────────────────────────────────────────────────────────────────────
 /** 내 크루 홈(주간 보드 포함). 미소속이면 data.crew === null. */
 export function useMyCrew(user: User | null) {
@@ -486,11 +481,6 @@ export function useShoes(user: User | null) {
     () => fetchShoes(user!),
     BASE_CONFIG,
   );
-}
-
-/** 신발 등록/수정/삭제/활성화 후 목록 재검증. */
-export function invalidateShoes(userId: string) {
-  invalidateByPrefix("shoes", userId);
 }
 
 // ── 실내러닝 승인 (레이스 참여·시작 후에만) ──────────────────────────────────

@@ -36,11 +36,11 @@ export function workoutStartedAtForDisplay(
   return w.startedAtLocal ?? w.startedAt;
 }
 
-/** 운동의 벽시계 Date — 요일 분포·시각 표시에 사용. 박제 값 우선, 없으면 뷰어 로컬 변환. */
+/** 운동의 벽시계 Date — 요일 분포·월 필터에 사용. */
 function workoutWallClock(w: Pick<WorkoutListItem, "startedAt" | "startedAtLocal">): Date {
   // 오프셋 없는 "YYYY-MM-DDTHH:mm:ss"는 new Date()가 뷰어 타임존으로 해석하지만,
   // 벽시계 필드(연·월·일·시·요일)는 그대로 보존된다 — 여기서 필요한 건 그 필드뿐이다.
-  return new Date(w.startedAtLocal ?? w.startedAt);
+  return new Date(workoutStartedAtForDisplay(w));
 }
 
 export function aggregateWorkouts(items: WorkoutListItem[]): WorkoutAggregate {
