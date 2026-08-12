@@ -6,6 +6,10 @@ export type AdminMember = {
   nickname: string | null;
   provider: string | null;
   pushEnabled: boolean;
+  /** UI·푸시 문구 언어(users.lang_cd). */
+  langCd: string | null;
+  /** 기기에서 수집한 IANA 타임존 — 해외 사용자 분포 파악용. */
+  timeZone: string | null;
   createdAt: string;
 };
 

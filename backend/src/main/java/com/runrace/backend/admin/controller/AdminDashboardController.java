@@ -83,13 +83,23 @@ public class AdminDashboardController {
       List<MemberRow> members, List<WorkoutRow> workouts, List<FeedbackRow> feedback) {}
 
   public record MemberRow(
-      String displayName, String nickname, String provider, boolean pushEnabled, String createdAt) {
+      String displayName,
+      String nickname,
+      String provider,
+      boolean pushEnabled,
+      /** 푸시 알림 문구 언어이자 UI 언어(users.lang_cd). */
+      String langCd,
+      /** 기기에서 수집한 IANA 타임존 — 해외 사용자 분포 파악용. */
+      String timeZone,
+      String createdAt) {
     static MemberRow from(AppUser user) {
       return new MemberRow(
           user.getDisplayName(),
           user.getNickname(),
           user.getProvider(),
           user.isPushEnabled(),
+          user.getLangCd(),
+          user.getTimeZone(),
           IsoTime.format(user.getCreatedAt()));
     }
   }
