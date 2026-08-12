@@ -963,7 +963,9 @@ export const translations = {
     feedback_home_desc: "오류나 개선 아이디어를 알려주세요. 사진 첨부도 가능해요.",
     feedback_title: "의견 보내기",
     feedback_desc:
-      "러닝 중 불편했던 점, 이런 기능이 있으면 좋겠다 싶은 점, 오류가 발생한 화면을 알려주세요. 사진이 있으면 문제를 훨씬 빨리 확인할 수 있어요.",
+      "이런 기능이 있으면 좋겠다 싶은 게 있나요? 여러분의 생각을 들려주세요. 더 좋은 앱으로 같이 만들어가요!",
+    feedback_desc_issue:
+      "러닝 중 불편했던 점이나 오류가 있었다면 알려주세요. 사진을 함께 보내주시면 더 빨리 확인할 수 있어요.",
     feedback_type_label: "유형",
     feedback_type_idea: "개선 아이디어",
     feedback_type_inconvenience: "불편한 점",
@@ -972,7 +974,7 @@ export const translations = {
     feedback_title_label: "제목",
     feedback_title_placeholder: "한 줄로 요약해 주세요",
     feedback_content_label: "내용",
-    feedback_content_placeholder: "어떤 상황에서 불편했는지 자세히 알려주세요",
+    feedback_content_placeholder: "아이디어나, 불편했던 상황을 자세히 알려주세요",
     feedback_image_label: "사진 첨부",
     feedback_image_hint: "JPG, PNG, WEBP · 장당 5MB 이하 · 최대 3장",
     feedback_image_add: "사진 추가",
@@ -2026,7 +2028,9 @@ export const translations = {
     feedback_home_desc: "Tell us about bugs or ideas. You can attach photos too.",
     feedback_title: "Send feedback",
     feedback_desc:
-      "Tell us what felt inconvenient while running, what you would improve, or where an error occurred. A photo helps us understand the issue faster.",
+      "Is there a feature you wish RunRace had? Share your idea — let's build a better app together!",
+    feedback_desc_issue:
+      "And if something felt off while running, or you hit a bug, let us know. A photo helps us look into it faster.",
     feedback_type_label: "Type",
     feedback_type_idea: "Improvement idea",
     feedback_type_inconvenience: "Inconvenience",
@@ -2035,7 +2039,7 @@ export const translations = {
     feedback_title_label: "Title",
     feedback_title_placeholder: "Summarize it in one line",
     feedback_content_label: "Details",
-    feedback_content_placeholder: "Tell us what happened and when",
+    feedback_content_placeholder: "Describe your idea, or what happened and when",
     feedback_image_label: "Photos",
     feedback_image_hint: "JPG, PNG, WEBP · up to 5MB each · maximum 3",
     feedback_image_add: "Add photo",
@@ -3087,7 +3091,9 @@ export const translations = {
     feedback_home_desc: "Cuéntanos errores o ideas. También puedes adjuntar fotos.",
     feedback_title: "Enviar opinión",
     feedback_desc:
-      "Cuéntanos qué te resultó incómodo al correr, qué mejorarías o dónde apareció un error. Una foto nos ayuda a entenderlo más rápido.",
+      "¿Hay alguna función que te gustaría ver en RunRace? Cuéntanos tu idea: ¡construyamos juntos una app mejor!",
+    feedback_desc_issue:
+      "Y si algo te resultó incómodo al correr o encontraste un error, avísanos. Una foto nos ayuda a revisarlo más rápido.",
     feedback_type_label: "Tipo",
     feedback_type_idea: "Idea de mejora",
     feedback_type_inconvenience: "Inconveniente",
@@ -3096,7 +3102,7 @@ export const translations = {
     feedback_title_label: "Título",
     feedback_title_placeholder: "Resúmelo en una línea",
     feedback_content_label: "Detalles",
-    feedback_content_placeholder: "Cuéntanos qué ocurrió y cuándo",
+    feedback_content_placeholder: "Describe tu idea, o qué ocurrió y cuándo",
     feedback_image_label: "Fotos",
     feedback_image_hint: "JPG, PNG, WEBP · hasta 5 MB cada una · máximo 3",
     feedback_image_add: "Añadir foto",
@@ -4148,7 +4154,9 @@ export const translations = {
     feedback_home_desc: "不具合や改善アイデアをお知らせください。写真も添付できます。",
     feedback_title: "意見を送る",
     feedback_desc:
-      "ランニング中に不便だったこと、追加してほしい機能、エラーが起きた画面を教えてください。写真があるとより早く確認できます。",
+      "こんな機能があったらいいのに、と思うことはありますか？ぜひアイデアを聞かせてください。一緒により良いアプリにしていきましょう！",
+    feedback_desc_issue:
+      "ランニング中に不便だったことやエラーがあれば教えてください。写真を添えていただくとより早く確認できます。",
     feedback_type_label: "種類",
     feedback_type_idea: "改善アイデア",
     feedback_type_inconvenience: "不便な点",
@@ -4157,7 +4165,7 @@ export const translations = {
     feedback_title_label: "タイトル",
     feedback_title_placeholder: "一行で要約してください",
     feedback_content_label: "内容",
-    feedback_content_placeholder: "いつ、どのような状況で起きたか教えてください",
+    feedback_content_placeholder: "アイデアや、いつどんな状況で起きたかを教えてください",
     feedback_image_label: "写真",
     feedback_image_hint: "JPG、PNG、WEBP · 1枚5MB以下 · 最大3枚",
     feedback_image_add: "写真を追加",
@@ -5209,7 +5217,9 @@ export const translations = {
     feedback_home_desc: "请告诉我们错误或改进建议，也可以附上照片。",
     feedback_title: "发送意见",
     feedback_desc:
-      "请告诉我们跑步时遇到的不便、希望增加的功能或发生错误的页面。附上照片能帮助我们更快确认问题。",
+      "有希望 RunRace 增加的功能吗？欢迎分享你的想法，一起把它做得更好！",
+    feedback_desc_issue:
+      "跑步时如果遇到不便或错误，也请告诉我们。附上照片能帮助我们更快确认。",
     feedback_type_label: "类型",
     feedback_type_idea: "改进建议",
     feedback_type_inconvenience: "不便之处",
@@ -5218,7 +5228,7 @@ export const translations = {
     feedback_title_label: "标题",
     feedback_title_placeholder: "请用一句话概括",
     feedback_content_label: "内容",
-    feedback_content_placeholder: "请详细说明发生问题的时间和情况",
+    feedback_content_placeholder: "请描述你的想法，或问题发生的时间和情况",
     feedback_image_label: "照片",
     feedback_image_hint: "JPG、PNG、WEBP · 每张不超过5MB · 最多3张",
     feedback_image_add: "添加照片",

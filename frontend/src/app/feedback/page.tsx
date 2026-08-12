@@ -151,7 +151,11 @@ export default function FeedbackPage() {
 
   return (
     <PageLayout title={t.feedback_title} maxWidth="max-w-md" className="pb-24">
-      <p className="mb-7 text-sm leading-6 text-zinc-600">{t.feedback_desc}</p>
+      {/* 아이디어 초대와 문제 제보는 성격이 달라 문단을 나눈다 — 한 덩어리면 셋 다 흘려 읽힌다. */}
+      <div className="mb-7 space-y-2 text-sm leading-6 text-zinc-600">
+        <p>{t.feedback_desc}</p>
+        <p>{t.feedback_desc_issue}</p>
+      </div>
 
       <fieldset>
         <legend className="text-sm font-semibold text-zinc-900">{t.feedback_type_label}</legend>
