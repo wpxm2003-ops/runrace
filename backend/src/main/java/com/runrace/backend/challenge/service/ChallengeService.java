@@ -20,6 +20,9 @@ import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.crew.service.CrewGuards;
 import com.runrace.backend.event.ChallengeEvents.ChallengeEndedNoParticipantsEvent;
 import com.runrace.backend.event.ChallengeEvents;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -63,6 +66,7 @@ public class ChallengeService {
   private final RaceFinalizationService raceFinalization;
   private final CrewMemberRepository crewMemberRepository;
   private final CrewRepository crewRepository;
+  private final ActivityHistoryService activityHistoryService;
 
   @Transactional
   public Challenge createRoom(
@@ -108,6 +112,13 @@ public class ChallengeService {
 
     // 방장을 첫 참가자로 등록
     challengeMemberRepository.save(newMember(saved, creator));
+
+    activityHistoryService.recordSelf(
+        principal.userId(),
+        ActivityAction.RACE_CREATED,
+        ActivityTargetType.RACE,
+        saved.getId(),
+        Map.of("crewOnly", crewOnly));
 
     return saved;
   }
@@ -216,7 +227,10 @@ public class ChallengeService {
     challenge.updateRoom(
         title.trim(), goalKm.setScale(3, RoundingMode.HALF_UP), maxMembers, startAt, endAt,
         cleanStake(stake));
-    return challengeRepository.save(challenge);
+    Challenge saved = challengeRepository.save(challenge);
+    activityHistoryService.recordSelf(
+        principal.userId(), ActivityAction.RACE_UPDATED, ActivityTargetType.RACE, id);
+    return saved;
   }
 
   /** 내기 텍스트 정리 — 선택값이라 비어있으면 null, 있으면 길이·금칙어 검증 후 트림본 반환. */
@@ -234,6 +248,8 @@ public class ChallengeService {
     ensureNotStarted(challenge);
     List<String> prizeKeys = collectPrizeImageKeys(id);
     challengeRepository.delete(challenge);
+    activityHistoryService.recordSelf(
+        principal.userId(), ActivityAction.RACE_DELETED, ActivityTargetType.RACE, id);
     ChallengeEvents.publishPrizeCleanup(eventPublisher, prizeKeys);
   }
 
@@ -268,6 +284,8 @@ public class ChallengeService {
       // 동시 중복 참여 — 유니크 제약 위반을 깔끔한 4xx로 변환
       throw ApiException.conflict("already_member");
     }
+    activityHistoryService.recordSelf(
+        principal.userId(), ActivityAction.RACE_JOINED, ActivityTargetType.RACE, id);
   }
 
   @Transactional
@@ -286,6 +304,8 @@ public class ChallengeService {
             .findByChallengeIdAndUserId(id, principal.userId())
             .orElseThrow(() -> ApiException.notFound("not_member"));
     challengeMemberRepository.delete(member);
+    activityHistoryService.recordSelf(
+        principal.userId(), ActivityAction.RACE_LEFT, ActivityTargetType.RACE, id);
   }
 
   /**

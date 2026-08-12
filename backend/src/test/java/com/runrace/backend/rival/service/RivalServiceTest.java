@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -27,6 +28,7 @@ class RivalServiceTest {
   @Mock RivalRepository rivalRepository;
   @Mock AppUserRepository appUserRepository;
   @Mock ChallengeMemberRepository challengeMemberRepository;
+  @Mock ActivityHistoryService activityHistoryService;
 
   @InjectMocks RivalService service;
 

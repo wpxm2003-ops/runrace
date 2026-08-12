@@ -21,6 +21,9 @@ import com.runrace.backend.crew.repository.CrewJoinRequestRepository;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.event.CrewEvents;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -92,6 +95,7 @@ public class CrewService {
   private final ImageUploadService imageUploadService;
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
+  private final ActivityHistoryService activityHistoryService;
 
   // ── 조회 ──────────────────────────────────────────────────────
 
@@ -301,6 +305,8 @@ public class CrewService {
         .build());
     crewMemberRepository.save(CrewMember.builder().crew(crew).user(me).joinedAt(now).build());
     cancelOtherPendingApplications(meId);
+    activityHistoryService.recordSelf(
+        meId, ActivityAction.CREW_CREATED, ActivityTargetType.CREW, crew.getId());
   }
 
   /** 초대 코드로 가입. */
@@ -319,6 +325,12 @@ public class CrewService {
         CrewMember.builder().crew(crew).user(me).joinedAt(OffsetDateTime.now()).build());
     // 초대코드 즉시가입도 "가입"이므로 발견 경로로 넣어둔 다른 신청은 전부 정리한다.
     cancelOtherPendingApplications(meId);
+    activityHistoryService.recordSelf(
+        meId,
+        ActivityAction.CREW_JOINED,
+        ActivityTargetType.CREW,
+        crew.getId(),
+        Map.of("method", "invite_code"));
   }
 
   /** 크루 탈퇴 — 리더는 탈퇴 대신 해체만 가능하다(리더 공백 방지). */
@@ -329,6 +341,8 @@ public class CrewService {
       throw ApiException.badRequest("leader_cannot_leave");
     }
     crewMemberRepository.delete(membership);
+    activityHistoryService.recordSelf(
+        meId, ActivityAction.CREW_LEFT, ActivityTargetType.CREW, membership.getCrew().getId());
   }
 
   // ── 리더 관리 ─────────────────────────────────────────────────
@@ -377,6 +391,8 @@ public class CrewService {
   public void disband(UUID meId, long crewId) {
     Crew crew = requireLeader(meId, crewId);
     crewRepository.delete(crew);
+    activityHistoryService.recordSelf(
+        meId, ActivityAction.CREW_DISBANDED, ActivityTargetType.CREW, crewId);
   }
 
   /** 멤버 내보내기(리더 전용). 자기 자신은 내보낼 수 없다(해체·탈퇴 경로 사용). */
@@ -389,6 +405,13 @@ public class CrewService {
     CrewMember target = crewMemberRepository.findByCrewIdAndUserId(crewId, targetUserId)
         .orElseThrow(() -> ApiException.notFound("member_not_found"));
     crewMemberRepository.delete(target);
+    activityHistoryService.record(
+        meId,
+        targetUserId,
+        ActivityAction.CREW_MEMBER_REMOVED,
+        ActivityTargetType.CREW,
+        crewId,
+        Map.of());
   }
 
   // ── 가입신청(승인제) ──────────────────────────────────────────
@@ -422,7 +445,14 @@ public class CrewService {
       throw ApiException.conflict("apply_rate_limited");
     }
 
-    crewJoinRequestRepository.save(CrewJoinRequest.of(crew, applicant, message));
+    CrewJoinRequest request = CrewJoinRequest.of(crew, applicant, message);
+    crewJoinRequestRepository.save(request);
+    activityHistoryService.recordSelf(
+        meId,
+        ActivityAction.CREW_APPLICATION_SUBMITTED,
+        ActivityTargetType.CREW_APPLICATION,
+        request.getId(),
+        Map.of("crewId", crewId));
     eventPublisher.publishEvent(new CrewEvents.CrewApplyReceived(
         crew.getLeader().getId(), applicant.getNickname(), crewId));
   }
@@ -465,6 +495,21 @@ public class CrewService {
     request.approve(leaderId);
     crewJoinRequestRepository.save(request);
     cancelAlreadyLocked(locked, requestId);
+
+    activityHistoryService.record(
+        leaderId,
+        applicantId,
+        ActivityAction.CREW_APPLICATION_APPROVED,
+        ActivityTargetType.CREW_APPLICATION,
+        requestId,
+        Map.of("crewId", crewId));
+    activityHistoryService.record(
+        leaderId,
+        applicantId,
+        ActivityAction.CREW_JOINED,
+        ActivityTargetType.CREW,
+        crewId,
+        Map.of("method", "application", "requestId", requestId));
 
     eventPublisher.publishEvent(
         new CrewEvents.CrewApplyApproved(applicantId, crew.getName(), crew.getId()));
@@ -535,6 +580,14 @@ public class CrewService {
     request.reject(leaderId, reason);
     crewJoinRequestRepository.save(request);
 
+    activityHistoryService.record(
+        leaderId,
+        request.getUser().getId(),
+        ActivityAction.CREW_APPLICATION_REJECTED,
+        ActivityTargetType.CREW_APPLICATION,
+        requestId,
+        Map.of("crewId", crew.getId()));
+
     eventPublisher.publishEvent(new CrewEvents.CrewApplyRejected(
         request.getUser().getId(), crew.getName(), reason, crew.getId()));
   }
@@ -551,6 +604,12 @@ public class CrewService {
     }
     request.cancel();
     crewJoinRequestRepository.save(request);
+    activityHistoryService.recordSelf(
+        meId,
+        ActivityAction.CREW_APPLICATION_CANCELLED,
+        ActivityTargetType.CREW_APPLICATION,
+        requestId,
+        Map.of("crewId", request.getCrew().getId()));
   }
 
   /** 내 신청 현황(대기중 전체) — 크루 미소속 홈에서 노출. */
@@ -595,12 +654,23 @@ public class CrewService {
               .findFirst();
       if (successor.isEmpty()) {
         crewRepository.delete(crew); // cascade로 내 멤버십도 삭제
+        activityHistoryService.recordSelf(
+            userId, ActivityAction.CREW_DISBANDED, ActivityTargetType.CREW, crew.getId());
         return;
       }
       crew.transferLeader(successor.get().getUser());
       crewRepository.save(crew);
+      activityHistoryService.record(
+          userId,
+          successor.get().getUser().getId(),
+          ActivityAction.CREW_LEADER_CHANGED,
+          ActivityTargetType.CREW,
+          crew.getId(),
+          Map.of("previousLeaderUserId", userId.toString()));
     }
     crewMemberRepository.delete(membership.get());
+    activityHistoryService.recordSelf(
+        userId, ActivityAction.CREW_LEFT, ActivityTargetType.CREW, crew.getId());
   }
 
   // ── 내부 헬퍼 ─────────────────────────────────────────────────

@@ -8,6 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.history.service.ActivityHistoryService;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -27,8 +30,32 @@ class AccountServiceTest {
   @Mock CacheManager cacheManager;
   @Mock AccountWithdrawalTx accountWithdrawalTx;
   @Mock ImageUploadService imageUploadService;
+  @Mock ActivityHistoryService activityHistoryService;
 
   @InjectMocks AccountService service;
+
+  @Nested class UpdatePushEnabled {
+    private final UUID userId = UUID.randomUUID();
+
+    @Test void changedValueIsRecorded() {
+      AppUser user = AppUser.builder().id(userId).pushEnabled(false).build();
+      when(appUserRepository.getRequired(userId)).thenReturn(user);
+
+      service.updatePushEnabled(userId, true);
+
+      verify(activityHistoryService).recordSelf(
+          userId, ActivityAction.PUSH_ENABLED, ActivityTargetType.NOTIFICATION_SETTING, userId);
+    }
+
+    @Test void unchangedValueIsNotRecorded() {
+      AppUser user = AppUser.builder().id(userId).pushEnabled(false).build();
+      when(appUserRepository.getRequired(userId)).thenReturn(user);
+
+      service.updatePushEnabled(userId, false);
+
+      verify(activityHistoryService, never()).recordSelf(any(), any(), any(), any());
+    }
+  }
 
   // ── updateNickname ───────────────────────────────────────────────────────
 

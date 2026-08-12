@@ -12,6 +12,9 @@ import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.crew.service.CrewMatchService;
+import com.runrace.backend.history.service.ActivityHistoryService;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
 import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
@@ -46,6 +49,7 @@ class WorkoutServiceDeleteTest {
   @Mock PersonalBestRepository personalBestRepository;
   @Mock ShoeService shoeService;
   @Mock ApplicationEventPublisher eventPublisher;
+  @Mock ActivityHistoryService activityHistoryService;
   @Mock AppUser user;
 
   private WorkoutService service;
@@ -66,7 +70,8 @@ class WorkoutServiceDeleteTest {
         personalBestRepository,
         shoeService,
         eventPublisher,
-        new ObjectMapper());
+        new ObjectMapper(),
+        activityHistoryService);
     userId = UUID.randomUUID();
     principal = new AuthPrincipal(userId, "uid");
   }
@@ -87,6 +92,12 @@ class WorkoutServiceDeleteTest {
     InOrder order = inOrder(personalBestRepository, workoutRepository);
     order.verify(personalBestRepository).deleteAll(List.of(pb));
     order.verify(workoutRepository).delete(session);
+    verify(activityHistoryService).recordSelf(
+        org.mockito.ArgumentMatchers.eq(userId),
+        org.mockito.ArgumentMatchers.eq(ActivityAction.WORKOUT_DELETED),
+        org.mockito.ArgumentMatchers.eq(ActivityTargetType.WORKOUT),
+        org.mockito.ArgumentMatchers.eq(42L),
+        any());
   }
 
   @Test

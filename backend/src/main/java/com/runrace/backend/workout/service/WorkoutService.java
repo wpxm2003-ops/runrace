@@ -15,6 +15,9 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.service.CrewMatchService;
 import com.runrace.backend.event.WorkoutEvents;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
@@ -38,6 +41,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -95,6 +99,7 @@ public class WorkoutService {
   private final ShoeService shoeService;
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
+  private final ActivityHistoryService activityHistoryService;
 
   /**
    * 저장 결과 — {@code deduplicated}면 clientWorkoutId가 이미 저장된 요청이라 새로 쓴 것이 없다.
@@ -635,6 +640,14 @@ public class WorkoutService {
     personalBestRepository.deleteAll(personalBestRepository.findAllByWorkoutId(session.getId()));
     String imageUrl = session.getImageUrl();
     workoutSessionRepository.delete(session);
+    activityHistoryService.recordSelf(
+        principal.userId(),
+        ActivityAction.WORKOUT_DELETED,
+        ActivityTargetType.WORKOUT,
+        session.getId(),
+        Map.of(
+            "distanceM", session.getDistanceM(),
+            "workoutType", session.getWorkoutType().name()));
     // S3 삭제는 커밋 후 처리 — 트랜잭션 내 네트워크 I/O로 인한 커넥션 점유 방지
     if (imageUrl != null && !imageUrl.isBlank()) {
       eventPublisher.publishEvent(new WorkoutEvents.WorkoutImageDeletedEvent(imageUrl));

@@ -19,7 +19,8 @@ class WorkoutServiceShareTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final WorkoutService service =
-      new WorkoutService(null, null, null, null, null, null, null, null, null, null, null, objectMapper);
+      new WorkoutService(
+          null, null, null, null, null, null, null, null, null, null, null, objectMapper, null);
 
   private String toJson(List<WorkoutService.PathPoint> points) {
     try {

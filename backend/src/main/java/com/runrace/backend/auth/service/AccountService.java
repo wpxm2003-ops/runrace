@@ -6,6 +6,9 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
 import com.runrace.backend.config.CacheConfig;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.push.repository.DeviceTokenRepository;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
@@ -32,6 +35,7 @@ public class AccountService {
   private final AccountWithdrawalTx accountWithdrawalTx;
   private final ImageUploadService imageUploadService;
   private final DeviceTokenRepository deviceTokenRepository;
+  private final ActivityHistoryService activityHistoryService;
 
   @Transactional(readOnly = true)
   public AppUser getUser(UUID userId) {
@@ -70,8 +74,16 @@ public class AccountService {
   @Transactional
   public void updatePushEnabled(UUID userId, boolean enabled) {
     AppUser user = appUserRepository.getRequired(userId);
+    boolean changed = user.isPushEnabled() != enabled;
     user.changePushEnabled(enabled);
     appUserRepository.save(user);
+    if (changed) {
+      activityHistoryService.recordSelf(
+          userId,
+          enabled ? ActivityAction.PUSH_ENABLED : ActivityAction.PUSH_DISABLED,
+          ActivityTargetType.NOTIFICATION_SETTING,
+          userId);
+    }
   }
 
   /** 주력 언어 선호값 변경 — 푸시 알림 언어에 사용된다. */

@@ -15,6 +15,7 @@ import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -42,6 +43,7 @@ class ChallengeServiceTest {
   @Mock ApplicationEventPublisher eventPublisher;
   @Mock RivalRepository rivalRepository;
   @Mock RaceFinalizationService raceFinalization;
+  @Mock ActivityHistoryService activityHistoryService;
 
   @InjectMocks ChallengeService service;
 

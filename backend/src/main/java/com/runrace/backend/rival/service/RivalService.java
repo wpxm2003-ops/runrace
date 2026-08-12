@@ -2,6 +2,9 @@ package com.runrace.backend.rival.service;
 
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.rival.domain.Rival;
 import com.runrace.backend.rival.dto.RivalRow;
 import com.runrace.backend.rival.repository.RivalRepository;
@@ -26,6 +29,7 @@ public class RivalService {
   private final RivalRepository rivalRepository;
   private final AppUserRepository appUserRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
+  private final ActivityHistoryService activityHistoryService;
 
   /** 내 라이벌 목록(최근 등록 순) + 각 라이벌과의 누적 전적. */
   @Transactional(readOnly = true)
@@ -64,12 +68,19 @@ public class RivalService {
     AppUser me = appUserRepository.getRequired(meId);
     rivalRepository.save(
         Rival.builder().user(me).rivalUser(target).createdAt(OffsetDateTime.now()).build());
+    activityHistoryService.recordSelf(
+        meId, ActivityAction.RIVAL_ADDED, ActivityTargetType.USER, target.getId());
   }
 
   /** 라이벌 해제(단방향). */
   @Transactional
   public void removeRival(UUID meId, UUID rivalUserId) {
+    boolean existed = rivalRepository.existsByUserIdAndRivalUserId(meId, rivalUserId);
     rivalRepository.deleteByUserIdAndRivalUserId(meId, rivalUserId);
+    if (existed) {
+      activityHistoryService.recordSelf(
+          meId, ActivityAction.RIVAL_REMOVED, ActivityTargetType.USER, rivalUserId);
+    }
   }
 
   /** meId 기준 상대별 [승, 패] 집계. */

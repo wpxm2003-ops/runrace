@@ -21,6 +21,7 @@ import com.runrace.backend.crew.repository.CrewJoinRequestRepository;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.event.CrewEvents;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -48,6 +49,7 @@ class CrewServiceTest {
   @Mock AppUserRepository appUserRepository;
   @Mock ImageUploadService imageUploadService;
   @Mock ApplicationEventPublisher eventPublisher;
+  @Mock ActivityHistoryService activityHistoryService;
 
   @InjectMocks CrewService service;
 
