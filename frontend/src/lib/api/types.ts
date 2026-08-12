@@ -606,6 +606,8 @@ export type WorkoutShare = {
   calories: number;
   avgPaceSecPerKm: number | null;
   startedAt: string;
+  /** 기기 벽시계 시작 시각(타임존 없음). 구응답 캐시에는 없다. */
+  startedAtLocal?: string;
   path: LatLng[];
   workoutType: WorkoutType;
   imageUrl: string | null;

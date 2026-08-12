@@ -3,6 +3,7 @@ package com.runrace.backend.workout.dto;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.runrace.backend.workout.domain.WorkoutSession;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ class WorkoutShareResponseTest {
   @Test void 시작_시각을_정시로_내려준다() {
     WorkoutSession session = WorkoutSession.builder()
         .startedAt(OffsetDateTime.parse("2026-07-29T14:37:22Z"))
+        .startedAtLocal(LocalDateTime.parse("2026-07-29T23:37:22"))
         .durationSec(1800)
         .distanceM(5000)
         .calories(300)
@@ -26,11 +28,14 @@ class WorkoutShareResponseTest {
     WorkoutShareResponse response = WorkoutShareResponse.from(session, List.of());
 
     assertEquals("2026-07-29T14:00Z", response.startedAt());
+    // 벽시계도 같은 정밀도로 낮춘다 — 상세 화면과 같은 날짜를 보여주되 생활 패턴은 감춘다.
+    assertEquals("2026-07-29T23:00", response.startedAtLocal());
   }
 
   @Test void 정시_시작이면_변화_없이_그대로_정시다() {
     WorkoutSession session = WorkoutSession.builder()
         .startedAt(OffsetDateTime.parse("2026-07-29T09:00:00Z"))
+        .startedAtLocal(LocalDateTime.parse("2026-07-29T18:00:00"))
         .durationSec(600)
         .distanceM(2000)
         .calories(100)
@@ -40,5 +45,6 @@ class WorkoutShareResponseTest {
     WorkoutShareResponse response = WorkoutShareResponse.from(session, List.of());
 
     assertEquals("2026-07-29T09:00Z", response.startedAt());
+    assertEquals("2026-07-29T18:00", response.startedAtLocal());
   }
 }

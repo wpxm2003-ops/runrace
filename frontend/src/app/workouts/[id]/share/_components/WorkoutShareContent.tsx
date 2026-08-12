@@ -138,7 +138,7 @@ export default function WorkoutShareContent() {
 
           {/* 날짜 — 카드 하단(저장 스토리 카드와 동일 톤) */}
           <div className="mt-4 text-xs font-medium text-white">
-            {formatDate(data.startedAt, locale)}
+            {formatDate(data.startedAtLocal ?? data.startedAt, locale)}
           </div>
         </div>
 
