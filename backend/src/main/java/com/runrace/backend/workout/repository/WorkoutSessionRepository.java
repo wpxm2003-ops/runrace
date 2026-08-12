@@ -117,12 +117,14 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
       )
       select l.user_id as "userId",
              l.last_d   as "lastDate",
+             u.time_zone as "timeZone",
              (select count(*) from grp g
                 where g.user_id = l.user_id
                   and g.g = (select g2.g from grp g2
                               where g2.user_id = l.user_id and g2.d = l.last_d)
              )::int as "currentStreak"
       from last_per_user l
+      join users u on u.id = l.user_id
       where l.last_d >= :minDate
       """, nativeQuery = true)
   List<ReengageCandidate> findReengageCandidates(@Param("minDate") LocalDate minDate);
@@ -132,6 +134,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
     UUID getUserId();
     LocalDate getLastDate();
     int getCurrentStreak();
+    String getTimeZone();
   }
 
   /**
@@ -139,11 +142,13 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
    * 연속일 계산이 불필요한 경로용 경량 쿼리(상관 서브쿼리 없음).
    */
   @Query(value = """
-      select user_id as "userId",
-             max(started_at_local::date) as "lastDate"
-      from workout_session
-      group by user_id
-      having max(started_at_local::date) >= :minDate
+      select w.user_id as "userId",
+             max(w.started_at_local::date) as "lastDate",
+             u.time_zone as "timeZone"
+      from workout_session w
+      join users u on u.id = w.user_id
+      group by w.user_id, u.time_zone
+      having max(w.started_at_local::date) >= :minDate
       """, nativeQuery = true)
   List<UserLastWorkoutDate> findActiveUserLastDates(@Param("minDate") LocalDate minDate);
 
@@ -151,6 +156,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
   interface UserLastWorkoutDate {
     UUID getUserId();
     LocalDate getLastDate();
+    String getTimeZone();
   }
 
   /**

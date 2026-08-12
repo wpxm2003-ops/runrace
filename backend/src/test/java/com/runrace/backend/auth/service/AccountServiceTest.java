@@ -116,4 +116,28 @@ class AccountServiceTest {
       verify(appUserRepository).save(user);
     }
   }
+
+  @Nested class UpdatePreferences {
+    private final UUID userId = UUID.randomUUID();
+
+    @Test void validIanaTimeZoneIsSaved() {
+      AppUser user = AppUser.builder().id(userId).build();
+      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.save(user)).thenReturn(user);
+
+      service.updatePreferences(userId, "en", "America/New_York");
+
+      assertEquals("en", user.getLangCd());
+      assertEquals("America/New_York", user.getTimeZone());
+      verify(appUserRepository).save(user);
+    }
+
+    @Test void invalidTimeZoneIsRejected() {
+      ApiException ex = assertThrows(ApiException.class,
+          () -> service.updatePreferences(userId, null, "Not/A_TimeZone"));
+
+      assertEquals("invalid_time_zone", ex.code());
+      verify(appUserRepository, never()).getRequired(any());
+    }
+  }
 }

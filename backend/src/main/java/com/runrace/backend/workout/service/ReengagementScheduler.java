@@ -5,12 +5,14 @@ import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.push.service.PushService;
 import com.runrace.backend.user.repository.AppUserRepository;
+import com.runrace.backend.user.repository.AppUserRepository.InactiveSignupCandidate;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository.ReengageCandidate;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository.UserLastWorkoutDate;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -57,14 +59,21 @@ public class ReengagementScheduler {
   private final PushService pushService;
   private final ErrorLogService errorLogService;
 
-  /** 휴식 복귀 유도 + 신규 가입자 활성화 — 매일 17:00 (Asia/Seoul). */
-  @Scheduled(cron = "0 0 17 * * *", zone = "Asia/Seoul")
+  /** 휴식 복귀 유도 + 신규 가입자 활성화 — 매시간 검사 후 사용자 현지 17시에 발송. */
+  @Scheduled(cron = "0 0 * * * *", zone = "UTC")
   public void sendInactivityPushes() {
-    LocalDate today = LocalDate.now(KST);
-    OffsetDateTime weekStart = today.minusDays(7).atStartOfDay(KST).toOffsetDateTime();
+    sendInactivityPushes(OffsetDateTime.now(ZoneOffset.UTC));
+  }
+
+  void sendInactivityPushes(OffsetDateTime now) {
+    LocalDate queryDate = now.atZoneSameInstant(KST).toLocalDate();
 
     // 기존 운동자: 3·7일째 복귀 유도. 8일 이상 휴면 유저는 후보에서 제외.
-    for (UserLastWorkoutDate c : workoutSessionRepository.findActiveUserLastDates(today.minusDays(7))) {
+    for (UserLastWorkoutDate c : workoutSessionRepository.findActiveUserLastDates(queryDate.minusDays(8))) {
+      ZoneId zone = safeZone(c.getTimeZone());
+      if (now.atZoneSameInstant(zone).getHour() != 17) continue;
+      LocalDate today = now.atZoneSameInstant(zone).toLocalDate();
+      OffsetDateTime weekStart = today.minusDays(7).atStartOfDay(zone).toOffsetDateTime();
       forEachSafely(c.getUserId(), () -> {
         if (weeklyLimitReached(c.getUserId(), weekStart)) return;
         long daysSince = ChronoUnit.DAYS.between(c.getLastDate(), today);
@@ -78,12 +87,18 @@ public class ReengagementScheduler {
       });
     }
 
-    // 신규 가입자: 가입 3일째까지 운동 0건이면 첫 러닝 유도(1회).
-    for (UUID userId : appUserRepository.findInactiveSignups(today.minusDays(3))) {
-      forEachSafely(userId, () -> {
-        if (weeklyLimitReached(userId, weekStart)) return;
+    // 신규 가입자: 사용자 현지 날짜로 가입 3일째까지 운동 0건이면 첫 러닝 유도(1회).
+    for (InactiveSignupCandidate c : appUserRepository.findInactiveSignups(now.minusDays(5))) {
+      ZoneId zone = safeZone(c.getTimeZone());
+      if (now.atZoneSameInstant(zone).getHour() != 17) continue;
+      LocalDate today = now.atZoneSameInstant(zone).toLocalDate();
+      LocalDate signupDate = c.getCreatedAt().atZoneSameInstant(zone).toLocalDate();
+      if (ChronoUnit.DAYS.between(signupDate, today) != 3) continue;
+      OffsetDateTime weekStart = today.minusDays(7).atStartOfDay(zone).toOffsetDateTime();
+      forEachSafely(c.getUserId(), () -> {
+        if (weeklyLimitReached(c.getUserId(), weekStart)) return;
         pushService.sendLocalized(
-            userId, "reengage.onboarding.title", "reengage.onboarding.body", null, LINK_INDOOR, TYPE_ONBOARDING);
+            c.getUserId(), "reengage.onboarding.title", "reengage.onboarding.body", null, LINK_INDOOR, TYPE_ONBOARDING);
       });
     }
   }
@@ -92,12 +107,19 @@ public class ReengagementScheduler {
     return systemPushHistoryRepository.countByUserAndTypes(userId, WEEKLY_LIMIT_TYPES, weekStart) >= WEEKLY_PUSH_LIMIT;
   }
 
-  /** 스트릭 위험 — 매일 20:00 (Asia/Seoul). 잠들기 전 마지막 유도. */
-  @Scheduled(cron = "0 0 20 * * *", zone = "Asia/Seoul")
+  /** 스트릭 위험 — 매시간 검사 후 사용자 현지 20시에 발송. */
+  @Scheduled(cron = "0 0 * * * *", zone = "UTC")
   public void sendStreakRiskPushes() {
-    LocalDate today = LocalDate.now(KST);
+    sendStreakRiskPushes(OffsetDateTime.now(ZoneOffset.UTC));
+  }
+
+  void sendStreakRiskPushes(OffsetDateTime now) {
+    LocalDate queryDate = now.atZoneSameInstant(KST).toLocalDate();
     // 어제 운동한 유저만 후보(오늘 미운동 시 스트릭이 끊길 위험).
-    for (ReengageCandidate c : workoutSessionRepository.findReengageCandidates(today.minusDays(1))) {
+    for (ReengageCandidate c : workoutSessionRepository.findReengageCandidates(queryDate.minusDays(2))) {
+      ZoneId zone = safeZone(c.getTimeZone());
+      if (now.atZoneSameInstant(zone).getHour() != 20) continue;
+      LocalDate today = now.atZoneSameInstant(zone).toLocalDate();
       forEachSafely(c.getUserId(), () -> {
         long daysSince = ChronoUnit.DAYS.between(c.getLastDate(), today);
         if (daysSince == 1 && c.getCurrentStreak() >= MIN_STREAK_FOR_RISK) {
@@ -106,6 +128,14 @@ public class ReengagementScheduler {
               String.valueOf(c.getCurrentStreak()), LINK_INDOOR, TYPE_STREAK_RISK);
         }
       });
+    }
+  }
+
+  private static ZoneId safeZone(String timeZone) {
+    try {
+      return timeZone == null ? KST : ZoneId.of(timeZone);
+    } catch (java.time.DateTimeException ignored) {
+      return KST;
     }
   }
 

@@ -11,6 +11,7 @@ import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.util.UUID;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +82,21 @@ public class AccountService {
     }
     AppUser user = appUserRepository.getRequired(userId);
     user.changeLangCd(langCd);
+    return appUserRepository.save(user);
+  }
+
+  /** 앱의 현재 언어와 기기 IANA 시간대를 한 번에 동기화한다. null 값은 기존 설정을 유지한다. */
+  @Transactional
+  public AppUser updatePreferences(UUID userId, String langCd, String timeZone) {
+    if (langCd != null && !SupportedLanguages.isSupported(langCd)) {
+      throw ApiException.badRequest("invalid_lang_cd");
+    }
+    if (timeZone != null && !ZoneId.getAvailableZoneIds().contains(timeZone)) {
+      throw ApiException.badRequest("invalid_time_zone");
+    }
+    AppUser user = appUserRepository.getRequired(userId);
+    if (langCd != null) user.changeLangCd(langCd);
+    if (timeZone != null) user.changeTimeZone(timeZone);
     return appUserRepository.save(user);
   }
 

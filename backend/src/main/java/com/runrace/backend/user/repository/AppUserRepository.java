@@ -3,7 +3,7 @@ package com.runrace.backend.user.repository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.user.domain.AppUser;
 import jakarta.persistence.LockModeType;
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,15 +40,24 @@ public interface AppUserRepository
   Optional<AppUser> findByNicknameAndWithdrawnAtIsNull(String nickname);
 
   /**
-   * 가입일(KST)이 {@code signupDate}이면서 아직 운동 기록이 한 건도 없는 사용자 id 목록.
-   * 신규 가입자 활성화(첫 러닝 유도) 푸시 대상. 가입 후 정확히 N일째에만 조회해 1회만 발송한다.
+   * 최근 가입했으며 아직 운동 기록이 한 건도 없는 사용자와 IANA 시간대 목록.
+   * 정확한 현지 가입 경과일 판정은 스케줄러에서 수행한다.
    */
   @Query(value = """
-      select u.id from users u
-      where (u.created_at at time zone 'Asia/Seoul')::date = :signupDate
+      select u.id as "userId", u.created_at as "createdAt", u.time_zone as "timeZone"
+      from users u
+      where u.created_at >= :createdAfter
+        and u.withdrawn_at is null
         and not exists (select 1 from workout_session w where w.user_id = u.id)
       """, nativeQuery = true)
-  List<UUID> findInactiveSignups(@Param("signupDate") LocalDate signupDate);
+  List<InactiveSignupCandidate> findInactiveSignups(
+      @Param("createdAfter") OffsetDateTime createdAfter);
+
+  interface InactiveSignupCandidate {
+    UUID getUserId();
+    OffsetDateTime getCreatedAt();
+    String getTimeZone();
+  }
 
   /** id로 사용자를 조회하되 없으면 404로 변환한다. {@code findById(...).orElseThrow()} 중복 제거용. */
   default AppUser getRequired(UUID id) {

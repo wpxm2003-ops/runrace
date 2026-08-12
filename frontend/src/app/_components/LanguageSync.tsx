@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useMe } from "@/lib/api";
-import { updateLanguage } from "@/lib/api/auth";
+import { updatePreferences } from "@/lib/api/auth";
 import { useLocale } from "@/lib/i18n";
 import { shouldSyncLocaleToServer } from "@/lib/i18n/localeSource";
 import { useAuthUser } from "@/lib/useAuthUser";
@@ -20,12 +20,17 @@ export function LanguageSync() {
 
   useEffect(() => {
     if (!user || !me) return;
-    if (!shouldSyncLocaleToServer(localeSource)) return;
-    if (me.langCd === locale) return;
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const shouldSyncLanguage = shouldSyncLocaleToServer(localeSource) && me.langCd !== locale;
+    const shouldSyncTimeZone = Boolean(timeZone) && me.timeZone !== timeZone;
+    if (!shouldSyncLanguage && !shouldSyncTimeZone) return;
     if (syncingRef.current) return;
 
     syncingRef.current = true;
-    updateLanguage(user, locale)
+    updatePreferences(user, {
+      ...(shouldSyncLanguage ? { langCd: locale } : {}),
+      ...(shouldSyncTimeZone ? { timeZone } : {}),
+    })
       .then((updated) => {
         void mutateMe(updated, { revalidate: false });
       })

@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,10 @@ import org.springframework.stereotype.Component;
  * <p>단일 인스턴스 전제(분산 락 없음). 여러 대로 확장 시 ShedLock 등 도입 필요.
  */
 @Component
+@ConditionalOnProperty(
+    name = "runrace.scheduler.crew-match-enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 @RequiredArgsConstructor
 public class CrewMatchScheduler {
   private static final Logger log = LoggerFactory.getLogger(CrewMatchScheduler.class);

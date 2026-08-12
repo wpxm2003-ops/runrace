@@ -31,6 +31,17 @@ export function updateLanguage(user: User, langCd: string): Promise<MeResponse> 
   });
 }
 
+export function updatePreferences(
+  user: User,
+  preferences: { langCd?: string; timeZone?: string },
+): Promise<MeResponse> {
+  return apiFetch<MeResponse>("/api/me/preferences", {
+    method: "PATCH",
+    user,
+    body: preferences,
+  });
+}
+
 export async function deleteAccount(user: User): Promise<void> {
   await apiFetch<void>("/api/me", { method: "DELETE", user });
   clearAccessToken();

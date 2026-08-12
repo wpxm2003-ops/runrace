@@ -44,6 +44,11 @@ public class AppUser {
   @Column(name = "lang_cd", nullable = false, length = 5)
   private String langCd = "ko";
 
+  /** 사용자의 IANA 시간대. 현지 시각 기준 푸시 발송에 사용한다. */
+  @Builder.Default
+  @Column(name = "time_zone", nullable = false, length = 64)
+  private String timeZone = "Asia/Seoul";
+
   /**
    * 푸시 알림 수신 선호. 기본 false — 알림을 허용해 '첫' 디바이스 토큰이 등록되는 시점에 true로 전환된다
    * (DeviceTokenService). 끄면 모든 푸시(이벤트·리텐션)를 보내지 않는다.
@@ -77,6 +82,10 @@ public class AppUser {
   /** 언어 선호값 변경. */
   public void changeLangCd(String langCd) {
     this.langCd = langCd;
+  }
+
+  public void changeTimeZone(String timeZone) {
+    this.timeZone = timeZone;
   }
 
   /** 푸시 알림 수신 선호 변경(내정보 토글). */

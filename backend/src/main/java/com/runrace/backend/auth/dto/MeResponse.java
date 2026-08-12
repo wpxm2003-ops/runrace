@@ -10,7 +10,8 @@ public record MeResponse(
     String displayName,
     String nickname,
     String provider,
-    String langCd) {
+    String langCd,
+    String timeZone) {
 
   public static MeResponse from(AppUser user) {
     return new MeResponse(
@@ -20,6 +21,7 @@ public record MeResponse(
         user.getDisplayName(),
         user.getNickname(),
         user.getProvider(),
-        user.getLangCd());
+        user.getLangCd(),
+        user.getTimeZone());
   }
 }

@@ -380,6 +380,7 @@ export type MeResponse = {
   nickname: string | null;
   provider: string | null;
   langCd: string;
+  timeZone: string;
 };
 
 // ── 운동(workout) ────────────────────────────────────────────────

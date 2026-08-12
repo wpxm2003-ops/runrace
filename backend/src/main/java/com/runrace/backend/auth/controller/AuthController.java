@@ -8,6 +8,7 @@ import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
 import com.runrace.backend.auth.dto.NotificationSettingRequest;
 import com.runrace.backend.auth.dto.NotificationSettingResponse;
+import com.runrace.backend.auth.dto.PreferencesUpdateRequest;
 import com.runrace.backend.auth.service.AccountService;
 import com.runrace.backend.user.domain.AppUser;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,14 @@ public class AuthController {
   public ResponseEntity<MeResponse> updateLanguage(
       AuthPrincipal principal, @RequestBody LanguageUpdateRequest body) {
     AppUser user = accountService.updateLanguage(principal.userId(), body.langCd());
+    return ResponseEntity.ok(MeResponse.from(user));
+  }
+
+  @PatchMapping("/me/preferences")
+  public ResponseEntity<MeResponse> updatePreferences(
+      AuthPrincipal principal, @RequestBody PreferencesUpdateRequest body) {
+    AppUser user = accountService.updatePreferences(
+        principal.userId(), body.langCd(), body.timeZone());
     return ResponseEntity.ok(MeResponse.from(user));
   }
 
