@@ -48,8 +48,8 @@ public class ChallengeScheduler {
   private final ChallengeService challengeService;
   private final ErrorLogService errorLogService;
 
-  /** 3분마다 실행. 종료 전환은 급하지 않아 여유 주기로 충분하다. */
-  @Scheduled(fixedDelay = 3 * 60 * 1000)
+  /** 10분마다 실행. 종료 전환은 급하지 않아 여유 주기로 충분하다. */
+  @Scheduled(fixedDelay = 10 * 60 * 1000)
   public void sweepRaceLifecycle() {
     OffsetDateTime now = OffsetDateTime.now();
     // 레이스별 독립 트랜잭션 — 한 건이 실패해도 나머지는 정상 처리되도록 격리한다.
