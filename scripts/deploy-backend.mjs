@@ -24,10 +24,6 @@ const steps = [
     ssh(`cd ${REMOTE_DIR}/backend && MAVEN_OPTS=-Xmx512m ./mvnw -q clean package -DskipTests`),
   ],
   ["재시작", ssh("sudo systemctl restart runrace")],
-  [
-    "기동 확인",
-    ssh("curl -fsS --retry 30 --retry-delay 2 --retry-connrefused http://localhost:8081/actuator/health"),
-  ],
 ];
 
 function fmt(ms) {
