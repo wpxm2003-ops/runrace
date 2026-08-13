@@ -10,6 +10,7 @@ import { useUnit } from "@/lib/UnitContext";
 import { formatDistanceAmount } from "@/lib/units";
 import { formatHms } from "@/lib/paceMath";
 import { formatDateTimeMinute } from "@/lib/format";
+import { useCollapsibleList } from "@/lib/useCollapsibleList";
 import type { ChallengeMember } from "@/lib/api/types";
 
 /** userId → 현재 사용자 기준 누적 전적. */
@@ -254,16 +255,14 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
 }: ChallengeLeaderboardProps) {
   const { t } = useLocale();
   const { unit } = useUnit();
-  const [expanded, setExpanded] = useState(false);
+  // 서버가 순위 순으로 내려주므로 앞에서 자르면 곧 상위 순위다.
+  const { visible: visibleMembers, hiddenCount, expanded, toggle } =
+    useCollapsibleList(members, COLLAPSED_RANKS);
   const heading = !hasStarted
     ? t.detail_progress_scheduled
     : hasEnded
     ? t.detail_progress_ended
     : t.detail_progress;
-
-  // 서버가 순위 순으로 내려주므로 앞에서 자르면 곧 상위 순위다.
-  const hiddenCount = members.length - COLLAPSED_RANKS;
-  const visibleMembers = expanded ? members : members.slice(0, COLLAPSED_RANKS);
 
   return (
     <Card className="mt-6">
@@ -295,7 +294,7 @@ export const ChallengeLeaderboard = memo(function ChallengeLeaderboard({
         {hiddenCount > 0 ? (
           <ShowMoreToggle
             open={expanded}
-            onToggle={() => setExpanded((v) => !v)}
+            onToggle={toggle}
             moreLabel={t.list_show_more_people(hiddenCount)}
             lessLabel={t.list_show_less}
           />

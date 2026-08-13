@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { useNsmMyReport } from "@/lib/api";
 import type { NsmRetestPoint } from "@/lib/api/types";
 import { formatDate } from "@/lib/format";
@@ -121,11 +121,7 @@ function NsmReportContent({ user }: { user: NonNullable<ReturnType<typeof useReq
   const { data: report, isLoading } = useNsmMyReport(user);
 
   if (isLoading || !report) {
-    return (
-      <PageLayout title={t.nsm_report_title} maxWidth="max-w-md">
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.nsm_report_title, "max-w-md");
   }
 
   const { retests } = report;
@@ -206,11 +202,7 @@ export default function NsmReportPage() {
   const { t } = useLocale();
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.nsm_report_title} maxWidth="max-w-md">
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.nsm_report_title, "max-w-md");
   }
 
   return <NsmReportContent user={user} />;

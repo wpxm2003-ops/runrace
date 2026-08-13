@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { useWorkoutComparison } from "@/lib/api";
+import { deltaPercent } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { formatHms } from "@/lib/paceMath";
 import { useUnit } from "@/lib/UnitContext";
@@ -46,12 +47,12 @@ export function WorkoutComparisonCard({
   // 거리
   const distDeltaM  = currentDistanceM - refDistM;
   const distMore    = distDeltaM >= 0;
-  const distPercent = refDistM > 0 ? Math.round((Math.abs(distDeltaM) / refDistM) * 100) : 0;
+  const distPercent = deltaPercent(distDeltaM, refDistM);
 
   // 시간
   const durDelta    = currentDurationSec - refDurSec;
   const durMore     = durDelta >= 0;
-  const durPercent  = refDurSec > 0 ? Math.round((Math.abs(durDelta) / refDurSec) * 100) : 0;
+  const durPercent  = deltaPercent(durDelta, refDurSec);
 
   // 페이스
   const hasPace        = refPaceSec != null && currentPaceSec != null;
@@ -60,9 +61,7 @@ export function WorkoutComparisonCard({
     ? Math.abs(unit === "mi" ? Math.round((rawPaceDelta * METERS_PER_MI) / 1000) : rawPaceDelta)
     : 0;
   const paceFaster  = rawPaceDelta < 0;
-  const pacePercent = hasPace && refPaceSec! > 0
-    ? Math.round((Math.abs(rawPaceDelta) / refPaceSec!) * 100)
-    : 0;
+  const pacePercent = hasPace ? deltaPercent(rawPaceDelta, refPaceSec!) : 0;
 
   const showNoData = (showAvg && cmp.recentCount === 0) || (!showAvg && !hasPrevData);
 

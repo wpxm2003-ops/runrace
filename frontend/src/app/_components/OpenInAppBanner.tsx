@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { buildAppIntentUrl } from "@/lib/deepLink";
 import { useLocale } from "@/lib/i18n";
 
 /**
@@ -50,13 +51,8 @@ export function OpenInAppBanner() {
   if (!visible) return null;
 
   const openInApp = () => {
-    const { host, pathname, search, href } = window.location;
-    const fallback = encodeURIComponent(PLAY_STORE_URL || href);
-    const intentUrl =
-      `intent://${host}${pathname}${search}` +
-      `#Intent;scheme=https;package=com.runrace.app;` +
-      `S.browser_fallback_url=${fallback};end`;
-    window.location.href = intentUrl;
+    const { href } = window.location;
+    window.location.href = buildAppIntentUrl(encodeURIComponent(PLAY_STORE_URL || href));
   };
 
   const dismiss = () => {

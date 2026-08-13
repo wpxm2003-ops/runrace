@@ -6,6 +6,7 @@ import type { PrizeAwardType, PrizeFormItem } from "@/lib/api/types";
 import { uploadPrivateImage, fetchPrizeImageObjectUrl } from "@/lib/api/prizes";
 import { mapErrorMessage } from "@/lib/api";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { SheetHeader } from "@/app/_components/ui/SheetHeader";
 import { TextInput } from "@/app/_components/ui/TextInput";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { useLocale } from "@/lib/i18n";
@@ -212,17 +213,7 @@ export function PrizeEditorModal({
       onClose={onClose}
       panelClassName="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
     >
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-zinc-900">{t.prize_modal_title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.prize_close}
-            className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
-          >
-            ✕
-          </button>
-        </div>
+        <SheetHeader bordered title={t.prize_modal_title} onClose={onClose} closeLabel={t.prize_close} />
 
         <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4">
           <div className="grid grid-cols-2 rounded-lg bg-zinc-100 p-1">

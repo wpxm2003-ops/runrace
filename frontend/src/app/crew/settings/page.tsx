@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import {
   disbandCrew,
   leaveCrew,
@@ -132,11 +132,7 @@ export default function CrewSettingsPage() {
   const { t } = useLocale();
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.crew_settings_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.crew_settings_title);
   }
 
   return (

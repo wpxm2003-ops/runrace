@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
+import { buildAppIntentUrl } from "@/lib/deepLink";
 
 /**
  * 카카오톡 인앱 브라우저(Android)에서 열린 경우, 현재 경로를 설치된 앱으로 넘긴다.
@@ -30,13 +31,7 @@ export function KakaoInAppRedirect() {
       /* sessionStorage 불가 시 그대로 진행 */
     }
 
-    const { host, pathname, search, href } = window.location;
-    const intentUrl =
-      `intent://${host}${pathname}${search}` +
-      `#Intent;scheme=https;package=com.runrace.app;` +
-      `S.browser_fallback_url=${encodeURIComponent(href)};end`;
-
-    window.location.href = intentUrl;
+    window.location.href = buildAppIntentUrl(encodeURIComponent(window.location.href));
   }, []);
 
   return null;

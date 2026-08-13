@@ -5,6 +5,16 @@ export function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+/** 연·월(1-based) → 그 달의 일수. */
+export function daysInMonth(year: number, month1Based: number): number {
+  return new Date(year, month1Based, 0).getDate();
+}
+
+/** 연·월(1-based)·일 → "YYYY-MM-DD". */
+export function ymd(year: number, month1Based: number, day: number): string {
+  return `${year}-${pad2(month1Based)}-${pad2(day)}`;
+}
+
 /** Date → datetime-local 값(yyyy-MM-ddTHH:mm), 로컬 타임존 기준. 입력 폼 날짜의 단일 출처. */
 export function toDateTimeLocal(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
@@ -144,4 +154,9 @@ export function formatDateOnly(iso: string, locale: string): string {
     month: "2-digit",
     day: "2-digit",
   });
+}
+
+/** 증감량의 기준 대비 백분율(절대값, 정수 반올림). 기준이 0 이하면 0 — "지난달 대비 n%" 배지용. */
+export function deltaPercent(delta: number, reference: number): number {
+  return reference > 0 ? Math.round((Math.abs(delta) / reference) * 100) : 0;
 }

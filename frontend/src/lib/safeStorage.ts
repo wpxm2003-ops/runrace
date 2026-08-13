@@ -8,15 +8,17 @@ export type JsonStore<T> = {
   remove(): void;
 };
 
-function safeJsonStore<T>(pick: () => Storage, key: string): JsonStore<T> {
-  function storage(): Storage | null {
-    if (typeof window === "undefined") return null;
-    try {
-      return pick();
-    } catch {
-      return null;
-    }
+function guardedStorage(pick: () => Storage): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return pick();
+  } catch {
+    return null;
   }
+}
+
+function safeJsonStore<T>(pick: () => Storage, key: string): JsonStore<T> {
+  const storage = () => guardedStorage(pick);
   return {
     get() {
       const s = storage();
@@ -52,6 +54,39 @@ function safeJsonStore<T>(pick: () => Storage, key: string): JsonStore<T> {
 /** localStorage 기반 JSON 저장소. */
 export function localJson<T>(key: string): JsonStore<T> {
   return safeJsonStore<T>(() => window.localStorage, key);
+}
+
+/** 원시 문자열 저장용 — JSON 직렬화 없이 저장된 기존 키("km", "1" 등)와 호환. */
+export type TextStore = {
+  get(): string | null;
+  set(value: string): void;
+};
+
+/**
+ * localStorage 기반 원시 문자열 저장소. 프라이빗 모드처럼 setItem이 throw하는 환경에서도
+ * 사용자 액션(단위/언어 변경 등)이 죽지 않도록 조용히 무시한다(JsonStore와 같은 계약).
+ */
+export function localText(key: string): TextStore {
+  return {
+    get() {
+      const s = guardedStorage(() => window.localStorage);
+      if (!s) return null;
+      try {
+        return s.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    set(value) {
+      const s = guardedStorage(() => window.localStorage);
+      if (!s) return;
+      try {
+        s.setItem(key, value);
+      } catch {
+        /* 용량 초과·차단 환경 무시 */
+      }
+    },
+  };
 }
 
 /** sessionStorage 기반 JSON 저장소. */

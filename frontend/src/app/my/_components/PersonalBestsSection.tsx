@@ -3,8 +3,7 @@
 import type { User } from "firebase/auth";
 import Link from "next/link";
 import { usePersonalBests } from "@/lib/api";
-import type { PersonalBestRow } from "@/lib/api/types";
-import { formatHms } from "@/lib/paceMath";
+import { formatHms, pbFinishSec } from "@/lib/paceMath";
 import { formatPace } from "@/lib/units";
 import { useUnit } from "@/lib/UnitContext";
 import { useLocale } from "@/lib/i18n";
@@ -19,11 +18,6 @@ function pbLabel(distanceKey: string, t: Translations): string {
     case "marathon": return t.pb_marathon;
     default: return distanceKey;
   }
-}
-
-/** 저장된 값은 초/km 페이스 — 러너에게 익숙한 "완주 시간"으로 환산한다. */
-function pbTotalSec(pb: PersonalBestRow): number {
-  return Math.round((pb.bestPaceSec * pb.distanceM) / 1000);
 }
 
 /**
@@ -42,7 +36,8 @@ export function PersonalBestsSection({ user }: { user: User }) {
       <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">{t.my_pb_hint}</p>
       <div className="mt-2 divide-y divide-zinc-100">
         {pbs.map((pb) => {
-          const totalSec = pbTotalSec(pb);
+          // 저장된 값은 초/km 페이스 — 러너에게 익숙한 "완주 시간"으로 환산한다.
+          const totalSec = pbFinishSec(pb.bestPaceSec, pb.distanceM);
           return (
             <div key={pb.distanceKey} className="flex items-center gap-3 py-2">
               <span className="text-sm text-zinc-600">{pbLabel(pb.distanceKey, t)}</span>

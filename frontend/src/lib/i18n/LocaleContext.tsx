@@ -9,10 +9,11 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
+import { localText } from "../safeStorage";
 import { LOCALES, type Locale, translations } from "./translations";
 import type { LocaleSource } from "./localeSource";
 
-const STORAGE_KEY = "runrace_locale";
+const localeStore = localText("runrace_locale");
 
 function isSupported(value: string | null): value is Locale {
   return value != null && LOCALES.some((l) => l.code === value);
@@ -34,7 +35,7 @@ function getInitialLocaleState(pathname: string): LocaleState {
   const fromPath = localeFromPath(pathname);
   if (fromPath) return { locale: fromPath, source: "path" };
   if (typeof window === "undefined") return { locale: "ko", source: "default" };
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = localeStore.get();
   if (isSupported(stored)) return { locale: stored, source: "stored" };
   // 저장된 선호가 없으면 브라우저 언어로 추측 (예: "zh-CN" → zh, "es-ES" → es)
   const lang = navigator.language.toLowerCase();
@@ -80,7 +81,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, [locale]);
 
   const setLocale = useCallback((next: Locale) => {
-    localStorage.setItem(STORAGE_KEY, next);
+    localeStore.set(next);
     setLocaleState({ locale: next, source: "user" });
   }, []);
 

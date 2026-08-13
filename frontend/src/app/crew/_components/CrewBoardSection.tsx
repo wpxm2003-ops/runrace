@@ -10,6 +10,7 @@ import { formatDistance } from "@/lib/units";
 import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { useCollapsibleList } from "@/lib/useCollapsibleList";
 import { toast } from "sonner";
 import { BoardRow } from "./BoardRow";
 import { ShowMoreToggle } from "@/app/_components/ui/ShowMoreToggle";
@@ -23,7 +24,9 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
   const { unit } = useUnit();
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(() => new Set());
   const [nudgingId, setNudgingId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  // 백엔드가 이번 달 거리 내림차순으로 정렬해 내려주므로 앞에서 자르면 곧 상위 순위다.
+  const { visible: visibleMembers, hiddenCount, expanded, toggle } =
+    useCollapsibleList(crew.members, COLLAPSED_RANKS);
 
   const monthTotalM = crew.members.reduce((sum, m) => sum + m.monthDistanceM, 0);
   const goalM = crew.monthGoalKm != null ? crew.monthGoalKm * 1000 : null;
@@ -33,10 +36,6 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
   const crewGoalPercent = crew.members.length > 0
     ? Math.round((goalAchievers / crew.members.length) * 100)
     : 0;
-
-  // 백엔드가 이번 달 거리 내림차순으로 정렬해 내려주므로 앞에서 자르면 곧 상위 순위다.
-  const hiddenCount = crew.members.length - COLLAPSED_RANKS;
-  const visibleMembers = expanded ? crew.members : crew.members.slice(0, COLLAPSED_RANKS);
 
   async function onNudge(targetUserId: string, variant: number) {
     if (nudgingId) return;
@@ -110,7 +109,7 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
       {hiddenCount > 0 ? (
         <ShowMoreToggle
           open={expanded}
-          onToggle={() => setExpanded((v) => !v)}
+          onToggle={toggle}
           moreLabel={t.list_show_more_people(hiddenCount)}
           lessLabel={t.list_show_less}
         />

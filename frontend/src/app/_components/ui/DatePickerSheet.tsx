@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
 import { useLocale } from "@/lib/i18n";
-import { pad2, todayIso } from "@/lib/format";
+import { daysInMonth, todayIso, ymd } from "@/lib/format";
 import { DrumCol, drumRange } from "./DrumPicker";
 
 /**
@@ -11,10 +11,6 @@ import { DrumCol, drumRange } from "./DrumPicker";
  * 대신 쓴다(docs/frontend-ui-guidelines.md). DateTimePickerSheet(미래 일정용, 시/분 포함)와
  * 드럼 자체는 공유하되, 값 형식(date-only)·허용 범위(미래 금지)가 반대라 별도 컴포넌트로 둔다.
  */
-function daysInMonth(year: number, month: number) {
-  return new Date(year, month, 0).getDate();
-}
-
 function parseDateOnly(s: string) {
   if (!s || s.length < 10) return null;
   return {
@@ -22,10 +18,6 @@ function parseDateOnly(s: string) {
     month: parseInt(s.slice(5, 7), 10),
     day: parseInt(s.slice(8, 10), 10),
   };
-}
-
-function buildDateOnly(y: number, mo: number, d: number): string {
-  return `${y}-${pad2(mo)}-${pad2(d)}`;
 }
 
 type Props = {
@@ -75,8 +67,8 @@ export function DatePickerSheet({ value, onChange, label, placeholder, yearStart
   }
 
   function confirm() {
-    const result = buildDateOnly(year, month, day);
-    const todayStr = buildDateOnly(YEAR_END, today.month, today.day);
+    const result = ymd(year, month, day);
+    const todayStr = ymd(YEAR_END, today.month, today.day);
     if (result > todayStr) {
       // 미래로 스크롤했으면 오늘로 스냅하고 시트는 유지(유저가 보정 확인).
       setYear(YEAR_END);

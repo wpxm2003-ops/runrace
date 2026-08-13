@@ -40,6 +40,19 @@ export function finishSecFromPace(distanceKm: number, paceSecPerKm: number): num
 }
 
 /**
+ * PB(초/km 페이스 + 구간 거리 m) → 레이스 환산 완주 시간(초).
+ * 계약: {@link import("./api/types").PersonalBestRow} — 레이스 환산 시간 = bestPaceSec × distanceM/1000.
+ */
+export function pbFinishSec(bestPaceSec: number, distanceM: number): number {
+  return Math.round((bestPaceSec * distanceM) / 1000);
+}
+
+/** 거리(m) + 시간(초) → 평균 페이스(초/km). 10m 미만은 페이스가 무의미해 null. */
+export function avgPaceSecPerKm(distanceM: number, durationSec: number): number | null {
+  return distanceM >= 10 ? Math.round(durationSec / (distanceM / 1000)) : null;
+}
+
+/**
  * **기록 표기** — 초 → "H:MM:SS"(1시간 미만은 분 무패딩 "M:SS", 예: 303초 → "5:03"). 비정상 값은 "-".
  *
  * 레이스 결과를 쓰는 방식이다("5:03"이지 "05:03"이 아니다). 개인 최고 기록, 완주 예상 시간,

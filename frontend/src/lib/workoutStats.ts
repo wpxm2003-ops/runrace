@@ -1,4 +1,6 @@
 import type { WorkoutListItem } from "@/lib/api/types";
+import { ymd } from "@/lib/format";
+import { avgPaceSecPerKm } from "@/lib/paceMath";
 
 export type WorkoutAggregate = {
   totalDistanceM: number;
@@ -9,15 +11,10 @@ export type WorkoutAggregate = {
   avgPaceSecPerKm: number | null;
 };
 
-/** yyyy-MM-dd 키 (month는 1~12). */
-function ymdKey(year: number, month: number, day: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
 /** 로컬 날짜 yyyy-MM-dd */
 export function localDateKey(iso: string): string {
   const d = new Date(iso);
-  return ymdKey(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
 /**
@@ -56,18 +53,13 @@ export function aggregateWorkouts(items: WorkoutListItem[]): WorkoutAggregate {
     days.add(workoutDayKey(w));
   }
 
-  const avgPaceSecPerKm =
-    totalDistanceM >= 10
-      ? Math.round(totalDurationSec / (totalDistanceM / 1000))
-      : null;
-
   return {
     totalDistanceM,
     totalDurationSec,
     totalCalories,
     workoutCount: items.length,
     workoutDayCount: days.size,
-    avgPaceSecPerKm,
+    avgPaceSecPerKm: avgPaceSecPerKm(totalDistanceM, totalDurationSec),
   };
 }
 
@@ -229,7 +221,7 @@ export function buildCalendarCells(year: number, month: number): CalendarCell[] 
     cells.push({ day: null, dateKey: null });
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ day: d, dateKey: ymdKey(year, month + 1, d) });
+    cells.push({ day: d, dateKey: ymd(year, month + 1, d) });
   }
   return cells;
 }

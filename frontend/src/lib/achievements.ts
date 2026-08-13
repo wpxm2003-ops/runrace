@@ -41,10 +41,6 @@ export function achievementView(
       return { icon: "🎯", text: t.ach_total_distance(formatDistance(n * 1000, unit)), tone: "gold" };
     case "TOTAL_RUNS":
       return { icon: "👟", text: t.ach_total_runs(n), tone: "plain" };
-    case "WEEK_COUNT":
-      return { icon: "📅", text: t.ach_week_count(n), tone: "plain" };
-    case "FIRST_RUN_OF_WEEK":
-      return { icon: "📅", text: t.ach_first_run_of_week, tone: "plain" };
     case "CREW_GOAL_REACHED":
       return { icon: "👥", text: t.ach_crew_goal_reached, tone: "crew" };
     case "CREW_GOAL_PROGRESS":

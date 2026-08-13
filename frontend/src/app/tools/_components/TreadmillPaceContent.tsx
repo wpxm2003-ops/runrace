@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import { formatPaceSecPerUnit } from "@/lib/units";
 import { finishSecFromPace, formatHms, mphFromKmh, paceSecFromSpeedKmh } from "@/lib/paceMath";
@@ -46,24 +47,24 @@ export default function TreadmillPaceContent() {
       {/* 결과 */}
       {result ? (
         <div className="mt-5 grid grid-cols-3 gap-3">
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <Card padding="p-4">
             <p className="text-xs text-zinc-500">{t.tm_result_pace}</p>
             <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
               {formatPaceSecPerUnit(result.paceSec)}
             </p>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          </Card>
+          <Card padding="p-4">
             <p className="text-xs text-zinc-500">{t.tm_result_mph}</p>
             <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
               {result.mph.toFixed(1)}
             </p>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          </Card>
+          <Card padding="p-4">
             <p className="text-xs text-zinc-500">{t.tm_result_5k}</p>
             <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
               {formatHms(result.fiveKmSec)}
             </p>
-          </div>
+          </Card>
         </div>
       ) : null}
 

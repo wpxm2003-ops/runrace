@@ -6,7 +6,7 @@ import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 import { RecordsStatsPanel } from "@/app/records/_components/RecordsStatsPanel";
 import { WorkoutCalendar } from "@/app/records/_components/WorkoutCalendar";
 import { Alert } from "@/app/_components/ui/Alert";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear, toDisplayError } from "@/lib/api";
 import { track } from "@/lib/analytics";
@@ -100,11 +100,7 @@ export default function RecordsPage() {
   }
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.records_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.records_title);
   }
 
   return (

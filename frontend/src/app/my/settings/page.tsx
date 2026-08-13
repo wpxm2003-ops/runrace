@@ -4,7 +4,7 @@ import type { User } from "firebase/auth";
 import { NavRowButton } from "@/app/_components/NavRowButton";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { NicknameEditor } from "@/app/my/_components/NicknameEditor";
 import { NotificationToggle } from "@/app/my/_components/NotificationToggle";
@@ -49,11 +49,7 @@ export default function MySettingsPage() {
   const { t } = useLocale();
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.my_settings_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.my_settings_title);
   }
 
   return (

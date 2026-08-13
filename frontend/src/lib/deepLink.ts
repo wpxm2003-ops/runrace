@@ -32,3 +32,17 @@ function mapToInternalPath(pathname: string, search: string): string {
   if (shareChallenge) return `/challenges/${shareChallenge[1]}`;
   return pathname + search;
 }
+
+/**
+ * 현재 위치(window.location)를 설치된 앱으로 여는 Android intent:// URL을 조립한다.
+ * 앱이 설치돼 있으면 App Links 경로로 열리고, 미설치면 fallbackUrl로 떨어진다.
+ * fallbackUrl은 호출부에서 encodeURIComponent 된 값을 넘긴다.
+ */
+export function buildAppIntentUrl(fallbackUrl: string): string {
+  const { host, pathname, search } = window.location;
+  return (
+    `intent://${host}${pathname}${search}` +
+    `#Intent;scheme=https;package=com.runrace.app;` +
+    `S.browser_fallback_url=${fallbackUrl};end`
+  );
+}

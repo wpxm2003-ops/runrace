@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { NavRowButton } from "@/app/_components/NavRowButton";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { MyRacesSection } from "@/app/my/_components/MyRacesSection";
 import { MySettingsGear } from "@/app/my/_components/MySettingsGear";
 import { WorkoutSummarySection } from "@/app/my/_components/WorkoutSummarySection";
@@ -82,11 +82,7 @@ export default function MyPage() {
   const { t } = useLocale();
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.my_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.my_title);
   }
 
   return <MyPageContent user={user} />;

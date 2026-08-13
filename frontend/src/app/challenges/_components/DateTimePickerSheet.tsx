@@ -3,12 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
 import { useLocale } from "@/lib/i18n";
-import { pad2 } from "@/lib/format";
+import { daysInMonth, pad2 } from "@/lib/format";
 import { DrumCol, drumRange } from "@/app/_components/ui/DrumPicker";
-
-function daysInMonth(year: number, month: number) {
-  return new Date(year, month, 0).getDate();
-}
 
 function parseValue(s: string) {
   if (!s || s.length < 16) return null;

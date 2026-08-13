@@ -3,7 +3,7 @@
 import type { WorkoutListItem } from "@/lib/api/types";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { weekdayLabels, formatMonthDayTime } from "@/lib/format";
+import { weekdayLabels, formatMonthDayTime, deltaPercent } from "@/lib/format";
 import { formatDistance, formatPace } from "@/lib/units";
 import {
   aggregateWorkouts,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/workoutStats";
 import { useMemo } from "react";
 import { useNativeBack } from "@/lib/useNativeBack";
+import { Card } from "@/app/_components/ui/Card";
 import { MonthlyRecapCard } from "@/app/records/_components/MonthlyRecapCard";
 
 type Props = {
@@ -79,9 +80,9 @@ export function RecordsStatsPanel({
   const isoWeekdays = useMemo(() => weekdayLabels(locale, true), [locale]);
 
   const distDelta = cmp.thisDist - cmp.prevDist;
-  const distPct = cmp.prevDist > 0 ? Math.round((Math.abs(distDelta) / cmp.prevDist) * 100) : 0;
+  const distPct = deltaPercent(distDelta, cmp.prevDist);
   const countDelta = cmp.thisCount - cmp.prevCount;
-  const countPct = cmp.prevCount > 0 ? Math.round((Math.abs(countDelta) / cmp.prevCount) * 100) : 0;
+  const countPct = deltaPercent(countDelta, cmp.prevCount);
   const noPrevDist = cmp.prevDist === 0;
   const noPrevCount = cmp.prevCount === 0;
 
@@ -126,7 +127,7 @@ export function RecordsStatsPanel({
         <div className="space-y-3 px-4 pb-10 pt-1">
 
           {/* 1. 요일 패턴 */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <Card padding="p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
               {t.stats_day_pattern}
             </p>
@@ -146,10 +147,10 @@ export function RecordsStatsPanel({
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           {/* 2. 이번 달 vs 지난 달 */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <Card padding="p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
               {t.stats_month_compare}
             </p>
@@ -177,10 +178,10 @@ export function RecordsStatsPanel({
                 noPrevLabel={t.stats_no_prev}
               />
             </div>
-          </div>
+          </Card>
 
           {/* 3. 연속 운동 */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <Card padding="p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
               {t.stats_streak_section}
             </p>
@@ -200,10 +201,10 @@ export function RecordsStatsPanel({
                 </p>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* 4. 이달 최고 기록 */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <Card padding="p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
               {t.stats_bests_section}
             </p>
@@ -223,7 +224,7 @@ export function RecordsStatsPanel({
                 noData={t.stats_no_data}
               />
             </div>
-          </div>
+          </Card>
 
         </div>
       </div>

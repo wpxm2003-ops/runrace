@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import { isCrewAvailable } from "@/lib/crewAccess";
 import { useAuthUser } from "@/lib/useAuthUser";
@@ -72,7 +73,7 @@ function HomeStats() {
   return (
     <div className="mb-6">
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <Card padding="p-4">
           <p className="text-xs text-zinc-500">{t.home_month_label}</p>
           {isLoading ? (
             <div className="mt-2 h-7 w-20 animate-pulse rounded-lg bg-zinc-100" />
@@ -88,8 +89,8 @@ function HomeStats() {
               </p>
             </>
           )}
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
+        </Card>
+        <Card padding="p-4">
           <p className="text-xs text-zinc-500">{t.home_streak_label}</p>
           {isLoading ? (
             <div className="mt-2 h-7 w-16 animate-pulse rounded-lg bg-zinc-100" />
@@ -108,7 +109,7 @@ function HomeStats() {
               </p>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

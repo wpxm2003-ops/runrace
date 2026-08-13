@@ -28,6 +28,7 @@ import {
 import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersistence";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
+import { avgPaceSecPerKm } from "./paceMath";
 import { toWallClockIso } from "./format";
 import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
 import { track } from "./analytics";
@@ -909,10 +910,7 @@ export function useWorkoutSession(
       durationSec: Math.max(1, finalElapsed),
       distanceM: finalDistance,
       calories: estimateCalories(finalDistance),
-      avgPaceSecPerKm:
-        finalDistance >= 10
-          ? Math.round(finalElapsed / (finalDistance / 1000))
-          : null,
+      avgPaceSecPerKm: avgPaceSecPerKm(finalDistance, finalElapsed),
       path: finalPath,
     };
 

@@ -5,7 +5,7 @@ import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { AsyncList } from "@/app/_components/ui/AsyncList";
 import {
   activateShoe,
@@ -267,11 +267,7 @@ export default function ShoesPage() {
   const { t } = useLocale();
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.shoe_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.shoe_title);
   }
 
   return <ShoesContent user={user} />;

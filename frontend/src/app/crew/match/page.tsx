@@ -6,6 +6,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import {
   acceptCrewMatch,
   declineCrewMatch,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/api";
 import type { CrewMatchDetail, CrewMatchRosterRow } from "@/lib/api/types";
 import { handleAuthFailure } from "@/lib/auth";
+import { daysLeft, matchSharePercent } from "@/lib/crewMatch";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -35,10 +37,6 @@ function shortDate(iso: string): string {
   return `${d.getMonth() + 1}.${d.getDate()}`;
 }
 
-function daysLeft(endAt: string): number {
-  return Math.max(0, Math.ceil((new Date(endAt).getTime() - Date.now()) / 86_400_000));
-}
-
 /** 양 크루 점수 히어로 — 내 크루 관점으로 좌측 고정 + 비율 바. */
 function ScoreHero({ detail }: { detail: CrewMatchDetail }) {
   const { t } = useLocale();
@@ -47,8 +45,7 @@ function ScoreHero({ detail }: { detail: CrewMatchDetail }) {
   const opName = detail.myCrewIsChallenger ? detail.opponentCrewName : detail.challengerCrewName;
   const myDist = detail.myCrewIsChallenger ? detail.challengerDistanceM : detail.opponentDistanceM;
   const opDist = detail.myCrewIsChallenger ? detail.opponentDistanceM : detail.challengerDistanceM;
-  const total = myDist + opDist;
-  const myPct = total === 0 ? 50 : Math.round((myDist / total) * 100);
+  const myPct = matchSharePercent(myDist, opDist);
 
   return (
     <div>
@@ -378,11 +375,7 @@ export default function CrewMatchPage() {
   }, []);
 
   if (loading || !user || matchId === undefined) {
-    return (
-      <PageLayout title={t.crew_match_detail_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.crew_match_detail_title);
   }
 
   if (matchId === null) {

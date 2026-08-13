@@ -140,6 +140,15 @@ export function isNativeNavReady(): boolean {
   return _push != null;
 }
 
+/** SPA 라우터가 준비되면 fn 실행 — 준비 전 풀페이지 리로드(.html→index) 루프를 막는다. */
+export function runWhenNavReady(fn: () => void, attempts = 60): void {
+  if (isNativeNavReady() || attempts <= 0) {
+    fn();
+    return;
+  }
+  setTimeout(() => runWhenNavReady(fn, attempts - 1), 50);
+}
+
 export function isTabRoot(pathname: string): boolean {
   return TAB_ROOTS.has(pathname);
 }

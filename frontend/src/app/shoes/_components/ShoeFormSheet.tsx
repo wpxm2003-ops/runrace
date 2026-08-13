@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ShoeFormBody, ShoeRow } from "@/lib/api/types";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { SheetHeader } from "@/app/_components/ui/SheetHeader";
 import { SelectSheet } from "@/app/_components/ui/SelectSheet";
 import { TextInput } from "@/app/_components/ui/TextInput";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
@@ -107,19 +108,12 @@ export function ShoeFormSheet({
       onClose={onClose}
       panelClassName="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
     >
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-zinc-900">
-            {editing ? t.shoe_edit_heading : t.shoe_add_heading}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.shoe_cancel_edit}
-            className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
-          >
-            ✕
-          </button>
-        </div>
+        <SheetHeader
+          bordered
+          title={editing ? t.shoe_edit_heading : t.shoe_add_heading}
+          onClose={onClose}
+          closeLabel={t.shoe_cancel_edit}
+        />
 
         <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4">
           <div className="block">

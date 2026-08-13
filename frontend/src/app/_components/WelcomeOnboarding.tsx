@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n";
 import { useNativeBack } from "@/lib/useNativeBack";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { localText } from "@/lib/safeStorage";
 
-const SEEN_KEY = "runrace_onboarded";
+const seenStore = localText("runrace_onboarded");
 
 /**
  * 첫 방문자에게 앱의 핵심 루프(기록 → 레이스)를 3단계로 안내하는 환영 오버레이.
@@ -18,11 +19,11 @@ export function WelcomeOnboarding() {
 
   // 마운트 후 클라이언트에서만 localStorage 확인 (SSR 불일치 방지)
   useEffect(() => {
-    if (!localStorage.getItem(SEEN_KEY)) setOpen(true);
+    if (!seenStore.get()) setOpen(true);
   }, []);
 
   function close() {
-    localStorage.setItem(SEEN_KEY, "1");
+    seenStore.set("1");
     setOpen(false);
   }
 

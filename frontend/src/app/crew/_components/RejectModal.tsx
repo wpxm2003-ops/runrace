@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { SheetHeader } from "@/app/_components/ui/SheetHeader";
 import { TextArea } from "@/app/_components/ui/TextInput";
 import { stripForbiddenText } from "@/lib/forbiddenTextChars";
 import { useLocale } from "@/lib/i18n";
@@ -21,17 +22,7 @@ export function RejectModal({
 
   return (
     <BottomSheet onClose={onClose} panelClassName="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-zinc-900">{t.crew_inbox_reject_modal_title}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t.cancel}
-          className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
-        >
-          ✕
-        </button>
-      </div>
+      <SheetHeader title={t.crew_inbox_reject_modal_title} onClose={onClose} closeLabel={t.cancel} />
       <TextArea
         value={reason}
         onChange={(e) => setReason(stripForbiddenText(e.target.value).slice(0, 100))}

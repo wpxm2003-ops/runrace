@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { getAdminDashboard, type AdminDashboard } from "@/lib/api";
 import { LOCALES } from "@/lib/i18n";
+import { formatDistance } from "@/lib/units";
 import { useAuthUser } from "@/lib/useAuthUser";
 
 const dateTime = (value: string) =>
@@ -14,8 +15,6 @@ const dateTime = (value: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-
-const distance = (meters: number) => `${(meters / 1000).toFixed(2)} km`;
 
 /** 언어 코드에 사람이 읽을 라벨을 붙인다 — "ja"만 보면 어느 언어인지 즉시 안 읽힌다. */
 const localeLabel = (code: string | null) => {
@@ -161,7 +160,7 @@ export default function AdminDashboardPage() {
             <thead className="bg-zinc-50 text-xs font-medium text-zinc-500"><tr><th className="px-5 py-3">디스플레이네임</th><th className="px-5 py-3">거리</th><th className="px-5 py-3">시간</th><th className="px-5 py-3">시작일</th><th className="px-5 py-3">종료일</th><th className="px-5 py-3">생성일</th><th className="px-5 py-3">이미지여부</th><th className="px-5 py-3">메모여부</th></tr></thead>
             <tbody className="divide-y divide-zinc-100">
               {dashboard.workouts.length === 0 ? <tr><td colSpan={8}><EmptyState>운동 기록이 없습니다.</EmptyState></td></tr> : dashboard.workouts.map((workout) => (
-                <tr key={workout.id} className="hover:bg-zinc-50"><td className="px-5 py-3.5 font-medium text-zinc-900">{workout.displayName || "(이름 없음)"}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-700">{distance(workout.distanceM)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-700">{duration(workout.durationSec)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.startedAt)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.endedAt)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.createdAt)}</td><td className="px-5 py-3.5 text-zinc-600">{workout.hasImage ? "있음" : "없음"}</td><td className="px-5 py-3.5 text-zinc-600">{workout.hasMemo ? "있음" : "없음"}</td></tr>
+                <tr key={workout.id} className="hover:bg-zinc-50"><td className="px-5 py-3.5 font-medium text-zinc-900">{workout.displayName || "(이름 없음)"}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-700">{formatDistance(workout.distanceM, "km")}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-700">{duration(workout.durationSec)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.startedAt)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.endedAt)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.createdAt)}</td><td className="px-5 py-3.5 text-zinc-600">{workout.hasImage ? "있음" : "없음"}</td><td className="px-5 py-3.5 text-zinc-600">{workout.hasMemo ? "있음" : "없음"}</td></tr>
               ))}
             </tbody>
           </table>

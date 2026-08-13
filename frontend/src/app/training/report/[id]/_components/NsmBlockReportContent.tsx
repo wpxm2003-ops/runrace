@@ -6,6 +6,7 @@ import { mapErrorMessage, useNsmBlockReport } from "@/lib/api";
 import { parseNsmReportIdFromPath } from "@/lib/nsmReportRoute";
 import { useRouteId } from "@/lib/useRouteId";
 import { formatPaceSec } from "@/lib/nsm";
+import { formatHms } from "@/lib/paceMath";
 import { formatDistance } from "@/lib/units";
 import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
@@ -22,13 +23,6 @@ const COLOR = {
 };
 const FONT =
   'ui-sans-serif, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-
-/** 레이스 기록(초) → "m:ss". training/page.tsx의 로컬 포맷터와 동일 로직(공유 목적이 달라 별도 유지). */
-function formatRaceTime(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 export default function NsmBlockReportContent() {
   const id = useRouteId(parseNsmReportIdFromPath);
@@ -137,7 +131,7 @@ export default function NsmBlockReportContent() {
                 {t.nsm_block_source_label}
               </div>
               <div className="mt-0.5 text-sm font-semibold text-white">
-                {formatDistance(data.endSourceDistanceM, unit)} {formatRaceTime(data.endSourceTimeSec)}
+                {formatDistance(data.endSourceDistanceM, unit)} {formatHms(data.endSourceTimeSec)}
               </div>
             </div>
           </div>
@@ -220,7 +214,7 @@ export default function NsmBlockReportContent() {
             <div>
               <div style={{ fontSize: 34, color: COLOR.gray }}>{t.nsm_block_source_label}</div>
               <div style={{ marginTop: 10, fontSize: 56, fontWeight: 700 }}>
-                {formatDistance(data.endSourceDistanceM, unit)} {formatRaceTime(data.endSourceTimeSec)}
+                {formatDistance(data.endSourceDistanceM, unit)} {formatHms(data.endSourceTimeSec)}
               </div>
             </div>
           </div>

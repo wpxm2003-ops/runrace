@@ -40,6 +40,7 @@ import {
   type NsmVolumeBand,
 } from "@/lib/nsm";
 import { weekdayLabels } from "@/lib/format";
+import { pbFinishSec } from "@/lib/paceMath";
 import { sessionJson } from "@/lib/safeStorage";
 
 // 비로그인 계산 결과가 로그인 리다이렉트로 유실되지 않도록 입력값을 잠시 보관한다(같은 탭 세션 한정).
@@ -79,13 +80,11 @@ function maskTimeInput(raw: string): string {
   if (digits.length <= 2) return digits;
   return `${digits.slice(0, -2)}:${digits.slice(-2)}`;
 }
+/** 입력칸 왕복(parseTime `m:ss`, 분 상한 420) 전용 마스크 — 시간 자리가 생기는 formatHms로 대체 금지. */
 function formatTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-function pbTimeSec(pb: PersonalBestRow): number {
-  return Math.round((pb.bestPaceSec * pb.distanceM) / 1000);
 }
 function daysSince(iso: string): number {
   return (Date.now() - new Date(iso).getTime()) / 86400000;
@@ -206,7 +205,7 @@ function TrainingContent({ user }: { user: User | null }) {
   }
 
   function onPickPb(pb: PersonalBestRow) {
-    const sec = pbTimeSec(pb);
+    const sec = pbFinishSec(pb.bestPaceSec, pb.distanceM);
     setDistM(pb.distanceM);
     setTimeStr(formatTime(sec));
     setError(null);
@@ -380,7 +379,7 @@ function TrainingContent({ user }: { user: User | null }) {
                 className="rounded-full border border-zinc-300 bg-white px-3.5 py-2 text-sm hover:border-zinc-900 hover:bg-zinc-50"
               >
                 <span className="font-semibold text-zinc-900">{PB_LABEL[pb.distanceKey] ?? pb.distanceKey}</span>
-                <span className="ml-1.5 text-zinc-500">{formatTime(pbTimeSec(pb))}</span>
+                <span className="ml-1.5 text-zinc-500">{formatTime(pbFinishSec(pb.bestPaceSec, pb.distanceM))}</span>
               </button>
             ))}
           </div>

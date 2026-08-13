@@ -80,6 +80,12 @@ const BASE_CONFIG = {
   ...SWR_ERROR_RETRY,
 };
 
+/**
+ * 포커스 복귀 재검증이 필요 없는(변화가 드물거나 공개 스냅샷인) 훅용 설정.
+ * BASE_CONFIG도 현재 revalidateOnFocus:false지만, 여기는 그 값이 계약이라 명시적으로 고정한다.
+ */
+const COLD_CONFIG = { ...BASE_CONFIG, revalidateOnFocus: false };
+
 /** 레이스 목록·상세·내정보처럼 항상 최신 데이터가 필요한 훅용 설정. */
 const LIVE_CONFIG = {
   revalidateOnMount: true,
@@ -103,7 +109,8 @@ const SWR_INFINITE_CONFIG = {
 
 // ── 레이스 목록 ────────────────────────────────────────────────────────────────
 /**
- * 공개 API이지만 로그인 여부에 따라 isOwner 필드가 달라지므로 userId를 키에 포함한다.
+ * 공개 API이지만 로그인 여부에 따라 뷰어 종속 필드(목록의 isMember 참여중 배지,
+ * 상세의 showManage)가 달라지므로 userId를 키에 포함한다.
  * 비로그인 상태에서도 목록 자체는 즉시 보여준다.
  */
 /**
@@ -329,7 +336,7 @@ export function useCrewInsights(user: User | null, enabled: boolean) {
   return useSWR(
     enabled && user ? (["crew-insights", user.uid] as const) : null,
     () => fetchCrewInsights(user!),
-    { ...BASE_CONFIG, revalidateOnFocus: false },
+    COLD_CONFIG,
   );
 }
 
@@ -546,7 +553,7 @@ export function useNsmBlockReport(id: number | null) {
   return useSWR(
     id != null ? (["nsm-block-report", id] as const) : null,
     () => fetchNsmBlockReport(id!),
-    { ...BASE_CONFIG, revalidateOnFocus: false },
+    COLD_CONFIG,
   );
 }
 
@@ -618,7 +625,7 @@ export function useWorkoutComparison(workoutId: number | null, user: User | null
       ? (["workout-comparison", workoutId, user.uid] as const)
       : null,
     () => fetchWorkoutComparison(workoutId!, user!),
-    { ...BASE_CONFIG, revalidateOnFocus: false },
+    COLD_CONFIG,
   );
 }
 
@@ -627,7 +634,7 @@ export function useWorkoutShare(id: number | null) {
   return useSWR(
     id != null ? (["workout-share", id] as const) : null,
     () => fetchWorkoutShare(id!),
-    { ...BASE_CONFIG, revalidateOnFocus: false },
+    COLD_CONFIG,
   );
 }
 
@@ -645,6 +652,6 @@ export function useNotificationSetting(user: User | null) {
   return useSWR(
     user ? (["notification-setting", user.uid] as const) : null,
     () => fetchNotificationSetting(user!),
-    { ...BASE_CONFIG, revalidateOnFocus: false },
+    COLD_CONFIG,
   );
 }

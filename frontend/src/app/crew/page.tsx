@@ -2,7 +2,7 @@
 
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { useMyCrew, useLeaderJoinRequests, invalidateMyCrew } from "@/lib/api";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { usePageScrollRestore } from "@/lib/pageStateStore";
@@ -49,11 +49,7 @@ export default function CrewPage() {
   usePageScrollRestore("page:crew", data?.crew?.members.length ?? 0);
 
   if (loading) {
-    return (
-      <PageLayout title={t.crew_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.crew_title);
   }
 
   return (

@@ -8,6 +8,7 @@ import {
 } from "@/lib/kakaoAuth";
 import { LOGIN_RETURN_KEY, safeReturnPath } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import { track, setAnalyticsUser } from "@/lib/analytics";
 import { auth } from "@/lib/firebase";
@@ -74,7 +75,7 @@ export default function KakaoCallbackPage() {
   if (error) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-        <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-sm text-center">
+        <Card padding="p-6" className="mx-auto w-full max-w-md text-center">
           <p className="text-sm text-red-700">{error}</p>
           <a
             href="/login"
@@ -82,17 +83,17 @@ export default function KakaoCallbackPage() {
           >
             {t.kakao_callback_retry}
           </a>
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-      <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-sm text-center">
+      <Card padding="p-6" className="mx-auto w-full max-w-md text-center">
         <div className="text-2xl">🟡</div>
         <p className="mt-4 text-sm text-zinc-600">{t.kakao_callback_processing}</p>
-      </div>
+      </Card>
     </div>
   );
 }

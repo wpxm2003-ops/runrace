@@ -6,7 +6,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { Alert } from "@/app/_components/ui/Alert";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { TextInput } from "@/app/_components/ui/TextInput";
 import { DateTimePickerSheet } from "@/app/challenges/_components/DateTimePickerSheet";
@@ -298,11 +298,7 @@ export default function CrewChallengePage() {
   const { data: matchState } = useMyCrewMatches(user ?? null, Boolean(user));
 
   if (loading || !user || !data) {
-    return (
-      <PageLayout title={t.crew_match_create_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.crew_match_create_title);
   }
 
   // 미소속·비리더 — 크루 홈으로 안내(도전장은 리더 전용).

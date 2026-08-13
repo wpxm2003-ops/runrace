@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { Card } from "@/app/_components/ui/Card";
 import { useLocale } from "@/lib/i18n";
 import type { Translations } from "@/lib/i18n/translations";
 import { formatPaceSecPerUnit } from "@/lib/units";
@@ -187,7 +188,7 @@ export default function PaceCalculatorContent() {
       {/* 결과 */}
       {result ? (
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <Card padding="p-4">
             <p className="text-xs text-zinc-500">{t.pace_result_pace}</p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">
               {formatPaceSecPerUnit(result.paceSecPerKm)}
@@ -195,14 +196,14 @@ export default function PaceCalculatorContent() {
             <p className="mt-0.5 text-xs text-zinc-400">
               {t.pace_result_speed} {result.speedKmh.toFixed(1)} km/h
             </p>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
+          </Card>
+          <Card padding="p-4">
             <p className="text-xs text-zinc-500">{t.pace_result_finish}</p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">
               {formatHms(result.finishSec)}
             </p>
             <p className="mt-0.5 text-xs text-zinc-400">{formatPointKm(distanceKm)}</p>
-          </div>
+          </Card>
         </div>
       ) : (
         <p className="mt-5 rounded-2xl bg-white p-4 text-sm text-zinc-400 shadow-sm">

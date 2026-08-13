@@ -5,7 +5,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { WorkoutAggregateStats } from "@/app/_components/WorkoutAggregateStats";
 import { Alert } from "@/app/_components/ui/Alert";
 import { Card } from "@/app/_components/ui/Card";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useWorkoutListByYear, toDisplayError } from "@/lib/api";
 import type { WorkoutListItem } from "@/lib/api/types";
@@ -124,11 +124,7 @@ export default function RecordsDayPage() {
   const title = dateKey ? formatRecordDate(dateKey, locale) : t.records_title;
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.records_title}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.records_title);
   }
 
   return (

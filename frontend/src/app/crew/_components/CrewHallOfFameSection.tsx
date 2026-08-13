@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
 import { useCrewInsights } from "@/lib/api";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
+import { useCollapsibleList } from "@/lib/useCollapsibleList";
 import { ShowMoreToggle } from "@/app/_components/ui/ShowMoreToggle";
 
 /** 접힌 상태에서 보여줄 최근 개월 수 — 나머지는 펼치기로 확인한다. */
@@ -16,13 +16,11 @@ const COLLAPSED_MONTHS = 3;
 export function CrewHallOfFameSection({ user }: { user: User }) {
   const { t } = useLocale();
   const { unit } = useUnit();
-  const [expanded, setExpanded] = useState(false);
   const { data: insights } = useCrewInsights(user, true);
   const hallOfFame = insights?.hallOfFame ?? [];
+  const { visible, hiddenCount, expanded, toggle } =
+    useCollapsibleList(hallOfFame, COLLAPSED_MONTHS);
   if (hallOfFame.length === 0) return null;
-
-  const hiddenCount = hallOfFame.length - COLLAPSED_MONTHS;
-  const visible = expanded ? hallOfFame : hallOfFame.slice(0, COLLAPSED_MONTHS);
 
   return (
     <Card className="mt-4">
@@ -48,7 +46,7 @@ export function CrewHallOfFameSection({ user }: { user: User }) {
       {hiddenCount > 0 ? (
         <ShowMoreToggle
           open={expanded}
-          onToggle={() => setExpanded((v) => !v)}
+          onToggle={toggle}
           moreLabel={t.crew_hof_show_more(hiddenCount)}
           lessLabel={t.list_show_less}
         />

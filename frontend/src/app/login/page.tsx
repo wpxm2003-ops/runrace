@@ -17,6 +17,7 @@ import {
   safeReturnPath,
 } from "@/lib/authLogin";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { Card } from "@/app/_components/ui/Card";
 import { signInWithGoogleApp } from "@/lib/nativeGoogleSignIn";
 import { track, setAnalyticsUser } from "@/lib/analytics";
 import { markLoggedIn } from "@/lib/AuthProvider";
@@ -101,7 +102,7 @@ function LoginContent() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-      <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-sm">
+      <Card padding="p-6" className="mx-auto w-full max-w-md">
         <h1 className="text-xl font-semibold">{t.login_headline}</h1>
         <p className="mt-2 text-sm text-zinc-600">{t.login_desc}</p>
 
@@ -165,7 +166,7 @@ function LoginContent() {
             {t.login_kakao}
           </button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

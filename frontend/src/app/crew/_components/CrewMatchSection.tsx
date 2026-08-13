@@ -4,6 +4,7 @@ import type { User } from "firebase/auth";
 import { Card } from "@/app/_components/ui/Card";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useMyCrewMatches } from "@/lib/api";
+import { daysLeft, matchSharePercent } from "@/lib/crewMatch";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
@@ -67,13 +68,10 @@ export function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boo
             >
               {(() => {
                 const m = data.current!;
-                const total = m.myCrewDistanceM + m.opponentCrewDistanceM;
-                const myPct = total === 0 ? 50 : Math.round((m.myCrewDistanceM / total) * 100);
+                const myPct = matchSharePercent(m.myCrewDistanceM, m.opponentCrewDistanceM);
                 const myName = m.myCrewIsChallenger ? m.challengerCrewName : m.opponentCrewName;
                 const opName = m.myCrewIsChallenger ? m.opponentCrewName : m.challengerCrewName;
-                const dLeft = m.endAt
-                  ? Math.max(0, Math.ceil((new Date(m.endAt).getTime() - Date.now()) / 86_400_000))
-                  : 0;
+                const dLeft = m.endAt ? daysLeft(m.endAt) : 0;
                 return (
                   <>
                     <div className="flex items-center justify-between gap-2 text-xs">

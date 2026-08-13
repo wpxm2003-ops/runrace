@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Card } from "@/app/_components/ui/Card";
 import { ShowMoreToggle } from "@/app/_components/ui/ShowMoreToggle";
 import { SkeletonLines } from "@/app/_components/ui/Skeleton";
 import { useChallengeWorkouts, toDisplayError } from "@/lib/api";
 import { formatDateTimeMinute } from "@/lib/format";
+import { useCollapsibleList } from "@/lib/useCollapsibleList";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { useLocale } from "@/lib/i18n";
@@ -26,7 +26,6 @@ const COLLAPSED_ROWS = 5;
 export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
   const { t, locale } = useLocale();
   const { unit } = useUnit();
-  const [expanded, setExpanded] = useState(false);
   // 참여자 운동 목록은 전체 공개 — 비참여자·비로그인도 조회한다.
   const { data: workouts = [], isLoading, error } = useChallengeWorkouts(
     challengeId,
@@ -34,8 +33,8 @@ export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
   );
 
   // 서버가 최근 순으로 내려주므로 앞에서 자르면 곧 최근 기록이다.
-  const hiddenCount = workouts.length - COLLAPSED_ROWS;
-  const visibleWorkouts = expanded ? workouts : workouts.slice(0, COLLAPSED_ROWS);
+  const { visible: visibleWorkouts, hiddenCount, expanded, toggle } =
+    useCollapsibleList(workouts, COLLAPSED_ROWS);
 
   return (
     <Card className="mt-6">
@@ -83,7 +82,7 @@ export function ChallengeMemberWorkouts({ challengeId, user }: Props) {
       {hiddenCount > 0 ? (
         <ShowMoreToggle
           open={expanded}
-          onToggle={() => setExpanded((v) => !v)}
+          onToggle={toggle}
           moreLabel={t.list_show_more_items(hiddenCount)}
           lessLabel={t.list_show_less}
         />

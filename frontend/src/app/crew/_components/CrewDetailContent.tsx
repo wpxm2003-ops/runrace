@@ -6,6 +6,7 @@ import { PageLayout } from "@/app/_components/PageLayout";
 import { Card } from "@/app/_components/ui/Card";
 import { Button } from "@/app/_components/ui/Button";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
+import { SheetHeader } from "@/app/_components/ui/SheetHeader";
 import { TextArea } from "@/app/_components/ui/TextInput";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import {
@@ -64,19 +65,7 @@ function ApplyModal({
 
   return (
     <BottomSheet onClose={onClose} panelClassName="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-zinc-900">
-          {t.crew_detail_apply_modal_title}
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t.cancel}
-          className="-mr-1 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100"
-        >
-          ✕
-        </button>
-      </div>
+      <SheetHeader title={t.crew_detail_apply_modal_title} onClose={onClose} closeLabel={t.cancel} />
       <label className="mt-4 block text-sm text-zinc-500" htmlFor="crew-apply-message">
         {t.crew_detail_apply_message_label}
       </label>

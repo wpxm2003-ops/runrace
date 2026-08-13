@@ -1,8 +1,4 @@
-import { parsePositiveIntId, segmentIdFromPath, staticIdParam } from "@/lib/routeId";
-
-export function parseWorkoutId(value: string | null | undefined): number | null {
-  return parsePositiveIntId(value);
-}
+import { segmentIdFromPath, staticIdParam } from "@/lib/routeId";
 
 /**
  * 정적 export용: 동적 라우트는 단일 템플릿 하나만 생성한다.

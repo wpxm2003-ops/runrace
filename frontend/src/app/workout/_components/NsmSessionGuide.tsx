@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { NsmSession } from "@/lib/nsm";
 import { formatPaceSec } from "@/lib/nsm";
 import { loadNsmProgress, saveNsmProgress, type NsmProgress } from "@/lib/nsmSessionProgress";
+import { todayIso } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 
 function repTargetMeters(session: NsmSession): number | null {
@@ -23,14 +24,6 @@ const INITIAL: NsmProgress = {
   baseSec: 0,
   restEnd: 0,
 };
-
-function localDayKey(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 function sessionKeyOf(session: NsmSession, dayKey: string): string {
   return [
@@ -61,7 +54,7 @@ export function NsmSessionGuide({
   const targetPace = session.targetPaceSec ?? 0;
   const restSec = session.restSec ?? 0;
   // 마운트 시 날짜 고정 — 세션 진행 중 자정을 넘어도 sessionKey가 바뀌어 진행상태가 리셋되지 않게.
-  const [dayKey] = useState(localDayKey);
+  const [dayKey] = useState(todayIso);
   const sessionKey = sessionKeyOf(session, dayKey);
 
   const [prog, setProg] = useState<NsmProgress>(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { PageLayout } from "@/app/_components/PageLayout";
-import { LoadingCard } from "@/app/_components/ui/LoadingCard";
+import { pageLoading } from "@/app/_components/pageLoading";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { usePageScrollRestore } from "@/lib/pageStateStore";
 import { useLocale } from "@/lib/i18n";
@@ -16,11 +16,7 @@ export default function RivalsPage() {
   usePageScrollRestore("page:rivals");
 
   if (loading || !user) {
-    return (
-      <PageLayout title={t.rival_manage}>
-        <LoadingCard />
-      </PageLayout>
-    );
+    return pageLoading(t.rival_manage);
   }
 
   return (
