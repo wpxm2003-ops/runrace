@@ -183,7 +183,7 @@ class ShoeServiceTest {
       when(shoeRepository.countByUser_Id(userId)).thenReturn(0L);
       Shoe saved = shoeFixture(100L, false);
       when(shoeRepository.save(any())).thenReturn(saved);
-      when(shoeRepository.findByIdAndUser_Id(eq(100L), eq(userId))).thenReturn(Optional.of(saved));
+      when(shoeRepository.getRequiredForUser(eq(100L), eq(userId))).thenReturn(saved);
       when(shoeRepository.findByUser_IdAndActiveTrue(userId)).thenReturn(Optional.empty());
 
       Shoe result = service.createShoe(userId, validBody);
@@ -195,7 +195,7 @@ class ShoeServiceTest {
       when(shoeRepository.countByUser_Id(userId)).thenReturn(1L);
       Shoe saved = shoeFixture(101L, false);
       when(shoeRepository.save(any())).thenReturn(saved);
-      when(shoeRepository.findByIdAndUser_Id(eq(101L), eq(userId))).thenReturn(Optional.of(saved));
+      when(shoeRepository.getRequiredForUser(eq(101L), eq(userId))).thenReturn(saved);
       Shoe existingActive = shoeFixture(50L, true);
       when(shoeRepository.findByUser_IdAndActiveTrue(userId)).thenReturn(Optional.of(existingActive));
 
@@ -212,7 +212,7 @@ class ShoeServiceTest {
 
   @Nested class UpdateShoe {
     @Test void 존재하지않으면_shoe_not_found() {
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.empty());
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenThrow(ApiException.notFound("shoe_not_found"));
       ShoeFormRequest body = new ShoeFormRequest("Nike", "Pegasus", null, null, null);
       ApiException ex = assertThrows(ApiException.class, () -> service.updateShoe(userId, 1L, body));
       assertEquals("shoe_not_found", ex.code());
@@ -220,7 +220,7 @@ class ShoeServiceTest {
 
     @Test void 정상수정() {
       Shoe shoe = shoeFixture(1L, false);
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.of(shoe));
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenReturn(shoe);
       ShoeFormRequest body = new ShoeFormRequest("Hoka", "Clifton", "새신발", 300_000, null);
 
       service.updateShoe(userId, 1L, body);
@@ -237,14 +237,14 @@ class ShoeServiceTest {
 
   @Nested class DeleteShoe {
     @Test void 존재하지않으면_shoe_not_found() {
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.empty());
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenThrow(ApiException.notFound("shoe_not_found"));
       ApiException ex = assertThrows(ApiException.class, () -> service.deleteShoe(userId, 1L));
       assertEquals("shoe_not_found", ex.code());
     }
 
     @Test void 정상삭제() {
       Shoe shoe = shoeFixture(1L, false);
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.of(shoe));
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenReturn(shoe);
 
       service.deleteShoe(userId, 1L);
 
@@ -256,14 +256,14 @@ class ShoeServiceTest {
 
   @Nested class ActivateShoe {
     @Test void 대상신발없으면_shoe_not_found() {
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.empty());
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenThrow(ApiException.notFound("shoe_not_found"));
       ApiException ex = assertThrows(ApiException.class, () -> service.activateShoe(userId, 1L));
       assertEquals("shoe_not_found", ex.code());
     }
 
     @Test void 기존활성없으면_대상만활성화() {
       Shoe target = shoeFixture(1L, false);
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.of(target));
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenReturn(target);
       when(shoeRepository.findByUser_IdAndActiveTrue(userId)).thenReturn(Optional.empty());
 
       service.activateShoe(userId, 1L);
@@ -275,7 +275,7 @@ class ShoeServiceTest {
 
     @Test void 기존활성이_동일신발이면_deactivate안함() {
       Shoe target = shoeFixture(1L, true);
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.of(target));
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenReturn(target);
       when(shoeRepository.findByUser_IdAndActiveTrue(userId)).thenReturn(Optional.of(target));
 
       service.activateShoe(userId, 1L);
@@ -287,7 +287,7 @@ class ShoeServiceTest {
     @Test void 기존활성이_다른신발이면_기존비활성화후_전환() {
       Shoe target = shoeFixture(1L, false);
       Shoe current = shoeFixture(2L, true);
-      when(shoeRepository.findByIdAndUser_Id(1L, userId)).thenReturn(Optional.of(target));
+      when(shoeRepository.getRequiredForUser(1L, userId)).thenReturn(target);
       when(shoeRepository.findByUser_IdAndActiveTrue(userId)).thenReturn(Optional.of(current));
 
       service.activateShoe(userId, 1L);
@@ -359,7 +359,7 @@ class ShoeServiceTest {
 
   @Nested class ReassignWorkoutShoe {
     @Test void 운동없으면_workout_not_found() {
-      when(workoutSessionRepository.findByIdAndUserId(1L, userId)).thenReturn(Optional.empty());
+      when(workoutSessionRepository.getRequiredForUser(1L, userId)).thenThrow(ApiException.notFound("workout_not_found"));
       ApiException ex = assertThrows(ApiException.class,
           () -> service.reassignWorkoutShoe(userId, 1L, 5L));
       assertEquals("workout_not_found", ex.code());
@@ -368,7 +368,7 @@ class ShoeServiceTest {
     @Test void shoeId가_null이면_해제() {
       WorkoutSession session = sessionFixture();
       session.assignShoe(shoeFixture(1L, false));
-      when(workoutSessionRepository.findByIdAndUserId(1L, userId)).thenReturn(Optional.of(session));
+      when(workoutSessionRepository.getRequiredForUser(1L, userId)).thenReturn(session);
 
       service.reassignWorkoutShoe(userId, 1L, null);
 
@@ -378,8 +378,8 @@ class ShoeServiceTest {
 
     @Test void shoeId있는데_내신발아니면_shoe_not_found() {
       WorkoutSession session = sessionFixture();
-      when(workoutSessionRepository.findByIdAndUserId(1L, userId)).thenReturn(Optional.of(session));
-      when(shoeRepository.findByIdAndUser_Id(5L, userId)).thenReturn(Optional.empty());
+      when(workoutSessionRepository.getRequiredForUser(1L, userId)).thenReturn(session);
+      when(shoeRepository.getRequiredForUser(5L, userId)).thenThrow(ApiException.notFound("shoe_not_found"));
 
       ApiException ex = assertThrows(ApiException.class,
           () -> service.reassignWorkoutShoe(userId, 1L, 5L));
@@ -389,8 +389,8 @@ class ShoeServiceTest {
     @Test void 정상재귀속() {
       WorkoutSession session = sessionFixture();
       Shoe shoe = shoeFixture(5L, false);
-      when(workoutSessionRepository.findByIdAndUserId(1L, userId)).thenReturn(Optional.of(session));
-      when(shoeRepository.findByIdAndUser_Id(5L, userId)).thenReturn(Optional.of(shoe));
+      when(workoutSessionRepository.getRequiredForUser(1L, userId)).thenReturn(session);
+      when(shoeRepository.getRequiredForUser(5L, userId)).thenReturn(shoe);
 
       service.reassignWorkoutShoe(userId, 1L, 5L);
 

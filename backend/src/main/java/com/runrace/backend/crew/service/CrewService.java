@@ -185,8 +185,7 @@ public class CrewService {
    */
   @Transactional(readOnly = true)
   public CrewDetailResponse detail(long crewId, UUID viewerId) {
-    Crew crew = crewRepository.findById(crewId)
-        .orElseThrow(() -> ApiException.notFound("crew_not_found"));
+    Crew crew = crewRepository.getRequired(crewId);
     int memberCount = crewMemberRepository.countByCrewId(crewId);
 
     String myApplicationStatus = null;
@@ -422,8 +421,7 @@ public class CrewService {
    */
   @Transactional
   public void apply(UUID meId, long crewId, String rawMessage) {
-    Crew crew = crewRepository.findById(crewId)
-        .orElseThrow(() -> ApiException.notFound("crew_not_found"));
+    Crew crew = crewRepository.getRequired(crewId);
     String message = validateBoundedText(rawMessage, APPLY_MESSAGE_MAX, "invalid_apply_message");
     AppUser applicant = appUserRepository.getRequiredForUpdate(meId);
 
@@ -703,8 +701,7 @@ public class CrewService {
   }
 
   private Crew requireLeader(UUID meId, long crewId) {
-    Crew crew = crewRepository.findById(crewId)
-        .orElseThrow(() -> ApiException.notFound("crew_not_found"));
+    Crew crew = crewRepository.getRequired(crewId);
     if (!crew.isLeader(meId)) {
       throw ApiException.forbidden("not_leader");
     }

@@ -196,7 +196,7 @@ class ChallengeServiceTest {
 
     @Test void 이미_시작된_방이면_already_started() {
       Challenge c = challenge(UUID.randomUUID(), PAST, FUTURE);
-      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
 
       ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
       assertEquals("already_started", ex.code());
@@ -206,7 +206,7 @@ class ChallengeServiceTest {
       // startAt이 미래라 hasStarted=false → ensureNotStarted 통과, isEnded(플래그)=true → ended
       Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
       c.end();
-      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
 
       ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
       assertEquals("ended", ex.code());
@@ -214,7 +214,7 @@ class ChallengeServiceTest {
 
     @Test void 이미_멤버면_already_member() {
       Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
-      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(1L), any()))
           .thenReturn(Optional.of(ChallengeMember.builder().build()));
 
@@ -224,7 +224,7 @@ class ChallengeServiceTest {
 
     @Test void 방이_꽉_찼으면_room_full() {
       Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
-      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(any(), any()))
           .thenReturn(Optional.empty());
       when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(10L); // maxMembers=10
@@ -239,7 +239,7 @@ class ChallengeServiceTest {
      */
     @Test void 정상_참가는_잠긴_조회를_사용한다() {
       Challenge c = challenge(UUID.randomUUID(), FUTURE, FUTURE.plusDays(7));
-      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(1L, userId))
           .thenReturn(Optional.empty());
       when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(3L); // maxMembers=10
@@ -247,7 +247,7 @@ class ChallengeServiceTest {
 
       service.joinRoom(p, 1L);
 
-      verify(challengeRepository).findByIdForUpdate(1L);
+      verify(challengeRepository).getRequiredForUpdate(1L);
       verify(challengeRepository, never()).findById(1L);
       verify(challengeMemberRepository).saveAndFlush(any(ChallengeMember.class));
     }
@@ -263,7 +263,7 @@ class ChallengeServiceTest {
 
     @Test void 정원_축소가_실제_인원보다_작으면_max_members_too_small() {
       Challenge c = challenge(ownerId, start, end);
-      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
       when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(4L);
 
       ApiException ex = assertThrows(ApiException.class,
@@ -278,12 +278,12 @@ class ChallengeServiceTest {
      */
     @Test void 정상_수정은_잠긴_조회를_사용한다() {
       Challenge c = challenge(ownerId, start, end);
-      when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
       when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(2L);
 
       service.updateRoom(p, 1L, "새제목", BigDecimal.valueOf(5), 10, start, end, null);
 
-      verify(challengeRepository).findByIdForUpdate(1L);
+      verify(challengeRepository).getRequiredForUpdate(1L);
       verify(challengeRepository, never()).findByIdWithDetails(any());
       verify(challengeRepository).save(c);
     }
@@ -296,7 +296,7 @@ class ChallengeServiceTest {
       UUID ownerId = UUID.randomUUID();
       AuthPrincipal p = new AuthPrincipal(ownerId, "uid");
       Challenge c = challenge(ownerId, FUTURE, FUTURE.plusDays(7)); // 방장=ownerId
-      when(challengeRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(1L)).thenReturn(c);
 
       ApiException ex = assertThrows(ApiException.class, () -> service.leaveRoom(p, 1L));
       assertEquals("owner_cannot_leave", ex.code());
@@ -307,7 +307,7 @@ class ChallengeServiceTest {
       UUID otherId = UUID.randomUUID();
       AuthPrincipal p = new AuthPrincipal(otherId, "uid");
       Challenge c = challenge(ownerId, FUTURE, FUTURE.plusDays(7));
-      when(challengeRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(1L)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(1L), eq(otherId)))
           .thenReturn(Optional.empty());
 

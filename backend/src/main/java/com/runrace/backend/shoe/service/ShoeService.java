@@ -85,8 +85,7 @@ public class ShoeService {
 
   @Transactional
   public void updateShoe(UUID userId, Long shoeId, ShoeFormRequest body) {
-    Shoe shoe = shoeRepository.findByIdAndUser_Id(shoeId, userId)
-        .orElseThrow(() -> ApiException.notFound("shoe_not_found"));
+    Shoe shoe = shoeRepository.getRequiredForUser(shoeId, userId);
     shoe.edit(
         requireText(body.brand(), MAX_BRAND_LEN, "invalid_brand"),
         requireText(body.model(), MAX_MODEL_LEN, "invalid_model"),
@@ -97,8 +96,7 @@ public class ShoeService {
 
   @Transactional
   public void deleteShoe(UUID userId, Long shoeId) {
-    Shoe shoe = shoeRepository.findByIdAndUser_Id(shoeId, userId)
-        .orElseThrow(() -> ApiException.notFound("shoe_not_found"));
+    Shoe shoe = shoeRepository.getRequiredForUser(shoeId, userId);
     // workout_session.shoe_id는 FK ON DELETE SET NULL — 러닝 기록은 보존, 귀속만 해제.
     shoeRepository.delete(shoe);
   }
@@ -106,8 +104,7 @@ public class ShoeService {
   /** 활성 신발 전환 — 기존 활성을 먼저 해제하고(부분 유니크 인덱스 충돌 방지) 대상만 활성화한다. */
   @Transactional
   public void activateShoe(UUID userId, Long shoeId) {
-    Shoe target = shoeRepository.findByIdAndUser_Id(shoeId, userId)
-        .orElseThrow(() -> ApiException.notFound("shoe_not_found"));
+    Shoe target = shoeRepository.getRequiredForUser(shoeId, userId);
     shoeRepository.findByUser_IdAndActiveTrue(userId).ifPresent(cur -> {
       if (!cur.getId().equals(shoeId)) {
         cur.deactivate();
@@ -141,12 +138,10 @@ public class ShoeService {
   /** 러닝 상세에서 신발 귀속을 변경/해제한다. shoeId가 null이면 해제. */
   @Transactional
   public void reassignWorkoutShoe(UUID userId, Long workoutId, Long shoeId) {
-    WorkoutSession session = workoutSessionRepository.findByIdAndUserId(workoutId, userId)
-        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    WorkoutSession session = workoutSessionRepository.getRequiredForUser(workoutId, userId);
     Shoe shoe = null;
     if (shoeId != null) {
-      shoe = shoeRepository.findByIdAndUser_Id(shoeId, userId)
-          .orElseThrow(() -> ApiException.notFound("shoe_not_found"));
+      shoe = shoeRepository.getRequiredForUser(shoeId, userId);
     }
     session.assignShoe(shoe);
     workoutSessionRepository.save(session);

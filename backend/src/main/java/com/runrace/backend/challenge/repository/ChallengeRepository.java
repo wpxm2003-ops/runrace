@@ -1,6 +1,7 @@
 package com.runrace.backend.challenge.repository;
 
 import com.runrace.backend.challenge.domain.Challenge;
+import com.runrace.backend.common.ApiException;
 import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
@@ -24,4 +25,14 @@ public interface ChallengeRepository
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select c from Challenge c where c.id in :ids order by c.id")
   List<Challenge> findAllByIdsForUpdate(@Param("ids") List<Long> ids);
+
+  /** id로 레이스를 조회하되 없으면 404로 변환한다 — AppUserRepository.getRequired 관용구를 따른다. */
+  default Challenge getRequired(Long id) {
+    return findById(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+  }
+
+  /** {@link #findByIdForUpdate} + 없으면 404 — 잠금 조회의 {@code orElseThrow} 중복 제거용. */
+  default Challenge getRequiredForUpdate(Long id) {
+    return findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+  }
 }

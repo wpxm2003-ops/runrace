@@ -1,6 +1,7 @@
 package com.runrace.backend.crew.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.crew.dto.ApplyToCrewRequest;
 import com.runrace.backend.crew.dto.CreateCrewRequest;
 import com.runrace.backend.crew.dto.CrewDetailResponse;
@@ -82,7 +83,7 @@ public class CrewController {
   }
 
   /** 공개 크루 상세 — 비회원도 조회 가능. 로그인 상태면 내 신청 상태(대기중/쿨다운)를 함께 내려준다. */
-  @GetMapping("/{id}")
+  @GetMapping("/{id:" + PathPatterns.ID + "}")
   public ResponseEntity<CrewDetailResponse> detail(
       Optional<AuthPrincipal> principal, @PathVariable("id") long id) {
     UUID viewerId = principal.map(AuthPrincipal::userId).orElse(null);
@@ -117,7 +118,7 @@ public class CrewController {
     return ResponseEntity.noContent().build();
   }
 
-  @PatchMapping("/{id}")
+  @PatchMapping("/{id:" + PathPatterns.ID + "}")
   public ResponseEntity<Void> update(
       AuthPrincipal principal, @PathVariable("id") long id, @RequestBody UpdateCrewRequest body) {
     crewService.update(principal.userId(), id, body.notice(), body.monthGoalKm());
@@ -125,7 +126,7 @@ public class CrewController {
   }
 
   /** 발견 프로필(지역·이미지·소개·정기런) 수정(리더 전용). */
-  @PatchMapping("/{id}/profile")
+  @PatchMapping("/{id:" + PathPatterns.ID + "}/profile")
   public ResponseEntity<Void> updateProfile(
       AuthPrincipal principal, @PathVariable("id") long id, @RequestBody UpdateCrewProfileRequest body) {
     crewService.updateProfile(
@@ -137,7 +138,7 @@ public class CrewController {
   // ── 가입신청(승인제) ──────────────────────────────────────────
 
   /** 발견 목록에서 가입 신청. */
-  @PostMapping("/{id}/apply")
+  @PostMapping("/{id:" + PathPatterns.ID + "}/apply")
   public ResponseEntity<Void> apply(
       AuthPrincipal principal, @PathVariable("id") long id, @RequestBody(required = false) ApplyToCrewRequest body) {
     crewService.apply(principal.userId(), id, body != null ? body.message() : null);
@@ -145,7 +146,7 @@ public class CrewController {
   }
 
   /** 가입 신청 승인(리더 전용). */
-  @PostMapping("/join-requests/{requestId}/approve")
+  @PostMapping("/join-requests/{requestId:" + PathPatterns.ID + "}/approve")
   public ResponseEntity<Void> approveJoinRequest(
       AuthPrincipal principal, @PathVariable("requestId") long requestId) {
     crewService.approve(principal.userId(), requestId);
@@ -153,7 +154,7 @@ public class CrewController {
   }
 
   /** 가입 신청 거절(리더 전용). 사유는 선택. */
-  @PostMapping("/join-requests/{requestId}/reject")
+  @PostMapping("/join-requests/{requestId:" + PathPatterns.ID + "}/reject")
   public ResponseEntity<Void> rejectJoinRequest(
       AuthPrincipal principal, @PathVariable("requestId") long requestId,
       @RequestBody(required = false) RejectJoinRequestRequest body) {
@@ -162,7 +163,7 @@ public class CrewController {
   }
 
   /** 가입 신청 철회(신청자 본인). */
-  @PostMapping("/join-requests/{requestId}/cancel")
+  @PostMapping("/join-requests/{requestId:" + PathPatterns.ID + "}/cancel")
   public ResponseEntity<Void> cancelJoinRequest(
       AuthPrincipal principal, @PathVariable("requestId") long requestId) {
     crewService.cancelApplication(principal.userId(), requestId);
@@ -181,13 +182,13 @@ public class CrewController {
     return ResponseEntity.ok(crewService.myApplications(principal.userId()));
   }
 
-  @DeleteMapping("/{id}")
+  @DeleteMapping("/{id:" + PathPatterns.ID + "}")
   public ResponseEntity<Void> disband(AuthPrincipal principal, @PathVariable("id") long id) {
     crewService.disband(principal.userId(), id);
     return ResponseEntity.noContent().build();
   }
 
-  @DeleteMapping("/{id}/members/{userId}")
+  @DeleteMapping("/{id:" + PathPatterns.ID + "}/members/{userId}")
   public ResponseEntity<Void> kick(
       AuthPrincipal principal,
       @PathVariable("id") long id,

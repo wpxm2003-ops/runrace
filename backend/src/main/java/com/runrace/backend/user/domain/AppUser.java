@@ -93,14 +93,12 @@ public class AppUser {
     this.pushEnabled = pushEnabled;
   }
 
-  /** 탈퇴 여부. */
-  public boolean isWithdrawn() {
-    return withdrawnAt != null;
-  }
+  /** 탈퇴(익명화) 계정의 닉네임 플레이스홀더 — projection 쿼리처럼 엔티티 메서드를 못 쓰는 곳과 공유한다. */
+  public static final String WITHDRAWN_NICKNAME = "탈퇴한 러너";
 
   /** 화면 표시용 닉네임 — 탈퇴(익명화) 계정은 닉네임이 null이므로 플레이스홀더로 대체한다. */
   public String getDisplayNickname() {
-    return nickname != null ? nickname : "탈퇴한 러너";
+    return nickname != null ? nickname : WITHDRAWN_NICKNAME;
   }
 
   /**

@@ -119,8 +119,7 @@ public class ChallengeProgressService {
    */
   public void applyDistanceToMember(
       Long challengeId, UUID userId, BigDecimal deltaKm, OffsetDateTime now) {
-    challengeRepository.findByIdForUpdate(challengeId)
-        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    challengeRepository.getRequiredForUpdate(challengeId);
     ChallengeMember member = challengeMemberRepository
         .findByChallengeIdAndUserId(challengeId, userId)
         .orElse(null);

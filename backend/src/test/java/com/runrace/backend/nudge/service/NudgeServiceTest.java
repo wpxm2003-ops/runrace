@@ -102,7 +102,8 @@ class NudgeServiceTest {
     }
 
     @Test void 레이스없으면_challenge_not_found() {
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.empty());
+      when(challengeRepository.getRequired(challengeId))
+          .thenThrow(ApiException.notFound("challenge_not_found"));
       ApiException ex = assertThrows(ApiException.class,
           () -> service.nudge(principal, challengeId, targetId, 0));
       assertEquals("challenge_not_found", ex.code());
@@ -111,7 +112,7 @@ class NudgeServiceTest {
     @Test void 시작전이면_race_not_in_progress() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.plusDays(1), now.plusDays(10), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class,
           () -> service.nudge(principal, challengeId, targetId, 0));
       assertEquals("race_not_in_progress", ex.code());
@@ -120,7 +121,7 @@ class NudgeServiceTest {
     @Test void 종료플래그면_race_not_in_progress() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(10), now.plusDays(10), true, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class,
           () -> service.nudge(principal, challengeId, targetId, 0));
       assertEquals("race_not_in_progress", ex.code());
@@ -129,7 +130,7 @@ class NudgeServiceTest {
     @Test void 종료시각지났으면_race_not_in_progress() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(10), now.minusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class,
           () -> service.nudge(principal, challengeId, targetId, 0));
       assertEquals("race_not_in_progress", ex.code());
@@ -138,7 +139,7 @@ class NudgeServiceTest {
     @Test void 보낸사람이_참가자아니면_forbidden() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(challengeId, senderId))
           .thenReturn(Optional.empty());
       ApiException ex = assertThrows(ApiException.class,
@@ -149,7 +150,7 @@ class NudgeServiceTest {
     @Test void 받는사람이_참가자아니면_not_member() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(challengeId, senderId))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       when(challengeMemberRepository.findByChallengeIdAndUserId(challengeId, targetId))
@@ -162,7 +163,7 @@ class NudgeServiceTest {
     @Test void 일일한도_넘으면_conflict() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(challengeId), any()))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       when(nudgeRepository.existsBySenderIdAndReceiverIdAndSentAtGreaterThanEqual(eq(senderId), eq(targetId), any()))
@@ -175,7 +176,7 @@ class NudgeServiceTest {
     @Test void 동시요청_유니크제약위반이면_nudge_daily_limit() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(challengeId), any()))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       stubUsers();
@@ -189,7 +190,7 @@ class NudgeServiceTest {
     @Test void 정상발송_크루레이스면_titleKey_crew_race() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, 5L);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(challengeId), any()))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       stubUsers();
@@ -204,7 +205,7 @@ class NudgeServiceTest {
     @Test void 정상발송_일반레이스면_titleKey_race() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(challengeId), any()))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       stubUsers();
@@ -219,7 +220,7 @@ class NudgeServiceTest {
     @Test void variant범위밖이면_preset0() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(challengeId), any()))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       stubUsers();
@@ -234,7 +235,7 @@ class NudgeServiceTest {
     @Test void variant범위안이면_해당preset() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(challengeId), any()))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       stubUsers();
@@ -249,7 +250,7 @@ class NudgeServiceTest {
     @Test void 보낸사람_닉네임없으면_친구로대체() {
       OffsetDateTime now = OffsetDateTime.now();
       Challenge c = challenge(now.minusDays(1), now.plusDays(1), false, null);
-      when(challengeRepository.findById(challengeId)).thenReturn(Optional.of(c));
+      when(challengeRepository.getRequired(challengeId)).thenReturn(c);
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(challengeId), any()))
           .thenReturn(Optional.of(mock(ChallengeMember.class)));
       when(appUserRepository.getRequired(senderId)).thenReturn(user(senderId, null));

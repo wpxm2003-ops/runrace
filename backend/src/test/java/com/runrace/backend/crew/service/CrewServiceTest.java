@@ -229,7 +229,7 @@ class CrewServiceTest {
   @Nested class LeaderOps {
     @Test void 리더가_아니면_수정_불가_not_leader() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class,
           () -> service.update(meId, 1L, null, null));
       assertEquals("not_leader", ex.code());
@@ -237,14 +237,14 @@ class CrewServiceTest {
 
     @Test void 리더가_아니면_해체_불가_not_leader() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class, () -> service.disband(meId, 1L));
       assertEquals("not_leader", ex.code());
     }
 
     @Test void 자기_자신은_내보낼_수_없다() {
       Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class, () -> service.kick(meId, 1L, meId));
       assertEquals("cannot_kick_self", ex.code());
     }
@@ -253,7 +253,7 @@ class CrewServiceTest {
       Crew c = crew(meId);
       UUID targetId = UUID.randomUUID();
       CrewMember target = member(c, targetId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.findByCrewIdAndUserId(1L, targetId)).thenReturn(Optional.of(target));
 
       service.kick(meId, 1L, targetId);
@@ -263,7 +263,7 @@ class CrewServiceTest {
 
     @Test void 공지_수정시_크루명은_유지된다() {
       Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
 
       String originalName = c.getName();
       service.update(meId, 1L, "토요일 7시 반포", null);
@@ -276,7 +276,7 @@ class CrewServiceTest {
 
     @Test void 월간목표_범위_밖이면_invalid_month_goal() {
       Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class,
           () -> service.update(meId, 1L, null, java.math.BigDecimal.valueOf(10000)));
       assertEquals("invalid_month_goal", ex.code());
@@ -284,7 +284,7 @@ class CrewServiceTest {
 
     @Test void 월간목표_정상값은_저장() {
       Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
 
       service.update(meId, 1L, null, java.math.BigDecimal.valueOf(100));
 
@@ -294,7 +294,7 @@ class CrewServiceTest {
 
     @Test void 창설일이_미래면_invalid_founded_at() {
       Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       java.time.LocalDate tomorrow = java.time.LocalDate.now(com.runrace.backend.common.KstTime.ZONE).plusDays(1);
 
       ApiException ex = assertThrows(ApiException.class, () -> service.updateProfile(
@@ -305,7 +305,7 @@ class CrewServiceTest {
 
     @Test void 창설일이_오늘이거나_과거면_저장() {
       Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       java.time.LocalDate today = java.time.LocalDate.now(com.runrace.backend.common.KstTime.ZONE);
 
       service.updateProfile(meId, 1L, "SEOUL", null, null, null, null, null, null, today);
@@ -316,7 +316,7 @@ class CrewServiceTest {
 
     @Test void 창설일_생략하면_null유지() {
       Crew c = crew(meId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
 
       service.updateProfile(meId, 1L, "SEOUL", null, null, null, null, null, null, null);
 
@@ -362,21 +362,21 @@ class CrewServiceTest {
 
   @Nested class Apply {
     @Test void 크루가_없으면_crew_not_found() {
-      when(crewRepository.findById(1L)).thenReturn(Optional.empty());
+      when(crewRepository.getRequired(1L)).thenThrow(ApiException.notFound("crew_not_found"));
       ApiException ex = assertThrows(ApiException.class, () -> service.apply(meId, 1L, null));
       assertEquals("crew_not_found", ex.code());
     }
 
     @Test void 금지문자_메시지면_invalid_apply_message() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       ApiException ex = assertThrows(ApiException.class, () -> service.apply(meId, 1L, "<script>"));
       assertEquals("invalid_apply_message", ex.code());
     }
 
     @Test void 이미_크루_소속이면_already_in_crew() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(true);
       ApiException ex = assertThrows(ApiException.class, () -> service.apply(meId, 1L, null));
       assertEquals("already_in_crew", ex.code());
@@ -384,7 +384,7 @@ class CrewServiceTest {
 
     @Test void 정원_초과면_crew_full() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(1L)).thenReturn(30);
       ApiException ex = assertThrows(ApiException.class, () -> service.apply(meId, 1L, null));
@@ -393,7 +393,7 @@ class CrewServiceTest {
 
     @Test void 이미_대기중_신청이_있으면_already_pending() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(1L)).thenReturn(3);
       when(crewJoinRequestRepository.existsByCrewIdAndUserIdAndStatus(
@@ -406,7 +406,7 @@ class CrewServiceTest {
 
     @Test void 거절_24시간_이내면_apply_cooldown() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(1L)).thenReturn(3);
       when(crewJoinRequestRepository.existsByCrewIdAndUserIdAndStatus(
@@ -422,7 +422,7 @@ class CrewServiceTest {
     @Test void 거절_24시간_지나면_쿨다운_통과() {
       UUID leaderId = UUID.randomUUID();
       Crew c = crew(leaderId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(1L)).thenReturn(3);
       when(crewJoinRequestRepository.existsByCrewIdAndUserIdAndStatus(
@@ -438,7 +438,7 @@ class CrewServiceTest {
 
     @Test void 도배_상한_초과면_apply_rate_limited() {
       Crew c = crew(UUID.randomUUID());
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(1L)).thenReturn(3);
       when(crewJoinRequestRepository.existsByCrewIdAndUserIdAndStatus(
@@ -454,7 +454,7 @@ class CrewServiceTest {
     @Test void 정상_신청은_저장되고_리더에게_이벤트_발행() {
       UUID leaderId = UUID.randomUUID();
       Crew c = crew(leaderId);
-      when(crewRepository.findById(1L)).thenReturn(Optional.of(c));
+      when(crewRepository.getRequired(1L)).thenReturn(c);
       when(crewMemberRepository.existsByUserId(meId)).thenReturn(false);
       when(crewMemberRepository.countByCrewId(1L)).thenReturn(3);
       when(crewJoinRequestRepository.existsByCrewIdAndUserIdAndStatus(

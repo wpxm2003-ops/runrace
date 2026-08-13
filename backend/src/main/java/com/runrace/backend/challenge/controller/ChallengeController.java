@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -87,16 +88,8 @@ public class ChallengeController {
     PageParams.Clamped clamped = PageParams.clamp(page, size);
     Slice<Challenge> slice = challengeService.listCrewRacesPage(
         principal.userId(), phase, clamped.page(), clamped.size());
-    OffsetDateTime now = OffsetDateTime.now();
-    List<Challenge> challenges = slice.getContent();
-    List<Long> ids = challenges.stream().map(Challenge::getId).toList();
-    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
-    Set<Long> memberIds = challengeService.memberChallengeIds(principal.userId(), ids);
-    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
-    List<ChallengeListItem> items = challenges.stream()
-        .map(c -> toListItem(c, now, Optional.of(principal.userId()), memberCounts, memberIds, prizeIds))
-        .toList();
-    return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
+    return ResponseEntity.ok(toListPage(slice, Optional.of(principal.userId()),
+        ids -> challengeService.memberChallengeIds(principal.userId(), ids)));
   }
 
   @PutMapping("/{id:" + ID_PATH + "}")
@@ -142,21 +135,9 @@ public class ChallengeController {
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
     PageParams.Clamped clamped = PageParams.clamp(page, size);
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
-    OffsetDateTime now = OffsetDateTime.now();
     Slice<Challenge> slice = challengeService.listPublicPage(lang, phase, clamped.page(), clamped.size());
-    List<Challenge> challenges = slice.getContent();
-    List<Long> ids = challenges.stream().map(Challenge::getId).toList();
-
-    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
-    Set<Long> memberIds = userId
-        .map(uid -> challengeService.memberChallengeIds(uid, ids))
-        .orElse(Set.of());
-    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
-
-    List<ChallengeListItem> items = challenges.stream()
-        .map(challenge -> toListItem(challenge, now, userId, memberCounts, memberIds, prizeIds))
-        .toList();
-    return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
+    return ResponseEntity.ok(toListPage(slice, userId,
+        ids -> userId.map(uid -> challengeService.memberChallengeIds(uid, ids)).orElse(Set.of())));
   }
 
   @GetMapping("/mine")
@@ -166,18 +147,30 @@ public class ChallengeController {
       @RequestParam(name = "page", required = false, defaultValue = "0") int page,
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
     PageParams.Clamped clamped = PageParams.clamp(page, size);
-    OffsetDateTime now = OffsetDateTime.now();
     UUID userId = principal.userId();
     Slice<Challenge> slice = challengeService.listMinePage(userId, phase, clamped.page(), clamped.size());
+    return ResponseEntity.ok(toListPage(slice, Optional.of(userId),
+        ids -> Set.copyOf(ids))); // 내 레이스는 전부 참여 중
+  }
+
+  /**
+   * 목록 페이지 조립의 단일 출처 — 배치 조회(N+1 방지) 3종 + DTO 매핑.
+   * 세 목록 엔드포인트가 memberIds 도출 방식만 다르게 주입한다.
+   */
+  private ChallengeListPage toListPage(
+      Slice<Challenge> slice,
+      Optional<UUID> viewerId,
+      Function<List<Long>, Set<Long>> memberIdsResolver) {
+    OffsetDateTime now = OffsetDateTime.now();
     List<Challenge> challenges = slice.getContent();
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
     Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
-    Set<Long> memberIds = Set.copyOf(ids); // 내 레이스는 전부 참여 중
+    Set<Long> memberIds = memberIdsResolver.apply(ids);
     Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
     List<ChallengeListItem> items = challenges.stream()
-        .map(challenge -> toListItem(challenge, now, Optional.of(userId), memberCounts, memberIds, prizeIds))
+        .map(c -> toListItem(c, now, viewerId, memberCounts, memberIds, prizeIds))
         .toList();
-    return ResponseEntity.ok(new ChallengeListPage(items, slice.hasNext()));
+    return new ChallengeListPage(items, slice.hasNext());
   }
 
   @GetMapping("/{id:" + ID_PATH + "}")

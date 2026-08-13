@@ -1,6 +1,7 @@
 package com.runrace.backend.crew.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.crew.dto.AcceptCrewMatchRequest;
 import com.runrace.backend.crew.dto.CreateCrewMatchRequest;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
@@ -58,14 +59,14 @@ public class CrewMatchController {
   }
 
   /** 대항전 상세(참가 크루 멤버만). */
-  @GetMapping("/{id}")
+  @GetMapping("/{id:" + PathPatterns.ID + "}")
   public ResponseEntity<CrewMatchDetailResponse> detail(
       AuthPrincipal principal, @PathVariable("id") long id) {
     return ResponseEntity.ok(crewMatchService.detail(principal.userId(), id));
   }
 
   /** 도전장 수락(상대 크루 리더 전용) — 로스터 지명 포함. */
-  @PostMapping("/{id}/accept")
+  @PostMapping("/{id:" + PathPatterns.ID + "}/accept")
   public ResponseEntity<Void> accept(
       AuthPrincipal principal, @PathVariable("id") long id,
       @RequestBody AcceptCrewMatchRequest body) {
@@ -74,14 +75,14 @@ public class CrewMatchController {
   }
 
   /** 도전장 거절(상대 크루 리더 전용). */
-  @PostMapping("/{id}/decline")
+  @PostMapping("/{id:" + PathPatterns.ID + "}/decline")
   public ResponseEntity<Void> decline(AuthPrincipal principal, @PathVariable("id") long id) {
     crewMatchService.decline(principal.userId(), id);
     return ResponseEntity.noContent().build();
   }
 
   /** 도전장 취소(도전 크루 리더 전용, 수락 전만). */
-  @DeleteMapping("/{id}")
+  @DeleteMapping("/{id:" + PathPatterns.ID + "}")
   public ResponseEntity<Void> cancel(AuthPrincipal principal, @PathVariable("id") long id) {
     crewMatchService.cancel(principal.userId(), id);
     return ResponseEntity.noContent().build();

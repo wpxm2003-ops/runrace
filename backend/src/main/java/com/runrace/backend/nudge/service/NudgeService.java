@@ -55,9 +55,7 @@ public class NudgeService {
       throw ApiException.badRequest("cannot_nudge_self");
     }
 
-    Challenge challenge = challengeRepository
-        .findById(challengeId)
-        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    Challenge challenge = challengeRepository.getRequired(challengeId);
 
     OffsetDateTime now = OffsetDateTime.now();
     if (!ChallengeService.hasStarted(challenge, now) || ChallengeService.isEnded(challenge, now)) {

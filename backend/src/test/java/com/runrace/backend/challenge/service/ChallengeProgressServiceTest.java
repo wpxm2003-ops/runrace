@@ -217,7 +217,7 @@ class ChallengeProgressServiceTest {
     AppUser me = user("me");
     Challenge challenge = Challenge.builder().id(1L).goalKm(BigDecimal.TEN).build();
     ChallengeMember mine = member(me, challenge, 2, null);
-    when(challengeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(challenge));
+    when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(challenge);
     when(challengeMemberRepository.findByChallengeIdAndUserId(1L, me.getId()))
         .thenReturn(Optional.of(mine));
     when(challengeMemberRepository.findAllForChallenge(1L)).thenReturn(List.of(mine));
@@ -225,7 +225,7 @@ class ChallengeProgressServiceTest {
     service.applyDistanceToMember(1L, me.getId(), BigDecimal.ONE, T0);
 
     InOrder order = inOrder(challengeRepository, challengeMemberRepository);
-    order.verify(challengeRepository).findByIdForUpdate(1L);
+    order.verify(challengeRepository).getRequiredForUpdate(1L);
     order.verify(challengeMemberRepository).findByChallengeIdAndUserId(1L, me.getId());
     order.verify(challengeMemberRepository).findAllForChallenge(1L);
     assertEquals(BigDecimal.valueOf(3.0), mine.getTotalKm());

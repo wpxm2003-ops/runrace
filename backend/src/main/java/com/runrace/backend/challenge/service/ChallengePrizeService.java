@@ -192,8 +192,7 @@ public class ChallengePrizeService {
   }
 
   private Challenge requireChallenge(Long challengeId) {
-    return challengeRepository.findById(challengeId)
-        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    return challengeRepository.getRequired(challengeId);
   }
 
   private static void validate(List<PrizeItemRequest> items, int maxMembers) {

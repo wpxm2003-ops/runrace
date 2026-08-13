@@ -7,6 +7,7 @@ import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.domain.QChallengeWorkout;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.common.IsoTime;
+import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.domain.QAppUser;
 import com.runrace.backend.workout.domain.QWorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
@@ -45,18 +46,7 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
   }
 
   @Override
-  public List<ChallengeWorkout> findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(
-      Long challengeId, ApprovalStatus status) {
-    return byChallengeAndStatusOrderByStartedDesc(challengeId, status);
-  }
-
-  @Override
   public List<ChallengeWorkout> findAllByChallengeIdAndApprovalStatus(
-      Long challengeId, ApprovalStatus status) {
-    return byChallengeAndStatusOrderByStartedDesc(challengeId, status);
-  }
-
-  private List<ChallengeWorkout> byChallengeAndStatusOrderByStartedDesc(
       Long challengeId, ApprovalStatus status) {
     return query.selectFrom(cw)
         .join(cw.workoutSession, ws).fetchJoin()
@@ -86,7 +76,7 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
           WorkoutType type = t.get(ws.workoutType);
           return new ChallengeWorkoutListItem(
               t.get(user.id),
-              nickname != null ? nickname : "탈퇴한 러너", // AppUser.getDisplayNickname()과 동일
+              nickname != null ? nickname : AppUser.WITHDRAWN_NICKNAME, // getDisplayNickname()과 동일
               IsoTime.format(t.get(ws.startedAt)),
               IsoTime.format(t.get(ws.endedAt)),
               t.get(ws.durationSec),

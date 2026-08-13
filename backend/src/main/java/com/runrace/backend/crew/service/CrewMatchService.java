@@ -351,8 +351,6 @@ public class CrewMatchService {
     Long challengerId = match.getChallengerCrew().getId();
     List<RosterRow> challengerRows = new ArrayList<>();
     List<RosterRow> opponentRows = new ArrayList<>();
-    long challengerSum = 0;
-    long opponentSum = 0;
     for (CrewMatchRoster r : rosters) {
       long dist = byUser.getOrDefault(r.getUser().getId(), 0L);
       RosterRow row = new RosterRow(
@@ -360,12 +358,13 @@ public class CrewMatchService {
           r.getUser().getId().equals(meId), dist);
       if (r.getCrewId().equals(challengerId)) {
         challengerRows.add(row);
-        challengerSum += dist;
       } else {
         opponentRows.add(row);
-        opponentSum += dist;
       }
     }
+    CrewSums sums = sumByCrew(match, rosters, byUser);
+    long challengerSum = sums.challenger();
+    long opponentSum = sums.opponent();
     Comparator<RosterRow> byDistance = Comparator.comparingLong(RosterRow::distanceM).reversed();
     challengerRows.sort(byDistance);
     opponentRows.sort(byDistance);
@@ -452,7 +451,15 @@ public class CrewMatchService {
   private record CrewSums(long challenger, long opponent) {}
 
   private CrewSums crewSums(CrewMatch match, List<CrewMatchRoster> rosters, OffsetDateTime now) {
-    Map<UUID, Long> byUser = memberDistances(match, rosters, now);
+    return sumByCrew(match, rosters, memberDistances(match, rosters, now));
+  }
+
+  /**
+   * 도전자/상대 합산 규칙의 단일 출처 — 승패 판정·상세 합계·요약이 전부 여기를 거친다.
+   * 한쪽만 고치면 확정 승자와 화면 합계가 어긋나므로 사본을 만들지 말 것.
+   */
+  private CrewSums sumByCrew(
+      CrewMatch match, List<CrewMatchRoster> rosters, Map<UUID, Long> byUser) {
     Long challengerId = match.getChallengerCrew().getId();
     long challengerSum = 0;
     long opponentSum = 0;
@@ -485,20 +492,11 @@ public class CrewMatchService {
   /** 기간 종료된 ACCEPTED 매치의 승자를 확정하고, 로스터 전원에게 결과 푸시를 발행한다. */
   private void finalizeEnded(CrewMatch match) {
     List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
-    Map<UUID, Long> byUser = memberDistances(match, rosters, match.getEndAt());
-    long challengerSum = 0;
-    long opponentSum = 0;
-    Long challengerId = match.getChallengerCrew().getId();
-    for (CrewMatchRoster r : rosters) {
-      long dist = byUser.getOrDefault(r.getUser().getId(), 0L);
-      if (r.getCrewId().equals(challengerId)) {
-        challengerSum += dist;
-      } else {
-        opponentSum += dist;
-      }
-    }
+    CrewSums sums = crewSums(match, rosters, match.getEndAt());
+    long challengerSum = sums.challenger();
+    long opponentSum = sums.opponent();
     Long winner = challengerSum > opponentSum
-        ? challengerId
+        ? match.getChallengerCrew().getId()
         : (opponentSum > challengerSum ? match.getOpponentCrew().getId() : null);
     match.finish(winner, challengerSum, opponentSum);
     crewMatchRepository.save(match);
@@ -558,15 +556,9 @@ public class CrewMatchService {
           : match.getChallengerDistanceM();
     } else if (match.getStartAt() != null) {
       List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
-      Map<UUID, Long> byUser = memberDistances(match, rosters, now);
-      for (CrewMatchRoster r : rosters) {
-        long dist = byUser.getOrDefault(r.getUser().getId(), 0L);
-        if (r.getCrewId().equals(myCrewId)) {
-          myDist += dist;
-        } else {
-          opDist += dist;
-        }
-      }
+      CrewSums sums = crewSums(match, rosters, now);
+      myDist = myCrewIsChallenger ? sums.challenger() : sums.opponent();
+      opDist = myCrewIsChallenger ? sums.opponent() : sums.challenger();
     }
     return new CrewMatchSummary(
         match.getId(),

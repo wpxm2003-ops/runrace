@@ -88,7 +88,7 @@ class IndoorApprovalServiceTest {
     Challenge c = Challenge.builder().id(10L).goalKm(BigDecimal.valueOf(10)).build();
     ChallengeWorkout pending = cw(1L, ApprovalStatus.PENDING, c, u);
     when(challengeWorkoutRepository.findById(1L)).thenReturn(Optional.of(pending));
-    when(challengeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(c));
+    when(challengeRepository.getRequiredForUpdate(10L)).thenReturn(c);
 
     service.applyApprovedIndoorRun(1L);
 
@@ -109,7 +109,7 @@ class IndoorApprovalServiceTest {
         .build();
     ChallengeWorkout pending = cw(1L, ApprovalStatus.PENDING, c, u);
     when(challengeWorkoutRepository.findById(1L)).thenReturn(Optional.of(pending));
-    when(challengeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(c));
+    when(challengeRepository.getRequiredForUpdate(10L)).thenReturn(c);
 
     service.applyApprovedIndoorRun(1L);
 

@@ -228,12 +228,20 @@ public class WorkoutController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * @deprecated 현재 프론트는 {@link #deleteByPost}(POST /{id}/delete)만 호출한다 — 정적 export
+   *     환경에서 DELETE 메서드가 막히는 경우가 있어 우회 경로가 표준이 됐다. 이 핸들러는 구버전
+   *     앱의 잔존 호출 가능성 때문에 유지한다. 구버전 사용률이 떨어진 뒤 제거할 것
+   *     (AuthController의 PATCH /me/language와 같은 정리 대상).
+   */
+  @Deprecated
   @DeleteMapping("/{id:" + ID_PATH + "}")
   public ResponseEntity<Void> delete(AuthPrincipal principal, @PathVariable("id") Long id) {
     workoutService.deleteForUser(principal, id);
     return ResponseEntity.noContent().build();
   }
 
+  /** 운동 삭제 — 정적 export 환경에서 DELETE가 막히는 경우가 있어 POST 경로가 표준이다. */
   @PostMapping("/{id:" + ID_PATH + "}/delete")
   public ResponseEntity<Void> deleteByPost(AuthPrincipal principal, @PathVariable("id") Long id) {
     workoutService.deleteForUser(principal, id);

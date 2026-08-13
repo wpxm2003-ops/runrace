@@ -36,7 +36,6 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -599,9 +598,7 @@ public class WorkoutService {
     if (memo != null && memo.length() > MAX_MEMO_LENGTH) {
       throw ApiException.badRequest("memo_too_long");
     }
-    WorkoutSession session = workoutSessionRepository
-        .findByIdAndUserId(id, principal.userId())
-        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    WorkoutSession session = workoutSessionRepository.getRequiredForUser(id, principal.userId());
     session.updateMemo(memo == null || memo.isBlank() ? null : memo.strip());
     workoutSessionRepository.save(session);
   }
@@ -614,9 +611,7 @@ public class WorkoutService {
     if (normalized != null && !imageUploadService.isStoredUrl(normalized)) {
       throw ApiException.badRequest("invalid_image_url");
     }
-    WorkoutSession session = workoutSessionRepository
-        .findByIdAndUserId(id, principal.userId())
-        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+    WorkoutSession session = workoutSessionRepository.getRequiredForUser(id, principal.userId());
     String previous = session.getImageUrl();
     session.updateImage(normalized);
     workoutSessionRepository.save(session);
@@ -629,9 +624,7 @@ public class WorkoutService {
   @Transactional
   public void deleteForUser(AuthPrincipal principal, Long id) {
     WorkoutSession session =
-        workoutSessionRepository
-            .findByIdAndUserId(id, principal.userId())
-            .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+        workoutSessionRepository.getRequiredForUser(id, principal.userId());
     // 레이스에 반영된 거리 먼저 차감 (cascade 삭제 전에 호출해야 함)
     challengeProgressService.reverseWorkoutDistance(session.getId());
     // 이 운동이 근거인 개인 기록도 함께 삭제한다. personal_best.workout_id는 ON DELETE가

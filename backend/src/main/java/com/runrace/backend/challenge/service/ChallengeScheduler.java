@@ -3,6 +3,7 @@ package com.runrace.backend.challenge.service;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.common.KstTime;
 import com.runrace.backend.observability.service.ErrorLogService;
+import com.runrace.backend.observability.service.SchedulerGuard;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -30,8 +31,8 @@ public class ChallengeScheduler {
   private static final Logger log = LoggerFactory.getLogger(ChallengeScheduler.class);
 
   private static final ZoneId KST = KstTime.ZONE;
-  /** 온램프 레이스 정원 — 상한(MAX_MEMBERS_LIMIT)과 동일하게 넉넉히. */
-  private static final int OPEN_RACE_MAX_MEMBERS = 50;
+  /** 온램프 레이스 정원 — 상한과 동일하게 넉넉히(초과 시 validateRoomInput이 400을 던져 자동 보충이 실패한다). */
+  private static final int OPEN_RACE_MAX_MEMBERS = ChallengeService.MAX_MEMBERS_LIMIT;
   /** 주말(2일) 목표. */
   private static final BigDecimal WEEKEND_GOAL_KM = BigDecimal.valueOf(10);
   /** 평일(5일) 목표 — 기간이 길어 주말보다 높게. */
@@ -54,14 +55,9 @@ public class ChallengeScheduler {
     OffsetDateTime now = OffsetDateTime.now();
     // 레이스별 독립 트랜잭션 — 한 건이 실패해도 나머지는 정상 처리되도록 격리한다.
     for (Long challengeId : challengeRepository.findStartedNotEndedIds(now)) {
-      try {
-        challengeService.processRaceLifecycle(challengeId, now);
-      } catch (Exception e) {
-        log.warn("레이스 생명주기 처리 실패 (challengeId={}) — 건너뜀", challengeId, e);
-        errorLogService.recordServiceError(
-            "scheduler", e.getClass().getSimpleName(), e.getMessage(),
-            ErrorLogService.stackTraceOf(e), "challengeId=" + challengeId);
-      }
+      SchedulerGuard.runIsolated(log, errorLogService, "scheduler",
+          "레이스 생명주기 처리 실패 (challengeId=" + challengeId + ")", "challengeId=" + challengeId,
+          () -> challengeService.processRaceLifecycle(challengeId, now));
     }
   }
 
@@ -79,7 +75,8 @@ public class ChallengeScheduler {
    */
   @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
   public void ensureOpenPublicRace() {
-    try {
+    SchedulerGuard.runIsolated(log, errorLogService, "scheduler",
+        "공개 레이스 자동 보충 실패", "ensureOpenPublicRace", () -> {
       OffsetDateTime now = OffsetDateTime.now();
       if (challengeRepository.existsOpenPublicRace(now)) return; // 이미 모집 중인 게 있으면 유지
 
@@ -91,12 +88,7 @@ public class ChallengeScheduler {
       challengeService.createOfficialRace(
           AUTO_RACE_CREATOR_USER_ID, w.title(), w.goalKm(), OPEN_RACE_MAX_MEMBERS, startAt, endAt);
       log.info("공개 온램프 레이스 생성 — {} ({} ~ {})", w.title(), startAt, endAt);
-    } catch (Exception e) {
-      log.warn("공개 레이스 자동 보충 실패 — 건너뜀", e);
-      errorLogService.recordServiceError(
-          "scheduler", e.getClass().getSimpleName(), e.getMessage(),
-          ErrorLogService.stackTraceOf(e), "ensureOpenPublicRace");
-    }
+    });
   }
 
   /** 다음 온램프 회차(시작일·종료일·라벨·목표·제목). */

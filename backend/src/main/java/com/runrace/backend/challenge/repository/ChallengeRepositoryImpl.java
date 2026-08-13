@@ -79,7 +79,7 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
             notSoloEnded(now),
             // 크루 내부 레이스는 공개 목록에서 제외(크루 홈에서만 노출)
             challenge.crewId.isNull())
-        .orderBy(orderBy(phase, now))
+        .orderBy(orderBy(phase, now, false))
         .offset(pageable.getOffset())
         .limit(pageable.getPageSize() + 1L)
         .fetch();
@@ -97,7 +97,7 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
                 .where(member.challenge.eq(challenge), member.user.id.eq(userId))
                 .exists(),
             phaseFilter(phase, now))
-        .orderBy(orderBy(phase, now))
+        .orderBy(orderBy(phase, now, false))
         .offset(pageable.getOffset())
         .limit(pageable.getPageSize() + 1L)
         .fetch();
@@ -110,7 +110,7 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
     List<Challenge> rows = query.selectFrom(challenge)
         .join(challenge.creator).fetchJoin()
         .where(challenge.crewId.eq(crewId), phaseFilter(phase, now))
-        .orderBy(crewOrderBy(phase, now))
+        .orderBy(orderBy(phase, now, true))
         .offset(pageable.getOffset())
         .limit(pageable.getPageSize() + 1L)
         .fetch();
@@ -155,9 +155,13 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
     return endedCond(now).and(memberCount.loe(1L)).not();
   }
 
-  /** 탭별 정렬: 종료탭은 종료일 내림차순, active탭은 예정(0)→진행중(1) 후 시작일 오름차순. */
+  /**
+   * 탭별 정렬의 단일 출처. 종료탭은 종료일 내림차순(공통).
+   * active탭은 예정(0)→진행중(1) 버킷 후 — 공개·내 레이스는 시작일 오름차순
+   * ({@code recentFirst=false}), 크루 홈/전체보기는 최근 시작 순({@code recentFirst=true}).
+   */
   private static com.querydsl.core.types.OrderSpecifier<?>[] orderBy(
-      String phase, OffsetDateTime now) {
+      String phase, OffsetDateTime now, boolean recentFirst) {
     if ("ended".equals(phase)) {
       return new com.querydsl.core.types.OrderSpecifier<?>[] {
           challenge.endAt.desc().nullsLast(),
@@ -169,27 +173,8 @@ public class ChallengeRepositoryImpl implements ChallengeRepositoryCustom {
         .otherwise(1);
     return new com.querydsl.core.types.OrderSpecifier<?>[] {
         bucket.asc(),
-        challenge.startAt.asc(),
-        challenge.id.asc()
-    };
-  }
-
-  /** 크루 홈/전체보기: 예정 → 진행중 순, 각 상태 안에서는 최근 시작 순. */
-  private static com.querydsl.core.types.OrderSpecifier<?>[] crewOrderBy(
-      String phase, OffsetDateTime now) {
-    if ("ended".equals(phase)) {
-      return new com.querydsl.core.types.OrderSpecifier<?>[] {
-          challenge.endAt.desc().nullsLast(),
-          challenge.id.desc()
-      };
-    }
-    var bucket = new CaseBuilder()
-        .when(challenge.startAt.gt(now)).then(0)
-        .otherwise(1);
-    return new com.querydsl.core.types.OrderSpecifier<?>[] {
-        bucket.asc(),
-        challenge.startAt.desc(),
-        challenge.id.desc()
+        recentFirst ? challenge.startAt.desc() : challenge.startAt.asc(),
+        recentFirst ? challenge.id.desc() : challenge.id.asc()
     };
   }
 }

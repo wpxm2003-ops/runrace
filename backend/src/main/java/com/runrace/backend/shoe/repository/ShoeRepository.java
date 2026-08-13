@@ -1,5 +1,6 @@
 package com.runrace.backend.shoe.repository;
 
+import com.runrace.backend.common.ApiException;
 import com.runrace.backend.shoe.domain.Shoe;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,12 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
 
   /** 소유자 확인을 겸한 단건 조회. */
   Optional<Shoe> findByIdAndUser_Id(Long id, UUID userId);
+
+  /** {@link #findByIdAndUser_Id} + 없으면 404 — AppUserRepository.getRequired 관용구를 따른다. */
+  default Shoe getRequiredForUser(Long id, UUID userId) {
+    return findByIdAndUser_Id(id, userId)
+        .orElseThrow(() -> ApiException.notFound("shoe_not_found"));
+  }
 
   /** 현재 활성 신발(있으면). */
   Optional<Shoe> findByUser_IdAndActiveTrue(UUID userId);

@@ -143,8 +143,7 @@ public class IndoorApprovalService {
 
     // 종료된 레이스의 순위·경품 결과는 불변이다. 마지막 승인이 늦게 도착한 실내런은
     // REJECTED 상태로 닫아 대기 목록에서 제거하되, 거리와 승인 알림은 반영하지 않는다.
-    Challenge challenge = challengeRepository.findByIdForUpdate(challengeId)
-        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    Challenge challenge = challengeRepository.getRequiredForUpdate(challengeId);
     if (ChallengeService.isEnded(challenge, now)) {
       cw.reject();
       challengeWorkoutRepository.save(cw);
@@ -219,7 +218,7 @@ public class IndoorApprovalService {
   public List<RejectedApprovalResponse> getRejectedApprovals(Long challengeId, UUID viewerUserId) {
     requireMember(challengeId, viewerUserId);
     List<ChallengeWorkout> rejected = challengeWorkoutRepository
-        .findAllByChallengeIdAndApprovalStatusOrderByStartedDesc(challengeId, ApprovalStatus.REJECTED);
+        .findAllByChallengeIdAndApprovalStatus(challengeId, ApprovalStatus.REJECTED);
 
     Map<Long, List<IndoorRunApproval>> votesByWorkout = votesByChallengeWorkout(rejected);
 

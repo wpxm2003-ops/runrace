@@ -11,7 +11,6 @@ import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.time.OffsetDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,7 +38,7 @@ public class RivalService {
       return List.of();
     }
     List<UUID> rivalIds = rivals.stream().map(r -> r.getRivalUser().getId()).toList();
-    Map<UUID, int[]> record = headToHeadRecord(meId, rivalIds);
+    Map<UUID, int[]> record = challengeMemberRepository.headToHeadRecord(meId, rivalIds);
     return rivals.stream()
         .map(r -> {
           AppUser ru = r.getRivalUser();
@@ -83,17 +82,4 @@ public class RivalService {
     }
   }
 
-  /** meId 기준 상대별 [승, 패] 집계. */
-  private Map<UUID, int[]> headToHeadRecord(UUID meId, List<UUID> opponentIds) {
-    Map<UUID, int[]> agg = new HashMap<>();
-    for (var pair : challengeMemberRepository.findHeadToHeadPairs(meId, opponentIds)) {
-      int[] wl = agg.computeIfAbsent(pair.opponentId(), k -> new int[2]);
-      if (pair.myRank() < pair.opRank()) {
-        wl[0]++;
-      } else if (pair.myRank() > pair.opRank()) {
-        wl[1]++;
-      }
-    }
-    return agg;
-  }
 }

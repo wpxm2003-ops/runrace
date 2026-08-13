@@ -2,6 +2,7 @@ package com.runrace.backend.workout.service;
 
 import com.runrace.backend.common.KstTime;
 import com.runrace.backend.observability.service.ErrorLogService;
+import com.runrace.backend.observability.service.SchedulerGuard;
 import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.push.service.PushService;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -141,13 +142,7 @@ public class ReengagementScheduler {
 
   /** 한 사용자 발송 실패가 배치 전체를 중단시키지 않도록 격리한다. */
   private void forEachSafely(UUID userId, Runnable send) {
-    try {
-      send.run();
-    } catch (Exception e) {
-      log.warn("재참여 푸시 실패 (userId={}) — 건너뜀", userId, e);
-      errorLogService.recordServiceError(
-          "reengage", e.getClass().getSimpleName(), e.getMessage(),
-          ErrorLogService.stackTraceOf(e), "userId=" + userId);
-    }
+    SchedulerGuard.runIsolated(log, errorLogService, "reengage",
+        "재참여 푸시 실패 (userId=" + userId + ")", "userId=" + userId, send);
   }
 }

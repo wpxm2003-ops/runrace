@@ -28,15 +28,11 @@ public class ChallengeNotifications {
   /** 풀별 변형 개수(messages*.properties의 challenge.milestone50.0~9 등과 일치). */
   private static final int VARIANTS = 10;
 
-  private static String challengeLink(Long challengeId) {
-    return challengeId == null ? null : "/challenges/" + challengeId;
-  }
-
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onMilestoneReached(MilestoneReachedEvent event) {
     // 변형은 이벤트당 한 번만 골라(=모두 같은 문구) 각 수신자의 언어로 렌더링한다.
     String bodyKey = NotificationVariants.randomKey("challenge.milestone50.", VARIANTS);
-    String link = challengeLink(event.challengeId());
+    String link = NotificationLinks.challengeLink(event.challengeId());
     event.otherMemberIds().forEach(userId ->
         pushService.sendLocalized(
             userId, "challenge.milestone.title", bodyKey, event.achieverNickname(), link));
@@ -49,14 +45,14 @@ public class ChallengeNotifications {
         "challenge.ended_no_member.title",
         "challenge.ended_no_member.body",
         null,
-        challengeLink(event.challengeId()));
+        NotificationLinks.challengeLink(event.challengeId()));
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onChallengeEnded(ChallengeEndedEvent event) {
     String bodyKey =
         event.winnerNickname() != null ? "challenge.ended.body" : "challenge.ended.body_no_winner";
-    String link = challengeLink(event.challengeId());
+    String link = NotificationLinks.challengeLink(event.challengeId());
     event.memberIds().forEach(userId ->
         pushService.sendLocalized(
             userId, "challenge.ended.title", bodyKey, event.winnerNickname(), link));
@@ -71,7 +67,7 @@ public class ChallengeNotifications {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onRankOvertake(RankOvertakeEvent event) {
     String bodyKey = NotificationVariants.randomKey("challenge.overtake.", VARIANTS);
-    String link = challengeLink(event.challengeId());
+    String link = NotificationLinks.challengeLink(event.challengeId());
     event.overtakenUserIds().forEach(userId ->
         pushService.sendLocalized(
             userId, "challenge.overtake.title", bodyKey, event.overtakerNickname(), link));

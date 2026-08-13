@@ -2,6 +2,7 @@ package com.runrace.backend.challenge.repository;
 
 import com.runrace.backend.challenge.domain.ChallengeMember;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,6 +44,23 @@ public interface ChallengeMemberRepositoryCustom {
 
   /** 한 레이스에서 나와 상대의 확정 순위 한 쌍. */
   record HeadToHeadPair(UUID opponentId, int myRank, int opRank) {}
+
+  /**
+   * meId 기준 상대별 [승, 패] 집계 — 동순위는 무승부로 미집계.
+   * {@link #findHeadToHeadPairs} 소비 규칙의 단일 출처(레이스 전적·라이벌 전적 공용).
+   */
+  default Map<UUID, int[]> headToHeadRecord(UUID meId, List<UUID> opponentIds) {
+    Map<UUID, int[]> agg = new HashMap<>();
+    for (HeadToHeadPair pair : findHeadToHeadPairs(meId, opponentIds)) {
+      int[] wl = agg.computeIfAbsent(pair.opponentId(), k -> new int[2]);
+      if (pair.myRank() < pair.opRank()) {
+        wl[0]++;
+      } else if (pair.myRank() > pair.opRank()) {
+        wl[1]++;
+      }
+    }
+    return agg;
+  }
 
   record SharedRaceParticipant(UUID userId, Long challengeId) {}
 }

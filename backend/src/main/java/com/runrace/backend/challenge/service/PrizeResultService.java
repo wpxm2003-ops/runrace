@@ -27,8 +27,7 @@ public class PrizeResultService {
 
   @Transactional
   public PrizeResultResponse getMyResult(UUID userId, Long challengeId) {
-    Challenge challenge = challengeRepository.findByIdForUpdate(challengeId)
-        .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    Challenge challenge = challengeRepository.getRequiredForUpdate(challengeId);
     ChallengeMember member = memberRepository.findByChallengeIdAndUserId(challengeId, userId)
         .orElseThrow(() -> ApiException.forbidden("not_a_member"));
 

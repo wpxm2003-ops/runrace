@@ -84,7 +84,7 @@ class WorkoutServiceDeleteTest {
   void 개인기록을_세운_운동은_그_기록을_먼저_지우고_삭제한다() {
     WorkoutSession session = WorkoutSession.builder().id(42L).user(user).pathJson("[]").build();
     PersonalBest pb = PersonalBest.of(userId, "5k", 300, 5_000, 42L);
-    when(workoutRepository.findByIdAndUserId(42L, userId)).thenReturn(Optional.of(session));
+    when(workoutRepository.getRequiredForUser(42L, userId)).thenReturn(session);
     when(personalBestRepository.findAllByWorkoutId(42L)).thenReturn(List.of(pb));
 
     service.deleteForUser(principal, 42L);
@@ -103,7 +103,7 @@ class WorkoutServiceDeleteTest {
   @Test
   void 개인기록이_없으면_빈_목록으로_호출하고_정상_삭제한다() {
     WorkoutSession session = WorkoutSession.builder().id(43L).user(user).pathJson("[]").build();
-    when(workoutRepository.findByIdAndUserId(43L, userId)).thenReturn(Optional.of(session));
+    when(workoutRepository.getRequiredForUser(43L, userId)).thenReturn(session);
     when(personalBestRepository.findAllByWorkoutId(43L)).thenReturn(List.of());
 
     service.deleteForUser(principal, 43L);

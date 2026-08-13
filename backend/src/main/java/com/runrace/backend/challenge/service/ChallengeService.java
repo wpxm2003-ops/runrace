@@ -214,8 +214,7 @@ public class ChallengeService {
       String stake) {
     // 잠근 채로 읽는다 — 잠그지 않으면 정원 축소 검증과 저장 사이에 동시 참가가 끼어들어
     // "정원 < 실제 인원" 모순 상태가 될 수 있다(joinRoom과 같은 이유의 TOCTOU).
-    Challenge challenge =
-        challengeRepository.findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    Challenge challenge = challengeRepository.getRequiredForUpdate(id);
     ensureOwner(principal, challenge);
     ensureNotStarted(challenge);
     validateRoomInput(title, goalKm, maxMembers, startAt, endAt);
@@ -257,8 +256,7 @@ public class ChallengeService {
   public void joinRoom(AuthPrincipal principal, Long id) {
     // 잠근 채로 읽는다 — 잠그지 않으면 정원 마지막 한 자리를 여러 요청이 동시에 보고
     // 전부 통과해 정원이 초과된다(인원수 확인~저장 사이 경합).
-    Challenge challenge =
-        challengeRepository.findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    Challenge challenge = challengeRepository.getRequiredForUpdate(id);
     ensureNotStarted(challenge);
     if (isEnded(challenge, OffsetDateTime.now())) {
       throw ApiException.conflict("ended");
@@ -290,8 +288,7 @@ public class ChallengeService {
 
   @Transactional
   public void leaveRoom(AuthPrincipal principal, Long id) {
-    Challenge challenge =
-        challengeRepository.findById(id).orElseThrow(() -> ApiException.notFound("challenge_not_found"));
+    Challenge challenge = challengeRepository.getRequired(id);
     ensureNotStarted(challenge);
     if (isEnded(challenge, OffsetDateTime.now())) {
       throw ApiException.conflict("ended");
@@ -438,15 +435,7 @@ public class ChallengeService {
     if (rivalParticipants.isEmpty()) {
       return List.of();
     }
-    Map<UUID, int[]> agg = new HashMap<>();
-    for (var pair : challengeMemberRepository.findHeadToHeadPairs(meId, rivalParticipants)) {
-      int[] wl = agg.computeIfAbsent(pair.opponentId(), k -> new int[2]);
-      if (pair.myRank() < pair.opRank()) {
-        wl[0]++;
-      } else if (pair.myRank() > pair.opRank()) {
-        wl[1]++;
-      }
-    }
+    Map<UUID, int[]> agg = challengeMemberRepository.headToHeadRecord(meId, rivalParticipants);
     return rivalParticipants.stream()
         .map(uid -> {
           int[] wl = agg.getOrDefault(uid, new int[] {0, 0});
@@ -526,7 +515,8 @@ public class ChallengeService {
   }
 
   private static final int TITLE_MAX_BYTES = 50;
-  private static final int MAX_MEMBERS_LIMIT = 50;
+  /** 방 정원 상한 — 온램프 자동 생성(ChallengeScheduler)도 이 값을 참조한다. */
+  static final int MAX_MEMBERS_LIMIT = 50;
   private void validateRoomInput(
       String title,
       BigDecimal goalKm,

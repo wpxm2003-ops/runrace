@@ -1,5 +1,6 @@
 package com.runrace.backend.workout.repository;
 
+import com.runrace.backend.common.ApiException;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
 import java.time.LocalDate;
@@ -36,6 +37,12 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
     String getMemo();
   }
   Optional<WorkoutSession> findByIdAndUserId(Long id, UUID userId);
+
+  /** {@link #findByIdAndUserId} + 없으면 404 — AppUserRepository.getRequired 관용구를 따른다. */
+  default WorkoutSession getRequiredForUser(Long id, UUID userId) {
+    return findByIdAndUserId(id, userId)
+        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
+  }
 
   Optional<WorkoutSession> findByUserIdAndClientWorkoutId(UUID userId, UUID clientWorkoutId);
 

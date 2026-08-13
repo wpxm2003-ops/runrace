@@ -32,7 +32,7 @@ public class WorkoutNotifications {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onIndoorRunPendingApproval(WorkoutEvents.IndoorRunPendingApprovalEvent event) {
     String name = event.submitterNickname() != null ? event.submitterNickname() : "";
-    String link = "/challenges/" + event.challengeId();
+    String link = NotificationLinks.challengeLink(event.challengeId());
     for (java.util.UUID voterId : event.voterUserIds()) {
       pushService.sendLocalized(
           voterId, "workout.approval_request.title", "workout.approval_request.body", name, link);
@@ -70,7 +70,8 @@ public class WorkoutNotifications {
           ? "race.workout.last"
           : "race.workout.body";
       pushService.sendLocalized(entry.getKey(), "race.workout.title", bodyKey,
-          event.nickname(), distanceKm, "/challenges/" + entry.getValue(), RACE_WORKOUT_PUSH_TYPE);
+          event.nickname(), distanceKm,
+          NotificationLinks.challengeLink(entry.getValue()), RACE_WORKOUT_PUSH_TYPE);
     }
 
     if (toNotify.isEmpty()) return;

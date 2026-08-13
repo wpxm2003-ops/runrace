@@ -2,6 +2,7 @@ package com.runrace.backend.crew.service;
 
 import com.runrace.backend.crew.repository.CrewMatchRepository;
 import com.runrace.backend.observability.service.ErrorLogService;
+import com.runrace.backend.observability.service.SchedulerGuard;
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -36,14 +37,9 @@ public class CrewMatchScheduler {
     OffsetDateTime now = OffsetDateTime.now();
     // 매치별 독립 트랜잭션 — 한 건이 실패해도 나머지는 정상 처리되도록 격리한다.
     for (Long matchId : crewMatchRepository.findAcceptedNotEndedIds(now)) {
-      try {
-        crewMatchService.finalizeIfTimeEnded(matchId, now);
-      } catch (Exception e) {
-        log.warn("크루 대항전 종료 확정 실패 (matchId={}) — 건너뜀", matchId, e);
-        errorLogService.recordServiceError(
-            "scheduler", e.getClass().getSimpleName(), e.getMessage(),
-            ErrorLogService.stackTraceOf(e), "crewMatchId=" + matchId);
-      }
+      SchedulerGuard.runIsolated(log, errorLogService, "scheduler",
+          "크루 대항전 종료 확정 실패 (matchId=" + matchId + ")", "crewMatchId=" + matchId,
+          () -> crewMatchService.finalizeIfTimeEnded(matchId, now));
     }
   }
 }
