@@ -1,10 +1,11 @@
-# 리팩토링 현황 기록 (2026-08-12, 4차 갱신)
+# 리팩토링 현황 기록 (2026-08-13, 5차 갱신)
 
 > 목적: 다음 리팩토링 때 처음부터 재점검하는 수고를 덜기 위한 스냅샷.
 > 이 문서의 "하지 않은 것 + 이유"가 핵심 — 겉보기에 중복 같지만 실제로는 다른 것들을 다시 조사하지 말 것.
 > 1차 커밋 범위: `63cf0c2..7fb82b3`(19커밋). 2차(다음 후보 소화) 커밋 범위: `7c04fdc..2127724`(15커밋).
 > 3차 조사 범위: `2127724..f87c08d`(74커밋/218파일/+10528줄) — 2차 이후 신규 코드 전체.
 > 4차 조사 범위: `f87c08d..HEAD`(66커밋/206파일/+7154줄) — 고도 기능 제거·패턴 A·글로벌 대응 이후. §9 참조.
+> 5차 조사 범위: 코드베이스 **전체 재스캔**(증분 아님) — 6렌즈 병렬(UI/lib/백엔드/죽은코드/계약정합/구조·테스트). §10 참조.
 > 전 커밋이 게이트(tsc `--noEmit` / eslint / next build / vitest / mvnw test) 통과.
 
 ## 1. 완료된 것 — 신설 공용 모듈 (1차, 2026-07-22 오전)
@@ -159,8 +160,8 @@ lib에 시간 포맷터가 **둘이고 1시간 미만에서 출력이 다르다*
 
 ## 8. 검증 게이트
 
-- 프론트: `npx tsc --noEmit` + `npx eslint` + `npm run build` + `npm run test`(vitest 123)
-- 백엔드: `./mvnw.cmd -q -o test`
+- 프론트: `npx tsc --noEmit` + `npx eslint` + `npm run build` + `npm run test`(vitest 267, 23파일 — 테스트는 `frontend/tests/lib/`에 모듈 1:1 배치, 5차에서 정돈)
+- 백엔드: `./mvnw.cmd -q -o test` (447)
 - 리팩토링 원칙: 한 커밋=한 추출, 추출은 이동이지 개선이 아님(다듬고 싶으면 별도 커밋), 동작 변경은 커밋 메시지에 ⚠️ 명시.
 
 
@@ -196,3 +197,104 @@ lib에 시간 포맷터가 **둘이고 1시간 미만에서 출력이 다르다*
 - **`PATCH /api/workouts/{id}/shoe`에 UI가 없다.** 프론트 래퍼(`updateWorkoutShoe`)를 이번에 제거했는데
   애초에 호출부가 없었다. 신발 귀속은 저장 시 서버가 자동으로 하고(`attributeActiveShoe`), 수동 변경
   수단은 백엔드에만 있다.
+
+
+## 10. 5차 (2026-08-13) — 전체 재스캔
+
+1~4차가 증분 범위였던 것과 달리 코드베이스 전체를 다시 스캔했다(6렌즈 병렬: 프론트 UI / 프론트 lib / 백엔드 /
+죽은 코드 / 프론트↔백 계약 정합 / 구조·테스트 공백). §3 재조사 금지 목록을 먼저 적용했고,
+아래 "검토 후 기각"에 5차의 기각 사유를 추가했다. 전체 diff 순감 ~120줄(프론트) + 백엔드 중복 22곳 흡수.
+
+### 처리한 것 — 백엔드
+
+| 작업 | 내용 |
+|---|---|
+| 리포지토리 `getRequired` 관용구 확산 | AppUserRepository 선례(default 메서드로 404 변환 흡수)를 Challenge(`getRequired`/`getRequiredForUpdate`)·Crew·Shoe·WorkoutSession(`getRequiredForUser`) 리포지토리로 확장. `findBy...().orElseThrow(notFound)` 복붙 19곳 제거, 테스트 스텁 ~51곳도 관용구로 갱신 |
+| `ChallengeWorkoutRepository` 중복 메서드 제거 | `findAllByChallengeIdAndApprovalStatusOrderByStartedDesc`와 `...ApprovalStatus`가 구현까지 동일했음 — 짧은 이름만 남기고 정렬 계약은 javadoc으로 명시 |
+| `CrewMatchService.sumByCrew` | 도전자/상대 합산 루프 4벌(buildRosterBoard·crewSums·finalizeEnded·toSummary)을 단일 출처로 통합. 승패 판정과 화면 합계가 어긋날 수 없게 됨. toSummary는 관점 뒤집기 2줄(같은 파일 detectAndNotifyOvertake 선례) |
+| `ChallengeController.toListPage` | 목록 3엔드포인트(공개/mine/크루)의 "clamp→배치조회 3종→DTO 매핑" 10줄 조립 중복을 통합. memberIds 도출만 람다로 주입 |
+| `SchedulerGuard.runIsolated` | 스케줄러 건별 격리 try/catch+errorLog 4벌(Challenge×2·CrewMatch·Reengagement) 통합. 로그 출력은 바이트 보존, ReengagementScheduler.forEachSafely는 위임으로 축소 |
+| `NotificationLinks` | `challengeLink`(private였음)·`matchLink`를 패키지 공용으로 승격 — WorkoutNotifications의 `"/challenges/" + id` 리터럴 2곳이 이탈해 있었음 |
+| `ChallengeMemberRepositoryCustom.headToHeadRecord` | 승패 집계 루프(동순위=무집계)가 ChallengeService·RivalService에 byte-identical 2벌 → 리포지토리 default 메서드로 |
+| `ChallengeService.MAX_MEMBERS_LIMIT` 공유 | ChallengeScheduler의 `OPEN_RACE_MAX_MEMBERS = 50` 복사본이 주석으로만 커플링을 선언 — package-private으로 열어 참조로 교체(어긋나면 온램프 자동 보충이 매일 400으로 실패하는 구조였음) |
+| `ChallengeRepositoryImpl.orderBy` 병합 | `orderBy`/`crewOrderBy`가 ended 분기 완전 동일 + 정렬 방향만 반대 → `recentFirst` 플래그 |
+| `AppUser.WITHDRAWN_NICKNAME` | "탈퇴한 러너" 리터럴 2곳(엔티티+projection 쿼리) 상수화 |
+| ⚠️ 크루 컨트롤러 `PathPatterns.ID` 제약 | Crew/CrewMatch 컨트롤러만 숫자 경로변수 정규식 누락(13곳) — 인증 필터·타 도메인 전부와 비대칭이었고, `/api/crews/abc` 같은 요청이 핸들러까지 와서 타입 변환 실패 500 + error_log 오염. 타 도메인과 동일하게 제약 추가(**비숫자 경로 500→404**) |
+| ⚠️ `ForbiddenTextChars` `\p{Cntrl}`→`\p{Cc}` | 프론트(`\p{Cc}`, C1 포함)와 백엔드(POSIX, ASCII 한정)가 어긋나 C1 제어문자(U+0080~9F)가 백엔드를 통과했음. 주석이 "양쪽 함께 수정" 계약을 명시한 지점의 순수 드리프트 — 백엔드를 맞추고(**검증 강화**) `ForbiddenTextCharsTest` 신설(공용 유틸 최초 테스트) |
+| `DELETE /api/workouts/{id}` `@Deprecated` | 프론트는 POST `/{id}/delete`만 사용(정적 export에서 DELETE 차단 우회). 구버전 잔존 가능성 때문에 유지하되 `/me/language` 선례대로 제거 조건 문서화 |
+| 죽은 코드 | `AppUser.isWithdrawn()`(호출 0 — 탈퇴 판정은 전부 리포지토리 파생쿼리), `WorkoutService`의 미사용 `ZoneId` import |
+
+### 처리한 것 — 프론트
+
+| 작업 | 내용 |
+|---|---|
+| 죽은 코드 삭제 | `crew/_components/StatTile.tsx`(고아 파일), `parseWorkoutId`·`parseNsmReportId`(각 `*FromPath`가 실사용), i18n `crew_goal_reached`+`ach_week_count`+`ach_first_run_of_week` ×5로케일(뒤 2개는 백엔드가 발행 않는 성과코드의 잔재 — 회귀 가드 테스트로 확인), `public/` create-next-app 기본 svg 5개 |
+| `useAppUrlOpen` 훅 | DeepLinkBootstrap ↔ KakaoOAuthBootstrap이 컴포넌트 통째 복제(runWhenNavReady는 바이트 동일)였음 — `runWhenNavReady`는 `nativeNav.ts`로, appUrlOpen 리스너+launch 1회 가드는 훅으로. 두 컴포넌트는 3줄로 축소 |
+| `lib/crewMatch.ts` | `daysLeft`·`matchSharePercent`(0/0→50 규칙 포함) 2벌 통합 |
+| `paceMath.ts` 추가분 | `pbFinishSec`(pbTimeSec/pbTotalSec 2벌), `avgPaceSecPerKm`(10m 게이트, workoutStats↔useWorkoutSession 2벌) |
+| `format.ts` 추가분 | `daysInMonth`(named 2벌+인라인 1), `ymd`(3벌), `deltaPercent`(5벌) |
+| `deepLink.ts` `buildAppIntentUrl` | Android intent:// 조립+패키지명 하드코딩 2벌 통합 (authLogin의 크롬 인텐트는 다른 계약이라 대상 아님) |
+| ⚠️ `formatRaceTime` 사본 제거 | NsmBlockReportContent의 로컬 사본(표시 전용)을 `formatHms`로 — **1시간 이상 재측정 기록 "225:00"→"3:45:00" 정상화**. training/page.tsx의 동일 본문 사본은 입력칸 왕복(parseTime `m:ss`) 전용이라 유지가 정답 — 대체 금지 주석 박음. 두 사본 모두 `Math.round(sec % 60)`이라 비정수 입력 시 `"4:60"` 함정이 있었음(현재 입력은 전부 정수라 잠복) |
+| ⚠️ `safeStorage.localText` | Safari 프라이빗 모드에서 `setItem` throw로 단위 변경(UnitContext)·언어 변경(LocaleContext)·온보딩 닫기(WelcomeOnboarding)가 죽는 경로 — 가드된 문자열 API 신설 후 3파일만 이관(예외 시 조용히 무시). 나머지 원시 storage 접근 ~10곳은 후보로 남김 |
+| `COLD_CONFIG` | hooks.ts의 `{...BASE_CONFIG, revalidateOnFocus:false}` 5벌 상수화. **부수 발견: BASE_CONFIG가 이미 revalidateOnFocus:false라 5곳 전부 no-op 오버라이드였음** — 값이 계약임을 주석으로 고정 |
+| `Card` p-4 + 로그인 카드 | Card padding 유니온이 p-5/p-6뿐이라 p-4가 필요한 14곳이 전부 로컬 div로 이탈해 있었음 — 토큰 추가 후 11곳+로그인/카카오 3곳 흡수(`<section>` 3곳·`<Link>` 1곳은 시맨틱 달라 제외) |
+| `ui/SheetHeader` | 바텀시트 헤더(제목+✕) 4벌 통합(PrizeEditorModal/ShoeFormSheet=bordered, RejectModal/CrewDetailContent=비bordered). SelectSheet는 SVG 글리프라 제외 |
+| `pageLoading()` | `<PageLayout title><LoadingCard/></PageLayout>` 인증 게이트 셸 12곳 통합(crewLoadState 선례의 일반 함수 스타일) |
+| `ShareIcon`+`ACTION_ICON_CLASS` | 챌린지/운동 상세 2파일에 바이트 동일 복붙 → 공용 파일 |
+| `useCollapsibleList` | 접기/펼치기 목록 상태 4벌(변수명 외 라인 동일) 통합 — 기각된 useAsyncAction("모양 제각각")과 달리 동작 차이 0 |
+| hooks.ts:106 주석 정정 | "isOwner 때문에 uid를 키에 포함" → 실근거는 isMember/showManage (isOwner는 프론트 미사용, 아래 계약 절 참조) |
+| 테스트 배치 정돈 | `tests/nsm.test.ts`→`tests/lib/`, 루트 `workoutTrack.test.ts` 6케이스는 lib 파일에 미포섭 확인 후 이동·병합(케이스 손실 0, 23파일/267개) |
+
+### 5차에서 검토 후 기각한 것 (재조사 금지 목록에 추가)
+
+| 항목 | 이유 |
+|---|---|
+| `isStoredUrl`+`invalid_image_url` 가드 3곳 통합 | 정규화 계약이 미묘하게 다름 — CrewService는 `trim()`+반환, WorkoutService.updateImage는 `strip()`+반환, validateIndoorInput은 무정규화 검사만. 통합하면 저장값이 바뀌는 곳이 생겨 순수 이동 아님 |
+| JSON 직렬화 실패 예외 두 갈래(IllegalStateException vs `ApiException.internal`) | 방향 결정이 필요한 설계 판단 — internal로 모으면 error_log에서 스택이 사라지고(recordApiError가 stack null), IllegalStateException으로 모으면 응답 코드가 internal_error로 뭉개짐. cause를 받는 오버로드 신설이 선행돼야 함 |
+| NudgeService 진입 가드·WorkoutService 멱등 판별 골격 복붙 | 각 2곳·10줄 미만, 추출 이득이 churn보다 작음 |
+| `ShoeService.requireText`/`FeedbackService.requiredText` → `requireCleanText` 채택 | blank→throw라 기존 기각 사유(blank→null)는 비적용이지만, 채택 시 금지문자 검사가 새로 추가돼 입력 거부 범위가 넓어짐 — 순수 이동 아님. 별개로 `ShoeService.optionalText`만 길이 초과를 조용히 절삭(나머지 5개 헬퍼는 전부 400) — 버그성 불일치로 후보에 기록 |
+| 업로드 엔드포인트 검증 비대칭(`/feedback-image`만 5MB+타입 검사) | 검증 확대는 동작 변경(기존 업로드 거부 가능) — 제품 판단. `file_empty` 3줄 통합만 순수지만 단독 가치 없음 |
+| InlineError(`text-xs text-red-600` 10곳) 컴포넌트화 | 여백 3종 + `text-red-500` 3곳이 섞여 있어 전면 통합은 시각 변화. 필요해지면 red-600 계열만 |
+| RejectModal ↔ ApplyModal `MessageInputSheet` 통합 | 2곳뿐 + label 유무·여백 차이. SheetHeader 추출로 이미 절반이 공용화됨 |
+| DatePickerSheet ↔ DateTimePickerSheet 드럼 시트 껍데기 통합 | 좌측 버튼 계약(지우기 vs 취소)·z-index가 달라 prop 설계 필요 — `daysInMonth`/`ymd` 공유로 실질 중복은 이미 제거 |
+| crew 로스터 선택 블록 2벌(challenge↔match) 통합 | challenge 쪽 `justify-between gap-3`이 시각적으로 무효라는 분석이 맞아도 마크업 구조 변경이라 순수 이동 아님 — 보류 |
+| `useUserResource` 훅(hooks.ts 내 uid 키 훅 12벌) | 가독성 트레이드오프 판단 필요(훅 시그니처가 간접화됨). COLD_CONFIG만 우선 적용 |
+| `flattenPages` 무한스크롤 소비측 헬퍼 | `hasNext`/`hasMore` 필드명 분열(백엔드 3 DTO)이 원인 — 백엔드 응답 통일이 선행돼야 깔끔, 프론트 어댑터만 만들면 어중간 |
+| DTO 8개 컨트롤러 중첩 → `dto/` 이동, `*Dto` 접미사 4개, `share/`·`upload/` 하위 패키지 | 파일 정리 수준(hooks.ts 도메인 분리 기각과 같은 잣대). `AdminDashboardController.MemberRow` ↔ `challenge/dto/MemberRow` 단순명 충돌만 주의 |
+| `pageStateStore.persistEnabled` = `nativeNav.isNativeApp` 2벌 | 순환 import 때문에 leaf 모듈 신설 필요 — 2줄 함수에 과한 구조 |
+| `@capacitor/ios` 의존성 제거 | iOS 로드맵 의존 — 사용자 결정 |
+| 테스트만 쓰는 export 4개(kmFromInput·pathDistanceMeters·thresholdFromRace·isChallengeListCacheKey) 제거 | 순수 유틸 회귀 테스트 가치로 유지 |
+| `WorkoutComparisonItem`이 `repository/` 패키지에 있는 것 | QueryDSL 프로젝션을 리포지토리 곁에 두는 선택으로 볼 수 있고 유일 사례 — 이동 실익 낮음 |
+
+### 계약 정합 스캔 발견 — 제품 판단 대기 (리팩토링 아님)
+
+- **실내런 저장 응답의 성과(achievements)가 프론트에서 통째로 버려진다.** 백엔드는 실내런에도
+  `AchievementService.evaluate`를 의도적으로 호출해 응답에 실어 보내는데(`WorkoutController` 주석 참조),
+  프론트 `createIndoorRun` 반환 타입이 `CreatedId`라 파싱조차 안 되고 축하 화면(`WorkoutCelebration`)도
+  GPS 경로에만 있다. 첫 러닝(🎉)·누적 마일스톤을 실내런으로 넘기면 무음 — GPS와 경험이 갈린다.
+  고치려면 UI 작업(실내런 완료 화면에 축하 노출)이라 리팩토링 범위 밖.
+- **레이스 축 에러코드 매핑 공백.** `room_full`·`already_member`·`already_started`·`ended`·
+  `owner_cannot_leave`·투표 계열(`already_voted` 등)이 매핑 없이 `ApiError: API 409: {"error":...}` raw
+  문자열로 노출된다(동시성으로 실제 도달 가능). 크루 축은 같은 계열을 6개씩 매핑해 둔 것과 대비.
+- **탈퇴 닉네임 null 계약 분열.** 레이스 축 3곳은 서버가 "탈퇴한 러너"(한국어 하드코딩)를 굽고,
+  크루 축 3곳은 null을 보내 프론트 `t.no_name`(5로케일)이 처리한다. 비한국어 사용자에게 한국어가
+  노출되는 쪽이 문제 — null 통일(프론트 i18n 위임)을 권장하나 응답 변경이라 제품 판단.
+- **미사용 응답 필드**(프론트 grep 0): `isOwner`·`creatorUserId`·`canDecline`(canAccept과 동일식)·
+  `latestBlockRetestId`(프론트가 재유도)·`remainingKm`·`achievedAt`·`applicantUserId`·`startSource*`·
+  `appliedDistanceM`(현재 항상 distanceM과 동일)·`PathPointDto.ele`(프론트가 안 보내 dormant).
+  4차의 WorkoutDetail.shoeId 잣대(응답 문서 역할로 유지)를 적용하되, **`CrewDetailResponse.myApplicationStatus`만은
+  상세 조회마다 추가 쿼리를 낭비**(프론트는 별도 API로 재계산) — 제거 권장, 응답 계약 변경이라 보류.
+- **fitness 모듈 전체가 도달 불가.** 컨트롤러는 의도적 404(치팅 차단, 재개 조건 javadoc 완비)지만
+  `FitnessService`(90줄)·`UpsertDailyDistanceResponse`는 주입처 0. 재개 시 어차피 재작업이 명시돼 있어
+  삭제해도 무방하나 3차 결산 삭제처럼 사용자 결정 사안. `DailyDistanceRepository`는 탈퇴 정리가 쓰므로 유지 필수.
+- **백엔드 테스트 공백(가치순)**: `FirebaseAuthFilter`(248줄/분기24 — 무테스트 최대), `PrizeResultService`
+  (경품 당첨 판정), `ApiExceptionHandler`, `common/` 순수 유틸(`RaceRules`·`TextValidation`·`PageParams` —
+  5차에서 `ForbiddenTextChars`만 채움), 알림 리스너 5/6. 프론트는 `errorMap.ts`(fallback 지연평가 계약)·
+  `challengePhase.ts`만 공백. KakaoAuthService 보류 유지(§3).
+- **로그인 팝업 판정 불일치**: `login/page.tsx`는 정규식으로 `closed`도 차단 취급, `authLogin.isPopupBlockedError`는
+  `popup-closed-by-user`를 명시적으로 제외 — 정반대 판정. 의도 확인 필요.
+- **시크릿·스크립트 위생**(배포는 사용자 직접 관리 영역이라 보고만): `application-local.yml`에 실 AWS 키·JWT
+  시크릿·카카오 키 평문(.gitignore로 미추적임은 확인), `infra/ec2-ensure-firebase-init.sh`는 참조 0 고아 +
+  Firebase 설정 하드코딩 폴백, `scripts/deploy*.mjs`에 PEM 절대경로·EC2 IP 하드코딩, README가
+  `frontend:deploy`/`backend:deploy` 스크립트(로컬 테스트 게이트 내장)를 언급하지 않아 문서 경로가 자동화보다 약함,
+  `scripts/generate_playstore_mockups.py`는 입력 폴더가 사라진 재현 불가 스크립트(삭제 후보).
