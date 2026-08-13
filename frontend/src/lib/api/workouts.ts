@@ -2,7 +2,6 @@ import type { User } from "firebase/auth";
 import { apiFetch, publicFetch, uploadMultipart } from "./client";
 import type {
   CreateWorkoutResponse,
-  CreatedId,
   IndoorRunCreateBody,
   PersonalBestRow,
   WorkoutComparison,
@@ -41,9 +40,9 @@ export function deleteWorkout(id: number, user: User) {
   return apiFetch<void>(`/api/workouts/${id}/delete`, { method: "POST", user });
 }
 
-/** 실내러닝 등록. */
+/** 실내러닝 등록. GPS와 마찬가지로 성과를 함께 돌려준다(PB는 GPS 전용이라 항상 null). */
 export function createIndoorRun(body: IndoorRunCreateBody, user: User) {
-  return apiFetch<CreatedId>("/api/workouts/indoor", { method: "POST", user, body });
+  return apiFetch<CreateWorkoutResponse>("/api/workouts/indoor", { method: "POST", user, body });
 }
 
 /** 실내러닝 승인/거부 투표. */

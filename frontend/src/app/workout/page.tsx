@@ -26,6 +26,8 @@ import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
 import { computeBestSegments } from "@/lib/workoutTrack";
 import type { Achievement, PersonalBest } from "@/lib/api/types";
+import { achievementViews } from "@/lib/achievements";
+import { celebrationTone } from "@/lib/celebration";
 import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
 import { RunLockOverlay } from "@/app/workout/_components/RunLockOverlay";
 import { GhostPicker, type GhostSelection } from "@/app/workout/_components/GhostPicker";
@@ -39,7 +41,7 @@ import {
   type GhostRaceResult,
 } from "@/lib/ghostRace";
 import { useWakeLock } from "@/lib/useWakeLock";
-import { isIosWeb } from "@/lib/nativeNav";
+import { isIosWeb, nativeNavigate } from "@/lib/nativeNav";
 import {
   savePendingWorkoutSave,
   loadPendingWorkoutSave,
@@ -59,7 +61,6 @@ const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"),
 
 type CelebrationState = {
   recordId: number;
-  snapshot: WorkoutFinishSnapshot;
   personalBest: PersonalBest | null;
   achievements: Achievement[];
   ghostResult: GhostRaceResult | null;
@@ -280,15 +281,27 @@ export default function WorkoutPage() {
         setPendingSave((prev) => (prev && prev.snapshot === snapshot ? null : prev));
         clearPendingWorkoutSaveIfMatches(snapshot.clientWorkoutId);
         if (currentUserUidRef.current === ownerUid) {
-          setCelebration({
-            recordId: res.id,
-            snapshot,
-            personalBest: res.personalBest ?? null,
-            achievements: res.achievements ?? [],
+          const personalBest = res.personalBest ?? null;
+          const achievements = res.achievements ?? [];
+          // 보여줄 카드가 없으면 모달을 건너뛰고 바로 상세로 — 안 그러면 종료된 운동 화면에 갇힌다.
+          const { show } = celebrationTone({
+            achievementCount: achievementViews(achievements, t, unit).length,
+            personalBest,
             ghostResult,
             ghostLabel,
-            showNsmCta,
           });
+          if (show) {
+            setCelebration({
+              recordId: res.id,
+              personalBest,
+              achievements,
+              ghostResult,
+              ghostLabel,
+              showNsmCta,
+            });
+          } else {
+            nativeNavigate(`/workouts/${res.id}`);
+          }
         }
       } catch {
         // 2차 방어: 친절 안내 + 스냅샷 보관(데이터 보존) → 재시도 버튼 노출
@@ -308,7 +321,7 @@ export default function WorkoutPage() {
         setSaving(false);
       }
     },
-    [user, t.workout_save_failed],
+    [user, t, unit],
   );
 
   const handleStop = useCallback(async () => {
@@ -405,15 +418,11 @@ export default function WorkoutPage() {
       {celebration ? (
         <WorkoutCelebration
           recordId={celebration.recordId}
-          durationSec={celebration.snapshot.durationSec}
-          distanceM={celebration.snapshot.distanceM}
           personalBest={celebration.personalBest}
           achievements={celebration.achievements}
           ghostResult={celebration.ghostResult}
           ghostLabel={celebration.ghostLabel}
           showNsmCta={celebration.showNsmCta}
-          saving={saving}
-          onConfirm={() => {}}
         />
       ) : null}
 

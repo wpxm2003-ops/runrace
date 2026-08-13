@@ -16,6 +16,10 @@ import { useUnit } from "@/lib/UnitContext";
 import { metersFromInput } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { createClientWorkoutId } from "@/lib/workoutRequestId";
+import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration";
+import { achievementViews } from "@/lib/achievements";
+import { celebrationTone } from "@/lib/celebration";
+import type { Achievement } from "@/lib/api/types";
 
 type FieldErrors = {
   distance?: string;
@@ -44,6 +48,7 @@ export default function IndoorRunPage() {
   const [seconds, setSeconds] = useState("");
   const [imageState, setImageState] = useState<ImageFieldState>({ file: null, takenAt: null, preparing: false });
   const [submitting, setSubmitting] = useState(false);
+  const [celebration, setCelebration] = useState<{ recordId: number; achievements: Achievement[] } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const pendingSubmissionRef = useRef<PendingIndoorSubmission | null>(null);
@@ -134,6 +139,19 @@ export default function IndoorRunPage() {
         distance_bucket: distanceBucket(distanceKm),
         type: "indoor",
       });
+      // GPS와 같은 규칙: 보여줄 성과가 있으면 축하 모달, 없으면 바로 상세로.
+      // (PB·고스트는 GPS 전용이라 실내런의 카드는 성과뿐이다.)
+      const achievements = res.achievements ?? [];
+      const { show } = celebrationTone({
+        achievementCount: achievementViews(achievements, t, unit).length,
+        personalBest: null,
+        ghostResult: null,
+        ghostLabel: null,
+      });
+      if (show) {
+        setCelebration({ recordId: res.id, achievements });
+        return; // 모달이 확인·자동 이동을 맡는다. submitting은 true로 둬 재제출을 막는다.
+      }
       nativeNavigate(`/workouts/${res.id}`);
     } catch (e) {
       // 2차 방어: 업로드 용량 초과는 전용 안내, 그 외엔 친절 안내(폼 그대로 → 다시 제출이 곧 재시도)
@@ -218,6 +236,13 @@ export default function IndoorRunPage() {
           {imageState.preparing ? t.indoor_image_preparing : submitting ? t.indoor_submitting : t.indoor_submit}
         </button>
       </form>
+
+      {celebration ? (
+        <WorkoutCelebration
+          recordId={celebration.recordId}
+          achievements={celebration.achievements}
+        />
+      ) : null}
     </PageLayout>
   );
 }

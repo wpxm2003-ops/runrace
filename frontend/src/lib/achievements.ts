@@ -15,6 +15,21 @@ export type AchievementView = {
  * 서버가 판정한 성과 코드를 화면 문구로 변환한다(문구·단위는 전부 클라이언트 책임).
  * 알 수 없는 코드는 null — 서버가 새 코드를 먼저 배포해도 화면이 깨지지 않는다.
  */
+/**
+ * 성과 목록을 화면 카드로 변환하고 표시 불가한 것(=알 수 없는 코드)은 버린다.
+ * 축하 모달을 띄울지 판정할 때도 이 결과의 길이를 쓴다 — 응답 배열 길이로 판정하면
+ * 서버가 새 코드를 먼저 배포했을 때 내용 없는 모달이 뜬다.
+ */
+export function achievementViews(
+  list: Achievement[],
+  t: Translations,
+  unit: DistanceUnit,
+): AchievementView[] {
+  return list
+    .map((a) => achievementView(a, t, unit))
+    .filter((v): v is AchievementView => v != null);
+}
+
 export function achievementView(
   a: Achievement,
   t: Translations,
