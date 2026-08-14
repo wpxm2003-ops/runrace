@@ -20,6 +20,8 @@ import { isCrewAvailable } from "@/lib/crewAccess";
 import {
   buildHomeRaceComparison,
   buildWeeklyActivity,
+  weeklyChartBarPercent,
+  weeklyChartMaxDistanceM,
   weekDateKeys,
 } from "@/lib/homeDashboard";
 import { useLocale } from "@/lib/i18n";
@@ -127,13 +129,6 @@ function distanceParts(distanceM: number, unit: "km" | "mi") {
   return { value: Number(rawValue).toFixed(1), label };
 }
 
-const HOME_CHART_DISTANCE_STEP_M = 500;
-
-function chartDistanceSteps(distanceM: number) {
-  if (distanceM <= 0) return 0;
-  return Math.max(1, Math.floor(distanceM / HOME_CHART_DISTANCE_STEP_M));
-}
-
 function WeeklyActivityCard({
   loading,
   distanceM,
@@ -152,8 +147,7 @@ function WeeklyActivityCard({
   const { t } = useLocale();
   const { unit } = useUnit();
   const distance = distanceParts(distanceM, unit);
-  const dailyDistanceSteps = dailyDistanceM.map(chartDistanceSteps);
-  const maxDistanceSteps = Math.max(...dailyDistanceSteps, 1);
+  const chartMaxDistanceM = weeklyChartMaxDistanceM(dailyDistanceM);
   const pace = formatPace(distanceM, totalDurationSec, unit);
 
   return (
@@ -192,17 +186,16 @@ function WeeklyActivityCard({
 
           <div className="flex h-24 items-end justify-between gap-1.5 pt-2">
             {dailyDistanceM.map((value, index) => {
-              const distanceSteps = dailyDistanceSteps[index];
-              const percent = value > 0
-                ? Math.max((distanceSteps / maxDistanceSteps) * 100, 12)
-                : 5;
+              const percent = weeklyChartBarPercent(value, chartMaxDistanceM);
               return (
-                <div key={dayLabels[index]} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
-                  <span
-                    className={`w-full max-w-2.5 rounded-pill ${value > 0 ? "bg-brand" : "bg-white/12"}`}
-                    style={{ height: `${percent}%` }}
-                  />
-                  <span className="text-[9px] text-white/40">{dayLabels[index]}</span>
+                <div key={dayLabels[index]} className="flex h-full min-w-0 flex-1 flex-col items-center gap-1.5">
+                  <div className="relative min-h-0 w-full flex-1">
+                    <span
+                      className={`absolute bottom-0 left-1/2 w-full max-w-2.5 -translate-x-1/2 rounded-pill ${value > 0 ? "bg-brand" : "bg-white/12"}`}
+                      style={{ height: `${percent}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 text-[9px] text-white/40">{dayLabels[index]}</span>
                 </div>
               );
             })}

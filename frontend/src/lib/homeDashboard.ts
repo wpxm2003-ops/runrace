@@ -15,6 +15,44 @@ export type WeeklyActivity = WorkoutAggregate & {
   dailyDistanceM: number[];
 };
 
+export const WEEKLY_CHART_STEP_M = 500;
+export const WEEKLY_CHART_MAX_M = 50_000;
+
+/**
+ * Keeps short runs readable while allowing the chart to grow with the week.
+ * The tallest bar gets one 500 m step of headroom, capped at 50 km per day.
+ */
+export function weeklyChartMaxDistanceM(dailyDistanceM: number[]): number {
+  const longestDistanceM = Math.max(
+    ...dailyDistanceM.map((distanceM) =>
+      Number.isFinite(distanceM) ? Math.max(distanceM, 0) : 0,
+    ),
+    0,
+  );
+  const steppedDistanceM =
+    Math.ceil(longestDistanceM / WEEKLY_CHART_STEP_M) * WEEKLY_CHART_STEP_M;
+
+  return Math.min(
+    WEEKLY_CHART_MAX_M,
+    Math.max(5_000, steppedDistanceM + WEEKLY_CHART_STEP_M),
+  );
+}
+
+export function weeklyChartBarPercent(
+  distanceM: number,
+  chartMaxDistanceM: number,
+): number {
+  if (!Number.isFinite(distanceM) || distanceM <= 0) return 5;
+  const steppedDistanceM = Math.max(
+    WEEKLY_CHART_STEP_M,
+    Math.floor(distanceM / WEEKLY_CHART_STEP_M) * WEEKLY_CHART_STEP_M,
+  );
+  return Math.min(
+    100,
+    Math.max((steppedDistanceM / Math.max(chartMaxDistanceM, 1)) * 100, 10),
+  );
+}
+
 /** Monday through Sunday in the viewer's local calendar. */
 export function weekDateKeys(today: Date): string[] {
   const monday = new Date(today);

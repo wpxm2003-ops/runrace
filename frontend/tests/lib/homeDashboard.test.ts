@@ -7,6 +7,8 @@ import type {
 import {
   buildHomeRaceComparison,
   buildWeeklyActivity,
+  weeklyChartBarPercent,
+  weeklyChartMaxDistanceM,
   weekDateKeys,
 } from "@/lib/homeDashboard";
 
@@ -101,6 +103,20 @@ describe("home weekly activity", () => {
     expect(result.workoutCount).toBe(2);
     expect(result.dailyDistanceM).toEqual([5000, 0, 10000, 0, 0, 0, 0]);
     expect(result.avgPaceSecPerKm).toBe(340);
+  });
+
+  it("uses 500 m chart steps with headroom so 4 km and 5 km stay distinct", () => {
+    const chartMaxDistanceM = weeklyChartMaxDistanceM([4000, 5000, 0, 0, 0, 0, 0]);
+
+    expect(chartMaxDistanceM).toBe(5500);
+    expect(weeklyChartBarPercent(4000, chartMaxDistanceM)).toBeCloseTo(72.73, 1);
+    expect(weeklyChartBarPercent(5000, chartMaxDistanceM)).toBeCloseTo(90.91, 1);
+  });
+
+  it("caps the daily chart scale at 50 km", () => {
+    expect(weeklyChartMaxDistanceM([49_800])).toBe(50_000);
+    expect(weeklyChartMaxDistanceM([70_000])).toBe(50_000);
+    expect(weeklyChartBarPercent(70_000, 50_000)).toBe(100);
   });
 });
 
