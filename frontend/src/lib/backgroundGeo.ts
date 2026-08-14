@@ -54,7 +54,10 @@ export async function startBackgroundWatch(
     );
 
     return () => {
-      BackgroundGeolocation.removeWatcher({ id });
+      void BackgroundGeolocation.removeWatcher({ id }).catch(() => {
+        // The native service may already have been reclaimed. A replacement
+        // watcher can still be registered when the app becomes active again.
+      });
     };
   }
 

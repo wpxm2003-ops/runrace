@@ -730,6 +730,20 @@ export function geolocationBlockedReason(): string | null {
   return null;
 }
 
+export const GPS_WATCHDOG_TIMEOUT_MS = 15_000;
+
+/** A running foreground watch is stale when neither startup nor the last fix is recent. */
+export function shouldRestartGpsWatch(
+  nowMs: number,
+  watchStartedAtMs: number | null,
+  lastFixAtMs: number | null,
+  timeoutMs: number = GPS_WATCHDOG_TIMEOUT_MS,
+): boolean {
+  if (watchStartedAtMs == null) return true;
+  const lastActivityAtMs = Math.max(watchStartedAtMs, lastFixAtMs ?? 0);
+  return nowMs - lastActivityAtMs >= timeoutMs;
+}
+
 export type KmSplit = {
   km: number;
   distanceM: number;

@@ -12,6 +12,7 @@ import {
   pathDistanceMeters,
   pickWorkoutStartSeed,
   slideIdleAnchor,
+  shouldRestartGpsWatch,
   isInKorea,
   splitPathAtGaps,
   WORKOUT_START_FIX_MAX_ACCURACY_M,
@@ -23,6 +24,19 @@ import type {
   VehicleDetectState,
   WorkoutStartFix,
 } from "@/lib/workoutTrack";
+
+describe("GPS watch liveness", () => {
+  it("waits for the timeout after watcher startup or a recent fix", () => {
+    expect(shouldRestartGpsWatch(14_999, 0, null)).toBe(false);
+    expect(shouldRestartGpsWatch(20_000, 0, 10_000)).toBe(false);
+  });
+
+  it("restarts a missing or stale watcher", () => {
+    expect(shouldRestartGpsWatch(0, null, null)).toBe(true);
+    expect(shouldRestartGpsWatch(15_000, 0, null)).toBe(true);
+    expect(shouldRestartGpsWatch(25_000, 0, 10_000)).toBe(true);
+  });
+});
 
 describe("pickWorkoutStartSeed", () => {
   const OWNER_UID = "runner-a";

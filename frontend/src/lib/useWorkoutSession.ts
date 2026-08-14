@@ -20,6 +20,7 @@ import {
   type VehicleTier,
   geolocationBlockedReason,
   geolocationErrorMessage,
+  shouldRestartGpsWatch,
   WORKOUT_START_FIX_MAX_AGE_MS,
   type WorkoutFinishSnapshot,
   type WorkoutStartFix,
@@ -39,6 +40,8 @@ import { createClientWorkoutId } from "./workoutRequestId";
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const SAVE_INTERVAL_MS = 10_000;
 const WARMUP_FIX_BUFFER_SIZE = 6;
+const GPS_WATCHDOG_POLL_MS = 5_000;
+const GPS_RESTART_DEBOUNCE_MS = 2_000;
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────────────
 function computeElapsedSec(
@@ -106,6 +109,9 @@ export function useWorkoutSession(
 
   // ── 타이밍 레프 ───────────────────────────────────────────────────────────
   const stopWatchRef = useRef<(() => void) | null>(null);
+  const watchStartedAtRef = useRef<number | null>(null);
+  const lastGpsFixAtRef = useRef<number | null>(null);
+  const lastWatchRestartAtRef = useRef<number | null>(null);
   const statusRef = useRef(status);
   const pathRef = useRef(path);
   const pausedAccumRef = useRef(0);
@@ -208,6 +214,7 @@ export function useWorkoutSession(
   const watchSeqRef = useRef(0);
   const clearWatch = useCallback(() => {
     watchSeqRef.current++;
+    watchStartedAtRef.current = null;
     if (stopWatchRef.current) {
       stopWatchRef.current();
       stopWatchRef.current = null;
@@ -246,6 +253,9 @@ export function useWorkoutSession(
     lastAppendWallMsRef.current = null;
     lastRawPosRef.current = null;
     lastPosTimeRef.current = null;
+    watchStartedAtRef.current = null;
+    lastGpsFixAtRef.current = null;
+    lastWatchRestartAtRef.current = null;
     reanchorNextRef.current = false;
 
     setStatus("idle");
@@ -319,6 +329,7 @@ export function useWorkoutSession(
       if (!isCurrentSessionOwner() || statusRef.current !== "running") return;
       setGeoError(null);
       const now = Date.now();
+      lastGpsFixAtRef.current = now;
       const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
       const point: LatLng = {
         lat: coords.latitude,
@@ -413,6 +424,7 @@ export function useWorkoutSession(
     }
     setGeoError(null);
     clearWatch();
+    watchStartedAtRef.current = Date.now();
     const seq = watchSeqRef.current;
     const isLiveWatch = () =>
       watchSeqRef.current === seq
@@ -452,6 +464,65 @@ export function useWorkoutSession(
     bgNotification?.title,
     bgNotification?.message,
   ]);
+
+  const restartWatch = useCallback((reason: "foreground" | "stale") => {
+    if (statusRef.current !== "running" || !isCurrentSessionOwner()) return;
+    const now = Date.now();
+    if (
+      lastWatchRestartAtRef.current != null
+      && now - lastWatchRestartAtRef.current < GPS_RESTART_DEBOUNCE_MS
+    ) {
+      return;
+    }
+    lastWatchRestartAtRef.current = now;
+    // Never join the last pre-suspension point to the first recovered fix.
+    reanchorNextRef.current = true;
+    lastRawPosRef.current = null;
+    lastPosTimeRef.current = null;
+    startWatch();
+    void track("running_gps_watch_restart", { reason });
+  }, [isCurrentSessionOwner, startWatch]);
+
+  // Android may reclaim the WebView bridge or the native location callback while
+  // the app is backgrounded. Re-register the watcher whenever the app becomes
+  // active; the sequence guard makes late callbacks from the old watcher harmless.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    let listener: { remove: () => Promise<void> } | undefined;
+
+    void import("@capacitor/app").then(async ({ App }) => {
+      if (cancelled) return;
+      listener = await App.addListener("appStateChange", ({ isActive }) => {
+        if (!cancelled && isActive) restartWatch("foreground");
+      });
+      if (cancelled) void listener.remove();
+    });
+
+    return () => {
+      cancelled = true;
+      void listener?.remove();
+    };
+  }, [restartWatch]);
+
+  // A watcher can resolve successfully yet stop delivering callbacks. While the
+  // app is visible, recover it automatically instead of leaving distance frozen.
+  useEffect(() => {
+    if (status !== "running") return;
+    const id = window.setInterval(() => {
+      if (document.hidden || statusRef.current !== "running") return;
+      if (
+        shouldRestartGpsWatch(
+          Date.now(),
+          watchStartedAtRef.current,
+          lastGpsFixAtRef.current,
+        )
+      ) {
+        restartWatch("stale");
+      }
+    }, GPS_WATCHDOG_POLL_MS);
+    return () => clearInterval(id);
+  }, [status, restartWatch]);
 
   // ── 타이머 ────────────────────────────────────────────────────────────────
   // 방치 판정도 여기서 함께 돈다 — 정지 중엔 네이티브 GPS 콜백(distanceFilter)이
@@ -540,6 +611,7 @@ export function useWorkoutSession(
     pathRef.current = saved.path;
     setPath(saved.path);
     lastPathPointRef.current = saved.path[saved.path.length - 1] ?? null;
+    setPosition(lastPathPointRef.current);
     // 복원 후 첫 GPS 포인트는 재정박 — 앱이 죽어있던 동안의 이동을 직선으로 이어
     // 거리에 합산하지 않는다(120m 넘는 갭은 지도에서 점선으로 표시됨).
     reanchorNextRef.current = true;
