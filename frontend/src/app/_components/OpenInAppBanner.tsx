@@ -65,17 +65,17 @@ export function OpenInAppBanner() {
   };
 
   return (
-    <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2.5 text-sm">
+    <div className="flex items-center gap-2 border-b border-line bg-panel px-3 py-2 text-xs sm:px-4">
       <img
         src="/icons/icon-192.webp"
         alt="RunRace"
-        className="h-8 w-8 flex-none rounded-lg"
+        className="h-7 w-7 flex-none rounded-lg"
       />
-      <span className="min-w-0 flex-1 text-zinc-700">{t.appbanner_text}</span>
+      <span className="min-w-0 flex-1 text-[12px] leading-snug text-muted">{t.appbanner_text}</span>
       <button
         type="button"
         onClick={openInApp}
-        className="flex-none rounded-full bg-zinc-900 px-3 py-1.5 font-medium text-white"
+        className="flex min-h-9 flex-none items-center rounded-pill bg-night px-3 text-[11px] font-bold text-white"
       >
         {t.appbanner_open}
       </button>
@@ -83,7 +83,7 @@ export function OpenInAppBanner() {
         type="button"
         onClick={dismiss}
         aria-label={t.appbanner_close}
-        className="flex-none px-1 text-zinc-400"
+        className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-muted hover:bg-panel-muted hover:text-ink"
       >
         ✕
       </button>

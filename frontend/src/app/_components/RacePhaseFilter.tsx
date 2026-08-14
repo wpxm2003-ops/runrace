@@ -16,7 +16,7 @@ export function RacePhaseFilter({ value, onChange, labels, ariaLabel }: Props) {
     <div
       role="group"
       aria-label={ariaLabel}
-      className="grid w-full grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 ring-1 ring-inset ring-zinc-200/70"
+      className="grid w-full grid-cols-2 gap-1 rounded-control border border-line bg-panel-muted p-1"
     >
       {ORDER.map((key) => {
         const active = value === key;
@@ -26,10 +26,10 @@ export function RacePhaseFilter({ value, onChange, labels, ariaLabel }: Props) {
             type="button"
             aria-pressed={active}
             onClick={() => onChange(key)}
-            className={`min-w-0 rounded-lg px-1 py-2.5 text-center text-xs font-semibold transition-all sm:text-sm ${
+            className={`min-w-0 rounded-[0.625rem] px-1 py-2.5 text-center text-xs font-semibold transition-all sm:text-sm ${
               active
-                ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200/90"
-                : "text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-800"
+                ? "bg-panel text-brand shadow-card"
+                : "text-muted hover:bg-white/70 hover:text-ink"
             }`}
           >
             {labels[key]}

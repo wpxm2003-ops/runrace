@@ -1,31 +1,100 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* RunRace design tokens */
+  --rr-color-background: #ffffff;
+  --rr-color-background-dark: #111111;
+  --rr-color-surface: #ffffff;
+  --rr-color-surface-muted: #f7f7f5;
+  --rr-color-text: #111111;
+  --rr-color-text-secondary: #777777;
+  --rr-color-border: #eaeaea;
+  --rr-color-accent: #ff5a16;
+  --rr-color-accent-hover: #e94d0d;
+  --rr-color-accent-pressed: #d94408;
+  --rr-color-accent-soft: #fff0e8;
+  --rr-color-logo-magenta: #b72870;
+  --rr-color-logo-blue: #121b3f;
+
+  --rr-space-1: 0.25rem;
+  --rr-space-2: 0.5rem;
+  --rr-space-3: 0.75rem;
+  --rr-space-4: 1rem;
+  --rr-space-5: 1.25rem;
+  --rr-space-6: 1.5rem;
+  --rr-space-8: 2rem;
+
+  --rr-radius-sm: 0.75rem;
+  --rr-radius-control: 0.875rem;
+  --rr-radius-card: 1.25rem;
+  --rr-radius-hero: 1.5rem;
+  --rr-radius-pill: 999px;
+
+  --rr-shadow-card: 0 10px 30px rgb(17 17 17 / 0.055);
+  --rr-shadow-float: 0 16px 42px rgb(17 17 17 / 0.12);
+  --rr-button-height: 3rem;
+  --rr-card-padding: 1.25rem;
+
+  /* Existing semantic aliases stay available to the app. */
+  --background: var(--rr-color-background);
+  --foreground: var(--rr-color-text);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--rr-color-background);
+  --color-night: var(--rr-color-background-dark);
+  --color-panel: var(--rr-color-surface);
+  --color-panel-muted: var(--rr-color-surface-muted);
+  --color-ink: var(--rr-color-text);
+  --color-muted: var(--rr-color-text-secondary);
+  --color-line: var(--rr-color-border);
+  --color-brand: var(--rr-color-accent);
+  --color-brand-hover: var(--rr-color-accent-hover);
+  --color-brand-pressed: var(--rr-color-accent-pressed);
+  --color-brand-soft: var(--rr-color-accent-soft);
+  --color-logo-magenta: var(--rr-color-logo-magenta);
+  --color-logo-blue: var(--rr-color-logo-blue);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --radius-rr-sm: var(--rr-radius-sm);
+  --radius-control: var(--rr-radius-control);
+  --radius-card: var(--rr-radius-card);
+  --radius-hero: var(--rr-radius-hero);
+  --radius-pill: var(--rr-radius-pill);
+  --shadow-card: var(--rr-shadow-card);
+  --shadow-float: var(--rr-shadow-float);
+  --spacing-button: var(--rr-button-height);
+  --spacing-card: var(--rr-card-padding);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--rr-color-accent-soft);
+  color: var(--rr-color-text);
+}
+
+:where(a, button, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--rr-color-accent);
+  outline-offset: 2px;
+}
+
+.rr-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
 }
 
 input,
@@ -65,6 +134,17 @@ textarea,
   animation-name: confetti-fall;
   animation-timing-function: ease-in;
   animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @keyframes countdown-pop {

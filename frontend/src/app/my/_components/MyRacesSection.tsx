@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { Alert } from "@/app/_components/ui/Alert";
-import { Card } from "@/app/_components/ui/Card";
+import { SectionHeader } from "@/app/_components/ui/SectionHeader";
 import { ChallengeInfiniteList } from "@/app/_components/ChallengeInfiniteList";
 import {
   RacePhaseFilter,
@@ -60,9 +60,9 @@ export function MyRacesSection({ user }: { user: User }) {
   };
 
   return (
-    <Card className="mt-4">
-      <div className="flex flex-col gap-3">
-        <div className="text-base font-semibold">{t.my_races_heading}</div>
+    <section className="mt-9">
+      <SectionHeader title={t.my_races_heading} />
+      <div className="mt-3">
         <RacePhaseFilter
           value={phase}
           onChange={handlePhaseChange}
@@ -77,6 +77,6 @@ export function MyRacesSection({ user }: { user: User }) {
         skeletonCount={2}
         showJoinedBadge
       />
-    </Card>
+    </section>
   );
 }

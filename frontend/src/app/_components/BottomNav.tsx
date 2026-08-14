@@ -24,12 +24,12 @@ function NavIcon({ children }: { children: ReactNode }) {
 
 const ICONS = {
   home: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" />
     </svg>
   ),
   challenge: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M5 4v16" strokeLinecap="round" />
       <rect x="6" y="5" width="12" height="9" rx="0.5" />
       <rect x="6" y="5" width="3" height="3" fill="currentColor" stroke="none" />
@@ -41,7 +41,7 @@ const ICONS = {
     </svg>
   ),
   records: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <rect x="4" y="5" width="16" height="15" rx="2" />
       <path d="M8 3v4M16 3v4M4 10h16" />
     </svg>
@@ -62,17 +62,18 @@ const ICONS = {
         maskRepeat: "no-repeat",
         maskPosition: "center",
       }}
+      aria-hidden="true"
     />
   ),
   my: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <circle cx="12" cy="8" r="3.5" />
       <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
     </svg>
   ),
 };
 
-export function BottomNav() {
+export function BottomNavigation() {
   const pathname = usePathname() ?? "/";
   const { pendingHref } = useNavProgress();
   const { user, loading } = useAuthUser();
@@ -88,7 +89,7 @@ export function BottomNav() {
         label: t.nav_home,
         href: "/",
         icon: ICONS.home,
-        isActive: (p) => p === "/",
+        isActive: (p) => p === "/" || ["/en", "/es", "/ja", "/zh"].includes(p),
       },
       {
         id: "challenges",
@@ -102,7 +103,7 @@ export function BottomNav() {
         label: t.nav_workout,
         href: "/workout",
         icon: ICONS.fitness,
-        isActive: (p) => p === "/workout",
+        isActive: (p) => p === "/workout" || p.startsWith("/workout/"),
       },
       {
         id: "records",
@@ -116,7 +117,7 @@ export function BottomNav() {
         label: t.nav_profile,
         href: myHref,
         icon: ICONS.my,
-        isActive: (p) => p === "/login" || p === "/my" || p.startsWith("/my/"),
+        isActive: (p) => p === "/login" || p === "/my" || p.startsWith("/my/") || p === "/rivals" || p === "/shoes",
       },
     ],
     [t, myHref],
@@ -124,7 +125,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-0 right-0 z-30 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
       aria-label={t.nav_main_menu}
     >
       <div className="mx-auto flex h-16 max-w-2xl items-stretch justify-around px-2">
@@ -134,14 +135,15 @@ export function BottomNav() {
             <a
               key={item.id}
               href={item.href}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] ${
-                active ? "font-semibold text-zinc-900" : "text-zinc-500"
+              aria-current={active ? "page" : undefined}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] transition-colors ${
+                active ? "font-bold text-brand" : "font-medium text-muted hover:text-ink"
               }`}
             >
               <NavIcon>{item.icon}</NavIcon>
-              <span>{item.label}</span>
+              <span className="max-w-full truncate whitespace-nowrap">{item.label}</span>
               {active ? (
-                <span className="mt-0.5 h-0.5 w-5 rounded-full bg-zinc-900" />
+                <span className="mt-0.5 h-0.5 w-5 rounded-full bg-brand" />
               ) : (
                 <span className="mt-0.5 h-0.5 w-5" />
               )}
@@ -152,3 +154,6 @@ export function BottomNav() {
     </nav>
   );
 }
+
+/** Backward-compatible name for existing imports. */
+export const BottomNav = BottomNavigation;

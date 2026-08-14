@@ -12,7 +12,7 @@ export function MySettingsGear() {
       type="button"
       aria-label={t.my_settings_btn}
       onClick={() => nativeNavigate("/my/settings")}
-      className="shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-line bg-panel text-muted shadow-card transition-colors hover:bg-panel-muted hover:text-ink"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
         <circle cx="12" cy="12" r="3" />

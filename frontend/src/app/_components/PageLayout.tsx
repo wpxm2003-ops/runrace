@@ -20,12 +20,12 @@ export function PageLayout({
 }: PageLayoutProps) {
   return (
     <div
-      className={`mx-auto w-full px-6 py-8 ${maxWidth}${className ? ` ${className}` : ""}`}
+      className={`mx-auto w-full px-5 py-6 sm:px-6 sm:py-8 ${maxWidth}${className ? ` ${className}` : ""}`}
     >
       {(title || actions) ? (
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-1">
-            <h1 className="text-xl font-semibold">{title}</h1>
+            <h1 className="text-2xl font-bold tracking-[-0.035em] text-ink">{title}</h1>
             {titleSuffix}
           </div>
           {actions ? (

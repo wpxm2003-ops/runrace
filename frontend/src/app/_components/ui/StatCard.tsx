@@ -20,10 +20,10 @@ export function StatCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-zinc-200 bg-white ${padding} shadow-sm${className ? ` ${className}` : ""}`}
+      className={`rounded-card border border-line bg-panel ${padding} shadow-card${className ? ` ${className}` : ""}`}
     >
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className={`mt-1 font-semibold tabular-nums ${valueClassName}`}>{value}</div>
+      <div className="text-xs font-medium text-muted">{label}</div>
+      <div className={`rr-number mt-1 font-bold text-ink ${valueClassName}`}>{value}</div>
     </div>
   );
 }

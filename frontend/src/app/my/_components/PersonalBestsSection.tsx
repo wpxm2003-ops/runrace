@@ -31,28 +31,35 @@ export function PersonalBestsSection({ user }: { user: User }) {
   if (!pbs || pbs.length === 0) return null;
 
   return (
-    <div className="mt-4 border-t border-zinc-100 pt-4">
-      <div className="text-sm font-medium text-zinc-900">{t.my_pb_heading}</div>
-      <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">{t.my_pb_hint}</p>
-      <div className="mt-2 divide-y divide-zinc-100">
+    <section className="mt-5 overflow-hidden rounded-hero bg-night p-card text-white shadow-float">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold">{t.my_pb_heading}</div>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-white/45">{t.my_pb_hint}</p>
+        </div>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-7 w-7 shrink-0 text-brand">
+          <path d="M8 4h8v4a4 4 0 0 1-8 0V4ZM8 6H5v2a3 3 0 0 0 3 3M16 6h3v2a3 3 0 0 1-3 3M12 12v4M8 20h8M10 16h4v4" />
+        </svg>
+      </div>
+      <div className="mt-3 divide-y divide-white/10">
         {pbs.map((pb) => {
           // 저장된 값은 초/km 페이스 — 러너에게 익숙한 "완주 시간"으로 환산한다.
           const totalSec = pbFinishSec(pb.bestPaceSec, pb.distanceM);
           return (
-            <div key={pb.distanceKey} className="flex items-center gap-3 py-2">
-              <span className="text-sm text-zinc-600">{pbLabel(pb.distanceKey, t)}</span>
+            <div key={pb.distanceKey} className="flex min-h-11 items-center gap-3 py-2">
+              <span className="text-sm font-medium text-white/60">{pbLabel(pb.distanceKey, t)}</span>
               <span className="ml-auto flex items-baseline gap-2">
-                <span className="text-sm font-semibold tabular-nums text-zinc-900">
+                <span className="rr-number text-sm font-bold text-white">
                   {formatHms(totalSec)}
                 </span>
-                <span className="text-[11px] tabular-nums text-zinc-400">
+                <span className="rr-number text-[11px] text-brand">
                   {formatPace(pb.distanceM, totalSec, unit)}
                 </span>
               </span>
               <Link
                 href={`/workouts/${pb.workoutId}`}
                 aria-label={`${pbLabel(pb.distanceKey, t)} ${t.workout_detail_title}`}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-lg text-zinc-400 transition-colors hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-lg text-white/45 transition-colors hover:bg-white/10 hover:text-brand"
               >
                 <span aria-hidden="true">&gt;</span>
               </Link>
@@ -60,6 +67,6 @@ export function PersonalBestsSection({ user }: { user: User }) {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

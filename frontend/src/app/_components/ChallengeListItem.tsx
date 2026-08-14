@@ -36,11 +36,11 @@ export function ChallengeListItem({
         e.preventDefault();
         nativeNavigate(challengeDetailHref(c.id));
       }}
-      className="block rounded-xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
+      className="block rounded-card border border-line bg-panel px-4 py-3.5 shadow-card transition-[background-color,border-color,transform] hover:border-brand/35 hover:bg-panel-muted active:scale-[0.995]"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <div className="truncate text-sm font-medium">{c.title}</div>
+          <div className="truncate text-sm font-bold text-ink">{c.title}</div>
           {showJoinedBadge && c.isMember ? (
             <Badge tone="emerald">{c.phase === "ENDED" ? t.races_joined_done : t.races_joined}</Badge>
           ) : null}
@@ -52,7 +52,7 @@ export function ChallengeListItem({
           compact
         />
       </div>
-      <div className="mt-1 flex items-center gap-1.5 text-sm text-zinc-600">
+      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
         <span>{t.races_goal_members(formatGoalDistance(c.goalKm, unit), c.memberCount)}</span>
         {/* 크루 전용 표시 — 내 레이스 목록은 공개·크루 레이스가 섞여 나와 구분이 필요하다. */}
         {showCrewBadge && c.crewOnly ? <Badge tone="brown">{t.races_crew_badge}</Badge> : null}
@@ -68,7 +68,7 @@ export function ChallengeListItem({
           </span>
         ) : null}
       </div>
-      <div className="mt-1 text-xs text-zinc-500">
+      <div className="mt-1 text-[11px] text-muted">
         {formatDateRange(c.startAt, c.endAt, locale)}
       </div>
     </a>

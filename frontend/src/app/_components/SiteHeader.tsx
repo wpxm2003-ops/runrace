@@ -8,8 +8,17 @@ import { logout } from "@/lib/auth";
 import { useAuthUser } from "@/lib/useAuthUser";
 import { LOCALES, type Locale, useLocale } from "@/lib/i18n";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
+import { BrandMark } from "@/app/_components/ui/BrandMark";
 
-function LanguagePicker({ locale, setLocale }: { locale: Locale; setLocale: (l: Locale) => void }) {
+function LanguagePicker({
+  locale,
+  setLocale,
+  ariaLabel,
+}: {
+  locale: Locale;
+  setLocale: (l: Locale) => void;
+  ariaLabel: string;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -20,8 +29,15 @@ function LanguagePicker({ locale, setLocale }: { locale: Locale; setLocale: (l: 
         setOpen(false);
       }
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   return (
@@ -29,23 +45,27 @@ function LanguagePicker({ locale, setLocale }: { locale: Locale; setLocale: (l: 
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Change language"
-        className={`rounded-lg border px-2 py-1 text-xs font-semibold tracking-wide transition-colors ${open ? "border-zinc-400 bg-zinc-100 text-zinc-900" : "border-zinc-200 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900"}`}
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={`flex h-11 min-w-11 items-center justify-center rounded-control border px-2.5 text-xs font-bold tracking-wide transition-colors ${open ? "border-ink bg-panel-muted text-ink" : "border-line bg-panel text-muted hover:border-zinc-300 hover:text-ink"}`}
       >
         {locale.toUpperCase()}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[8rem] overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-1 min-w-[8rem] overflow-hidden rounded-control border border-line bg-panel py-1 shadow-float">
           {LOCALES.map((l) => (
             <button
               key={l.code}
               type="button"
+              role="menuitemradio"
+              aria-checked={locale === l.code}
               onClick={() => { setLocale(l.code as Locale); setOpen(false); }}
-              className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-zinc-50 ${locale === l.code ? "font-semibold text-zinc-900" : "text-zinc-600"}`}
+              className={`flex min-h-11 w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-panel-muted ${locale === l.code ? "font-semibold text-ink" : "text-muted"}`}
             >
               {locale === l.code && (
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-900" />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
               )}
               {locale !== l.code && <span className="h-1.5 w-1.5 shrink-0" />}
               {l.label}
@@ -57,12 +77,10 @@ function LanguagePicker({ locale, setLocale }: { locale: Locale; setLocale: (l: 
   );
 }
 
-export function SiteHeader() {
+export function AppHeader() {
   const { user, loading, hint } = useAuthUser();
   const { locale, t, setLocale } = useLocale();
   const session = useWorkoutSessionContext();
-
-  const showLoggedIn = user != null || (loading && hint);
 
   /**
    * 진행 중인 운동이 있으면 실수로 세션을 중단하지 않도록 UX 단계에서 로그아웃을 막는다.
@@ -77,18 +95,18 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
-      <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-6">
-        <Link href="/" className="text-lg font-semibold text-zinc-900">
-          RunRace
+    <header className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-5 sm:px-6">
+        <Link href="/" className="flex min-h-11 items-center" aria-label="RunRace home">
+          <BrandMark />
         </Link>
-        <div className="flex items-center gap-2 text-sm">
-          <LanguagePicker locale={locale} setLocale={setLocale} />
-          {showLoggedIn ? (
+        <div className="flex items-center gap-1.5 text-sm">
+          <LanguagePicker locale={locale} setLocale={setLocale} ariaLabel={t.header_language} />
+          {user ? (
             <button
               type="button"
               onClick={handleLogout}
-              className="text-zinc-600 hover:text-zinc-900 hover:underline"
+              className="flex h-11 items-center rounded-control px-2.5 text-xs font-medium text-muted hover:bg-panel-muted hover:text-ink"
             >
               {t.header_logout}
             </button>
@@ -97,7 +115,7 @@ export function SiteHeader() {
           ) : (
             <a
               href="/login"
-              className="text-zinc-600 hover:text-zinc-900 hover:underline"
+              className="flex h-11 items-center rounded-control px-2.5 text-xs font-semibold text-muted hover:bg-panel-muted hover:text-ink"
             >
               {t.header_login}
             </a>
@@ -107,3 +125,6 @@ export function SiteHeader() {
     </header>
   );
 }
+
+/** Backward-compatible name for existing imports. */
+export const SiteHeader = AppHeader;

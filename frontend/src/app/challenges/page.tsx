@@ -120,7 +120,7 @@ export default function ChallengesPage() {
 
   return (
     <PageLayout
-      title={t.races_title}
+      title={t.races_list_heading}
       actions={
         <Link
           href="/challenges/create"
@@ -146,7 +146,6 @@ export default function ChallengesPage() {
 
       <Card>
         <div className="flex flex-col gap-3">
-          <div className="text-base font-semibold">{t.races_list_heading}</div>
           <RacePhaseFilter
             value={phaseFilter}
             onChange={(v) => {
