@@ -48,9 +48,13 @@ function LanguagePicker({
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`flex h-11 min-w-11 items-center justify-center rounded-control border px-2.5 text-xs font-bold tracking-wide transition-colors ${open ? "border-ink bg-panel-muted text-ink" : "border-line bg-panel text-muted hover:border-zinc-300 hover:text-ink"}`}
+        className="group flex h-11 min-w-11 items-center justify-center rounded-control"
       >
-        {locale.toUpperCase()}
+        <span
+          className={`flex h-8 min-w-8 items-center justify-center rounded-[0.625rem] border px-2 text-[11px] font-bold tracking-wide transition-colors ${open ? "border-ink bg-panel-muted text-ink" : "border-line bg-panel text-muted group-hover:border-zinc-300 group-hover:text-ink"}`}
+        >
+          {locale.toUpperCase()}
+        </span>
       </button>
 
       {open && (

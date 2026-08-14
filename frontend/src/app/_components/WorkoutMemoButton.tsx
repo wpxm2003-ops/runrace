@@ -15,6 +15,7 @@ export function WorkoutMemoButton({
   className = "",
   children,
   ariaLabel,
+  iconOnly = false,
 }: {
   workoutId: number;
   initialMemo: string | null | undefined;
@@ -22,6 +23,7 @@ export function WorkoutMemoButton({
   className?: string;
   children?: ReactNode;
   ariaLabel?: string;
+  iconOnly?: boolean;
 }) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
@@ -38,6 +40,7 @@ export function WorkoutMemoButton({
     <>
       <Button
         variant="secondary"
+        size={iconOnly ? "icon" : "default"}
         onClick={() => setOpen(true)}
         className={className}
         aria-label={label}

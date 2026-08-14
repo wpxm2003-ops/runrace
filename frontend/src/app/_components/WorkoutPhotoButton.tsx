@@ -22,6 +22,7 @@ export function WorkoutPhotoButton({
   className = "",
   children,
   ariaLabel,
+  iconOnly = false,
 }: {
   workoutId: number;
   imageUrl: string | null;
@@ -31,6 +32,7 @@ export function WorkoutPhotoButton({
   className?: string;
   children?: ReactNode;
   ariaLabel?: string;
+  iconOnly?: boolean;
 }) {
   const { t } = useLocale();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -139,6 +141,7 @@ export function WorkoutPhotoButton({
       />
       <Button
         variant="secondary"
+        size={iconOnly ? "icon" : "default"}
         disabled={busy}
         onClick={onTrigger}
         className={className}

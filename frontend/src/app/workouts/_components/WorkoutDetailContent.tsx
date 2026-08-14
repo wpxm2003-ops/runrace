@@ -35,7 +35,7 @@ import { ACTION_ICON_CLASS, ShareIcon } from "@/app/_components/ShareIcon";
 
 function PhotoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
       <path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" />
       <circle cx="12" cy="13" r="3.2" />
     </svg>
@@ -44,7 +44,7 @@ function PhotoIcon() {
 
 function TrashIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
       <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -52,7 +52,7 @@ function TrashIcon() {
 
 function MemoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
       <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" strokeLinejoin="round" />
       <path d="M9 10h6M9 13.5h6M9 17h3.5" strokeLinecap="round" />
     </svg>
@@ -96,6 +96,7 @@ function WorkoutActions({
             }}
             className={ACTION_ICON_CLASS}
             ariaLabel={detail.imageUrl ? t.photo_view_btn : t.photo_save_btn}
+            iconOnly
           >
             <PhotoIcon />
           </WorkoutPhotoButton>
@@ -106,6 +107,7 @@ function WorkoutActions({
             user={user}
             className={ACTION_ICON_CLASS}
             ariaLabel={t.memo_btn}
+            iconOnly
           >
             <MemoIcon />
           </WorkoutMemoButton>

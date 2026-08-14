@@ -14,16 +14,24 @@ const VARIANT_CLASSES = {
 } as const;
 
 type ButtonVariant = keyof typeof VARIANT_CLASSES;
+type ButtonSize = "default" | "icon";
 
 type Props = ComponentPropsWithoutRef<"button"> & {
   variant?: ButtonVariant;
+  size?: ButtonSize;
 };
 
-export function Button({ variant = "primary", className = "", children, ...rest }: Props) {
+export function Button({
+  variant = "primary",
+  size = "default",
+  className = "",
+  children,
+  ...rest
+}: Props) {
   return (
     <button
       type="button"
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-control px-5 text-sm font-semibold transition-[background-color,color,border-color,box-shadow,transform] active:translate-y-px disabled:cursor-not-allowed disabled:active:translate-y-0 ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-control text-sm font-semibold transition-[background-color,color,border-color,box-shadow,transform] active:translate-y-px disabled:cursor-not-allowed disabled:active:translate-y-0 ${size === "icon" ? "h-10 w-10 shrink-0 p-0" : "min-h-11 px-5"} ${VARIANT_CLASSES[variant]} ${className}`}
       {...rest}
     >
       {children}
