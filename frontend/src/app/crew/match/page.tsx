@@ -51,7 +51,7 @@ function ScoreHero({ detail }: { detail: CrewMatchDetail }) {
     <div>
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-brand-pressed">{myName}</div>
+          <div className="truncate text-sm font-semibold text-emerald-700">{myName}</div>
           <div className="text-xl font-bold tabular-nums text-zinc-900">
             {formatDistance(myDist, unit)}
           </div>
@@ -65,7 +65,7 @@ function ScoreHero({ detail }: { detail: CrewMatchDetail }) {
         </div>
       </div>
       <div className="mt-2 flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-zinc-100">
-        <div className="h-full rounded-l-full bg-brand" style={{ width: `${myPct}%` }} />
+        <div className="h-full rounded-l-full bg-emerald-500" style={{ width: `${myPct}%` }} />
         <div className="h-full flex-1 rounded-r-full bg-zinc-300" />
       </div>
       {detail.result ? (
@@ -101,7 +101,7 @@ function RosterList({ title, rows }: { title: string; rows: CrewMatchRosterRow[]
           <div key={r.userId} className="flex items-center justify-between gap-3 py-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-sm text-zinc-900">{r.nickname ?? t.no_name}</span>
-              {r.isMe ? <Badge tone="brand">{t.crew_me_badge}</Badge> : null}
+              {r.isMe ? <Badge tone="emerald">{t.crew_me_badge}</Badge> : null}
             </div>
             <span className="shrink-0 text-sm font-medium tabular-nums text-zinc-700">
               {formatDistance(r.distanceM, unit)}

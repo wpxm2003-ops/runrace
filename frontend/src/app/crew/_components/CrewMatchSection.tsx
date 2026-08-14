@@ -64,7 +64,7 @@ export function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boo
             <button
               type="button"
               onClick={() => nativeNavigate(`/crew/match?id=${data.current!.id}`)}
-              className="w-full rounded-card border border-brand/25 bg-brand-soft p-3 text-left shadow-card transition-colors hover:border-brand/40"
+              className="w-full rounded-card border border-emerald-200 bg-emerald-50/60 p-3 text-left shadow-card transition-colors hover:border-emerald-300"
             >
               {(() => {
                 const m = data.current!;
@@ -75,7 +75,7 @@ export function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boo
                 return (
                   <>
                     <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="truncate font-semibold text-brand-pressed">{myName}</span>
+                      <span className="truncate font-semibold text-emerald-800">{myName}</span>
                       <span className="shrink-0 font-medium text-zinc-400">
                         {m.status === "SCHEDULED"
                           ? t.crew_match_status_scheduled
@@ -91,7 +91,7 @@ export function CrewMatchSection({ user, isLeader }: { user: User; isLeader: boo
                       <span>{formatDistance(m.opponentCrewDistanceM, unit)}</span>
                     </div>
                     <div className="mt-1.5 flex h-2 w-full gap-0.5 overflow-hidden rounded-full bg-white">
-                      <div className="h-full rounded-l-full bg-brand" style={{ width: `${myPct}%` }} />
+                      <div className="h-full rounded-l-full bg-emerald-500" style={{ width: `${myPct}%` }} />
                       <div className="h-full flex-1 rounded-r-full bg-zinc-300" />
                     </div>
                   </>

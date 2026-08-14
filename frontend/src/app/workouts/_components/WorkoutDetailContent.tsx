@@ -35,26 +35,27 @@ import { ACTION_ICON_CLASS, ShareIcon } from "@/app/_components/ShareIcon";
 
 function PhotoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
-      <path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" />
-      <circle cx="12" cy="13" r="3.2" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-[18px] w-[18px]">
+      <rect x="3" y="5" width="18" height="15" rx="3" />
+      <circle cx="12" cy="12.5" r="3.25" />
+      <path d="M8.5 5 10 3.5h4L15.5 5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function TrashIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
-      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-[18px] w-[18px]">
+      <path d="M5 7h14M9 7V4.5h6V7M7 7l.75 13h8.5L17 7M10 11v5M14 11v5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function MemoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
-      <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" strokeLinejoin="round" />
-      <path d="M9 10h6M9 13.5h6M9 17h3.5" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-[18px] w-[18px]">
+      <path d="m14.5 5.5 4 4M4 20l1.1-4.6L15.7 4.8a2 2 0 0 1 2.8 0l.7.7a2 2 0 0 1 0 2.8L8.6 18.9 4 20Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m13.3 7.2 3.5 3.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -77,7 +78,7 @@ function WorkoutActions({
   const { t } = useLocale();
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-0.5 rounded-[14px] border border-line bg-panel p-1 shadow-card">
       <ShareButton onShare={onShare} className={ACTION_ICON_CLASS} ariaLabel={t.share_btn}>
         <ShareIcon />
       </ShareButton>
@@ -115,7 +116,7 @@ function WorkoutActions({
             type="button"
             disabled={deleting}
             onClick={onDelete}
-            className={`${ACTION_ICON_CLASS} text-red-600`}
+            className={`${ACTION_ICON_CLASS} ml-0.5 border-l border-l-line text-red-500 hover:bg-red-50 hover:text-red-600`}
             aria-label={t.workout_delete_btn}
             title={t.workout_delete_btn}
           >

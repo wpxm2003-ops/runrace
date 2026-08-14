@@ -271,7 +271,7 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
                   <span className="truncate text-sm font-medium text-zinc-900">
                     {m.nickname ?? t.no_name}
                   </span>
-                  {m.isMe ? <Badge tone="brand">{t.crew_me_badge}</Badge> : null}
+                  {m.isMe ? <Badge tone="emerald">{t.crew_me_badge}</Badge> : null}
                 </div>
               </button>
             );

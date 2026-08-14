@@ -47,7 +47,7 @@ export function RaceCard({
             {eyebrow}
           </span>
           {statusLabel ? (
-            <span className="rounded-pill bg-brand px-2.5 py-1 text-[10px] font-bold text-night">
+            <span className="rounded-pill bg-sky-100 px-2.5 py-1 text-[10px] font-bold text-sky-700">
               {statusLabel}
             </span>
           ) : null}
@@ -63,14 +63,14 @@ export function RaceCard({
         <div className={`mt-5 grid gap-4 ${runners.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
           {runners.slice(0, 2).map((runner) => (
             <div key={`${runner.label}-${runner.value}`} className="min-w-0">
-              <div className={`truncate text-[11px] font-medium ${runner.isMe ? "text-brand" : "text-white/55"}`}>
+              <div className={`truncate text-[11px] font-medium ${runner.isMe ? "text-emerald-400" : "text-white/55"}`}>
                 {runner.label}
               </div>
               <div className="rr-number mt-1 text-2xl font-black tracking-tight">{runner.value}</div>
               <ProgressBar
                 value={runner.progress}
                 ariaLabel={progressLabel(runner.label)}
-                tone={runner.isMe ? "brand" : "light"}
+                tone={runner.isMe ? "emerald" : "light"}
                 inverse
                 className="mt-2"
               />

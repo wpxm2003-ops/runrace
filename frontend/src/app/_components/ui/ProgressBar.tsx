@@ -1,5 +1,6 @@
 const TONE_CLASSES = {
   brand: "bg-brand",
+  emerald: "bg-emerald-500",
   ink: "bg-ink",
   light: "bg-white/75",
 } as const;

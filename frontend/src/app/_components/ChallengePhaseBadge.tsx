@@ -45,9 +45,9 @@ export function ChallengePhaseBadge({ startAt, endAt, apiPhase, phase, compact =
         compact
           ? `shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
               resolved === "scheduled"
-                ? "bg-brand-soft text-brand-pressed"
+                ? "bg-amber-100 text-amber-700"
                 : resolved === "in_progress"
-                  ? "bg-brand text-night"
+                  ? "bg-sky-100 text-sky-700"
                   : "bg-zinc-100 text-zinc-500"
             }`
           : challengePhaseBadgeClass(resolved)

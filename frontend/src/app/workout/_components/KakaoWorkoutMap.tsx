@@ -117,7 +117,7 @@ export default function KakaoWorkoutMap({
             key={`s${i}`}
             path={line.map((p) => ({ lat: p.lat, lng: p.lng }))}
             strokeWeight={5}
-            strokeColor="#FF5A16"
+            strokeColor="#18181b"
             strokeOpacity={0.9}
             strokeStyle="solid"
           />
@@ -178,7 +178,7 @@ export default function KakaoWorkoutMap({
                 height: 16,
                 borderRadius: "50%",
                 backgroundColor: "#3b82f6",
-                border: "3px solid #FF5A16",
+                border: "3px solid #18181b",
                 transform: "translate(-50%, -50%)",
               }}
             />
