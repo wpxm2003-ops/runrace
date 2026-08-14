@@ -11,7 +11,7 @@ export function NavListLink({ href, label }: Props) {
     <Link
       href={href}
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+      className="flex h-10 w-10 items-center justify-center rounded-control border border-line bg-panel text-muted shadow-card transition-colors hover:border-brand/30 hover:bg-brand-soft hover:text-brand"
     >
       <svg
         viewBox="0 0 24 24"

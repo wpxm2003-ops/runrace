@@ -43,7 +43,7 @@ export function CrewRacesSection({ user }: { user: User }) {
                     : t.races_filter_scheduled;
               const phaseTone =
                 r.phase === "IN_PROGRESS"
-                  ? "bg-sky-100 text-sky-700"
+                  ? "bg-brand text-night"
                   : r.phase === "ENDED"
                     ? "bg-zinc-100 text-zinc-500"
                     : "bg-amber-100 text-amber-700";

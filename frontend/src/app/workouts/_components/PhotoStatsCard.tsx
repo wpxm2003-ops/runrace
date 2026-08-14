@@ -399,7 +399,7 @@ export function WorkoutPhotoEditor({
               type="checkbox"
               checked={insertStats}
               onChange={(e) => setInsertStats(e.target.checked)}
-              className="h-4 w-4 rounded border-zinc-500 accent-emerald-400"
+              className="h-4 w-4 rounded border-zinc-500 accent-brand"
             />
             {t.photo_card_insert_stats}
           </label>
@@ -409,7 +409,7 @@ export function WorkoutPhotoEditor({
                 type="checkbox"
                 checked={showRoute}
                 onChange={(e) => setShowRoute(e.target.checked)}
-                className="h-4 w-4 rounded border-zinc-500 accent-emerald-400"
+                className="h-4 w-4 rounded border-zinc-500 accent-brand"
               />
               {t.photo_card_show_route}
             </label>
@@ -443,7 +443,7 @@ export function WorkoutPhotoEditor({
                 value={scale}
                 aria-label={t.photo_card_size}
                 onChange={(e) => setScale(Number(e.target.value))}
-                className="h-1 flex-1 accent-emerald-400"
+                className="h-1 flex-1 accent-brand"
               />
             </div>
           </>

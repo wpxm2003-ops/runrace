@@ -19,17 +19,17 @@ export function UnitToggle({
 }) {
   const containerSize = size === "sm" ? " text-xs" : "";
   const buttonSize = size === "sm" ? "px-2 py-1" : "px-3 py-1.5 text-sm";
-  const inactive = size === "sm" ? "text-zinc-500" : "text-zinc-600 hover:text-zinc-900";
+  const inactive = size === "sm" ? "text-muted" : "text-muted hover:text-ink";
 
   return (
-    <div className={`inline-flex rounded-lg border border-zinc-200 p-0.5${containerSize}`}>
+    <div className={`inline-flex rounded-control border border-line bg-panel-muted p-0.5${containerSize}`}>
       {(["km", "mi"] as const).map((u) => (
         <button
           key={u}
           type="button"
           onClick={() => onChange(u)}
-          className={`rounded-md font-medium ${buttonSize} ${
-            unit === u ? "bg-zinc-900 text-white" : inactive
+          className={`rounded-[0.625rem] font-semibold transition-colors ${buttonSize} ${
+            unit === u ? "bg-brand text-night shadow-card" : inactive
           }`}
         >
           {labels ? labels[u] : u}

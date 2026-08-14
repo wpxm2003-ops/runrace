@@ -83,12 +83,12 @@ const MemberRow = memo(function MemberRow({
   const { t, locale } = useLocale();
 
   const rowAccent = isMe
-    ? "border border-emerald-200 bg-emerald-50"
+    ? "border border-brand/25 bg-brand-soft"
     : isRival
       ? "border border-amber-200 bg-amber-50"
       : "";
   const nameColor = isMe
-    ? "font-semibold text-emerald-900"
+    ? "font-semibold text-brand-pressed"
     : isRival
       ? "font-semibold text-amber-900"
       : "text-zinc-900";
@@ -104,7 +104,7 @@ const MemberRow = memo(function MemberRow({
                 {m.nickname ?? t.no_name}
               </span>
               {isMe ? (
-                <Badge tone="emerald">{t.me_label}</Badge>
+                <Badge tone="brand">{t.me_label}</Badge>
               ) : isRival ? (
                 <Badge tone="amber">{t.rival_label}</Badge>
               ) : null}
@@ -157,17 +157,17 @@ const MemberRow = memo(function MemberRow({
           </div>
         </div>
         <div className="shrink-0 text-right tabular-nums">
-          <div className={`text-sm font-semibold ${isMe ? "text-emerald-700" : "text-zinc-900"}`}>
+          <div className={`text-sm font-semibold ${isMe ? "text-brand-pressed" : "text-zinc-900"}`}>
             {pctLabel}%
           </div>
-          <div className={`mt-0.5 text-[11px] ${isMe ? "text-emerald-700" : "text-zinc-500"}`}>
+          <div className={`mt-0.5 text-[11px] ${isMe ? "text-brand-pressed" : "text-zinc-500"}`}>
             {formatDistanceAmount(m.totalKm, unit)} / {formatDistanceAmount(goalKm, unit)} {unit}
           </div>
         </div>
       </div>
       <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
         <div
-          className={`h-full rounded-full transition-all ${isMe ? "bg-emerald-600" : "bg-zinc-900"}`}
+          className={`h-full rounded-full transition-all ${isMe ? "bg-brand" : "bg-ink"}`}
           style={{ width: `${pct}%` }}
         />
       </div>

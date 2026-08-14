@@ -41,9 +41,9 @@ function ThresholdTrendChart({ retests }: { retests: NsmRetestPoint[] }) {
   const points = toChartPoints(retests.map((r) => r.thresholdPaceSec));
   return (
     <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="h-32 w-full overflow-visible">
-      <path d={buildLinePath(points)} fill="none" stroke="#059669" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={buildLinePath(points)} fill="none" stroke="#FF5A16" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       {points.map(([x, y], i) => (
-        <circle key={retests[i].id} cx={x} cy={y} r={i === points.length - 1 ? 4.5 : 3} fill="#059669" />
+        <circle key={retests[i].id} cx={x} cy={y} r={i === points.length - 1 ? 4.5 : 3} fill="#FF5A16" />
       ))}
       <line x1={PAD_X} y1={CHART_H - PAD_Y} x2={CHART_W - PAD_X} y2={CHART_H - PAD_Y} stroke="#e4e4e7" strokeWidth="1" />
     </svg>

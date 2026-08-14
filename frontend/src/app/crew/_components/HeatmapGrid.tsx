@@ -67,7 +67,7 @@ export function HeatmapGrid({ insights }: { insights: CrewInsights }) {
               aria-label={`${monthDayLabel(c.date, locale)} · ${c.runners}`}
               onClick={() => setSelected((prev) => (prev === c.date ? null : c.date))}
               className={`h-5 rounded transition-shadow ${cellClass(c.runners)} ${
-                selected === c.date ? "ring-2 ring-zinc-900 ring-offset-1" : ""
+                selected === c.date ? "ring-2 ring-brand ring-offset-1" : ""
               }`}
             />
           ),

@@ -535,7 +535,7 @@ function TrainingContent({ user }: { user: User | null }) {
                   <div
                     key={s.day}
                     className={`flex items-start gap-3 rounded-xl border p-3 ${
-                      isToday ? "border-zinc-900 bg-zinc-50" : s.isSubT ? "border-zinc-200" : "border-zinc-100"
+                      isToday ? "border-brand bg-brand-soft" : s.isSubT ? "border-line" : "border-zinc-100"
                     }`}
                   >
                     <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600">
@@ -546,7 +546,7 @@ function TrainingContent({ user }: { user: User | null }) {
                         <span className="text-sm font-medium text-zinc-900">{title}</span>
                         <span
                           className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                            s.isSubT ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-500"
+                            s.isSubT ? "bg-brand text-night" : "bg-zinc-100 text-zinc-500"
                           }`}
                         >
                           {tag}

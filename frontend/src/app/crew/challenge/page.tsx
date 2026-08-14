@@ -160,7 +160,7 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
         </label>
         {opponent ? (
           <div className="mt-1.5 flex items-center justify-between gap-3 rounded-lg border border-zinc-300 px-3 py-2">
-            <span className="truncate text-sm font-medium text-emerald-700">
+            <span className="truncate text-sm font-semibold text-brand-pressed">
               {t.crew_match_opponent_selected(opponent.name)}
             </span>
             <button
@@ -240,7 +240,7 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
           <div className="text-base font-semibold">{t.crew_match_roster_label}</div>
           <div
             className={`text-xs ${
-              selected.size >= ROSTER_MIN ? "font-semibold text-emerald-600" : "text-zinc-400"
+              selected.size >= ROSTER_MIN ? "font-semibold text-brand-pressed" : "text-zinc-400"
             }`}
           >
             {t.crew_match_roster_count(selected.size)}
@@ -271,7 +271,7 @@ function ChallengeForm({ crew, user }: { crew: CrewView; user: User }) {
                   <span className="truncate text-sm font-medium text-zinc-900">
                     {m.nickname ?? t.no_name}
                   </span>
-                  {m.isMe ? <Badge tone="emerald">{t.crew_me_badge}</Badge> : null}
+                  {m.isMe ? <Badge tone="brand">{t.crew_me_badge}</Badge> : null}
                 </div>
               </button>
             );

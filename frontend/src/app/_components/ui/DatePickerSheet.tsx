@@ -143,7 +143,7 @@ export function DatePickerSheet({ value, onChange, label, placeholder, yearStart
               <button
                 type="button"
                 onClick={confirm}
-                className="h-11 flex-1 rounded-xl bg-emerald-500 text-sm font-medium text-white"
+                className="h-11 flex-1 rounded-control bg-brand text-sm font-bold text-ink transition-colors hover:bg-brand-hover"
               >
                 {t.confirm}
               </button>

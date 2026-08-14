@@ -16,13 +16,13 @@ export function NavRowButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left hover:bg-zinc-50${className ? ` ${className}` : ""}`}
+      className={`flex w-full items-center justify-between rounded-card border border-line bg-panel px-4 py-3.5 text-left shadow-card transition-colors hover:border-brand/30 hover:bg-brand-soft${className ? ` ${className}` : ""}`}
     >
       <div className="min-w-0">
-        <div className="text-base font-semibold text-zinc-900">{title}</div>
-        {subtitle ? <div className="mt-0.5 text-xs text-zinc-500">{subtitle}</div> : null}
+        <div className="text-base font-semibold text-ink">{title}</div>
+        {subtitle ? <div className="mt-0.5 text-xs text-muted">{subtitle}</div> : null}
       </div>
-      <span aria-hidden className="shrink-0 text-zinc-400">
+      <span aria-hidden className="shrink-0 text-brand">
         ›
       </span>
     </button>

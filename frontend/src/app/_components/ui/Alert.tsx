@@ -6,7 +6,7 @@ export type AlertTone = "error" | "success" | "info" | "warning";
 const TONE_CLASS: Record<AlertTone, string> = {
   error: "bg-red-50 text-red-700",
   success: "bg-green-50 text-green-800",
-  info: "bg-emerald-50 text-emerald-800",
+  info: "border border-brand/20 bg-brand-soft text-brand-pressed",
   warning: "bg-amber-50 text-amber-800",
 };
 
@@ -24,7 +24,7 @@ export function Alert({
   children: ReactNode;
 }) {
   return (
-    <div className={`rounded-xl p-3 text-sm ${TONE_CLASS[tone]}${className ? ` ${className}` : ""}`}>
+    <div className={`rounded-control p-3 text-sm ${TONE_CLASS[tone]}${className ? ` ${className}` : ""}`}>
       {children}
     </div>
   );

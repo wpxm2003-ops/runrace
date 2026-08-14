@@ -36,7 +36,7 @@ export function AccordionRow({
         <span
           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold leading-none ${
             active
-              ? "bg-emerald-500 text-white"
+              ? "bg-brand text-ink"
               : "border border-zinc-300 text-zinc-400"
           }`}
         >

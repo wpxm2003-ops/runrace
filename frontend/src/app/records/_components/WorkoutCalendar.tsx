@@ -50,7 +50,7 @@ export function WorkoutCalendar({
                   : "font-normal text-zinc-400"
               } ${
                 isSelected
-                  ? "bg-zinc-100 font-bold text-zinc-900 ring-2 ring-zinc-900 ring-offset-1"
+                  ? "bg-brand-soft font-bold text-ink ring-2 ring-brand ring-offset-1"
                   : ""
               } ${isToday && !isSelected ? "ring-1 ring-zinc-300" : ""} disabled:cursor-default disabled:opacity-40`}
             >

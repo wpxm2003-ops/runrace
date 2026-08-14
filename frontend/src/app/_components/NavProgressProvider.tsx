@@ -69,7 +69,7 @@ function NavProgressBar() {
       role="progressbar"
       aria-label="Loading"
     >
-      <div className="nav-progress-indeterminate h-full bg-zinc-900" />
+      <div className="nav-progress-indeterminate h-full bg-brand" />
     </div>
   );
 }

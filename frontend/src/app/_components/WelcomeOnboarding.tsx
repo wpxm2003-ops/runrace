@@ -77,7 +77,7 @@ export function WelcomeOnboarding() {
             <span
               key={i}
               className={`h-1.5 rounded-full transition-all ${
-                i === step ? "w-5 bg-zinc-900" : "w-1.5 bg-zinc-200"
+                i === step ? "w-5 bg-brand" : "w-1.5 bg-zinc-200"
               }`}
             />
           ))}

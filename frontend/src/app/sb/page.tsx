@@ -95,7 +95,7 @@ export default function AdminDashboardPage() {
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">운영 대시보드</h1>
           <p className="mt-2 text-sm text-zinc-500">최근 가입자와 운동 기록을 한눈에 확인합니다.</p>
         </div>
-        <span className="rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white">LIVE</span>
+        <span className="rounded-pill bg-brand px-3 py-1.5 text-xs font-bold text-night">LIVE</span>
       </div>
 
       <section className="mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">

@@ -15,7 +15,7 @@ import { useNativeBack } from "@/lib/useNativeBack";
 export function BottomSheet({
   onClose,
   zIndexClass = "z-[100]",
-  panelClassName = "w-full max-w-md rounded-t-2xl bg-white shadow-xl sm:rounded-2xl",
+  panelClassName = "w-full max-w-md rounded-t-hero border border-line bg-panel shadow-float sm:rounded-hero",
   children,
 }: {
   onClose: () => void;

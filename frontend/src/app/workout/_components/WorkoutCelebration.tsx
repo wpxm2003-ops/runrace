@@ -226,7 +226,7 @@ export function WorkoutCelebration({
                 <button
                   type="button"
                   onClick={goTraining}
-                  className="mt-2 w-full rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white hover:bg-violet-700"
+                  className="mt-2 w-full rounded-control bg-brand py-2 text-xs font-bold text-night hover:bg-brand-hover"
                 >
                   {t.ghost_nsm_cta(deltaSec)}
                 </button>

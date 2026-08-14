@@ -108,7 +108,7 @@ export function ChallengePrizes({
             type="button"
             disabled={checking}
             onClick={() => void checkRandomResult()}
-            className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="mt-3 w-full rounded-control bg-brand px-3 py-2 text-sm font-bold text-night hover:bg-brand-hover disabled:opacity-50"
           >
             {checking ? t.prize_checking : t.prize_check_result}
           </button>
@@ -120,7 +120,7 @@ export function ChallengePrizes({
                   type="button"
                   disabled={loadingRank === wonPrize.rank}
                   onClick={() => void openPrizeImage(wonPrize.rank)}
-                  className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
+                  className="shrink-0 rounded-control bg-brand px-2.5 py-1 text-xs font-bold text-night hover:bg-brand-hover disabled:opacity-50"
                 >
                   {loadingRank === wonPrize.rank ? t.prize_opening : t.prize_view_image}
                 </button>
@@ -145,7 +145,7 @@ export function ChallengePrizes({
                     onClick={() => onRankPrizeClick(prize)}
                     className={
                       canView
-                        ? "shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
+                        ? "shrink-0 rounded-control bg-brand px-2.5 py-1 text-xs font-bold text-night hover:bg-brand-hover disabled:opacity-50"
                         : "shrink-0 rounded-lg border border-amber-300 px-2.5 py-1 text-xs text-amber-700"
                     }
                   >

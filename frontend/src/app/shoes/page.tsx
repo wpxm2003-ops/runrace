@@ -52,7 +52,7 @@ function ShoeListRow({
   return (
     <div
       className={`rounded-xl border p-3 ${
-        shoe.active ? "border-zinc-900 bg-zinc-50" : "border-zinc-100"
+        shoe.active ? "border-brand bg-brand-soft" : "border-line bg-panel"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -62,7 +62,7 @@ function ShoeListRow({
             <div className="flex items-center gap-1.5">
               <span className="truncate text-sm font-semibold text-zinc-900">{title}</span>
               {shoe.active ? (
-                <span className="shrink-0 rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="shrink-0 rounded-pill bg-brand px-2 py-0.5 text-[10px] font-bold text-night">
                   {t.shoe_active_badge}
                 </span>
               ) : null}

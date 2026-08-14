@@ -61,7 +61,7 @@ export function NotificationToggle({ user }: { user: User }) {
           disabled={isLoading || saving}
           onClick={onToggle}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-            enabled ? "bg-zinc-900" : "bg-zinc-300"
+            enabled ? "bg-brand" : "bg-zinc-300"
           }`}
         >
           <span

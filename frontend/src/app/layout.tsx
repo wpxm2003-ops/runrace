@@ -62,7 +62,7 @@ const APP_JSON_LD = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#18181b",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({

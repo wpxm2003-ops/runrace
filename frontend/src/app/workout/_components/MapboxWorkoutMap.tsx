@@ -110,7 +110,7 @@ function addMapData(map: mapboxgl.Map, data: MapData) {
     id: SOURCE_IDS.route,
     type: "line",
     source: SOURCE_IDS.route,
-    paint: { "line-color": "#18181b", "line-width": 5, "line-opacity": 0.9 },
+    paint: { "line-color": "#FF5A16", "line-width": 5, "line-opacity": 0.9 },
   });
   map.addLayer({
     id: SOURCE_IDS.gaps,
@@ -130,7 +130,7 @@ function addMapData(map: mapboxgl.Map, data: MapData) {
     paint: {
       "circle-radius": 8,
       "circle-color": "#3b82f6",
-      "circle-stroke-color": "#18181b",
+      "circle-stroke-color": "#FF5A16",
       "circle-stroke-width": 3,
     },
   });

@@ -41,25 +41,25 @@ export function RivalPreviewSection() {
                 </div>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
-                <div className="h-full w-[62%] rounded-full bg-zinc-900" />
+                <div className="h-full w-[62%] rounded-full bg-brand" />
               </div>
             </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+            <div className="rounded-card border border-brand/25 bg-brand-soft p-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-500">2</span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-semibold text-emerald-900">느린곰5495</span>
-                    <Badge tone="emerald">{t.me_label}</Badge>
+                    <Badge tone="brand">{t.me_label}</Badge>
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="text-sm font-semibold text-emerald-700">45%</div>
-                  <div className="mt-0.5 text-[11px] text-emerald-700">18.00 / 40.00 km</div>
+                  <div className="text-sm font-semibold text-brand-pressed">45%</div>
+                  <div className="mt-0.5 text-[11px] text-brand-pressed">18.00 / 40.00 km</div>
                 </div>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
-                <div className="h-full w-[45%] rounded-full bg-emerald-600" />
+                <div className="h-full w-[45%] rounded-full bg-ink" />
               </div>
             </div>
           </div>

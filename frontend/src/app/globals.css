@@ -15,6 +15,7 @@
   --rr-color-accent-hover: #e94d0d;
   --rr-color-accent-pressed: #d94408;
   --rr-color-accent-soft: #fff0e8;
+  --rr-color-accent-border: #ffd0b9;
   --rr-color-logo-magenta: #b72870;
   --rr-color-logo-blue: #121b3f;
 
@@ -58,6 +59,32 @@
   --color-brand-soft: var(--rr-color-accent-soft);
   --color-logo-magenta: var(--rr-color-logo-magenta);
   --color-logo-blue: var(--rr-color-logo-blue);
+
+  /* Legacy Tailwind palette aliases keep every existing route on the same
+     RunRace neutral system while screens are progressively componentized. */
+  --color-zinc-50: var(--rr-color-surface-muted);
+  --color-zinc-100: #f1f1ee;
+  --color-zinc-200: var(--rr-color-border);
+  --color-zinc-300: #d4d4d0;
+  --color-zinc-400: #a0a09b;
+  --color-zinc-500: #6f6f6b;
+  --color-zinc-600: #555552;
+  --color-zinc-700: #3f3f3d;
+  --color-zinc-800: #262625;
+  --color-zinc-900: var(--rr-color-background-dark);
+  --color-zinc-950: #080808;
+
+  --color-orange-50: var(--rr-color-accent-soft);
+  --color-orange-100: #ffe1d1;
+  --color-orange-200: var(--rr-color-accent-border);
+  --color-orange-300: #ff9b70;
+  --color-orange-400: #ff743b;
+  --color-orange-500: var(--rr-color-accent);
+  --color-orange-600: var(--rr-color-accent-hover);
+  --color-orange-700: var(--rr-color-accent-pressed);
+  --color-orange-800: #b53606;
+  --color-orange-900: #8f2b08;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius-rr-sm: var(--rr-radius-sm);
@@ -65,8 +92,12 @@
   --radius-card: var(--rr-radius-card);
   --radius-hero: var(--rr-radius-hero);
   --radius-pill: var(--rr-radius-pill);
+  --radius-lg: var(--rr-radius-control);
+  --radius-xl: var(--rr-radius-card);
+  --radius-2xl: var(--rr-radius-hero);
   --shadow-card: var(--rr-shadow-card);
   --shadow-float: var(--rr-shadow-float);
+  --shadow-sm: var(--rr-shadow-card);
   --spacing-button: var(--rr-button-height);
   --spacing-card: var(--rr-card-padding);
 }
@@ -90,6 +121,34 @@ body {
 :where(a, button, input, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--rr-color-accent);
   outline-offset: 2px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--rr-color-accent);
+}
+
+/* Migration bridge: legacy black action/selection controls across older
+   routes now consume the shared orange accent without recoloring dark cards. */
+:where(button, a, [role="button"])[class~="bg-zinc-900"] {
+  background-color: var(--rr-color-accent);
+  color: var(--rr-color-text);
+}
+
+:where(button, a, [role="button"])[class~="bg-zinc-900"]:hover {
+  background-color: var(--rr-color-accent-hover);
+}
+
+:where(button, a, [role="button"])[class~="border-zinc-900"] {
+  border-color: var(--rr-color-accent);
+}
+
+:where(button, a, [role="button"])[class~="hover:border-zinc-900"]:hover {
+  border-color: var(--rr-color-accent);
+}
+
+:where(button, a, [role="button"])[class~="ring-zinc-900"] {
+  --tw-ring-color: var(--rr-color-accent);
 }
 
 .rr-number {

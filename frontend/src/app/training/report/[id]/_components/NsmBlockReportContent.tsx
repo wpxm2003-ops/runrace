@@ -16,7 +16,7 @@ import Link from "next/link";
 
 const COLOR = {
   gray: "#7E828B",
-  green: "#34D399",
+  green: "#FF5A16",
   amber: "#FBBF24",
   divider: "#1F2127",
   footer: "#5C606A",
@@ -57,7 +57,7 @@ export default function NsmBlockReportContent() {
   if (!data) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center bg-zinc-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }

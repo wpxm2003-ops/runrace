@@ -6,7 +6,7 @@ import { useLocale } from "@/lib/i18n";
 const STATUS_CLASSES: Record<CrewMatchStatus, string> = {
   PENDING: "bg-amber-100 text-amber-700",
   SCHEDULED: "bg-amber-100 text-amber-700",
-  IN_PROGRESS: "bg-sky-100 text-sky-700",
+  IN_PROGRESS: "bg-brand text-night",
   ENDED: "bg-zinc-100 text-zinc-500",
   DECLINED: "bg-zinc-100 text-zinc-500",
   EXPIRED: "bg-zinc-100 text-zinc-500",

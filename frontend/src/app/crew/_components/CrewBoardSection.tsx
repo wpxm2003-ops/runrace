@@ -83,7 +83,7 @@ export function CrewBoardSection({ crew, user }: { crew: CrewView; user: User })
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
             <div
-              className={`h-full rounded-full transition-all ${goalAchievers === crew.members.length ? "bg-emerald-500" : "bg-zinc-900"}`}
+              className={`h-full rounded-full transition-all ${goalAchievers === crew.members.length ? "bg-emerald-500" : "bg-brand"}`}
               style={{ width: `${crewGoalPercent}%` }}
             />
           </div>
