@@ -35,6 +35,11 @@ export function createWorkout(body: WorkoutCreateBody, user: User) {
   return apiFetch<CreateWorkoutResponse>("/api/workouts", { method: "POST", user, body });
 }
 
+/** GPS 운동 시작 버튼을 누른 시점을 활동 이력에 기록한다. */
+export function recordWorkoutStart(user: User) {
+  return apiFetch<void>("/api/workouts/start", { method: "POST", user });
+}
+
 /** 정적 export 환경에서 DELETE가 막히는 경우가 있어 POST .../delete 를 사용한다. */
 export function deleteWorkout(id: number, user: User) {
   return apiFetch<void>(`/api/workouts/${id}/delete`, { method: "POST", user });

@@ -20,6 +20,9 @@ import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.crew.service.CrewMatchService;
 import com.runrace.backend.event.WorkoutEvents;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
@@ -51,6 +54,7 @@ class WorkoutServiceIdempotencyTest {
   @Mock ImageUploadService imageUploadService;
   @Mock ShoeService shoeService;
   @Mock ApplicationEventPublisher eventPublisher;
+  @Mock ActivityHistoryService activityHistoryService;
   @Mock AppUser user;
 
   private WorkoutService service;
@@ -72,7 +76,7 @@ class WorkoutServiceIdempotencyTest {
         shoeService,
         eventPublisher,
         new ObjectMapper(),
-        null);
+        activityHistoryService);
     userId = UUID.randomUUID();
     principal = new AuthPrincipal(userId, "uid");
     when(userRepository.getRequiredForUpdate(userId)).thenReturn(user);
@@ -135,7 +139,7 @@ class WorkoutServiceIdempotencyTest {
     assertTrue(result.deduplicated());
     verify(workoutRepository, never()).save(any());
     // 재시도에서 이벤트가 다시 발행되면 라이벌 푸시가 중복 발송된다.
-    verifyNoInteractions(indoorApprovalService, shoeService, eventPublisher);
+    verifyNoInteractions(indoorApprovalService, shoeService, eventPublisher, activityHistoryService);
   }
 
   /**
@@ -155,6 +159,12 @@ class WorkoutServiceIdempotencyTest {
 
     assertFalse(result.deduplicated());
     verify(workoutRepository).save(any(WorkoutSession.class));
+    verify(activityHistoryService).recordSelf(
+        userId,
+        ActivityAction.INDOOR_RUN_REGISTERED,
+        ActivityTargetType.WORKOUT,
+        result.session().getId(),
+        java.util.Map.of("distanceM", 2_000, "durationSec", 600));
   }
 
   /** 실내런도 저장 시점에 라이벌 도발 푸시 이벤트를 발행한다(실외와 동일 계약). */

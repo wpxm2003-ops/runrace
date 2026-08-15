@@ -31,6 +31,9 @@ const feedbackTypeLabel = {
 } as const;
 
 const activityActionLabel: Record<string, string> = {
+  WORKOUT_STARTED: "운동 시작",
+  INDOOR_RUN_REGISTERED: "실내런 등록",
+  ACCOUNT_WITHDRAWN: "회원 탈퇴",
   RIVAL_ADDED: "라이벌 추가",
   RIVAL_REMOVED: "라이벌 해제",
   RACE_CREATED: "레이스 생성",

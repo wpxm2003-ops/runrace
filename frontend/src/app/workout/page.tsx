@@ -5,7 +5,7 @@ import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration
 import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
 import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
-import { createWorkout, fetchWorkout, logNsmSession, useTrainingPlan } from "@/lib/api";
+import { createWorkout, fetchWorkout, logNsmSession, recordWorkoutStart, useTrainingPlan } from "@/lib/api";
 import type { NsmSessionLogBody } from "@/lib/api/types";
 import {
   clearGhostSelection,
@@ -454,6 +454,7 @@ export default function WorkoutPage() {
             onGo={() => {
               clearNsmProgress(); // 새 런 시작 — 이전 NSM 렙 진행 초기화
               session.start(user.uid);
+              void recordWorkoutStart(user).catch(() => undefined);
             }}
             onComplete={() => setCounting(false)}
           />

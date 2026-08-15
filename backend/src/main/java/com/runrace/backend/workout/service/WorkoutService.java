@@ -299,6 +299,13 @@ public class WorkoutService {
     WorkoutSession saved = saveIndoorSession(
         user, clientWorkoutId, distanceM, durationSec, start, startedAtLocal, imageUrl);
 
+    activityHistoryService.recordSelf(
+        principal.userId(),
+        ActivityAction.INDOOR_RUN_REGISTERED,
+        ActivityTargetType.WORKOUT,
+        saved.getId(),
+        Map.of("distanceM", distanceM, "durationSec", durationSec));
+
     // 참가 중인 레이스마다 구성원 승인 대기 생성 — 승인돼야 레이스 거리로 반영된다
     indoorApprovalService.createPendingIndoorApprovals(principal.userId(), saved, distanceM);
 

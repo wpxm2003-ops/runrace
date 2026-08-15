@@ -3,6 +3,9 @@ package com.runrace.backend.workout.controller;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.common.PathPatterns;
+import com.runrace.backend.history.domain.ActivityAction;
+import com.runrace.backend.history.domain.ActivityTargetType;
+import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.workout.dto.CreateIndoorRunRequest;
 import com.runrace.backend.workout.dto.CreateWorkoutRequest;
@@ -50,6 +53,16 @@ public class WorkoutController {
   private final PersonalBestService personalBestService;
   private final AchievementService achievementService;
   private final ShoeService shoeService;
+  private final ActivityHistoryService activityHistoryService;
+
+  /** GPS 운동 시작 버튼을 누른 시점의 사용자 활동 기록. */
+  @PostMapping("/start")
+  public ResponseEntity<Void> recordStart(AuthPrincipal principal) {
+    activityHistoryService.recordSelf(
+        principal.userId(), ActivityAction.WORKOUT_STARTED,
+        ActivityTargetType.WORKOUT, principal.userId());
+    return ResponseEntity.noContent().build();
+  }
 
   @PostMapping
   public ResponseEntity<CreateWorkoutResponse> create(
