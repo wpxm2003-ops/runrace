@@ -153,29 +153,29 @@ export default function CreateChallengePage() {
             <p className="mt-0.5 text-xs text-zinc-500">{t.tpl_section_desc}</p>
           </div>
         </div>
-        <div className="grid gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           {RACE_TEMPLATES.map((tpl) => (
             <button
               key={tpl.key}
               type="button"
               onClick={() => applyTemplate(tpl)}
               aria-pressed={selectedTemplate === tpl.key}
-              className={`group flex min-h-20 w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all active:scale-[0.99] ${
+              className={`group flex min-h-32 w-full min-w-0 flex-col items-start rounded-2xl border px-3 py-3 text-left transition-all active:scale-[0.98] ${
                 selectedTemplate === tpl.key
                   ? "border-zinc-950 bg-zinc-950 text-white shadow-lg shadow-zinc-950/15"
                   : "border-zinc-200 bg-white text-zinc-950 shadow-sm hover:border-zinc-400"
               }`}
             >
-              <span className="min-w-0">
+              <span className="flex min-w-0 flex-1 flex-col">
                 <span className={`text-[11px] font-bold ${selectedTemplate === tpl.key ? "text-orange-500" : "text-zinc-500"}`}>
                   {templateLabels[tpl.key]}
                 </span>
-                <span className="mt-0.5 block text-base font-black tracking-tight">{templateNames[tpl.key]}</span>
-                <span className={`mt-0.5 block text-xs ${selectedTemplate === tpl.key ? "text-zinc-300" : "text-zinc-500"}`}>
+                <span className="mt-1 block text-sm font-black leading-tight tracking-tight">{templateNames[tpl.key]}</span>
+                <span className={`mt-1 block text-[11px] leading-snug ${selectedTemplate === tpl.key ? "text-zinc-300" : "text-zinc-500"}`}>
                   {templateDescriptions[tpl.key]}
                 </span>
               </span>
-              <span className={`ml-3 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider ${
+              <span className={`mt-2 shrink-0 rounded-full px-2 py-1 text-[9px] font-black tracking-wider ${
                 selectedTemplate === tpl.key ? "bg-orange-500 text-white" : "bg-orange-50 text-orange-600"
               }`}>
                 {tpl.accent}
