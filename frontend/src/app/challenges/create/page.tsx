@@ -13,8 +13,8 @@ import { createChallenge, invalidateChallengeLists, invalidateCrewRaces, savePri
 import type { PrizeAwardType, PrizeFormItem } from "@/lib/api/types";
 import { PrizeEditorModal } from "@/app/challenges/_components/PrizeEditorModal";
 import { PrizeAccordionSection } from "@/app/challenges/_components/PrizeAccordionSection";
-import { minStartAtLocal, plusDaysLocal, prizeMaxRank } from "@/lib/challengeForm";
-import { RACE_TEMPLATES, type RaceTemplate, type RaceTemplateKey } from "@/lib/raceTemplates";
+import { prizeMaxRank } from "@/lib/challengeForm";
+import { RACE_TEMPLATES, raceTemplateWindow, type RaceTemplate, type RaceTemplateKey } from "@/lib/raceTemplates";
 import { goalInputFromKm } from "@/lib/units";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ export default function CreateChallengePage() {
   const [stakeOpen, setStakeOpen] = useState(false);
   const [prizeOpen, setPrizeOpen] = useState(false);
   const [prizeModalOpen, setPrizeModalOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<RaceTemplateKey | null>(null);
   // 크루 홈에서 진입(?crew=1)하면 크루 내부 레이스로 생성 — 마운트 후 읽어 hydration mismatch 방지.
   // 크루가 공개되지 않은 로케일에서는 쿼리를 직접 붙여도 무시한다 — 허용하면 본인이 볼 수 없는
   // 크루 전용 레이스가 만들어진다(크루 화면은 라우트 가드로 막혀 있다).
@@ -57,21 +58,33 @@ export default function CreateChallengePage() {
   const prizeSelected = prizeOpen || prizes.length > 0;
 
   const templateNames: Record<RaceTemplateKey, string> = {
+    today5: t.tpl_today5,
     weekend10: t.tpl_weekend10,
     week30: t.tpl_week30,
-    commute: t.tpl_commute,
-    diet2w: t.tpl_diet2w,
   };
 
-  // 템플릿 탭 → 목표·기간을 폼에 채운다. 시작=내일(참가 창 확보), 종료=시작+기간. 사용자가 이후 조정 가능.
+  const templateLabels: Record<RaceTemplateKey, string> = {
+    today5: t.tpl_today_label,
+    weekend10: t.tpl_weekend_label,
+    week30: t.tpl_popular_label,
+  };
+
+  const templateDescriptions: Record<RaceTemplateKey, string> = {
+    today5: t.tpl_today5_desc,
+    weekend10: t.tpl_weekend10_desc,
+    week30: t.tpl_week30_desc,
+  };
+
+  // 추천 카드를 선택하면 제목·목표·일정을 채운다. 사용자는 이후 값을 자유롭게 조정할 수 있다.
   function applyTemplate(tpl: RaceTemplate) {
-    const startAt = plusDaysLocal(minStartAtLocal(), 1);
+    const { startAt, endAt } = raceTemplateWindow(tpl.key);
+    setSelectedTemplate(tpl.key);
     form.reset({
       title: templateNames[tpl.key],
       goalKm: goalInputFromKm(tpl.goalKm, unit),
       maxMembers: "10",
       startAt,
-      endAt: plusDaysLocal(startAt, tpl.durationDays),
+      endAt,
       stake: "",
     });
   }
@@ -132,18 +145,41 @@ export default function CreateChallengePage() {
         </div>
       ) : null}
 
-      {/* 빠른 시작 — 탭하면 목표·기간이 자동으로 채워진다 */}
-      <div className="mb-4">
-        <p className="mb-2 text-sm font-medium text-zinc-700">{t.tpl_section_title}</p>
-        <div className="flex flex-wrap gap-2">
+      {/* 추천 레이스 — 선택하면 제목·목표·일정이 자동으로 채워진다 */}
+      <div className="mb-5">
+        <div className="mb-3 flex items-end justify-between">
+          <div>
+            <p className="text-base font-black tracking-tight text-zinc-950">{t.tpl_section_title}</p>
+            <p className="mt-0.5 text-xs text-zinc-500">{t.tpl_section_desc}</p>
+          </div>
+        </div>
+        <div className="grid gap-2.5">
           {RACE_TEMPLATES.map((tpl) => (
             <button
               key={tpl.key}
               type="button"
               onClick={() => applyTemplate(tpl)}
-              className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              aria-pressed={selectedTemplate === tpl.key}
+              className={`group flex min-h-20 w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all active:scale-[0.99] ${
+                selectedTemplate === tpl.key
+                  ? "border-zinc-950 bg-zinc-950 text-white shadow-lg shadow-zinc-950/15"
+                  : "border-zinc-200 bg-white text-zinc-950 shadow-sm hover:border-zinc-400"
+              }`}
             >
-              {tpl.emoji} {templateNames[tpl.key]}
+              <span className="min-w-0">
+                <span className={`text-[11px] font-bold ${selectedTemplate === tpl.key ? "text-orange-500" : "text-zinc-500"}`}>
+                  {templateLabels[tpl.key]}
+                </span>
+                <span className="mt-0.5 block text-base font-black tracking-tight">{templateNames[tpl.key]}</span>
+                <span className={`mt-0.5 block text-xs ${selectedTemplate === tpl.key ? "text-zinc-300" : "text-zinc-500"}`}>
+                  {templateDescriptions[tpl.key]}
+                </span>
+              </span>
+              <span className={`ml-3 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider ${
+                selectedTemplate === tpl.key ? "bg-orange-500 text-white" : "bg-orange-50 text-orange-600"
+              }`}>
+                {tpl.accent}
+              </span>
             </button>
           ))}
         </div>
