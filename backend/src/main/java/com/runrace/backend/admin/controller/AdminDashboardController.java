@@ -7,6 +7,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.feedback.domain.Feedback;
 import com.runrace.backend.feedback.repository.FeedbackRepository;
+import com.runrace.backend.history.repository.UserActivityHistoryRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
@@ -26,10 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AdminDashboardController {
   private static final List<String> EXCLUDED_DISPLAY_NAMES = List.of("노광고", "방지훈", "배하영");
+  private static final List<String> ACTIVITY_EXCLUDED_DISPLAY_NAMES = List.of("노광고", "방지훈");
 
   private final AppUserRepository appUserRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
   private final FeedbackRepository feedbackRepository;
+  private final UserActivityHistoryRepository userActivityHistoryRepository;
   private final ObjectMapper objectMapper;
 
   @Value("${runrace.admin.firebase-uids:}")
@@ -54,7 +57,11 @@ public class AdminDashboardController {
         .findAllByOrderByCreatedAtDesc(PageRequest.of(0, 30)).stream()
         .map(this::toFeedbackRow)
         .toList();
-    return new DashboardResponse(members, workouts, feedback);
+    List<ActivityRow> activities = userActivityHistoryRepository
+        .findRecentForAdmin(ACTIVITY_EXCLUDED_DISPLAY_NAMES, pageable).stream()
+        .map(ActivityRow::from)
+        .toList();
+    return new DashboardResponse(members, workouts, activities, feedback);
   }
 
   private void ensureAdmin(AuthPrincipal principal) {
@@ -80,7 +87,26 @@ public class AdminDashboardController {
   }
 
   public record DashboardResponse(
-      List<MemberRow> members, List<WorkoutRow> workouts, List<FeedbackRow> feedback) {}
+      List<MemberRow> members,
+      List<WorkoutRow> workouts,
+      List<ActivityRow> activities,
+      List<FeedbackRow> feedback) {}
+
+  public record ActivityRow(
+      Long id,
+      String displayName,
+      String actionType,
+      String targetType,
+      String occurredAt) {
+    static ActivityRow from(UserActivityHistoryRepository.AdminActivityView activity) {
+      return new ActivityRow(
+          activity.getId(),
+          activity.getDisplayName(),
+          activity.getActionType().name(),
+          activity.getTargetType().name(),
+          IsoTime.format(activity.getOccurredAt()));
+    }
+  }
 
   public record MemberRow(
       String displayName,

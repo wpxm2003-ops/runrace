@@ -30,6 +30,29 @@ const feedbackTypeLabel = {
   ETC: "기타",
 } as const;
 
+const activityActionLabel: Record<string, string> = {
+  RIVAL_ADDED: "라이벌 추가",
+  RIVAL_REMOVED: "라이벌 해제",
+  RACE_CREATED: "레이스 생성",
+  RACE_UPDATED: "레이스 수정",
+  RACE_DELETED: "레이스 삭제",
+  RACE_JOINED: "레이스 참가",
+  RACE_LEFT: "레이스 나가기",
+  CREW_CREATED: "크루 생성",
+  CREW_DISBANDED: "크루 해체",
+  CREW_JOINED: "크루 가입",
+  CREW_LEFT: "크루 탈퇴",
+  CREW_MEMBER_REMOVED: "크루원 내보내기",
+  CREW_APPLICATION_SUBMITTED: "크루 가입 신청",
+  CREW_APPLICATION_APPROVED: "크루 가입 승인",
+  CREW_APPLICATION_REJECTED: "크루 가입 거절",
+  CREW_APPLICATION_CANCELLED: "크루 가입 신청 취소",
+  CREW_LEADER_CHANGED: "크루 리더 변경",
+  WORKOUT_DELETED: "운동 기록 삭제",
+  PUSH_ENABLED: "푸시 알림 켜기",
+  PUSH_DISABLED: "푸시 알림 끄기",
+};
+
 const duration = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -161,6 +184,46 @@ export default function AdminDashboardPage() {
             <tbody className="divide-y divide-zinc-100">
               {dashboard.workouts.length === 0 ? <tr><td colSpan={8}><EmptyState>운동 기록이 없습니다.</EmptyState></td></tr> : dashboard.workouts.map((workout) => (
                 <tr key={workout.id} className="hover:bg-zinc-50"><td className="px-5 py-3.5 font-medium text-zinc-900">{workout.displayName || "(이름 없음)"}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-700">{formatDistance(workout.distanceM, "km")}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-700">{duration(workout.durationSec)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.startedAt)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.endedAt)}</td><td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">{dateTime(workout.createdAt)}</td><td className="px-5 py-3.5 text-zinc-600">{workout.hasImage ? "있음" : "없음"}</td><td className="px-5 py-3.5 text-zinc-600">{workout.hasMemo ? "있음" : "없음"}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+          <div>
+            <h2 className="font-semibold text-zinc-900">최근 사용자 활동</h2>
+            <p className="mt-1 text-xs text-zinc-400">노광고·방지훈 제외 · 발생 시각 기준 최신 10건</p>
+          </div>
+          <span className="text-sm tabular-nums text-zinc-400">{dashboard.activities.length}건</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="bg-zinc-50 text-xs font-medium text-zinc-500">
+              <tr>
+                <th className="px-5 py-3">사용자</th>
+                <th className="px-5 py-3">액션</th>
+                <th className="px-5 py-3">대상</th>
+                <th className="px-5 py-3">발생 시각</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {dashboard.activities.length === 0 ? (
+                <tr><td colSpan={4}><EmptyState>사용자 활동이 없습니다.</EmptyState></td></tr>
+              ) : dashboard.activities.map((activity) => (
+                <tr key={activity.id} className="hover:bg-zinc-50">
+                  <td className="px-5 py-3.5 font-medium text-zinc-900">
+                    {activity.displayName || "(이름 없음)"}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-700">
+                    {activityActionLabel[activity.actionType] || activity.actionType}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-500">{activity.targetType}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-zinc-500">
+                    {dateTime(activity.occurredAt)}
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>

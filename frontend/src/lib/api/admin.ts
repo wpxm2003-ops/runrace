@@ -39,9 +39,18 @@ export type AdminFeedback = {
   createdAt: string;
 };
 
+export type AdminActivity = {
+  id: number;
+  displayName: string | null;
+  actionType: string;
+  targetType: string;
+  occurredAt: string;
+};
+
 export type AdminDashboard = {
   members: AdminMember[];
   workouts: AdminWorkout[];
+  activities: AdminActivity[];
   feedback: AdminFeedback[];
 };
 
