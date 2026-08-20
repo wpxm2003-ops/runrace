@@ -13,6 +13,7 @@ import {
   pickWorkoutStartSeed,
   slideIdleAnchor,
   shouldRestartGpsWatch,
+  shouldResetIdleAnchorAfterForegroundGap,
   isInKorea,
   splitPathAtGaps,
   WORKOUT_START_FIX_MAX_ACCURACY_M,
@@ -35,6 +36,12 @@ describe("GPS watch liveness", () => {
     expect(shouldRestartGpsWatch(0, null, null)).toBe(true);
     expect(shouldRestartGpsWatch(15_000, 0, null)).toBe(true);
     expect(shouldRestartGpsWatch(25_000, 0, 10_000)).toBe(true);
+  });
+
+  it("does not mistake a locked-screen callback gap for an idle auto-pause", () => {
+    expect(shouldResetIdleAnchorAfterForegroundGap(60_000, 31_000)).toBe(false);
+    expect(shouldResetIdleAnchorAfterForegroundGap(60_000, 30_000)).toBe(true);
+    expect(shouldResetIdleAnchorAfterForegroundGap(60_000, null)).toBe(true);
   });
 });
 

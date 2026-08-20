@@ -21,6 +21,7 @@ import {
   geolocationBlockedReason,
   geolocationErrorMessage,
   shouldRestartGpsWatch,
+  shouldResetIdleAnchorAfterForegroundGap,
   WORKOUT_START_FIX_MAX_AGE_MS,
   type WorkoutFinishSnapshot,
   type WorkoutStartFix,
@@ -475,6 +476,17 @@ export function useWorkoutSession(
       return;
     }
     lastWatchRestartAtRef.current = now;
+    // If the WebView bridge was asleep while locked, its last callback looks
+    // identical to a long rest. Reset the idle window on foreground return so
+    // the first recovered GPS fix does not falsely auto-pause the workout.
+    // A correctly running native watcher keeps lastGpsFixAt fresh, so this is
+    // only applied after a real callback gap.
+    if (
+      reason === "foreground"
+      && shouldResetIdleAnchorAfterForegroundGap(now, lastGpsFixAtRef.current)
+    ) {
+      idleAnchorRef.current = { timeMs: now, distanceM: distanceAccumRef.current };
+    }
     // Never join the last pre-suspension point to the first recovered fix.
     reanchorNextRef.current = true;
     lastRawPosRef.current = null;

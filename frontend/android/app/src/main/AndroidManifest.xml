@@ -56,4 +56,8 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Android 13+: the persistent foreground-location notification is part of
+         the tracking contract. Declare it here instead of relying only on the
+         transitive plugin manifest. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

@@ -10,7 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cap:sync:android": "node ../scripts/ensure-cap-webdir.mjs && npx cap sync android",
+    "cap:sync:android": "node ../scripts/ensure-cap-webdir.mjs && npx cap sync android && node ../scripts/verify-android-background-tracking.mjs",
     "frontend:deploy": "node ../scripts/deploy.mjs",
     "backend:deploy": "node ../scripts/deploy-backend.mjs"
   },

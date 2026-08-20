@@ -40,12 +40,14 @@ const baseWorkout: Omit<PersistedWorkout, "savedAt"> = {
 
 beforeEach(() => {
   (globalThis as unknown as { window: unknown }).window = globalThis;
+  (globalThis as unknown as { localStorage: unknown }).localStorage = new MemoryStorage();
   (globalThis as unknown as { sessionStorage: unknown }).sessionStorage = new MemoryStorage();
 });
 
 afterEach(() => {
   vi.useRealTimers();
   delete (globalThis as { window?: unknown }).window;
+  delete (globalThis as { localStorage?: unknown }).localStorage;
   delete (globalThis as { sessionStorage?: unknown }).sessionStorage;
 });
 
@@ -67,7 +69,7 @@ describe("workoutPersistence owner", () => {
   it("소유자 정보가 없는 구버전 세션을 현재 계정에 추측 귀속하지 않는다", () => {
     const legacy = { ...baseWorkout, savedAt: Date.now() } as Partial<PersistedWorkout>;
     delete legacy.ownerUid;
-    sessionStorage.setItem("runrace_workout", JSON.stringify(legacy));
+    localStorage.setItem("runrace_workout", JSON.stringify(legacy));
 
     expect(loadWorkoutForOwner("user-a")).toBeNull();
   });
@@ -75,7 +77,7 @@ describe("workoutPersistence owner", () => {
   it("24시간이 지난 세션은 소유자가 맞아도 제거한다", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-30T12:00:00Z"));
-    sessionStorage.setItem(
+    localStorage.setItem(
       "runrace_workout",
       JSON.stringify({
         ...baseWorkout,
@@ -84,7 +86,7 @@ describe("workoutPersistence owner", () => {
     );
 
     expect(loadWorkoutForOwner("user-a")).toBeNull();
-    expect(sessionStorage.getItem("runrace_workout")).toBeNull();
+    expect(localStorage.getItem("runrace_workout")).toBeNull();
   });
 
   it("명시적으로 운동을 지우면 어느 계정에서도 복원되지 않는다", () => {
@@ -92,5 +94,16 @@ describe("workoutPersistence owner", () => {
     clearWorkout();
 
     expect(loadWorkoutForOwner("user-a")).toBeNull();
+  });
+
+  it("이전 앱 버전의 sessionStorage 세션을 localStorage로 옮겨 복원한다", () => {
+    sessionStorage.setItem(
+      "runrace_workout",
+      JSON.stringify({ ...baseWorkout, savedAt: Date.now() }),
+    );
+
+    expect(loadWorkoutForOwner("user-a")?.ownerUid).toBe("user-a");
+    expect(localStorage.getItem("runrace_workout")).not.toBeNull();
+    expect(sessionStorage.getItem("runrace_workout")).toBeNull();
   });
 });

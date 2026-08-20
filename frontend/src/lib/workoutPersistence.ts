@@ -1,5 +1,5 @@
 import type { IdleAnchor, LatLng } from "./workoutTrack";
-import { sessionJson } from "./safeStorage";
+import { localJson, sessionJson } from "./safeStorage";
 
 export type PersistedWorkout = {
   /** 운동 시작 시점의 Firebase UID. 다른 계정으로는 복원·저장할 수 없다. */
@@ -27,14 +27,34 @@ export type PersistedWorkout = {
 /** 24시간 지난 세션은 버린다. */
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-const store = sessionJson<PersistedWorkout>("runrace_workout");
+// A locked Android WebView can be reclaimed by the OS. sessionStorage dies with
+// that renderer, while localStorage survives and lets the saved session resume
+// after the app is opened again. Keep a one-time sessionStorage fallback so an
+// in-progress workout from the previous app version is not discarded on update.
+const store = localJson<PersistedWorkout>("runrace_workout");
+const legacySessionStore = sessionJson<PersistedWorkout>("runrace_workout");
 
 export function saveWorkout(data: Omit<PersistedWorkout, "savedAt">): void {
   store.set({ ...data, savedAt: Date.now() });
 }
 
 function loadWorkout(): PersistedWorkout | null {
-  const data = store.get();
+  let data = store.get();
+  if (!data) {
+    const legacy = legacySessionStore.get();
+    if (legacy) {
+      // Do not erase the old session if a privacy mode or storage quota blocks
+      // the migration. Returning it still preserves the existing in-memory tab.
+      store.set(legacy);
+      const migrated = store.get();
+      if (migrated) {
+        legacySessionStore.remove();
+        data = migrated;
+      } else {
+        data = legacy;
+      }
+    }
+  }
   if (!data) return null;
   if (Date.now() - data.savedAt > MAX_AGE_MS) {
     clearWorkout();
@@ -56,6 +76,7 @@ export function loadWorkoutForOwner(ownerUid: string): PersistedWorkout | null {
 
 export function clearWorkout(): void {
   store.remove();
+  legacySessionStore.remove();
 }
 
 /**

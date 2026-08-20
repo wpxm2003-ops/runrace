@@ -1,5 +1,42 @@
 apply plugin: 'com.android.application'
 
+// The community background-geolocation plugin requires Capacitor's legacy
+// bridge to keep delivering callbacks after Android has backgrounded the
+// WebView for several minutes. capacitor.config.json is generated and ignored
+// by Git, so fail the native build instead of silently shipping a stale config.
+tasks.register("verifyBackgroundTrackingConfig") {
+    group = "verification"
+    description = "Verifies the generated Capacitor config keeps Android background tracking alive."
+    doLast {
+        def configFile = file("src/main/assets/capacitor.config.json")
+        if (!configFile.exists()) {
+            throw new GradleException(
+                "Missing ${configFile}. Run `npm run cap:sync:android` before building the Android app."
+            )
+        }
+
+        def config
+        try {
+            config = new groovy.json.JsonSlurper().parse(configFile)
+        } catch (Exception exception) {
+            throw new GradleException("Unable to parse ${configFile}: ${exception.message}", exception)
+        }
+
+        def androidConfig = config instanceof Map ? config.get("android") : null
+        def legacyBridge = androidConfig instanceof Map ? androidConfig.get("useLegacyBridge") : null
+        if (legacyBridge != true) {
+            throw new GradleException(
+                "android.useLegacyBridge must be true for background workout tracking. "
+                + "Run `npm run cap:sync:android` and rebuild; do not ship this APK/AAB."
+            )
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("verifyBackgroundTrackingConfig")
+}
+
 def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {

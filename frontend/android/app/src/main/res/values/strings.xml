@@ -4,4 +4,9 @@
     <string name="title_activity_main">RunRace</string>
     <string name="package_name">com.runrace.app</string>
     <string name="custom_url_scheme">com.runrace.app</string>
+    <!-- Background-geolocation foreground-service notification. A dedicated
+         monochrome icon avoids device-specific notification/service failures
+         caused by using the adaptive launcher icon as a small notification icon. -->
+    <string name="capacitor_background_geolocation_notification_channel_name">운동 기록</string>
+    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_tracking</string>
 </resources>

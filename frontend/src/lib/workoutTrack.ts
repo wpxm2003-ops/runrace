@@ -731,6 +731,12 @@ export function geolocationBlockedReason(): string | null {
 }
 
 export const GPS_WATCHDOG_TIMEOUT_MS = 15_000;
+/**
+ * After this long without a GPS callback while Android was backgrounded, the
+ * app cannot distinguish a genuine rest from a suspended WebView bridge. Do
+ * not turn that unknown gap into a false "idle" auto-pause when it returns.
+ */
+export const GPS_FOREGROUND_RECOVERY_GAP_MS = 30_000;
 
 /** A running foreground watch is stale when neither startup nor the last fix is recent. */
 export function shouldRestartGpsWatch(
@@ -742,6 +748,17 @@ export function shouldRestartGpsWatch(
   if (watchStartedAtMs == null) return true;
   const lastActivityAtMs = Math.max(watchStartedAtMs, lastFixAtMs ?? 0);
   return nowMs - lastActivityAtMs >= timeoutMs;
+}
+
+/** Whether a foreground return has an unobservable GPS gap that must reset the idle anchor. */
+export function shouldResetIdleAnchorAfterForegroundGap(
+  nowMs: number,
+  lastFixAtMs: number | null,
+  maxGapMs: number = GPS_FOREGROUND_RECOVERY_GAP_MS,
+): boolean {
+  if (!Number.isFinite(nowMs) || !Number.isFinite(maxGapMs) || maxGapMs < 0) return false;
+  if (lastFixAtMs == null || !Number.isFinite(lastFixAtMs)) return true;
+  return nowMs - lastFixAtMs >= maxGapMs;
 }
 
 export type KmSplit = {
