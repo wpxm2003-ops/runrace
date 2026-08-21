@@ -503,10 +503,26 @@ SpringBootTest가 없어 어떤 테스트도 이 코드를 태우지 않았다.*
   상세 조회의 `resolveWinner` 호출까지 체인 전체를 걷어냈다. `Challenge.winner` 엔티티와
   `findByIdWithDetails`의 fetchJoin은 확정·경품 경로가 쓰므로 그대로 둔다.
 
+### 경품 당첨 판정 테스트 (13케이스)
+
+돈이 걸린 판정인데 테스트가 없었다. 지키려는 것은 **남의 경품을 내 것으로 보여주지 않는 것**과
+**받을 사람에게 안 보여주지 않는 것** 두 방향이다.
+
+핵심은 지급 방식별 판정 근거가 **완전히 다르다**는 점이다 — `RANK`는 최종 등수만, 
+`RANDOM_FINISHER`는 추첨 결과(`winnerUserId`)만 본다. 한쪽 규칙이 다른 쪽에 새면 조용히 틀린
+답이 나가므로, 교차 오염을 양방향으로 고정했다(`doesNotConsultDrawWinner`,
+`doesNotConsultFinalRank`). 미완주자가 `NOT_WINNER`가 아니라 `NOT_ELIGIBLE`이어야 하는 것도
+포함 — 대상이 아니었던 것과 뽑히지 않은 것은 화면 문구가 다르다.
+
+> **테스트가 비어 있지 않은지 확인했다.** 지급 방식 분기(`== RANDOM_FINISHER`)를 일부러
+> 뒤집으니 13개 중 8개가 깨졌다. 새 테스트를 넣을 때는 통과만 보지 말고 이렇게 한 번
+> 뒤집어 볼 것 — 목만 잔뜩 세우고 아무것도 검증하지 않는 테스트가 쉽게 만들어진다.
+
 ### 여전히 열려 있는 것
 
-- **백엔드 테스트 공백** — `PrizeResultService`(경품 당첨 판정), `ApiExceptionHandler`,
-  `common/` 순수 유틸(`RaceRules`·`TextValidation`·`PageParams`), 알림 리스너 5/6.
+- **백엔드 테스트 공백** — `ApiExceptionHandler`, `common/` 순수 유틸(`RaceRules`·
+  `TextValidation`·`PageParams`), 알림 리스너 5/6. `KakaoAuthService`는 `HttpClient`가
+  필드 초기화라 생성자 주입 선행 필요(§3 재조사 금지 목록 참조).
 - **S3 버킷 CORS** — 사진 다운로드 시 OPTIONS 403. 콘솔 작업이라 코드 범위 밖.
 - **R8 재활성화** — 켤 수 있는 상태만 복구해 뒀다. Play Console에서 versionCode 8의 크래시
   클러스터를 확인해 원인을 확정한 뒤 판단할 것.
