@@ -93,13 +93,9 @@ public class AppUser {
     this.pushEnabled = pushEnabled;
   }
 
-  /** 탈퇴(익명화) 계정의 닉네임 플레이스홀더 — projection 쿼리처럼 엔티티 메서드를 못 쓰는 곳과 공유한다. */
-  public static final String WITHDRAWN_NICKNAME = "탈퇴한 러너";
-
-  /** 화면 표시용 닉네임 — 탈퇴(익명화) 계정은 닉네임이 null이므로 플레이스홀더로 대체한다. */
-  public String getDisplayNickname() {
-    return nickname != null ? nickname : WITHDRAWN_NICKNAME;
-  }
+  // 탈퇴(익명화) 계정의 닉네임은 null 그대로 내보낸다. 예전에는 서버가 "탈퇴한 러너"를
+  // 구워 보냈는데, 그러면 어떤 언어를 쓰든 그 자리만 한국어가 됐다. 프론트는 이 축의 모든
+  // 표시 지점에서 이미 `?? t.no_name`(5로케일)로 받고 있고, 크루 축은 원래부터 null을 보낸다.
 
   /**
    * 탈퇴 익명화 — 개인정보를 제거하고 탈퇴 시각을 기록한다. 레이스 정합성을 위해 행 자체는 보존한다.

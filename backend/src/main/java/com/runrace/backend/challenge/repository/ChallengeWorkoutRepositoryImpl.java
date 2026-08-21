@@ -7,7 +7,6 @@ import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.domain.QChallengeWorkout;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.common.IsoTime;
-import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.domain.QAppUser;
 import com.runrace.backend.workout.domain.QWorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
@@ -76,7 +75,7 @@ public class ChallengeWorkoutRepositoryImpl implements ChallengeWorkoutRepositor
           WorkoutType type = t.get(ws.workoutType);
           return new ChallengeWorkoutListItem(
               t.get(user.id),
-              nickname != null ? nickname : AppUser.WITHDRAWN_NICKNAME, // getDisplayNickname()과 동일
+              nickname, // 탈퇴 계정은 null 그대로 — 프론트가 로케일 문구로 대체한다
               IsoTime.format(t.get(ws.startedAt)),
               IsoTime.format(t.get(ws.endedAt)),
               t.get(ws.durationSec),

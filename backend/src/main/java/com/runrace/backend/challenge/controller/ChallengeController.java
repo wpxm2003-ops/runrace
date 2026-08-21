@@ -247,7 +247,7 @@ public class ChallengeController {
     WinnerRow winner =
         detail.winner() == null
             ? null
-            : new WinnerRow(detail.winner().getId(), detail.winner().getDisplayNickname());
+            : new WinnerRow(detail.winner().getId(), detail.winner().getNickname());
 
     boolean showManage = detail.isOwner() && !detail.hasStarted();
     boolean canJoin =
@@ -296,7 +296,7 @@ public class ChallengeController {
     UUID memberUserId = member.getUser().getId();
     return new MemberRow(
         memberUserId,
-        member.getUser().getDisplayNickname(),
+        member.getUser().getNickname(),
         member.getTotalKm(),
         goal.subtract(member.getTotalKm()).max(BigDecimal.ZERO),
         challengeService.progressPercent(member, challenge),
