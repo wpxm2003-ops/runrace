@@ -23,6 +23,7 @@ import {
   type GeoErrorCode,
   shouldRestartGpsWatch,
   shouldResetIdleAnchorAfterForegroundGap,
+  foregroundGapLooksLikeMovement,
   WORKOUT_START_FIX_MAX_AGE_MS,
   type WorkoutFinishSnapshot,
   type WorkoutStartFix,
@@ -44,6 +45,8 @@ const SAVE_INTERVAL_MS = 10_000;
 const WARMUP_FIX_BUFFER_SIZE = 6;
 const GPS_WATCHDOG_POLL_MS = 5_000;
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
+/** 공백 원인 확인용 위치 한 점을 기다리는 최대 시간. 그동안 방치 판정을 미룬다. */
+const IDLE_GAP_VERIFY_TIMEOUT_MS = 15_000;
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────────────
 function computeElapsedSec(
@@ -142,6 +145,10 @@ export function useWorkoutSession(
   const restoreAttemptedUidRef = useRef<string | null>(null);
   /** 방치 자동 일시정지 기준점 — 마지막으로 충분한 전진(100m)이 확인된 시각·누적 거리. */
   const idleAnchorRef = useRef<IdleAnchor | null>(null);
+  /** 공백 원인을 확인하는 동안 방치 판정을 미루는 시한(epoch ms). 0이면 미루지 않는다. */
+  const idleCheckDeferredUntilRef = useRef(0);
+  /** 확인 요청 세대 — 늦게 도착한 응답이 최신 판단을 덮어쓰지 않게 한다. */
+  const gapVerifySeqRef = useRef(0);
   /** 시작 직전의 양호한 GPS 한 점을 녹화 시작점으로 넘기기 위한 짧은 예열 버퍼. */
   const warmupFixesRef = useRef<WorkoutStartFix[]>([]);
 
@@ -305,6 +312,9 @@ export function useWorkoutSession(
     ) {
       return false;
     }
+    // 포그라운드 복귀 직후 공백 원인을 확인하는 중이면 판정을 미룬다 — 확인해 보기도 전에
+    // 1초 타이머가 먼저 돌아 실제 러닝을 잘라내는 것을 막는다.
+    if (nowMs < idleCheckDeferredUntilRef.current) return false;
     const rawPausedAt = idleAutoPauseAt(idleAnchorRef.current, nowMs);
     if (rawPausedAt == null) return false;
     const pausedAt = clampIdlePauseAt(rawPausedAt);
@@ -492,6 +502,47 @@ export function useWorkoutSession(
     bgNotification?.message,
   ]);
 
+  const resetIdleAnchor = useCallback((nowMs: number) => {
+    if (statusRef.current !== "running") return;
+    idleAnchorRef.current = { timeMs: nowMs, distanceM: distanceAccumRef.current };
+  }, []);
+
+  /**
+   * 포그라운드 복귀로 드러난 긴 공백이 실제 이동이었는지 위치 한 점으로 확인한다.
+   *
+   * <p>결과가 올 때까지 방치 판정을 미룬다 — 1초 타이머가 먼저 돌면 확인해 보기도 전에
+   * 자동 일시정지가 걸려버린다. 위치를 못 얻으면 이동한 것으로 보고 리셋한다(진짜 러닝을
+   * 자르는 실패가 더 나쁘다). 늦게 도착한 응답은 세대 토큰으로 버린다.
+   */
+  const verifyForegroundGap = useCallback((anchor: IdleAnchor) => {
+    const reference = anchor.position ?? lastPathPointRef.current;
+    if (
+      reference == null
+      || typeof navigator === "undefined"
+      || !navigator.geolocation
+    ) {
+      resetIdleAnchor(Date.now());
+      return;
+    }
+    const seq = ++gapVerifySeqRef.current;
+    idleCheckDeferredUntilRef.current = Date.now() + IDLE_GAP_VERIFY_TIMEOUT_MS;
+
+    const settle = (moved: boolean) => {
+      if (seq !== gapVerifySeqRef.current) return;
+      idleCheckDeferredUntilRef.current = 0;
+      if (moved) resetIdleAnchor(Date.now());
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => settle(foregroundGapLooksLikeMovement(reference, {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      })),
+      () => settle(true),
+      { enableHighAccuracy: false, maximumAge: 0, timeout: IDLE_GAP_VERIFY_TIMEOUT_MS },
+    );
+  }, [resetIdleAnchor]);
+
   const restartWatch = useCallback((reason: "foreground" | "stale") => {
     if (statusRef.current !== "running" || !isCurrentSessionOwner()) return;
     const now = Date.now();
@@ -511,7 +562,16 @@ export function useWorkoutSession(
       reason === "foreground"
       && shouldResetIdleAnchorAfterForegroundGap(now, lastGpsFixAtRef.current)
     ) {
-      idleAnchorRef.current = { timeMs: now, distanceM: distanceAccumRef.current };
+      const anchor = idleAnchorRef.current;
+      // 앵커가 아직 방치 판정에 못 미치면 리셋해도 잃는 게 없다 — 위치 확인 없이 즉시 간다.
+      // 이미 판정선을 넘긴 경우에만, 그 공백이 실제 이동이었는지 확인하고 결정한다.
+      // 무조건 리셋하면 30분+ 쉬었다 돌아온 세션이 방치 판정을 통째로 건너뛰어
+      // 쉰 시간이 운동 시간·페이스에 섞였다.
+      if (anchor == null || idleAutoPauseAt(anchor, now) == null) {
+        resetIdleAnchor(now);
+      } else {
+        verifyForegroundGap(anchor);
+      }
     }
     // Never join the last pre-suspension point to the first recovered fix.
     reanchorNextRef.current = true;
@@ -519,7 +579,7 @@ export function useWorkoutSession(
     lastPosTimeRef.current = null;
     startWatch();
     void track("running_gps_watch_restart", { reason });
-  }, [isCurrentSessionOwner, startWatch]);
+  }, [isCurrentSessionOwner, startWatch, resetIdleAnchor, verifyForegroundGap]);
 
   // Android may reclaim the WebView bridge or the native location callback while
   // the app is backgrounded. Re-register the watcher whenever the app becomes

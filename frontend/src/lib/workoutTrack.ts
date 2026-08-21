@@ -753,6 +753,33 @@ export function shouldRestartGpsWatch(
   return nowMs - lastActivityAtMs >= timeoutMs;
 }
 
+/**
+ * 공백이 "실제 이동"이었다고 볼 최소 변위. 방치 판정의 공간 폭 기준과 같은 값을 쓴다 —
+ * 두 장치가 서로 다른 "움직였다"를 쓰면 한쪽이 통과시킨 것을 다른 쪽이 방치로 잡는다.
+ */
+export const IDLE_GAP_MOVEMENT_THRESHOLD_M = IDLE_AUTO_PAUSE_MIN_SPAN_M;
+
+/**
+ * 포그라운드 복귀로 드러난 GPS 공백이 실제 이동 때문인지 판정한다.
+ *
+ * <p>공백의 원인은 둘인데 콜백만 보면 구분되지 않는다 — 안드로이드가 WebView를 재워
+ * 실제로 뛴 구간이 기록되지 않았거나, 사용자가 가만히 서 있어 distanceFilter가 침묵했거나.
+ * 공백 시작 지점과 복귀 직후 위치의 거리를 재면 갈린다.
+ *
+ * <p>둘 중 하나라도 위치를 모르면 이동한 것으로 본다 — 진짜 러닝을 방치로 오인해
+ * 잘라내는 실패가, 쉰 시간이 조금 섞이는 실패보다 훨씬 나쁘다.
+ *
+ * <p>한계: 한 바퀴 돌아 제자리로 돌아온 코스는 변위가 작아 방치로 판정된다.
+ */
+export function foregroundGapLooksLikeMovement(
+  reference: GeoPoint | null | undefined,
+  recovered: GeoPoint | null | undefined,
+  thresholdM: number = IDLE_GAP_MOVEMENT_THRESHOLD_M,
+): boolean {
+  if (!reference || !recovered) return true;
+  return haversineMeters(reference, recovered) >= thresholdM;
+}
+
 /** Whether a foreground return has an unobservable GPS gap that must reset the idle anchor. */
 export function shouldResetIdleAnchorAfterForegroundGap(
   nowMs: number,

@@ -14,6 +14,7 @@ import {
   slideIdleAnchor,
   shouldRestartGpsWatch,
   shouldResetIdleAnchorAfterForegroundGap,
+  foregroundGapLooksLikeMovement,
   isInKorea,
   splitPathAtGaps,
   WORKOUT_START_FIX_MAX_ACCURACY_M,
@@ -645,5 +646,35 @@ describe("isInKorea — 지도 공급자 선택 기준", () => {
     expect(isInKorea({ lat: 34.07, lng: 125.12 })).toBe(true); // 가거도(서남단)
     expect(isInKorea({ lat: 38.5, lng: 128.43 })).toBe(true); // 고성(동북단)
     expect(isInKorea({ lat: 37.5, lng: 130.87 })).toBe(true); // 울릉도
+  });
+});
+
+/**
+ * 콜백 공백만으로는 "WebView가 잠들어 실제 러닝이 기록되지 않음"과 "가만히 서 있어
+ * distanceFilter가 침묵함"을 구분할 수 없다. 변위로 가른다.
+ */
+describe("foregroundGapLooksLikeMovement", () => {
+  const SEOUL = { lat: 37.5665, lng: 126.978 };
+
+  it("treats a large displacement as real movement", () => {
+    // 약 1.1km 북쪽 — 자는 사이 실제로 뛴 경우.
+    expect(foregroundGapLooksLikeMovement(SEOUL, { lat: 37.5765, lng: 126.978 })).toBe(true);
+  });
+
+  it("treats staying put as an idle gap", () => {
+    // 약 11m — 서 있는 동안의 GPS 흔들림 수준.
+    expect(foregroundGapLooksLikeMovement(SEOUL, { lat: 37.5666, lng: 126.978 })).toBe(false);
+  });
+
+  it("uses the idle anchor span threshold", () => {
+    expect(foregroundGapLooksLikeMovement(SEOUL, SEOUL, 0)).toBe(true);
+    expect(foregroundGapLooksLikeMovement(SEOUL, SEOUL, 1)).toBe(false);
+  });
+
+  // 위치를 모르면 실제 러닝 쪽으로 — 진짜 기록을 잘라내는 실패가 더 나쁘다.
+  it("assumes movement when either point is unknown", () => {
+    expect(foregroundGapLooksLikeMovement(null, SEOUL)).toBe(true);
+    expect(foregroundGapLooksLikeMovement(SEOUL, null)).toBe(true);
+    expect(foregroundGapLooksLikeMovement(undefined, undefined)).toBe(true);
   });
 });
