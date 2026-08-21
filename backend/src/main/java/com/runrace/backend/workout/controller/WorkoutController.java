@@ -26,6 +26,7 @@ import com.runrace.backend.workout.dto.WorkoutShareResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.service.WorkoutService;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -56,17 +57,25 @@ public class WorkoutController {
   private final ActivityHistoryService activityHistoryService;
 
   /**
+   * 이 안에 이미 시작 이력이 있으면 중복으로 보고 건너뛴다. 시작 직후 실수로 종료하고
+   * 다시 시작하는 정도는 한 번으로 묶이지만, 연타로 이력을 채우는 것은 막힌다.
+   */
+  private static final Duration WORKOUT_START_DEDUPE_WINDOW = Duration.ofMinutes(1);
+
+  /**
    * GPS 운동 시작 버튼을 누른 시점의 사용자 활동 기록.
    *
    * <p>이 시점에는 아직 운동 행이 없으므로 target은 WORKOUT이 아니라 USER다. 이전에는
    * targetType=WORKOUT에 사용자 UUID를 넣어, "특정 운동에 대한 이력"을 찾는
    * (target_type, target_id, occurred_at) 인덱스를 무의미하게 만들었다.
+   *
+   * <p>대상 엔티티가 없어 멱등 키를 만들 수 없으므로 시간 창으로 중복을 억제한다.
    */
   @PostMapping("/start")
   public ResponseEntity<Void> recordStart(AuthPrincipal principal) {
-    activityHistoryService.recordSelf(
+    activityHistoryService.recordSelfOnce(
         principal.userId(), ActivityAction.WORKOUT_STARTED,
-        ActivityTargetType.USER, principal.userId());
+        ActivityTargetType.USER, principal.userId(), WORKOUT_START_DEDUPE_WINDOW);
     return ResponseEntity.noContent().build();
   }
 

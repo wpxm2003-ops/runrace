@@ -219,26 +219,7 @@ describe("방금 과거가 된 시작 시각", () => {
     expect(out).toBe("startTooSoon");
   });
 
-  it("전송 payload에서는 현재 분으로 당겨진다", () => {
-    const payload = toChallengeFormPayload(
-      {
-        title: "테스트",
-        goalKm: "5",
-        maxMembers: "10",
-        startAt: localMinutesFromNow(-2),
-        endAt: localMinutesFromNow(600),
-        stake: "",
-      },
-      "km",
-    );
-    // 백엔드 RaceRules도 과거 시작을 거부하므로 값 자체가 바로잡혀야 한다.
-    expect(new Date(payload.startAt).getTime()).toBeGreaterThanOrEqual(
-      new Date(localMinutesFromNow(0)).getTime(),
-    );
-  });
-
-  it("유예 폭 밖이면 payload도 원본을 유지한다", () => {
-    const startAt = localMinutesFromNow(-30);
+  function payloadStartAt(startAt: string): number {
     const payload = toChallengeFormPayload(
       {
         title: "테스트",
@@ -250,6 +231,23 @@ describe("방금 과거가 된 시작 시각", () => {
       },
       "km",
     );
-    expect(payload.startAt).toBe(new Date(startAt).toISOString());
+    return new Date(payload.startAt).getTime();
+  }
+
+  /**
+   * 현재 분으로 당기는 것으로는 부족하다 — 12:34:59에 보낸 12:34가 서버에 12:35:00에
+   * 닿으면 RaceRules가 다시 과거로 판정한다. "지금"을 그대로 고른 경우도 같은 이유로
+   * 분 경계에서 깨지므로, 지나거나 현재인 값은 전부 다음 분으로 민다.
+   */
+  it("전송 값은 항상 현재 분보다 뒤다", () => {
+    const nowMs = new Date(localMinutesFromNow(0)).getTime();
+    for (const deltaMin of [-30, -2, 0]) {
+      expect(payloadStartAt(localMinutesFromNow(deltaMin))).toBeGreaterThan(nowMs);
+    }
+  });
+
+  it("미래로 고른 시작 시각은 건드리지 않는다", () => {
+    const future = localMinutesFromNow(120);
+    expect(payloadStartAt(future)).toBe(new Date(future).getTime());
   });
 });

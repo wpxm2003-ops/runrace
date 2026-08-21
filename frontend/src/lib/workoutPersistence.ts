@@ -34,8 +34,31 @@ const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const store = localJson<PersistedWorkout>("runrace_workout");
 const legacySessionStore = sessionJson<PersistedWorkout>("runrace_workout");
 
+/**
+ * 다른 런의 스냅샷이 이 시간 안에 갱신됐으면 아직 살아있는 것으로 본다.
+ * 저장 주기(10초)의 여섯 배 — 그만큼 침묵했으면 그 탭은 닫힌 것이다.
+ */
+const SNAPSHOT_CLAIM_TTL_MS = 60_000;
+
+/**
+ * 진행 중 스냅샷을 저장한다.
+ *
+ * <p>키는 하나뿐인데 웹은 탭을 여러 개 열 수 있다(안드로이드 앱은 WebView가 하나라 해당
+ * 없음). 그냥 덮어쓰면 두 탭이 각자 운동 중일 때 10초마다 서로의 기록을 밀어내, 둘 다
+ * 새로고침 후 복구가 어긋난다. 먼저 자리를 잡은 런이 살아있는 동안에는 다른 런이
+ * 덮지 않는다 — 나중 런은 라이브로는 정상 동작하되 복구 대상이 되지 않을 뿐이다.
+ */
 export function saveWorkout(data: Omit<PersistedWorkout, "savedAt">): void {
-  store.set({ ...data, savedAt: Date.now() });
+  const now = Date.now();
+  const existing = store.get();
+  if (
+    existing != null
+    && existing.runStartedAt !== data.runStartedAt
+    && now - existing.savedAt < SNAPSHOT_CLAIM_TTL_MS
+  ) {
+    return;
+  }
+  store.set({ ...data, savedAt: now });
 }
 
 function loadWorkout(): PersistedWorkout | null {
@@ -61,6 +84,23 @@ function loadWorkout(): PersistedWorkout | null {
     return null;
   }
   return data;
+}
+
+/**
+ * 만료된 스냅샷을 인증과 무관하게 즉시 버린다.
+ *
+ * <p>만료 검사는 {@link loadWorkout} 안에서만 돌았고, 그 함수는 인증이 확정되고
+ * 소유자가 일치할 때만 호출된다. 그래서 로그아웃 상태로 열거나 다른 계정으로 로그인하면
+ * 24시간이 지난 정밀 GPS 경로가 계속 남아 있었다 — 문서상 보존 기간과 실제가 달랐다.
+ * 앱이 뜰 때 한 번 호출해 소유자와 무관하게 정리한다.
+ *
+ * <p>앱을 다시 열지 않는 경우까지 막을 수는 없다(브라우저 저장소에는 만료 개념이 없다).
+ * 그쪽은 안드로이드 자동 백업 제외(allowBackup=false)로 유출 경로만 끊어 뒀다.
+ */
+export function purgeExpiredWorkout(): void {
+  const data = store.get() ?? legacySessionStore.get();
+  if (data == null) return;
+  if (Date.now() - data.savedAt > MAX_AGE_MS) clearWorkout();
 }
 
 /**

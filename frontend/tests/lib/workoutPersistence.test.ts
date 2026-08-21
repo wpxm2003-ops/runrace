@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearWorkout,
   loadWorkoutForOwner,
+  purgeExpiredWorkout,
   saveWorkout,
   type PersistedWorkout,
 } from "@/lib/workoutPersistence";
@@ -105,5 +106,68 @@ describe("workoutPersistence owner", () => {
     expect(loadWorkoutForOwner("user-a")?.ownerUid).toBe("user-a");
     expect(localStorage.getItem("runrace_workout")).not.toBeNull();
     expect(sessionStorage.getItem("runrace_workout")).toBeNull();
+  });
+});
+
+/** 웹은 탭을 여러 개 열 수 있는데 저장 키는 하나뿐이다. */
+describe("workoutPersistence 다중 탭", () => {
+  it("살아있는 다른 런의 스냅샷을 덮어쓰지 않는다", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-30T00:00:00Z"));
+    saveWorkout(baseWorkout);
+
+    // 20초 뒤 다른 탭이 자기 런을 저장하려 한다 — 아직 살아있으므로 자리를 뺏지 못한다.
+    vi.setSystemTime(new Date("2026-07-30T00:00:20Z"));
+    saveWorkout({ ...baseWorkout, runStartedAt: baseWorkout.runStartedAt + 1_000 });
+
+    expect(loadWorkoutForOwner("user-a")?.runStartedAt).toBe(baseWorkout.runStartedAt);
+  });
+
+  it("같은 런은 계속 갱신한다", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-30T00:00:00Z"));
+    saveWorkout(baseWorkout);
+
+    vi.setSystemTime(new Date("2026-07-30T00:00:20Z"));
+    saveWorkout({ ...baseWorkout, distanceM: 500 });
+
+    expect(loadWorkoutForOwner("user-a")?.distanceM).toBe(500);
+  });
+
+  it("침묵한 스냅샷은 다른 런이 이어받는다", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-30T00:00:00Z"));
+    saveWorkout(baseWorkout);
+
+    // 저장 주기(10초)를 여섯 번 넘겨 침묵 — 그 탭은 닫힌 것으로 본다.
+    vi.setSystemTime(new Date("2026-07-30T00:01:30Z"));
+    const later = baseWorkout.runStartedAt + 1_000;
+    saveWorkout({ ...baseWorkout, runStartedAt: later });
+
+    expect(loadWorkoutForOwner("user-a")?.runStartedAt).toBe(later);
+  });
+});
+
+describe("purgeExpiredWorkout", () => {
+  it("인증·소유자와 무관하게 만료된 스냅샷을 지운다", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-30T00:00:00Z"));
+    saveWorkout(baseWorkout);
+
+    vi.setSystemTime(new Date("2026-07-31T00:00:01Z"));
+    purgeExpiredWorkout();
+
+    expect(localStorage.getItem("runrace_workout")).toBeNull();
+  });
+
+  it("만료 전이면 건드리지 않는다", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-30T00:00:00Z"));
+    saveWorkout(baseWorkout);
+
+    vi.setSystemTime(new Date("2026-07-30T23:00:00Z"));
+    purgeExpiredWorkout();
+
+    expect(loadWorkoutForOwner("user-a")?.ownerUid).toBe("user-a");
   });
 });

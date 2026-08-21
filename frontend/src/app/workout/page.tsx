@@ -453,8 +453,11 @@ export default function WorkoutPage() {
           <WorkoutCountdown
             onGo={() => {
               clearNsmProgress(); // 새 런 시작 — 이전 NSM 렙 진행 초기화
-              session.start(user.uid);
-              void recordWorkoutStart(user).catch(() => undefined);
+              // 실제로 시작된 경우에만 기록한다 — GPS 차단·인증 미확정으로 start가 조기
+              // 반환해도 이력만 남으면 운영 화면의 "운동 시작" 건수가 실제와 어긋난다.
+              if (session.start(user.uid)) {
+                void recordWorkoutStart(user).catch(() => undefined);
+              }
             }}
             onComplete={() => setCounting(false)}
           />

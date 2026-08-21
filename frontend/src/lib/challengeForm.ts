@@ -197,16 +197,29 @@ export type DateWindowMessages = {
  */
 export const START_AT_GRACE_MS = 5 * 60_000;
 
-/** 시작 시각이 방금 과거가 된 정도면 현재 분으로 당긴다. 그 밖에는 원본 유지. */
-function clampJustStaleStart(startAt: string): string {
+/**
+ * 이미 지난(또는 지금인) 시작 시각을 다음 분으로 민다. 미래 값은 그대로 둔다.
+ *
+ * <p>현재 분으로 당기는 것으로는 부족하다 — `12:34:59`에 보낸 `12:34`가 서버에
+ * `12:35:00`에 닿으면 RaceRules가 다시 과거로 판정해 `invalid_start_at`을 낸다.
+ * 같은 이유로 사용자가 "지금"을 그대로 고른 경우도 분 경계에서 깨진다. 다음 분으로
+ * 밀면 왕복에 60초의 여유가 생겨 양쪽 경계가 모두 닫힌다.
+ *
+ * <p>유예 폭 판정은 {@link validateDateWindow}가 맡는다 — 여기서 다시 폭을 보면
+ * 검증 통과 후 폭을 넘긴 찰나에 원본이 그대로 전송되는 구간이 생긴다. 이 함수는
+ * 검증을 통과한 값에만 쓰이므로 조건 없이 민다.
+ *
+ * <p>시작된 레이스는 백엔드 `ensureNotStarted`가 수정을 막으므로, 편집 경로의
+ * 시작 시각은 항상 미래다 — 이 밀기가 진행 중인 레이스를 건드리지 않는다.
+ */
+function ensureStartAtNotPast(startAt: string): string {
   const startMs = new Date(startAt).getTime();
   if (!Number.isFinite(startMs)) return startAt;
   const nowFloor = new Date();
   nowFloor.setSeconds(0, 0);
   nowFloor.setMilliseconds(0);
-  const nowMs = nowFloor.getTime();
-  if (startMs >= nowMs) return startAt;
-  if (nowMs - startMs > START_AT_GRACE_MS) return startAt;
+  if (startMs > nowFloor.getTime()) return startAt;
+  nowFloor.setMinutes(nowFloor.getMinutes() + 1);
   return formatLocalDateTime(nowFloor);
 }
 
@@ -237,7 +250,7 @@ export function validateDateWindow(
   }
   // 범위 검사는 실제로 전송될 시작 시각으로 해야 한다 — 당겨진 값과 검증이 갈리면
   // 화면은 통과했는데 백엔드가 invalid_date_range로 거부하는 구멍이 생긴다.
-  const effectiveStartMs = new Date(clampJustStaleStart(startAt)).getTime();
+  const effectiveStartMs = new Date(ensureStartAtNotPast(startAt)).getTime();
   if (endMs <= effectiveStartMs) {
     return msgs.endAfterStart;
   }
@@ -308,7 +321,7 @@ export function toChallengeFormPayload(
     maxMembers: parseInt(form.maxMembers, 10),
     // 방금 과거가 된 "지금 시작"은 현재 분으로 당겨 보낸다 — 백엔드 RaceRules도
     // 과거 시작을 거부하므로 검증만 완화하면 실패 지점이 서버로 옮겨갈 뿐이다.
-    startAt: localDatetimeToIso(clampJustStaleStart(form.startAt)),
+    startAt: localDatetimeToIso(ensureStartAtNotPast(form.startAt)),
     endAt: localDatetimeToIso(form.endAt),
     stake: form.stake.trim(),
   };

@@ -30,6 +30,14 @@ public interface UserActivityHistoryRepository
       org.springframework.data.domain.Pageable pageable);
 
   /**
+   * 같은 사용자가 같은 행위를 최근에 남겼는지. 클라이언트가 부르는 대로 행이 쌓이는
+   * 엔드포인트(운동 시작 등)에서 중복·연타를 걸러내는 데 쓴다.
+   * {@code (actor_user_id, occurred_at desc)} 인덱스가 그대로 받쳐준다.
+   */
+  boolean existsByActorUserIdAndActionTypeAndOccurredAtAfter(
+      java.util.UUID actorUserId, ActivityAction actionType, OffsetDateTime after);
+
+  /**
    * 보존 기간이 지난 이력을 배치 단위로 지운다. 한 문장으로 전부 지우면 첫 실행에서
    * 수십만 행에 락이 걸릴 수 있어 id 서브쿼리로 상한을 둔다.
    *

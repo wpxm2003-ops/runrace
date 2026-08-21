@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useWorkoutSession } from "./useWorkoutSession";
+import { purgeExpiredWorkout } from "./workoutPersistence";
 import { useLocale } from "./i18n";
 import { useAuth } from "./AuthProvider";
 
@@ -13,6 +14,13 @@ const WorkoutSessionContext = createContext<WorkoutSessionValue | null>(null);
 export function WorkoutSessionProvider({ children }: { children: ReactNode }) {
   const { t } = useLocale();
   const { user, loading } = useAuth();
+
+  // 만료 정리는 인증·소유자 일치와 무관하게 앱이 뜰 때 한 번 돈다 — 복원 경로 안에서만
+  // 검사하면 로그아웃 상태나 다른 계정으로 열었을 때 정밀 GPS 경로가 계속 남는다.
+  useEffect(() => {
+    purgeExpiredWorkout();
+  }, []);
+
   const session = useWorkoutSession(
     {
       title: t.workout_bg_notification_title,

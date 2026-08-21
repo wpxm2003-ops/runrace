@@ -89,6 +89,9 @@ type WorkoutSessionAuth = {
   loading: boolean;
 };
 
+/** 번역 코드이거나(로케일 따라 문구가 바뀜) 번역 대상이 아닌 원문이거나 둘 중 하나다. */
+type GeoErrorState = { code: GeoErrorCode } | { text: string };
+
 /** geoMessages를 주입하지 않는 호출자(테스트 등)를 위한 최소 문구. */
 const FALLBACK_GEO_MESSAGES: Record<GeoErrorCode, string> = {
   unavailable: "Location (GPS) is not available on this device.",
@@ -111,20 +114,18 @@ export function useWorkoutSession(
   // 인증 변경과 같은 렌더 안에서 GPS 콜백·액션 가드가 즉시 새 UID를 보게 한다.
   currentUidRef.current = authState.currentUid;
   authLoadingRef.current = authState.loading;
-  // 문구는 ref로만 읽는다 — 콜백 의존성에 넣으면 로케일이 바뀔 때마다 startWatch의
-  // identity가 흔들려 워처가 불필요하게 재등록된다.
-  const geoMessagesRef = useRef(geoMessages);
-  geoMessagesRef.current = geoMessages;
-  const geoText = useCallback((code: GeoErrorCode): string => {
-    return geoMessagesRef.current?.[code] ?? FALLBACK_GEO_MESSAGES[code];
-  }, []);
   // ── 기본 상태 ─────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<WorkoutStatus>("idle");
   const [path, setPath] = useState<LatLng[]>([]);
   const [position, setPosition] = useState<LatLng | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [distanceM, setDistanceM] = useState(0);
-  const [geoError, setGeoError] = useState<string | null>(null);
+  /**
+   * 로케일이 바뀌면 문구도 따라 바뀌어야 하므로 완성된 문자열이 아니라 코드를 담는다.
+   * 예전에는 번역된 문자열을 넣어, 언어를 바꿔도 이미 떠 있는 배너만 이전 언어로 남았다.
+   * 네이티브 플러그인이 던진 메시지처럼 번역 대상이 아닌 것만 text로 담는다.
+   */
+  const [geoErrorState, setGeoErrorState] = useState<GeoErrorState | null>(null);
   // ── 치팅 감지 상태 ────────────────────────────────────────────────────────
   const [vehicleTier, setVehicleTier] = useState<VehicleTier>("normal");
   const [autoPaused, setAutoPaused] = useState(false);
@@ -286,7 +287,7 @@ export function useWorkoutSession(
     setPosition(null);
     setDistanceM(0);
     setElapsedSec(0);
-    setGeoError(null);
+    setGeoErrorState(null);
     setVehicleTier("normal");
     setAutoPaused(false);
   }, []);
@@ -353,7 +354,7 @@ export function useWorkoutSession(
   const appendPosition = useCallback(
     (coords: GeoCoords) => {
       if (!isCurrentSessionOwner() || statusRef.current !== "running") return;
-      setGeoError(null);
+      setGeoErrorState(null);
       const now = Date.now();
       lastGpsFixAtRef.current = now;
       const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
@@ -445,10 +446,10 @@ export function useWorkoutSession(
     if (watchOwnerUid == null || !isCurrentSessionOwner(watchOwnerUid)) return;
     const blocked = geolocationBlockedCode();
     if (blocked) {
-      setGeoError(geoText(blocked));
+      setGeoErrorState({ code: blocked });
       return;
     }
-    setGeoError(null);
+    setGeoErrorState(null);
     clearWatch();
     watchStartedAtRef.current = Date.now();
     const seq = watchSeqRef.current;
@@ -468,11 +469,11 @@ export function useWorkoutSession(
       return startBackgroundWatch(
         (coords) => {
           if (!isLiveWatch()) return;
-          setGeoError(null);
+          setGeoErrorState(null);
           appendPosition(coords);
         },
         (msg) => {
-          if (isLiveWatch()) setGeoError(msg);
+          if (isLiveWatch()) setGeoErrorState({ text: msg });
         },
         bgNotification?.title ?? "운동 기록 중",
         bgNotification?.message ?? "RunRace가 백그라운드에서 경로를 기록하고 있습니다.",
@@ -489,7 +490,7 @@ export function useWorkoutSession(
           // addWatcher 자체가 실패(플러그인 초기화·권한 거부 reject)하면 기록이 조용히
           // 시작되지 않는다 — 배너로 드러내 사용자가 알 수 있게 한다.
           if (isLiveWatch()) {
-            setGeoError(e instanceof Error ? e.message : String(e));
+            setGeoErrorState({ text: e instanceof Error ? e.message : String(e) });
           }
         });
     });
@@ -497,7 +498,6 @@ export function useWorkoutSession(
     appendPosition,
     clearWatch,
     isCurrentSessionOwner,
-    geoText,
     bgNotification?.title,
     bgNotification?.message,
   ]);
@@ -812,7 +812,7 @@ export function useWorkoutSession(
     async function warmUp() {
       const blocked = geolocationBlockedCode();
       if (blocked) {
-        setGeoError(geoText(blocked));
+        setGeoErrorState({ code: blocked });
         return;
       }
       if (Capacitor.isNativePlatform()) {
@@ -841,7 +841,7 @@ export function useWorkoutSession(
             },
           ].slice(-WARMUP_FIX_BUFFER_SIZE);
           setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setGeoError(null);
+          setGeoErrorState(null);
         },
         (err) => {
           if (
@@ -849,7 +849,7 @@ export function useWorkoutSession(
             && currentUidRef.current === warmupUid
             && statusRef.current === "idle"
           ) {
-            setGeoError(geoText(geolocationErrorCode(err)));
+            setGeoErrorState({ code: geolocationErrorCode(err) });
           }
         },
         { enableHighAccuracy: true, maximumAge: 1_000, timeout: 30_000 },
@@ -864,22 +864,26 @@ export function useWorkoutSession(
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, [authState.loading, authState.currentUid, status, pathname, geoText]);
+  }, [authState.loading, authState.currentUid, status, pathname]);
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
-  const start = useCallback((expectedUid: string) => {
+  /**
+   * 런을 시작한다. 실제로 시작됐는지 반환한다 — 인증 미확정·이미 진행 중·GPS 차단이면
+   * 조기 반환하므로, 호출부가 이 값을 보지 않으면 시작되지도 않은 런의 활동 이력이 남는다.
+   */
+  const start = useCallback((expectedUid: string): boolean => {
     if (
       authLoadingRef.current
       || expectedUid !== currentUidRef.current
       || currentUidRef.current == null
       || statusRef.current !== "idle"
     ) {
-      return;
+      return false;
     }
     const blocked = geolocationBlockedCode();
     if (blocked) {
-      setGeoError(geoText(blocked));
-      return;
+      setGeoErrorState({ code: blocked });
+      return false;
     }
     const now = Date.now();
     const startSeed = pickWorkoutStartSeed(
@@ -921,7 +925,7 @@ export function useWorkoutSession(
     const seedWatchSeq = watchSeqRef.current;
     void track("running_start");
 
-    if (startSeed) return;
+    if (startSeed) return true;
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -975,7 +979,7 @@ export function useWorkoutSession(
           && isCurrentSessionOwner(expectedUid)
           && statusRef.current === "running"
         ) {
-          setGeoError(geoText(geolocationErrorCode(err)));
+          setGeoErrorState({ code: geolocationErrorCode(err) });
         }
       },
       {
@@ -984,7 +988,8 @@ export function useWorkoutSession(
         timeout: 15_000,
       },
     );
-  }, [isCurrentSessionOwner, startWatch, geoText]);
+    return true;
+  }, [isCurrentSessionOwner, startWatch]);
 
   const pause = useCallback((expectedUid: string) => {
     if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "running") return;
@@ -1111,6 +1116,12 @@ export function useWorkoutSession(
   const visiblePosition = sessionVisible ? position : null;
   const visibleElapsedSec = sessionVisible ? elapsedSec : 0;
   const visibleDistanceM = sessionVisible ? distanceM : 0;
+  // ref가 아니라 prop을 읽는다 — 로케일이 바뀌면 이미 떠 있는 배너도 함께 바뀌어야 한다.
+  const geoErrorMessage = geoErrorState == null
+    ? null
+    : "code" in geoErrorState
+      ? (geoMessages?.[geoErrorState.code] ?? FALLBACK_GEO_MESSAGES[geoErrorState.code])
+      : geoErrorState.text;
 
   return {
     status: visibleStatus,
@@ -1118,7 +1129,7 @@ export function useWorkoutSession(
     position: visiblePosition,
     elapsedSec: visibleElapsedSec,
     distanceM: visibleDistanceM,
-    geoError: sessionVisible ? geoError : null,
+    geoError: sessionVisible ? geoErrorMessage : null,
     vehicleTier: sessionVisible ? vehicleTier : "normal",
     autoPaused: sessionVisible ? autoPaused : false,
     elapsedLabel: formatClock(visibleElapsedSec),

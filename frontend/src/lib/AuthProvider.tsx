@@ -5,10 +5,10 @@ import {
   createContext,
   useContext,
   useEffect,
-  useLayoutEffect,
   useState,
 } from "react";
 import { auth } from "./firebase";
+import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 
 interface AuthState {
   user: User | null;
@@ -24,9 +24,6 @@ interface AuthState {
 /** localStorage key — 앱 재시작 후에도 "이전에 로그인했음"을 기억한다 */
 export const AUTH_HINT_KEY = "runrace_logged_in";
 
-/** SSR 프리렌더 시 useLayoutEffect 경고를 피하면서, 클라이언트에선 페인트 전에 실행한다. */
-const useIsomorphicLayoutEffect =
-  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
  * 로그인 성공 직후, 페이지 이동 전에 호출.
