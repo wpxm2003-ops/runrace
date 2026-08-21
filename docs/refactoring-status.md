@@ -491,14 +491,22 @@ SpringBootTest가 없어 어떤 테스트도 이 코드를 태우지 않았다.*
   통과하는 것처럼 보이지만 Tomcat이 `..`를 정규화·거부한 뒤에야 필터가 돈다 — 필터에
   요구할 일이 아니다. 처음에 이걸 결함으로 오인해 테스트를 잘못 썼다.
 
+### 이어서 처리한 것
+
+- **인증 순서 교정** — Firebase 미초기화 검사를 진입부에서 **폴백 직전으로** 옮겼다. 자체 JWT는
+  로컬 HMAC 검증만으로 끝나 Firebase가 필요 없는데도, Admin 초기화 실패 하나로 기존 로그인
+  사용자까지 전부 401이 됐다. `JwtService.verify`가 서명·발급자·클레임을 모두 확인하고 어떤
+  예외도 빈 값으로 떨어뜨리며(시크릿은 기본값이 없어 미설정이면 기동 자체가 안 된다) 통과 조건은
+  그대로다. 자체 JWT가 아닌 토큰은 여전히 `firebase_admin_not_initialized`로 fail-closed —
+  그 순서가 뒤집히면 인증 없이 보호 구간이 열리므로 테스트로 고정했다.
+- **`ChallengeDetail.winner` 제거** — 프론트 참조 0. `WinnerRow` DTO·`ChallengeDetailView.winner`·
+  상세 조회의 `resolveWinner` 호출까지 체인 전체를 걷어냈다. `Challenge.winner` 엔티티와
+  `findByIdWithDetails`의 fetchJoin은 확정·경품 경로가 쓰므로 그대로 둔다.
+
 ### 여전히 열려 있는 것
 
-- **인증 순서** — Firebase 미초기화 검사가 자체 JWT 검증보다 앞에 있다. 자체 JWT는 로컬 HMAC
-  검증만으로 끝나 Firebase가 필요 없는데도, Admin 초기화가 실패하면 유효한 JWT 보유자까지
-  전부 401이 된다. 기존 로그인 사용자를 살릴 수 있는데 못 살리는 구조 — 순서를 뒤집을지는
-  판단 필요. 현재 동작은 테스트로 고정해 뒀다(`uninitializedFirebaseRejectsEvenValidJwt`).
-- **`ChallengeDetail.winner`** — 프론트 참조 0. `myApplicationStatus`와 같은 부류로 확인됐으나
-  이번엔 손대지 않았다.
 - **백엔드 테스트 공백** — `PrizeResultService`(경품 당첨 판정), `ApiExceptionHandler`,
   `common/` 순수 유틸(`RaceRules`·`TextValidation`·`PageParams`), 알림 리스너 5/6.
 - **S3 버킷 CORS** — 사진 다운로드 시 OPTIONS 403. 콘솔 작업이라 코드 범위 밖.
+- **R8 재활성화** — 켤 수 있는 상태만 복구해 뒀다. Play Console에서 versionCode 8의 크래시
+  클러스터를 확인해 원인을 확정한 뒤 판단할 것.

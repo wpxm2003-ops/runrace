@@ -276,11 +276,6 @@ export type ShoeFormBody = {
   active?: boolean;
 };
 
-export type ChallengeWinner = {
-  userId: string;
-  nickname: string | null;
-};
-
 export type ChallengeDetail = {
   id: number;
   title: string;
@@ -303,7 +298,6 @@ export type ChallengeDetail = {
   canJoin: boolean;
   canLeave: boolean;
   memberCount: number;
-  winner: ChallengeWinner | null;
   members: ChallengeMember[];
 };
 

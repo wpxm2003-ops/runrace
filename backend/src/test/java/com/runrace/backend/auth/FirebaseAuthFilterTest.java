@@ -319,21 +319,48 @@ class FirebaseAuthFilterTest {
     }
 
     /**
-     * Firebase Admin이 아예 초기화되지 않았으면 토큰을 보기도 전에 막는다(fail-closed).
-     * 부작용: 이 검사가 자체 JWT 검증보다 앞에 있어, Admin 초기화가 실패하면 유효한
-     * 자체 JWT 보유자까지 전부 401이 된다. 현재 동작을 그대로 고정해 둔다.
+     * 자체 JWT는 로컬 HMAC 검증만으로 끝나므로 Firebase Admin이 없어도 통과해야 한다.
+     * 예전에는 진입부에서 초기화 여부를 먼저 봐서, Admin 실패 하나로 기존 로그인 사용자까지
+     * 전부 401이 됐다.
      */
     @Test
-    void uninitializedFirebaseRejectsEvenValidJwt() throws Exception {
+    void validJwtWorksWithoutFirebaseAdmin() throws Exception {
       AuthPrincipal principal = new AuthPrincipal(UUID.randomUUID(), "uid-1");
       when(jwtService.verify("good")).thenReturn(Optional.of(principal));
       MockHttpServletResponse res = new MockHttpServletResponse();
 
       filter().doFilterInternal(bearer("GET", "/api/workouts", "Bearer good"), res, chain);
 
+      assertEquals(200, res.getStatus());
+      verify(chain).doFilter(any(), any());
+    }
+
+    /**
+     * 자체 JWT가 아니면 Firebase 폴백이 필요한데 Admin이 없다 — 통과가 아니라 401이어야
+     * 한다(fail-closed). 이 순서가 뒤집히면 인증 없이 보호 구간이 열린다.
+     */
+    @Test
+    void uninitializedFirebaseRejectsNonJwtToken() throws Exception {
+      when(jwtService.verify(anyString())).thenReturn(Optional.empty());
+      MockHttpServletResponse res = new MockHttpServletResponse();
+
+      filter().doFilterInternal(
+          bearer("GET", "/api/workouts", "Bearer firebase-token"), res, chain);
+
       assertEquals(401, res.getStatus());
       assertTrue(res.getContentAsString().contains("firebase_admin_not_initialized"));
       verify(chain, never()).doFilter(any(), any());
+    }
+
+    /** 토큰 자체가 없으면 Firebase 초기화 여부와 무관하게 missing_bearer_token 이다. */
+    @Test
+    void missingTokenReportsMissingTokenEvenWithoutFirebase() throws Exception {
+      MockHttpServletResponse res = new MockHttpServletResponse();
+
+      filter().doFilterInternal(request("GET", "/api/workouts"), res, chain);
+
+      assertEquals(401, res.getStatus());
+      assertTrue(res.getContentAsString().contains("missing_bearer_token"));
     }
 
     @Test

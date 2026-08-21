@@ -22,7 +22,6 @@ import com.runrace.backend.challenge.dto.RejectedApprovalResponse;
 import com.runrace.backend.challenge.dto.UpdateChallengeRequest;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.HeadToHeadRow;
-import com.runrace.backend.challenge.dto.WinnerRow;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
@@ -244,11 +243,6 @@ public class ChallengeController {
             .map(member -> toMemberRow(member, challenge, goal, detail.rivalUserIds()))
             .toList();
 
-    WinnerRow winner =
-        detail.winner() == null
-            ? null
-            : new WinnerRow(detail.winner().getId(), detail.winner().getNickname());
-
     boolean showManage = detail.isOwner() && !detail.hasStarted();
     boolean canJoin =
         !detail.isMember()
@@ -280,7 +274,6 @@ public class ChallengeController {
         canJoin,
         canLeave,
         detail.memberCount(),
-        winner,
         rows);
   }
 

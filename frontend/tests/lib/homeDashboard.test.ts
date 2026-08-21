@@ -70,7 +70,6 @@ function detail(members: ChallengeMember[]): ChallengeDetail {
     canJoin: false,
     canLeave: true,
     memberCount: members.length,
-    winner: null,
     members,
   };
 }

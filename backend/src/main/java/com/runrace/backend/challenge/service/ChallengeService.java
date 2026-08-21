@@ -383,7 +383,6 @@ public class ChallengeService {
     Challenge challenge = requireChallenge(id);
     List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(id);
     OffsetDateTime now = OffsetDateTime.now();
-    AppUser winner = RaceFinalizationService.resolveWinner(challenge, members, now);
 
     UUID userId = currentUserId.orElse(null);
     boolean isMember =
@@ -413,7 +412,6 @@ public class ChallengeService {
         isOwner,
         hasStarted(challenge, now),
         isEnded(challenge, now),
-        winner,
         members.size(),
         rivalUserIds,
         crewName,
@@ -562,7 +560,6 @@ public class ChallengeService {
       boolean isOwner,
       boolean hasStarted,
       boolean hasEnded,
-      AppUser winner,
       int memberCount,
       Set<UUID> rivalUserIds,
       String crewName,

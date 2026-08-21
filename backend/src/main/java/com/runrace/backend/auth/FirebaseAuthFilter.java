@@ -142,22 +142,15 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
   /** 인증을 강제한다. 실패하면 401 에러 코드를 담아 반환, 성공하면 empty. */
   private Optional<String> authenticateRequired(HttpServletRequest request)
       throws FirebaseAuthException {
-    if (FirebaseApp.getApps().isEmpty()) {
-      return Optional.of("firebase_admin_not_initialized");
-    }
     Optional<String> token = bearerToken(request);
     if (token.isEmpty()) {
       return Optional.of("missing_bearer_token");
     }
-    authenticate(token.get(), preferredLang(request));
-    return Optional.empty();
+    return authenticate(token.get(), preferredLang(request));
   }
 
   /** 토큰이 유효하면 인증하고, 아니면 조용히 익명으로 통과시킨다. */
   private void authenticateOptionally(HttpServletRequest request) {
-    if (FirebaseApp.getApps().isEmpty()) {
-      return;
-    }
     bearerToken(request)
         .ifPresent(
             token -> {
@@ -169,16 +162,30 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             });
   }
 
-  private void authenticate(String token, String langHint) throws FirebaseAuthException {
+  /**
+   * 토큰으로 인증한다. 실패 사유 코드를 돌려주고, 성공이면 빈 값이다.
+   *
+   * <p>Firebase Admin 초기화 여부는 <b>폴백 직전에만</b> 본다. 예전에는 진입부에서 먼저
+   * 검사해서, 로컬 HMAC 검증만으로 끝나는 자체 JWT 보유자까지 Admin 초기화 실패 하나로
+   * 전부 401이 됐다 — 기존 로그인 사용자를 살릴 수 있는 상황에서 못 살리는 구조였다.
+   * 자체 JWT 검증은 서명·발급자·클레임을 모두 확인하고 어떤 예외도 빈 값으로 떨어뜨리므로
+   * (JwtService.verify), 순서를 바꿔도 통과 조건은 그대로다.
+   */
+  private Optional<String> authenticate(String token, String langHint)
+      throws FirebaseAuthException {
     // 자체 JWT이면 로컬 HMAC 검증만으로 즉시 인증 (Firebase 네트워크 호출 없음)
     var jwtPrincipal = jwtService.verify(token);
     if (jwtPrincipal.isPresent()) {
       AuthContext.set(jwtPrincipal.get());
-      return;
+      return Optional.empty();
     }
     // Firebase ID 토큰 폴백 (최초 로그인, 토큰 만료 후 재발급 시)
+    if (FirebaseApp.getApps().isEmpty()) {
+      return Optional.of("firebase_admin_not_initialized");
+    }
     FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(token);
     AuthContext.set(firebaseUserService.upsertAndCreatePrincipal(decoded, langHint));
+    return Optional.empty();
   }
 
   /** 최초 가입 시 닉네임·언어 추정에 쓸 Accept-Language 기본 언어. (기존 사용자에겐 무시됨) */
