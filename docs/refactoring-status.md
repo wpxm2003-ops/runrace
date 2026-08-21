@@ -6,7 +6,7 @@
 > 3차 조사 범위: `2127724..f87c08d`(74커밋/218파일/+10528줄) — 2차 이후 신규 코드 전체.
 > 4차 조사 범위: `f87c08d..HEAD`(66커밋/206파일/+7154줄) — 고도 기능 제거·패턴 A·글로벌 대응 이후. §9 참조.
 > 5차 조사 범위: 코드베이스 **전체 재스캔**(증분 아님) — 6렌즈 병렬(UI/lib/백엔드/죽은코드/계약정합/구조·테스트). §10 참조.
-> 6차 조사 범위: `0790f89..HEAD`(20커밋/135파일/+3895줄) — UI 전면 개편·홈 대시보드·활동 이력·안드로이드 추적 강화 이후. §12 참조.
+> 6차 조사 범위: `0790f89..HEAD`(20커밋/135파일/+3895줄) — UI 전면 개편·홈 대시보드·활동 이력·안드로이드 추적 강화 이후. §12 참조. §10 미결 항목 중 셋을 함께 소화했다.
 > 전 커밋이 게이트(tsc `--noEmit` / eslint / next build / vitest / mvnw test) 통과.
 
 ## 1. 완료된 것 — 신설 공용 모듈 (1차, 2026-07-22 오전)
@@ -461,15 +461,44 @@ lib에 시간 포맷터가 **둘이고 1시간 미만에서 출력이 다르다*
 > 적혀 있다). 앱이 열려 있는 동안에는 처음부터 정상 동작했고, 깨진 건 백그라운드 복귀 한 갈래뿐이다.
 > "기능 전체가 잘못됐다"로 넘어가지 말고 어느 갈래인지 먼저 좁힐 것.
 
-### 여전히 열려 있는 것 (제품·운영 판단 대기)
+### §10 미결 항목 소화 (`76eb702`, `8064c1f`)
 
-§10의 미결 항목 중 아래는 6차에서도 처리하지 않았다.
+§10이 "제품 판단 대기"로 남겨 둔 것 중 셋을 닫았다.
 
-- **탈퇴 닉네임 한국어 하드코딩** — `AppUser.WITHDRAWN_NICKNAME = "탈퇴한 러너"`. 레이스 축 3곳은
-  서버가 이 값을 굽고, 크루 축 3곳은 null을 보내 프론트 `t.no_name`(5로케일)이 처리한다.
-  비한국어 사용자에게 한국어가 노출된다. null 통일 권장이나 응답 계약 변경.
-- **`FirebaseAuthFilter` 무테스트**(248줄/분기 24) — 백엔드 최대 공백. `PrizeResultService`,
-  `ApiExceptionHandler`, `common/` 순수 유틸도 여전히 비어 있다.
-- **`CrewDetailResponse.myApplicationStatus`** — 상세 조회마다 추가 쿼리를 쓰는데 프론트는 별도
-  API로 재계산한다. 제거 권장, 응답 계약 변경이라 보류.
+| 항목 | 처리 |
+|---|---|
+| `CrewDetailResponse.myApplicationStatus` | **제거.** 공개 크루 상세 조회마다 EXISTS를 한 번 더 쓰면서 프론트 참조가 0이었다. 화면은 신청 취소에 requestId가 필요해 결국 별도 API(`useMyApplications`)를 부를 수밖에 없는데, 이 필드는 `"PENDING"` 문자열뿐이라 **처음부터 화면 요구를 못 채우는 설계**였다. 같은 응답의 `inCooldown`·`isFull`은 실제로 쓰이므로 유지 |
+| 탈퇴 닉네임 한국어 | **null 위임으로 해결.** 프론트가 이 축의 모든 표시 지점에서 이미 `?? t.no_name`(5로케일)로 받고 타입도 전부 nullable이라, 서버가 굽는 것만 멈추면 됐다. `WITHDRAWN_NICKNAME`·`getDisplayNickname()` 제거, 소비 3곳을 `getNickname()`으로 |
+| `FirebaseAuthFilter` 무테스트 | **21케이스 신설**(프로덕션 코드 변경 0). 아래 참조 |
+| `fitness` 모듈 삭제 | **하지 않기로 결론.** 실제로 죽은 것은 `FitnessService` 90줄뿐이고, 컨트롤러는 의도적 404 차단막, `DailyDistanceRepository`는 탈퇴 정리가 쓴다. 재개 시 참고할 초안 + 재개 조건이 문서화된 자리라 삭제 실익이 낮다. 낡은 주석(`ChallengeMember.setDistanceAndSync`의 "FitnessService 보정용")만 정정 — 실사용처는 `ChallengeProgressService`인데 주석 때문에 죽은 메서드로 오인됐다 |
+
+### 인증 필터 테스트 — 무엇을 지키려는 것인가
+
+`FirebaseAuthFilter`는 248줄/분기 30개인데 테스트가 0이었고, **저장소 전체에 MockMvc·
+SpringBootTest가 없어 어떤 테스트도 이 코드를 태우지 않았다.** 순수 단위 테스트로만 채웠다.
+
+가장 지키려는 것은 **인증을 건너뛰는 경로가 넓어지지 않는 것**이다 — 정규식 하나가 느슨해지면
+조용히 뚫린다. 공유·업로드·카카오 경로를 양방향으로 고정했다(숫자 ID만, GET만, 접두사 경계,
+꼬리 세그먼트). 그 밖에 Bearer 파싱 경계 5종, 선택 인증 경로가 잘못된 토큰에도 체인을 계속
+도는지, `AuthContext`(ThreadLocal)가 성공·거부·체인 예외 전 경로에서 비워지는지.
+
+**함정 둘 (다음에 이 테스트를 만질 때 알아야 할 것):**
+
+- 필터는 `FirebaseApp.getApps().isEmpty()`를 **토큰 검사보다 먼저** 한다. 앱이 없으면 모든
+  요청이 `firebase_admin_not_initialized`로 떨어져 토큰 분기를 하나도 못 탄다. 그래서
+  네트워크 없이 가짜 자격증명으로 이름 있는 앱을 잠깐 띄우고 `finally`로 반드시 지운다(전역 상태).
+- 경로 정규화는 **서블릿 컨테이너 몫**이다. `/api/public/../admin`이 `shouldNotFilter`를
+  통과하는 것처럼 보이지만 Tomcat이 `..`를 정규화·거부한 뒤에야 필터가 돈다 — 필터에
+  요구할 일이 아니다. 처음에 이걸 결함으로 오인해 테스트를 잘못 썼다.
+
+### 여전히 열려 있는 것
+
+- **인증 순서** — Firebase 미초기화 검사가 자체 JWT 검증보다 앞에 있다. 자체 JWT는 로컬 HMAC
+  검증만으로 끝나 Firebase가 필요 없는데도, Admin 초기화가 실패하면 유효한 JWT 보유자까지
+  전부 401이 된다. 기존 로그인 사용자를 살릴 수 있는데 못 살리는 구조 — 순서를 뒤집을지는
+  판단 필요. 현재 동작은 테스트로 고정해 뒀다(`uninitializedFirebaseRejectsEvenValidJwt`).
+- **`ChallengeDetail.winner`** — 프론트 참조 0. `myApplicationStatus`와 같은 부류로 확인됐으나
+  이번엔 손대지 않았다.
+- **백엔드 테스트 공백** — `PrizeResultService`(경품 당첨 판정), `ApiExceptionHandler`,
+  `common/` 순수 유틸(`RaceRules`·`TextValidation`·`PageParams`), 알림 리스너 5/6.
 - **S3 버킷 CORS** — 사진 다운로드 시 OPTIONS 403. 콘솔 작업이라 코드 범위 밖.
