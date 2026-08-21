@@ -35,8 +35,12 @@ const store = localJson<PersistedWorkout>("runrace_workout");
 const legacySessionStore = sessionJson<PersistedWorkout>("runrace_workout");
 
 /**
- * 다른 런의 스냅샷이 이 시간 안에 갱신됐으면 아직 살아있는 것으로 본다.
- * 저장 주기(10초)의 여섯 배 — 그만큼 침묵했으면 그 탭은 닫힌 것이다.
+ * 다른 런의 스냅샷이 이 시간 안에 갱신됐으면 아직 쓰이는 중으로 본다(저장 주기 10초의 여섯 배).
+ *
+ * <p>"침묵 = 닫힘"은 아니다 — 브라우저는 백그라운드 탭의 타이머를 분 단위로 늦추므로,
+ * 오래 가려져 있던 탭도 침묵한다. 그 경우 새 런이 자리를 가져가고 원래 탭은 이후 저장이
+ * 거부된다(라이브 기록은 계속되지만 새로고침 후 복구는 못 한다). 화면에 떠 있는 쪽이
+ * 자리를 갖는 편이 낫다고 보고 이 손실을 받아들인다.
  */
 const SNAPSHOT_CLAIM_TTL_MS = 60_000;
 
@@ -47,6 +51,10 @@ const SNAPSHOT_CLAIM_TTL_MS = 60_000;
  * 없음). 그냥 덮어쓰면 두 탭이 각자 운동 중일 때 10초마다 서로의 기록을 밀어내, 둘 다
  * 새로고침 후 복구가 어긋난다. 먼저 자리를 잡은 런이 살아있는 동안에는 다른 런이
  * 덮지 않는다 — 나중 런은 라이브로는 정상 동작하되 복구 대상이 되지 않을 뿐이다.
+ *
+ * <p>읽기와 쓰기 사이의 경쟁까지 막지는 못한다. localStorage에는 비교·교환이 없어서,
+ * 두 탭이 거의 동시에 시작하면 둘 다 "빈 자리"를 읽고 나중 쓰기가 이긴다. 창이 한 틱이라
+ * 실사용 영향은 미미하고, 대안은 저장소를 통째로 바꾸는 것뿐이다.
  */
 export function saveWorkout(data: Omit<PersistedWorkout, "savedAt">): void {
   const now = Date.now();
