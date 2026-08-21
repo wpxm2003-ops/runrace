@@ -150,8 +150,6 @@ export function useWorkoutSession(
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { pathRef.current = path; }, [path]);
 
-  const pendingResumeWatchRef = useRef(false);
-
   // ── 퍼시스턴스: 상태 전환(running↔paused) 시 즉시 저장 ────────────────────
   // 경로(path)는 의존성에서 제외한다 — GPS 포인트마다 재저장하면 매번 전체 배열을
   // JSON.stringify 하여 O(n^2)로 커진다. 경로 스냅샷은 아래 주기적 flush(SAVE_INTERVAL_MS)
@@ -241,7 +239,6 @@ export function useWorkoutSession(
     statusRef.current = "idle";
     pathRef.current = [];
     sessionOwnerUidRef.current = null;
-    pendingResumeWatchRef.current = false;
     pauseStartedRef.current = null;
     pausedAccumRef.current = 0;
     runStartedRef.current = null;
@@ -431,33 +428,43 @@ export function useWorkoutSession(
       watchSeqRef.current === seq
       && statusRef.current === "running"
       && isCurrentSessionOwner(watchOwnerUid);
-    startBackgroundWatch(
-      (coords) => {
-        if (!isLiveWatch()) return;
-        setGeoError(null);
-        appendPosition(coords);
-      },
-      (msg) => {
-        if (isLiveWatch()) setGeoError(msg);
-      },
-      bgNotification?.title ?? "운동 기록 중",
-      bgNotification?.message ?? "RunRace가 백그라운드에서 경로를 기록하고 있습니다.",
-    )
-      .then((stop) => {
-        // 등록되는 사이 pause/stop/재시작이 있었으면 이 워처는 낡은 것 — 즉시 해제(누수 방지).
-        if (!isLiveWatch()) {
-          stop();
-          return;
-        }
-        stopWatchRef.current = stop;
-      })
-      .catch((e: unknown) => {
-        // addWatcher 자체가 실패(플러그인 초기화·권한 거부 reject)하면 기록이 조용히
-        // 시작되지 않는다 — 배너로 드러내 사용자가 알 수 있게 한다.
-        if (isLiveWatch()) {
-          setGeoError(e instanceof Error ? e.message : String(e));
-        }
-      });
+    // 네이티브 권한 순차 요청(FcmBootstrap)이 끝나기 전에는 addWatcher를 부르지 않는다.
+    // 플러그인의 addWatcher는 권한이 없어도 조기 반환하지 않고 알림을 만들어
+    // startForeground까지 진행한다. targetSdk 34+에서 type=location 포그라운드 서비스는
+    // 호출 시점에 위치 권한이 있어야 하므로, 권한 다이얼로그가 떠 있는 동안 호출되면
+    // SecurityException이 나고 플러그인이 그걸 삼킨 뒤 다시는 승격을 시도하지 않는다
+    // (onPermissionsGranted는 requestLocationUpdates만 재등록한다).
+    // 이 게이트는 첫 실행에서만 실제로 대기하고, 그 뒤로는 즉시 통과한다.
+    void waitForNativePermissions().then(() => {
+      if (!isLiveWatch()) return;
+      return startBackgroundWatch(
+        (coords) => {
+          if (!isLiveWatch()) return;
+          setGeoError(null);
+          appendPosition(coords);
+        },
+        (msg) => {
+          if (isLiveWatch()) setGeoError(msg);
+        },
+        bgNotification?.title ?? "운동 기록 중",
+        bgNotification?.message ?? "RunRace가 백그라운드에서 경로를 기록하고 있습니다.",
+      )
+        .then((stop) => {
+          // 등록되는 사이 pause/stop/재시작이 있었으면 이 워처는 낡은 것 — 즉시 해제(누수 방지).
+          if (!isLiveWatch()) {
+            stop();
+            return;
+          }
+          stopWatchRef.current = stop;
+        })
+        .catch((e: unknown) => {
+          // addWatcher 자체가 실패(플러그인 초기화·권한 거부 reject)하면 기록이 조용히
+          // 시작되지 않는다 — 배너로 드러내 사용자가 알 수 있게 한다.
+          if (isLiveWatch()) {
+            setGeoError(e instanceof Error ? e.message : String(e));
+          }
+        });
+    });
   }, [
     appendPosition,
     clearWatch,
@@ -673,7 +680,13 @@ export function useWorkoutSession(
         setElapsedSec(computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null));
         setStatus("running");
         statusRef.current = "running";
-        pendingResumeWatchRef.current = true;
+        // 여기서 곧바로 워처를 건다. 예전에는 ref 플래그를 세우고 별도 이펙트가 그것을
+        // 읽어 startWatch를 부르게 했는데, 그 이펙트의 의존성이 [startWatch] 하나뿐이고
+        // startWatch의 의존성 체인이 전부 상수라 identity가 고정된다 — 즉 마운트 때 딱 한
+        // 번(플래그가 아직 false일 때) 돌고, 인증이 해소돼 플래그가 켜져도 다시 돌지 않았다.
+        // 콜드스타트에서는 항상 그 순서라, 복원된 러닝의 GPS가 워치독이 구제할 때까지
+        // 붙지 않았다. statusRef는 위에서 이미 갱신했으므로 동기 호출로 안전하다.
+        startWatch();
       }
     } else {
       // 일시정지 중 재구성 — 자동 일시정지였다면 배너·종료 시각 보정을 위해 플래그 유지.
@@ -694,13 +707,8 @@ export function useWorkoutSession(
     authState.loading,
     authState.currentUid,
     clampIdlePauseAt,
+    startWatch,
   ]);
-
-  useEffect(() => {
-    if (!pendingResumeWatchRef.current) return;
-    pendingResumeWatchRef.current = false;
-    startWatch();
-  }, [startWatch]);
 
   // ── GPS 예열 (운동 화면 idle 동안 미리 위성 확보) ──────────────────────────
   // 운동 화면에 있는 동안(idle) 고정밀 위치 워치를 돌려 GPS 라디오를 미리 켜둔다.
