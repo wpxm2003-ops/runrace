@@ -33,6 +33,17 @@ export function prepareOAuthRedirect(returnTo: string): void {
   sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
 }
 
+/**
+ * 사용자가 로그인 팝업을 스스로 닫은 경우. 차단(blocked)과 명확히 구분해야 한다 —
+ * 직접 닫은 사람에게 "팝업을 허용해 주세요"라고 안내하면 엉뚱한 지시가 된다.
+ */
+export function isPopupClosedByUser(e: unknown): boolean {
+  if (e && typeof e === "object" && "code" in e) {
+    if (String((e as { code: string }).code) === "auth/popup-closed-by-user") return true;
+  }
+  return /popup-closed-by-user|closed by user/i.test(String(e));
+}
+
 export function isPopupBlockedError(e: unknown): boolean {
   if (e && typeof e === "object" && "code" in e) {
     const code = String((e as { code: string }).code);

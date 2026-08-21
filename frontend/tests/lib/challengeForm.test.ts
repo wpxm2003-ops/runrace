@@ -9,7 +9,9 @@ import {
   sanitizeTitle,
   truncateToUtf8Bytes,
   utf8ByteLength,
+  toChallengeFormPayload,
   validateChallengeForm,
+  validateDateWindow,
   type ChallengeFormValidationMessages,
   type ChallengeFormValues,
 } from "@/lib/challengeForm";
@@ -174,5 +176,80 @@ describe("validateChallengeForm", () => {
 
   it("내기 문구 비어있으면 통과", () => {
     expect(validateChallengeForm({ ...valid, stake: "" }, msgs)).toBeNull();
+  });
+});
+
+/**
+ * 추천 레이스 카드는 시작 시각을 "선택한 순간의 분"으로 채운다. 제목을 고치는 사이 분이
+ * 넘어가면 그 값이 곧바로 과거가 돼 생성이 거부됐다 — 평균적으로 절반은 걸리는 경로였다.
+ */
+describe("방금 과거가 된 시작 시각", () => {
+  const windowMsgs = {
+    startRequired: "startRequired",
+    endRequired: "endRequired",
+    startTooSoon: "startTooSoon",
+    endAfterStart: "endAfterStart",
+    durationTooLong: "durationTooLong",
+  };
+
+  function localMinutesFromNow(deltaMin: number): string {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    d.setMinutes(d.getMinutes() + deltaMin);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      + `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  it("유예 폭 안이면 통과한다", () => {
+    const out = validateDateWindow(
+      localMinutesFromNow(-2),
+      localMinutesFromNow(600),
+      windowMsgs,
+    );
+    expect(out).toBeNull();
+  });
+
+  it("의도적으로 고른 과거는 그대로 거부한다", () => {
+    const out = validateDateWindow(
+      localMinutesFromNow(-30),
+      localMinutesFromNow(600),
+      windowMsgs,
+    );
+    expect(out).toBe("startTooSoon");
+  });
+
+  it("전송 payload에서는 현재 분으로 당겨진다", () => {
+    const payload = toChallengeFormPayload(
+      {
+        title: "테스트",
+        goalKm: "5",
+        maxMembers: "10",
+        startAt: localMinutesFromNow(-2),
+        endAt: localMinutesFromNow(600),
+        stake: "",
+      },
+      "km",
+    );
+    // 백엔드 RaceRules도 과거 시작을 거부하므로 값 자체가 바로잡혀야 한다.
+    expect(new Date(payload.startAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(localMinutesFromNow(0)).getTime(),
+    );
+  });
+
+  it("유예 폭 밖이면 payload도 원본을 유지한다", () => {
+    const startAt = localMinutesFromNow(-30);
+    const payload = toChallengeFormPayload(
+      {
+        title: "테스트",
+        goalKm: "5",
+        maxMembers: "10",
+        startAt,
+        endAt: localMinutesFromNow(600),
+        stake: "",
+      },
+      "km",
+    );
+    expect(payload.startAt).toBe(new Date(startAt).toISOString());
   });
 });

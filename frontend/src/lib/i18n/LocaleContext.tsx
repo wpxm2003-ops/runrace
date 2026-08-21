@@ -11,6 +11,7 @@ import {
 import { usePathname } from "next/navigation";
 import { localText } from "../safeStorage";
 import { LOCALES, type Locale, translations } from "./translations";
+import { setApiErrorTexts } from "@/lib/api/errorTexts";
 import type { LocaleSource } from "./localeSource";
 
 const localeStore = localText("runrace_locale");
@@ -80,13 +81,23 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  // API 계층(apiError.ts·client.ts)은 React 밖이라 useLocale을 쓸 수 없어 문구가 한국어로
+  // 박혀 있었다 — 어떤 언어를 쓰든 서버 오류·네트워크 오류·인증 만료 배너만 한국어로 떴다.
+  // 렌더 중에 등록한다: effect로 미루면 첫 페인트 직후 나는 오류가 기본 문구로 나간다.
+  const t = translations[locale];
+  setApiErrorTexts({
+    serverError: t.api_err_server,
+    networkError: t.api_err_network,
+    loginRequired: t.api_err_login_required,
+  });
+
   const setLocale = useCallback((next: Locale) => {
     localeStore.set(next);
     setLocaleState({ locale: next, source: "user" });
   }, []);
 
   return (
-    <LocaleContext.Provider value={{ locale, localeSource, t: translations[locale], setLocale }}>
+    <LocaleContext.Provider value={{ locale, localeSource, t, setLocale }}>
       {children}
     </LocaleContext.Provider>
   );

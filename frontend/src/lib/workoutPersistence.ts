@@ -74,7 +74,19 @@ export function loadWorkoutForOwner(ownerUid: string): PersistedWorkout | null {
   return data?.ownerUid === ownerUid ? data : null;
 }
 
-export function clearWorkout(): void {
+/**
+ * 저장된 세션을 지운다.
+ *
+ * <p>{@code runStartedAt}을 주면 그 런의 스냅샷일 때만 지운다. localStorage로 옮긴 뒤로는
+ * 모든 탭이 키 하나를 공유하므로, 한 탭에서 운동을 끝내며 무조건 지우면 다른 탭에서
+ * 진행 중이던 런의 스냅샷까지 함께 날아가 새로고침 후 복구가 불가능해진다.
+ * (안드로이드 앱은 WebView가 하나라 해당 없지만 웹은 탭을 여러 개 열 수 있다.)
+ */
+export function clearWorkout(runStartedAt?: number): void {
+  if (runStartedAt != null) {
+    const saved = store.get();
+    if (saved != null && saved.runStartedAt !== runStartedAt) return;
+  }
   store.remove();
   legacySessionStore.remove();
 }

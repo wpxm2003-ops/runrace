@@ -10,6 +10,7 @@ import {
 } from "@/app/challenges/_components/useChallengeForm";
 import { useChallengeFormMessages } from "@/app/challenges/_components/useChallengeFormMessages";
 import { createChallenge, invalidateChallengeLists, invalidateCrewRaces, savePrizes, useActiveCount } from "@/lib/api";
+import { mapErrorMessage, reportAndDisplay } from "@/lib/api";
 import type { PrizeAwardType, PrizeFormItem } from "@/lib/api/types";
 import { PrizeEditorModal } from "@/app/challenges/_components/PrizeEditorModal";
 import { PrizeAccordionSection } from "@/app/challenges/_components/PrizeAccordionSection";
@@ -120,7 +121,15 @@ export default function CreateChallengePage() {
       toast.success(t.create_success);
       nativeNavigate(crewMode ? "/crew" : "/challenges");
     } catch (e) {
-      form.setFormError(String(e));
+      // 원문(`ApiError: API 409: {"error":"active_room_limit"}`)이 그대로 노출되던 자리다.
+      form.setFormError(mapErrorMessage(
+        e,
+        [
+          { codes: ["active_room_limit"], message: t.race_err_active_limit },
+          { codes: ["not_crew_member"], message: t.crew_err_not_crew_member },
+        ],
+        () => reportAndDisplay(e),
+      ));
     } finally {
       setSubmitting(false);
     }

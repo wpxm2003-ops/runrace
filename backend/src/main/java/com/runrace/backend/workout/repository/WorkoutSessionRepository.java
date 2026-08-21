@@ -15,11 +15,16 @@ import org.springframework.data.repository.query.Param;
 
 public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, Long>, WorkoutSessionRepositoryCustom {
 
+  /**
+   * 최근 운동 기록(운영자 제외). display_name이 null인 행도 포함해야 한다 —
+   * 탈퇴 익명화가 null로 만드는데 {@code NULL NOT IN (...)}은 true가 아니라 NULL이라
+   * 탈퇴 사용자의 기록이 대시보드에서 소급 소멸했다.
+   */
   @Query("select w.id as id, w.user.displayName as displayName, w.distanceM as distanceM, "
       + "w.durationSec as durationSec, w.startedAt as startedAt, w.endedAt as endedAt, "
       + "w.createdAt as createdAt, w.imageUrl as imageUrl, w.memo as memo "
       + "from WorkoutSession w "
-      + "where w.user.displayName not in :excludedNames "
+      + "where (w.user.displayName is null or w.user.displayName not in :excludedNames) "
       + "order by w.createdAt desc")
   List<AdminWorkoutView> findRecentForAdmin(
       @Param("excludedNames") List<String> excludedNames,

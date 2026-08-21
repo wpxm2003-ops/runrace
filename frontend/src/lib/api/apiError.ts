@@ -1,3 +1,5 @@
+import { apiErrorTexts } from "./errorTexts";
+
 /** API fetch 실패 시 status를 담아 SWR 재시도 여부를 판단한다. */
 export class ApiError extends Error {
   readonly status: number;
@@ -31,15 +33,16 @@ export function isNotFoundError(err: unknown): boolean {
 
 /**
  * 에러를 사용자에게 보여줄 문자열로 변환. 없으면 null.
- * 5xx → "서버에 연결할 수 없습니다.", 네트워크 오류 → "네트워크 연결을 확인해 주세요."
+ * 5xx → 서버 오류 문구, 그 밖의 실패 → 네트워크 문구. 문구는 로케일별로 등록된다
+ * ({@link apiErrorTexts}).
  */
 export function toDisplayError(err: unknown): string | null {
   if (err == null) return null;
   if (err instanceof ApiError) {
-    if (err.status >= 500) return "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+    if (err.status >= 500) return apiErrorTexts().serverError;
     return String(err);
   }
-  return "네트워크 연결을 확인해 주세요.";
+  return apiErrorTexts().networkError;
 }
 
 /** fetch 에러를 표시 문자열로 변환. 404면 친절 메시지로 교체. */

@@ -26,8 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class AdminDashboardController {
+  /**
+   * 대시보드 목록에서 감출 운영자 이름. 운동·활동 두 조회가 같은 목록을 써야 한 쪽만
+   * 갱신돼 어긋나지 않는다(이전에는 동일 내용의 상수가 두 벌이었다).
+   */
   private static final List<String> EXCLUDED_DISPLAY_NAMES = List.of("노광고", "방지훈", "배하영");
-  private static final List<String> ACTIVITY_EXCLUDED_DISPLAY_NAMES = List.of("노광고", "방지훈", "배하영");
 
   private final AppUserRepository appUserRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
@@ -58,7 +61,7 @@ public class AdminDashboardController {
         .map(this::toFeedbackRow)
         .toList();
     List<ActivityRow> activities = userActivityHistoryRepository
-        .findRecentForAdmin(ACTIVITY_EXCLUDED_DISPLAY_NAMES, pageable).stream()
+        .findRecentForAdmin(EXCLUDED_DISPLAY_NAMES, pageable).stream()
         .map(ActivityRow::from)
         .toList();
     return new DashboardResponse(members, workouts, activities, feedback);

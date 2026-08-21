@@ -9,6 +9,7 @@ import {
 } from "@/lib/accessToken";
 import { compressImageForUpload } from "@/lib/compressImage";
 import { ApiError } from "./apiError";
+import { apiErrorTexts } from "./errorTexts";
 
 /** 웹(EC2+Nginx): 비우면 /api. 로컬 dev: 빈 문자열 → Next.js rewrite 프록시(/api/*) 경유 */
 function resolveApiBaseUrl(): string {
@@ -141,7 +142,7 @@ export async function uploadMultipart(
 /** HTML 응답(nginx 오류 페이지 등)을 간결한 문자열로 변환한다. */
 function cleanErrorText(status: number, text: string): string {
   if (text.trimStart().startsWith("<")) {
-    return status >= 500 ? "서버 오류" : `오류 ${status}`;
+    return status >= 500 ? apiErrorTexts().serverError : `HTTP ${status}`;
   }
   return text;
 }
@@ -203,7 +204,7 @@ export async function apiFetch<T>(
     if (redirectOn401) {
       redirectToLogin(opts.returnTo);
     }
-    throw new ApiError(401, "로그인이 필요합니다.");
+    throw new ApiError(401, apiErrorTexts().loginRequired);
   }
 
   const method = opts.method ?? "GET";
@@ -224,7 +225,7 @@ export async function apiFetch<T>(
       if (redirectOn401) {
         redirectToLogin(opts.returnTo);
       }
-      throw new ApiError(401, `API 401: ${cleanErrorText(401, text)} (로그인이 필요합니다.)`);
+      throw new ApiError(401, `API 401: ${cleanErrorText(401, text)} (${apiErrorTexts().loginRequired})`);
     }
     throw new ApiError(res.status, `API ${res.status}: ${cleanErrorText(res.status, text)}`);
   }

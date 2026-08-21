@@ -172,7 +172,7 @@ export default function ChallengeDetailContent() {
 
   const onDelete = useCallback(async () => {
     if (!user || !detail || !id) { redirectToLogin(id ? `/challenges/${id}` : undefined); return; }
-    const ok = await confirm({ title: t.detail_delete_title, message: t.detail_delete_message, confirmLabel: t.delete, destructive: true });
+    const ok = await confirm({ title: t.detail_delete_title, message: t.detail_delete_message, confirmLabel: t.delete, cancelLabel: t.cancel, destructive: true });
     if (!ok) return;
     setActionError(null);
     try {
@@ -200,7 +200,13 @@ export default function ChallengeDetailContent() {
       if (!handleAuthFailure(e, `/challenges/${id}`)) {
         setActionError(mapErrorMessage(
           e,
-          [{ codes: ["not_crew_member"], message: t.crew_err_not_crew_member }],
+          [
+            { codes: ["not_crew_member"], message: t.crew_err_not_crew_member },
+            { codes: ["room_full"], message: t.race_err_room_full },
+            { codes: ["already_member"], message: t.race_err_already_member },
+            { codes: ["ended"], message: t.race_err_ended },
+            { codes: ["already_started"], message: t.race_err_already_started },
+          ],
           () => reportAndDisplay(e),
         ));
       }
@@ -227,7 +233,16 @@ export default function ChallengeDetailContent() {
       toast.success(t.toast_race_left);
       await mutate();
     } catch (e) {
-      if (!handleAuthFailure(e, `/challenges/${id}`)) setActionError(reportAndDisplay(e));
+      if (!handleAuthFailure(e, `/challenges/${id}`)) {
+        setActionError(mapErrorMessage(
+          e,
+          [
+            { codes: ["owner_cannot_leave"], message: t.race_err_owner_cannot_leave },
+            { codes: ["ended"], message: t.race_err_ended },
+          ],
+          () => reportAndDisplay(e),
+        ));
+      }
     } finally {
       setLeaving(false);
     }

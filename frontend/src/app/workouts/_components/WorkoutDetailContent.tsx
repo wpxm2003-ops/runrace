@@ -155,6 +155,7 @@ export default function WorkoutDetailContent() {
       title: t.workout_delete_title,
       message: t.workout_delete_message,
       confirmLabel: t.delete,
+      cancelLabel: t.cancel,
       destructive: true,
     });
     if (!ok) return;

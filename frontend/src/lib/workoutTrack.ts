@@ -718,15 +718,18 @@ export function estimateCalories(distanceM: number): number {
   return Math.round(km * 65);
 }
 
+/**
+ * GPS 실패 사유. 문구가 아니라 코드를 돌려준다 — 이 모듈은 로케일을 모르는데
+ * 예전에는 한국어 문장을 그대로 반환해, 어떤 언어를 쓰든 위치 오류 배너만 한국어로 떴다.
+ * 문구 매핑은 화면 계층(useWorkoutSession의 geoMessages)이 담당한다.
+ */
+export type GeoErrorCode = "unavailable" | "insecure" | "permission" | "timeout" | "unknown";
+
 /** http://IP 등 비보안 페이지에서는 Geolocation API 사용 불가 */
-export function geolocationBlockedReason(): string | null {
+export function geolocationBlockedCode(): GeoErrorCode | null {
   if (typeof window === "undefined") return null;
-  if (!navigator.geolocation) {
-    return "이 기기에서는 위치(GPS) 기능을 사용할 수 없습니다.";
-  }
-  if (!window.isSecureContext) {
-    return "GPS는 HTTPS(보안 접속)에서만 사용할 수 있습니다. http://IP 주소로는 브라우저가 위치를 막습니다. 도메인에 SSL을 붙이거나 localhost에서 테스트해 주세요.";
-  }
+  if (!navigator.geolocation) return "unavailable";
+  if (!window.isSecureContext) return "insecure";
   return null;
 }
 
@@ -890,18 +893,11 @@ export function computeBestSegments(path: LatLng[]): Record<string, number> {
   return result;
 }
 
-export function geolocationErrorMessage(err: GeolocationPositionError): string {
-  const blocked = geolocationBlockedReason();
+export function geolocationErrorCode(err: GeolocationPositionError): GeoErrorCode {
+  const blocked = geolocationBlockedCode();
   if (blocked) return blocked;
-  const msg = err.message || "";
-  if (/secure origins/i.test(msg)) {
-    return "GPS는 HTTPS(보안 접속)에서만 사용할 수 있습니다. 서버에 SSL(HTTPS)을 설정해 주세요.";
-  }
-  if (err.code === err.PERMISSION_DENIED) {
-    return "위치 권한이 거부되었습니다. 브라우저 설정에서 이 사이트의 위치를 허용해 주세요.";
-  }
-  if (err.code === err.TIMEOUT) {
-    return "위치 확인 시간이 초과되었습니다. GPS를 켠 뒤 다시 시도해 주세요.";
-  }
-  return msg || "위치를 가져올 수 없습니다.";
+  if (/secure origins/i.test(err.message || "")) return "insecure";
+  if (err.code === err.PERMISSION_DENIED) return "permission";
+  if (err.code === err.TIMEOUT) return "timeout";
+  return "unknown";
 }

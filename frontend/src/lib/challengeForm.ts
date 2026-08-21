@@ -187,8 +187,33 @@ export type DateWindowMessages = {
 };
 
 /**
+ * "지금 시작"으로 채워진 시작 시각이 폼을 작성하는 사이 과거가 되는 것을 허용하는 폭.
+ *
+ * <p>추천 레이스 카드는 시작 시각을 선택 순간의 분으로 채운다. 제목을 고치는 동안 분이
+ * 넘어가면 그 값이 곧바로 "과거 시작"이 돼 생성이 거부됐다 — 평균적으로 절반은 걸린다.
+ * 이 폭 안의 시작 시각은 "지금"으로 보고 {@link toChallengeFormPayload}에서 현재 분으로
+ * 당겨 보낸다(백엔드 RaceRules도 과거 시작을 거부하므로 값 자체를 바로잡아야 한다).
+ * 사용자가 의도적으로 과거를 고른 경우는 이 폭을 넘으므로 그대로 오류가 난다.
+ */
+export const START_AT_GRACE_MS = 5 * 60_000;
+
+/** 시작 시각이 방금 과거가 된 정도면 현재 분으로 당긴다. 그 밖에는 원본 유지. */
+function clampJustStaleStart(startAt: string): string {
+  const startMs = new Date(startAt).getTime();
+  if (!Number.isFinite(startMs)) return startAt;
+  const nowFloor = new Date();
+  nowFloor.setSeconds(0, 0);
+  nowFloor.setMilliseconds(0);
+  const nowMs = nowFloor.getTime();
+  if (startMs >= nowMs) return startAt;
+  if (nowMs - startMs > START_AT_GRACE_MS) return startAt;
+  return formatLocalDateTime(nowFloor);
+}
+
+/**
  * 시작/종료일시(datetime-local 문자열) 검증 — 레이스 등록·크루 대항전이 공유한다.
- * 과거 시작 금지(분 단위 절삭 비교), 종료는 시작 이후, 최대 기간 이내(백엔드 RaceRules와 동일 규칙).
+ * 과거 시작 금지(분 단위 절삭 비교, {@link START_AT_GRACE_MS} 폭은 허용),
+ * 종료는 시작 이후, 최대 기간 이내(백엔드 RaceRules와 동일 규칙).
  */
 export function validateDateWindow(
   startAt: string,
@@ -207,13 +232,16 @@ export function validateDateWindow(
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
     return msgs.startRequired;
   }
-  if (startMs < nowFloor.getTime()) {
+  if (nowFloor.getTime() - startMs > START_AT_GRACE_MS) {
     return msgs.startTooSoon;
   }
-  if (endMs <= startMs) {
+  // 범위 검사는 실제로 전송될 시작 시각으로 해야 한다 — 당겨진 값과 검증이 갈리면
+  // 화면은 통과했는데 백엔드가 invalid_date_range로 거부하는 구멍이 생긴다.
+  const effectiveStartMs = new Date(clampJustStaleStart(startAt)).getTime();
+  if (endMs <= effectiveStartMs) {
     return msgs.endAfterStart;
   }
-  if (endMs - startMs > MAX_RACE_DURATION_MS) {
+  if (endMs - effectiveStartMs > MAX_RACE_DURATION_MS) {
     return msgs.durationTooLong;
   }
   return null;
@@ -278,7 +306,9 @@ export function toChallengeFormPayload(
     title: form.title.trim(),
     goalKm: goalKmFromInput(form.goalKm, unit),
     maxMembers: parseInt(form.maxMembers, 10),
-    startAt: localDatetimeToIso(form.startAt),
+    // 방금 과거가 된 "지금 시작"은 현재 분으로 당겨 보낸다 — 백엔드 RaceRules도
+    // 과거 시작을 거부하므로 검증만 완화하면 실패 지점이 서버로 옮겨갈 뿐이다.
+    startAt: localDatetimeToIso(clampJustStaleStart(form.startAt)),
     endAt: localDatetimeToIso(form.endAt),
     stake: form.stake.trim(),
   };

@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      allowBackup=false — 운동 스냅샷(정밀 GPS 경로)이 WebView localStorage에 남는데,
+      자동 백업이 켜져 있으면 그 경로가 구글 백업으로 올라가고 다른 기기 복원 시 되살아난다.
+      기록은 서버에 있으므로 로컬 백업으로 잃는 것은 없다.
+    -->
     <application
         android:usesCleartextTraffic="true"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

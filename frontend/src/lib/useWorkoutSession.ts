@@ -18,8 +18,9 @@ import {
   type LatLng,
   type VehicleDetectState,
   type VehicleTier,
-  geolocationBlockedReason,
-  geolocationErrorMessage,
+  geolocationBlockedCode,
+  geolocationErrorCode,
+  type GeoErrorCode,
   shouldRestartGpsWatch,
   shouldResetIdleAnchorAfterForegroundGap,
   WORKOUT_START_FIX_MAX_AGE_MS,
@@ -85,10 +86,20 @@ type WorkoutSessionAuth = {
   loading: boolean;
 };
 
+/** geoMessages를 주입하지 않는 호출자(테스트 등)를 위한 최소 문구. */
+const FALLBACK_GEO_MESSAGES: Record<GeoErrorCode, string> = {
+  unavailable: "Location (GPS) is not available on this device.",
+  insecure: "GPS only works over a secure (HTTPS) connection.",
+  permission: "Location permission was denied.",
+  timeout: "Timed out getting your location.",
+  unknown: "Couldn't get your location.",
+};
+
 // ── 메인 훅 ───────────────────────────────────────────────────────────────────
 export function useWorkoutSession(
   bgNotification: { title: string; message: string } | undefined,
   authState: WorkoutSessionAuth,
+  geoMessages?: Record<GeoErrorCode, string>,
 ) {
   const { unit } = useUnit();
   const pathname = usePathname();
@@ -97,6 +108,13 @@ export function useWorkoutSession(
   // 인증 변경과 같은 렌더 안에서 GPS 콜백·액션 가드가 즉시 새 UID를 보게 한다.
   currentUidRef.current = authState.currentUid;
   authLoadingRef.current = authState.loading;
+  // 문구는 ref로만 읽는다 — 콜백 의존성에 넣으면 로케일이 바뀔 때마다 startWatch의
+  // identity가 흔들려 워처가 불필요하게 재등록된다.
+  const geoMessagesRef = useRef(geoMessages);
+  geoMessagesRef.current = geoMessages;
+  const geoText = useCallback((code: GeoErrorCode): string => {
+    return geoMessagesRef.current?.[code] ?? FALLBACK_GEO_MESSAGES[code];
+  }, []);
   // ── 기본 상태 ─────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<WorkoutStatus>("idle");
   const [path, setPath] = useState<LatLng[]>([]);
@@ -415,9 +433,9 @@ export function useWorkoutSession(
   const startWatch = useCallback(() => {
     const watchOwnerUid = sessionOwnerUidRef.current;
     if (watchOwnerUid == null || !isCurrentSessionOwner(watchOwnerUid)) return;
-    const blocked = geolocationBlockedReason();
+    const blocked = geolocationBlockedCode();
     if (blocked) {
-      setGeoError(blocked);
+      setGeoError(geoText(blocked));
       return;
     }
     setGeoError(null);
@@ -469,6 +487,7 @@ export function useWorkoutSession(
     appendPosition,
     clearWatch,
     isCurrentSessionOwner,
+    geoText,
     bgNotification?.title,
     bgNotification?.message,
   ]);
@@ -731,9 +750,9 @@ export function useWorkoutSession(
     warmupFixesRef.current = [];
 
     async function warmUp() {
-      const blocked = geolocationBlockedReason();
+      const blocked = geolocationBlockedCode();
       if (blocked) {
-        setGeoError(blocked);
+        setGeoError(geoText(blocked));
         return;
       }
       if (Capacitor.isNativePlatform()) {
@@ -770,7 +789,7 @@ export function useWorkoutSession(
             && currentUidRef.current === warmupUid
             && statusRef.current === "idle"
           ) {
-            setGeoError(geolocationErrorMessage(err));
+            setGeoError(geoText(geolocationErrorCode(err)));
           }
         },
         { enableHighAccuracy: true, maximumAge: 1_000, timeout: 30_000 },
@@ -785,7 +804,7 @@ export function useWorkoutSession(
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, [authState.loading, authState.currentUid, status, pathname]);
+  }, [authState.loading, authState.currentUid, status, pathname, geoText]);
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
   const start = useCallback((expectedUid: string) => {
@@ -797,9 +816,9 @@ export function useWorkoutSession(
     ) {
       return;
     }
-    const blocked = geolocationBlockedReason();
+    const blocked = geolocationBlockedCode();
     if (blocked) {
-      setGeoError(blocked);
+      setGeoError(geoText(blocked));
       return;
     }
     const now = Date.now();
@@ -896,7 +915,7 @@ export function useWorkoutSession(
           && isCurrentSessionOwner(expectedUid)
           && statusRef.current === "running"
         ) {
-          setGeoError(geolocationErrorMessage(err));
+          setGeoError(geoText(geolocationErrorCode(err)));
         }
       },
       {
@@ -905,7 +924,7 @@ export function useWorkoutSession(
         timeout: 15_000,
       },
     );
-  }, [isCurrentSessionOwner, startWatch]);
+  }, [isCurrentSessionOwner, startWatch, geoText]);
 
   const pause = useCallback((expectedUid: string) => {
     if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "running") return;
@@ -1007,7 +1026,8 @@ export function useWorkoutSession(
     };
 
     clearWatch();
-    clearWorkout(); // 완료 시 저장된 세션 삭제
+    // 이 런의 스냅샷일 때만 지운다 — 웹에서 다른 탭이 진행 중이면 그쪽을 날리지 않는다.
+    clearWorkout(runStartedRef.current ?? undefined);
     restoreAttemptedUidRef.current = expectedUid;
     resetRuntime();
 

@@ -25,6 +25,7 @@ export default function robots(): MetadataRoute.Robots {
         "/login",
         "/kakao/",
         "/feedback",
+        "/sb",
       ],
     },
     sitemap: `${getAppUrl()}/sitemap.xml`,

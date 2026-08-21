@@ -12,6 +12,7 @@ import {
   canOAuthRedirectFallback,
   isInAppBrowser,
   isPopupBlockedError,
+  isPopupClosedByUser,
   openInExternalBrowser,
   prepareOAuthRedirect,
   safeReturnPath,
@@ -25,10 +26,15 @@ import { useLocale } from "@/lib/i18n";
 import { startKakaoLogin } from "@/lib/kakaoAuth";
 import { useAuthUser } from "@/lib/useAuthUser";
 
-function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string {
-  const msg = String(e);
-  if (/popup|blocked|closed/i.test(msg)) return popupBlockedMsg;
-  return msg;
+/**
+ * 팝업 차단은 호출부에서 이미 걸러진 뒤 들어온다. 예전에는 여기서 /popup|blocked|closed/로
+ * 다시 훑어, isPopupBlockedError가 일부러 제외한 "사용자가 직접 닫음"까지 차단으로 취급해
+ * 정반대 안내를 띄웠다. 직접 닫은 것은 오류가 아니므로 배너를 내지 않는다.
+ */
+function toSignInErrorMessage(e: unknown, popupBlockedMsg: string): string | null {
+  if (isPopupBlockedError(e)) return popupBlockedMsg;
+  if (isPopupClosedByUser(e)) return null;
+  return String(e);
 }
 
 function LoginContent() {

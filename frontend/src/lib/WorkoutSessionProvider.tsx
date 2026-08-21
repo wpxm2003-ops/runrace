@@ -22,6 +22,13 @@ export function WorkoutSessionProvider({ children }: { children: ReactNode }) {
       currentUid: user?.uid ?? null,
       loading,
     },
+    {
+      unavailable: t.geo_err_unavailable,
+      insecure: t.geo_err_insecure,
+      permission: t.geo_err_permission,
+      timeout: t.geo_err_timeout,
+      unknown: t.geo_err_unknown,
+    },
   );
   return (
     <WorkoutSessionContext.Provider value={session}>

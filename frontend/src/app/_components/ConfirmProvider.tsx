@@ -43,9 +43,12 @@ function ConfirmDialogUi({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const confirmLabel = state.confirmLabel ?? "확인";
-  const cancelLabel = state.cancelLabel ?? "취소";
-  const title = state.title ?? "확인";
+  // 호출부는 모두 로케일 문구를 넘긴다. 이 기본값은 그 계약이 깨졌을 때만 쓰이므로
+  // 특정 언어로 고정하지 않는다(예전에는 한국어였다).
+  const confirmLabel = state.confirmLabel ?? "OK";
+  const cancelLabel = state.cancelLabel ?? "Cancel";
+  // 빈 문자열로 두면 aria-labelledby가 가리키는 h2가 비어 스크린리더가 이름을 잃는다.
+  const title = state.title ?? "Confirm";
 
   return (
     <div

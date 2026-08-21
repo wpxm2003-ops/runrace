@@ -55,12 +55,18 @@ public class WorkoutController {
   private final ShoeService shoeService;
   private final ActivityHistoryService activityHistoryService;
 
-  /** GPS 운동 시작 버튼을 누른 시점의 사용자 활동 기록. */
+  /**
+   * GPS 운동 시작 버튼을 누른 시점의 사용자 활동 기록.
+   *
+   * <p>이 시점에는 아직 운동 행이 없으므로 target은 WORKOUT이 아니라 USER다. 이전에는
+   * targetType=WORKOUT에 사용자 UUID를 넣어, "특정 운동에 대한 이력"을 찾는
+   * (target_type, target_id, occurred_at) 인덱스를 무의미하게 만들었다.
+   */
   @PostMapping("/start")
   public ResponseEntity<Void> recordStart(AuthPrincipal principal) {
     activityHistoryService.recordSelf(
         principal.userId(), ActivityAction.WORKOUT_STARTED,
-        ActivityTargetType.WORKOUT, principal.userId());
+        ActivityTargetType.USER, principal.userId());
     return ResponseEntity.noContent().build();
   }
 
