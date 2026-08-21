@@ -77,7 +77,11 @@ public class ChallengeMember {
     this.lastSyncAt = now;
   }
 
-  /** 누적 거리를 직접 설정하고 마지막 동기화 시각을 갱신한다(FitnessService 보정용). */
+  /**
+   * 누적 거리를 직접 설정하고 마지막 동기화 시각을 갱신한다.
+   * 실사용처는 {@code ChallengeProgressService}의 거리 반영 경로다 — 예전 주석은
+   * FitnessService 전용이라고 적어 두어, 그 서비스가 차단된 뒤 죽은 메서드로 오인됐다.
+   */
   public void setDistanceAndSync(BigDecimal km, OffsetDateTime now) {
     this.totalKm = km;
     this.lastSyncAt = now;

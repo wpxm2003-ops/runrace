@@ -153,8 +153,6 @@ export type CrewDetail = {
   foundedAt: string | null;
   leaderNickname: string | null;
   isFull: boolean;
-  /** 로그인 + 이 크루에 대기중 신청이 있을 때만 "PENDING", 그 외 null. */
-  myApplicationStatus: "PENDING" | null;
   /** 로그인 + 이 크루에서 최근 거절돼 24h 쿨다운 중이면 true. */
   inCooldown: boolean;
 };

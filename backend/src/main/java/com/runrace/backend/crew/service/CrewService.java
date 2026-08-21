@@ -181,22 +181,15 @@ public class CrewService {
   }
 
   /**
-   * 공개 크루 상세 — 비회원도 조회 가능. viewerId가 있으면 내 신청 상태(대기중/쿨다운)를 함께 채운다.
+   * 공개 크루 상세 — 비회원도 조회 가능. viewerId가 있으면 재신청 쿨다운 여부를 함께 채운다.
+   * 대기중 신청 여부는 담지 않는다 — {@link CrewDetailResponse} 참조.
    */
   @Transactional(readOnly = true)
   public CrewDetailResponse detail(long crewId, UUID viewerId) {
     Crew crew = crewRepository.getRequired(crewId);
     int memberCount = crewMemberRepository.countByCrewId(crewId);
 
-    String myApplicationStatus = null;
-    boolean inCooldown = false;
-    if (viewerId != null) {
-      if (crewJoinRequestRepository.existsByCrewIdAndUserIdAndStatus(
-          crewId, viewerId, CrewJoinRequestStatus.PENDING)) {
-        myApplicationStatus = "PENDING";
-      }
-      inCooldown = isInCooldown(crewId, viewerId);
-    }
+    boolean inCooldown = viewerId != null && isInCooldown(crewId, viewerId);
 
     return new CrewDetailResponse(
         crew.getId(), crew.getName(), crew.getRegion(), crew.getImageUrl(),
@@ -204,7 +197,7 @@ public class CrewService {
         memberCount, crew.getMaxMembers(),
         crew.getMeetupPlace(), parseMeetupDaysCsv(crew.getMeetupDays()), crew.getMeetupTime(),
         crew.getCreatedAt(), crew.getFoundedAt(), crew.getLeader().getNickname(),
-        memberCount >= crew.getMaxMembers(), myApplicationStatus, inCooldown);
+        memberCount >= crew.getMaxMembers(), inCooldown);
   }
 
   /** 크루 잔디(최근 5주 날짜별 뛴 멤버 수) + 명예의 전당(월별 MVP). */
