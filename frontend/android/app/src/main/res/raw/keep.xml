@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  리소스 축소기(shrinkResources)로부터 지켜야 할 리소스 목록.
+
+  ic_tracking은 백그라운드 추적 알림의 아이콘인데, 코드나 레이아웃에서 @drawable/ic_tracking으로
+  직접 참조되지 않는다. values/strings.xml의 문자열 "값" 안에만 이름이 있고
+  (capacitor_background_geolocation_notification_icon = "drawable/ic_tracking"),
+  플러그인이 런타임에 Resources.getIdentifier로 찾는다.
+
+  축소기는 이런 이름 기반 참조를 볼 수 없어 아이콘을 지워 버린다. 그러면 getIdentifier가 0을
+  반환하고, 아이콘 없는 알림으로 startForeground가 호출돼 시스템이 프로세스를 강제 종료한다
+  (RemoteServiceException$BadForegroundServiceNotificationException — 플러그인의 try/catch로
+  잡히지 않는다). 1.0.6 릴리스가 실행 직후 죽은 원인이다.
+
+  지금은 shrinkResources가 꺼져 있어 당장 영향은 없지만, 다시 켜는 순간 같은 크래시가 재발한다.
+  기기 테스트로도 잘 안 잡힌다 — 저장된 러닝 세션이 없으면 알림 경로 자체를 안 타기 때문이다.
+-->
+<resources
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_tracking" />
