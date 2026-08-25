@@ -22,13 +22,20 @@ function resolveApiBaseUrl(): string {
     base = trimmed === "" ? "" : trimmed.replace(/\/$/, "");
   }
 
-  // HTTPS 페이지에서 http:// API는 Mixed Content로 차단 → Nginx /api 프록시 사용
+  // 웹에서는 현재 페이지와 다른 출처의 API를 직접 호출하지 않는다. www/non-www가
+  // 섞이면 Authorization 헤더 때문에 CORS preflight가 발생할 수 있으므로, 항상
+  // 같은 출처의 Nginx /api 프록시를 사용한다. Capacitor처럼 http(s) 출처가 아닌
+  // 네이티브 환경은 설정된 절대 API 주소를 그대로 사용한다.
   if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:" &&
-    base.startsWith("http://")
+    typeof window !== "undefined"
+    && (window.location.protocol === "http:" || window.location.protocol === "https:")
+    && base
   ) {
-    return "";
+    try {
+      if (new URL(base).origin !== window.location.origin) return "";
+    } catch {
+      // Invalid values are left untouched so the subsequent request exposes the configuration error.
+    }
   }
 
   return base;
