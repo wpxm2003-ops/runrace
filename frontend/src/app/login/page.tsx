@@ -11,6 +11,7 @@ import {
   buildLoginPageUrl,
   canOAuthRedirectFallback,
   isInAppBrowser,
+  isKakaoTalkInAppBrowser,
   isPopupBlockedError,
   isPopupClosedByUser,
   openInExternalBrowser,
@@ -45,6 +46,7 @@ function LoginContent() {
   const [inAppHint, setInAppHint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inApp = isInAppBrowser();
+  const kakaoTalkInApp = isKakaoTalkInAppBrowser();
   const { user } = useAuthUser();
 
   useEffect(() => {
@@ -112,7 +114,7 @@ function LoginContent() {
         <h1 className="text-xl font-semibold">{t.login_headline}</h1>
         <p className="mt-2 text-sm text-zinc-600">{t.login_desc}</p>
 
-        {inApp && (
+        {inApp && !kakaoTalkInApp && (
           <div className="mt-4 space-y-2">
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {t.login_inapp_message}
@@ -134,6 +136,7 @@ function LoginContent() {
         )}
 
         <div className="mt-6 space-y-3">
+          {!kakaoTalkInApp && (
           <button
             type="button"
             onClick={signInGoogle}
@@ -160,10 +163,13 @@ function LoginContent() {
             </svg>
             {busy ? t.login_busy : t.login_google}
           </button>
+          )}
           <button
             type="button"
             onClick={() => startKakaoLogin(returnTo)}
-            disabled={busy || inApp}
+            // Google OAuth만 인앱 브라우저에서 차단된다. 카카오 OAuth는 카카오톡
+            // 인앱에서도 로그인 흐름을 처리할 수 있으므로 계속 제공한다.
+            disabled={busy}
             className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191919] shadow-sm hover:brightness-95 disabled:opacity-50"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden fill="currentColor">

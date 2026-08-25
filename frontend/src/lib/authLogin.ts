@@ -27,6 +27,13 @@ export function isInAppBrowser(): boolean {
   return false;
 }
 
+/** 카카오톡 인앱일 때만 Google 로그인 버튼을 숨기는 데 사용한다. */
+export function isKakaoTalkInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (Capacitor.isNativePlatform()) return false;
+  return /KAKAOTALK/i.test(navigator.userAgent || "");
+}
+
 /** signInWithRedirect 직전 sessionStorage 세팅 */
 export function prepareOAuthRedirect(returnTo: string): void {
   sessionStorage.setItem(LOGIN_RETURN_KEY, returnTo);
@@ -86,7 +93,32 @@ export async function openInExternalBrowser(url: string): Promise<"intent" | "co
   const isAndroid = /Android/i.test(ua);
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
 
-  // 네이버 등: target=_blank 가 외부 브라우저로 열리는 경우가 많음
+  if (isAndroid) {
+    // 카카오톡 인앱은 window.open()에 WindowProxy만 반환하고 실제 외부 브라우저를 열지
+    // 않는 경우가 있다. popup 성공 여부를 먼저 확인하면 intent까지 도달하지 못하므로,
+    // Android에서는 Chrome intent를 가장 먼저 실행한다.
+    const path = url.replace(/^https?:\/\//, "");
+    const chromeIntent =
+      `intent://${path}#Intent;scheme=https;action=android.intent.action.VIEW;` +
+      `category=android.intent.category.BROWSABLE;package=com.android.chrome;` +
+      `S.browser_fallback_url=${encodeURIComponent(url)};end`;
+    window.location.assign(chromeIntent);
+    return "intent";
+  }
+
+  if (isIOS) {
+    // 웹 페이지에서는 Safari를 강제로 여는 URL scheme이 없다. googlechromes://는
+    // Chrome이 없는 기기에서 아무 반응이 없으므로, 주소를 복사해 Safari/Chrome에서
+    // 직접 열도록 안내하는 편이 확실하다.
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt("아래 주소를 복사해 Safari/Chrome에서 열어 주세요.", url);
+    }
+    return "copy";
+  }
+
+  // Android/iOS가 아닌 인앱 브라우저는 target=_blank가 외부 브라우저로 열리는 경우가 많다.
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.target = "_blank";
@@ -98,31 +130,7 @@ export async function openInExternalBrowser(url: string): Promise<"intent" | "co
   const popup = window.open(url, "_blank", "noopener,noreferrer");
   if (popup) return "window";
 
-  if (isAndroid) {
-    const path = url.replace(/^https?:\/\//, "");
-    const chromeIntent =
-      `intent://${path}#Intent;scheme=https;action=android.intent.action.VIEW;` +
-      `category=android.intent.category.BROWSABLE;package=com.android.chrome;end`;
-    window.location.assign(chromeIntent);
-    window.setTimeout(() => {
-      window.location.assign(
-        `intent://${path}#Intent;scheme=https;action=android.intent.action.VIEW;end`,
-      );
-    }, 600);
-    return "intent";
-  }
-
-  if (isIOS) {
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      window.prompt("아래 주소를 복사해 Safari/Chrome에서 열어 주세요.", url);
-    }
-    window.location.assign(url.replace(/^https:\/\//, "googlechromes://"));
-    return "copy";
-  }
-
-  return "window";
+  return "copy";
 }
 
 export const LOGIN_RETURN_KEY = "runrace_login_return";
