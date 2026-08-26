@@ -64,12 +64,22 @@ class ChallengeLiveProgressServiceTest {
         .liveKm(BigDecimal.valueOf(liveKm)).liveUpdatedAt(liveAt).build();
   }
 
-  /** 활성 멤버 1건 + 그 레이스 전체 로스터 + 라이벌 목록을 한 번에 세운다. */
+  /**
+   * 활성 멤버 + 로스터 + 라이벌 목록을 한 번에 세운다.
+   *
+   * <p>서비스는 로스터 전체가 아니라 라이벌 멤버만 조회하므로, 호출부가 넘긴 roster에서
+   * 라이벌에 해당하는 행만 걸러 돌려준다(실제 쿼리가 하는 일과 같게).
+   */
   private void stub(List<ChallengeMember> mine, List<ChallengeMember> roster, List<UUID> rivals) {
     when(challengeMemberRepository.findAllActiveForUser(eq(ME_ID), any())).thenReturn(mine);
     if (!mine.isEmpty()) {
-      when(challengeMemberRepository.findAllByChallengeIdIn(any())).thenReturn(roster);
       when(rivalRepository.findRivalUserIds(ME_ID)).thenReturn(rivals);
+      if (!rivals.isEmpty()) {
+        when(challengeMemberRepository.findAllByChallengeIdInAndUserIdIn(any(), any()))
+            .thenReturn(roster.stream()
+                .filter(m -> rivals.contains(m.getUser().getId()))
+                .toList());
+      }
     }
   }
 
@@ -191,7 +201,9 @@ class ChallengeLiveProgressServiceTest {
         .id(ME_ID).nickname("me").livePublicOptIn(false).liveCrewEnabled(true).build();
     Challenge publicRace = Challenge.builder().id(1L).crewId(null).build();
     Challenge crewRace = Challenge.builder().id(2L).crewId(99L).build();
-    ChallengeMember publicMine = member(publicRace, me, 0.0);
+    // 공유를 끄기 전에 쌓인 값이 남아 있는 상태 — 지울 게 있어야 정리 쿼리가 나간다.
+    ChallengeMember publicMine =
+        memberWithLive(publicRace, me, 0.0, 1.2, OffsetDateTime.now().minusMinutes(1));
     ChallengeMember crewMine = member(crewRace, me, 0.0);
     stub(List.of(publicMine, crewMine), List.of(publicMine, crewMine), List.of());
 
@@ -203,6 +215,23 @@ class ChallengeLiveProgressServiceTest {
         .discardLiveProgressForMember(eq(crewMine.getId()), anyLong());
     verify(challengeMemberRepository)
         .updateLiveProgress(eq(crewMine.getId()), any(), any(), any(), anyLong());
+  }
+
+  @Test
+  void 이미_빈_행에는_정리_쿼리를_내지_않는다() {
+    // 공개 공유는 기본이 꺼짐이라 대다수 사용자가 러닝 내내 이 분기를 탄다. 이미 빈 행이면
+    // 0행 UPDATE라도 SQL 실행·인덱스 탐색·DB 왕복은 그대로 들어, 90초마다 쌓이면 낭비가 된다.
+    AppUser me = user(ME_ID, "me", false); // 공개 공유 꺼짐
+    Challenge publicRace = Challenge.builder().id(1L).crewId(null).build();
+    ChallengeMember mine = member(publicRace, me, 2.0); // 라이브 값 없음
+    stub(List.of(mine), List.of(mine), List.of());
+
+    service.submit(ME_ID, 300, OK_ELAPSED_SEC, SENT_AT);
+
+    verify(challengeMemberRepository, never())
+        .discardLiveProgressForMember(any(), anyLong());
+    verify(challengeMemberRepository, never())
+        .updateLiveProgress(any(), any(), any(), any(), anyLong());
   }
 
   @Test

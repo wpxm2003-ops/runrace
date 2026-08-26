@@ -21,10 +21,12 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
 
   @Override
   public List<ChallengeMember> findAllForChallenge(Long challengeId) {
+    // 정렬하지 않는다 — 소비자가 전부 자기 기준으로 다시 정렬하거나(순위 확정은
+    // RACE_RESULT_ORDER, 상세는 라이브 반영 정렬) 순서와 무관하다(경품 추첨은 셔플).
+    // total_km 정렬을 여기서 하면 결과에 반영되지도 않는 정렬이 조회마다 실행된다.
     return query.selectFrom(member)
         .join(member.user).fetchJoin()
         .where(member.challenge.id.eq(challengeId))
-        .orderBy(member.totalKm.desc())
         .fetch();
   }
 
@@ -77,6 +79,18 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
     return query.selectFrom(member)
         .join(member.user).fetchJoin()
         .where(member.challenge.id.in(challengeIds))
+        .fetch();
+  }
+
+  @Override
+  public List<ChallengeMember> findAllByChallengeIdInAndUserIdIn(
+      List<Long> challengeIds, java.util.Collection<UUID> userIds) {
+    if (userIds.isEmpty()) {
+      return List.of();
+    }
+    return query.selectFrom(member)
+        .join(member.user).fetchJoin()
+        .where(member.challenge.id.in(challengeIds), member.user.id.in(userIds))
         .fetch();
   }
 

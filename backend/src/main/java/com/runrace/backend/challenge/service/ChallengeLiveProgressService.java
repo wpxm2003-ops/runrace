@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -61,13 +60,10 @@ public class ChallengeLiveProgressService {
     validateInput(distanceM, elapsedSec, sentAt);
 
     OffsetDateTime now = OffsetDateTime.now();
-    // 잠금 순서 계약(확정 경로와 동일)을 위해 id 오름차순으로 고정한다 — 한 사용자가 두 기기에서
-    // 동시에 핑을 보내면 같은 행들을 서로 다른 순서로 갱신해 교착이 날 수 있다.
-    // 클라이언트 큐는 훅 인스턴스 단위라 기기 간에는 아무것도 보장하지 못한다.
+    // 정렬은 findAllActiveForUser가 id 오름차순으로 보장한다(잠금 순서 계약 — 확정 경로와 같은
+    // 순서로 잠가야 교착이 나지 않는다). 여기서 다시 정렬하지 않는다.
     List<ChallengeMember> activeMembers =
-        challengeMemberRepository.findAllActiveForUser(userId, now).stream()
-            .sorted(Comparator.comparing(ChallengeMember::getId))
-            .toList();
+        challengeMemberRepository.findAllActiveForUser(userId, now);
     if (activeMembers.isEmpty()) {
       return new LiveProgressResponse(List.of());
     }
@@ -79,10 +75,15 @@ public class ChallengeLiveProgressService {
     }
 
     List<Long> challengeIds = activeMembers.stream().map(m -> m.getChallenge().getId()).toList();
-    Map<Long, List<ChallengeMember>> membersByChallenge =
-        challengeMemberRepository.findAllByChallengeIdIn(challengeIds).stream()
-            .collect(Collectors.groupingBy(m -> m.getChallenge().getId()));
+    // 격차에 필요한 건 내가 등록한 라이벌뿐이다. 로스터 전체를 읽으면 핑 한 번이 참여 중인
+    // 모든 레이스의 참가자 수만큼(대형 레이스면 수천 행) 읽고 대부분 버린다. 라이벌이 없으면
+    // 조회 자체를 건너뛴다 — 대다수 사용자가 여기에 해당한다.
     Set<UUID> rivalIds = new HashSet<>(rivalRepository.findRivalUserIds(userId));
+    Map<Long, List<ChallengeMember>> rivalsByChallenge = rivalIds.isEmpty()
+        ? Map.of()
+        : challengeMemberRepository
+            .findAllByChallengeIdInAndUserIdIn(challengeIds, rivalIds).stream()
+            .collect(Collectors.groupingBy(m -> m.getChallenge().getId()));
 
     BigDecimal distanceKm = Distance.toKm(distanceM);
     List<ChallengeLiveGaps> results = new ArrayList<>();
@@ -109,7 +110,14 @@ public class ChallengeLiveProgressService {
         // 여기서 매번 지워 두면 그 창이 다음 핑까지(최대 한 주기)로 줄어든다.
         // 반드시 이 행만 지운다 — 사용자 단위로 지우면 공개는 끄고 크루는 켠 사용자의
         // 크루 값이 같은 루프 안에서 함께 날아간다.
-        challengeMemberRepository.discardLiveProgressForMember(member.getId(), sentAt);
+        //
+        // 지울 게 있을 때만 쿼리를 낸다. 공개 공유는 기본이 꺼짐이라 대다수 사용자가 러닝 내내
+        // 이 분기를 타는데, 이미 빈 행이면 0행 UPDATE라도 SQL 실행·인덱스 탐색·DB 왕복은 그대로
+        // 든다. 필요한 값은 이미 로드돼 있으니 메모리에서 먼저 거른다(쿼리의 같은 조건은 동시
+        // 변경 방어용으로 남겨 둔다).
+        if (hasLiveState(member)) {
+          challengeMemberRepository.discardLiveProgressForMember(member.getId(), sentAt);
+        }
       } else if (plausibleOverall) {
         applyLiveIfPlausible(member, cappedKm, now, sentAt);
       }
@@ -122,10 +130,10 @@ public class ChallengeLiveProgressService {
       // 않는데, 그 시점엔 이미 완주한 상태라 배너의 의미도 사라진다.
       long myEffectiveM = Distance.toM(member.getTotalKm().add(cappedKm));
 
-      List<ChallengeMember> allMembers = membersByChallenge.getOrDefault(challenge.getId(), List.of());
-      List<RivalGapRow> gaps = allMembers.stream()
-          .filter(m -> !m.getUser().getId().equals(userId))
-          .filter(m -> rivalIds.contains(m.getUser().getId()))
+      // 이미 라이벌만 조회했으므로 여기서 다시 거르지 않는다. 자기 제외 필터도 뺐다 —
+      // 자기 자신은 라이벌로 등록할 수 없다(RivalService의 cannot_add_self).
+      List<ChallengeMember> rivals = rivalsByChallenge.getOrDefault(challenge.getId(), List.of());
+      List<RivalGapRow> gaps = rivals.stream()
           .map(m -> new RivalGapRow(
               m.getUser().getId(),
               m.getUser().getNickname(),
@@ -167,9 +175,8 @@ public class ChallengeLiveProgressService {
    * 지키는 잠금 순서 계약을 깨 교착을 만든다.
    */
   private void forEachActiveMember(UUID userId, java.util.function.Consumer<ChallengeMember> body) {
-    challengeMemberRepository.findAllActiveForUser(userId, OffsetDateTime.now()).stream()
-        .sorted(Comparator.comparing(ChallengeMember::getId))
-        .forEach(body);
+    // 조회가 id 오름차순을 보장하므로 그대로 순회한다(잠금 순서 계약).
+    challengeMemberRepository.findAllActiveForUser(userId, OffsetDateTime.now()).forEach(body);
   }
 
   /**
@@ -224,6 +231,13 @@ public class ChallengeLiveProgressService {
     // 더 나중에 만들어진 요청(종료 시 일시정지 등)이 이미 반영됐으면 쿼리가 떨군다.
     challengeMemberRepository.updateLiveProgress(
         member.getId(), distanceKm, now, member.getTotalKm(), sentAt);
+  }
+
+  /** 지울 라이브 상태가 실제로 남아 있는지 — 빈 행에 0행 UPDATE를 날리지 않기 위한 사전 검사. */
+  private static boolean hasLiveState(ChallengeMember member) {
+    return member.getLiveKm() != null
+        || member.getLiveUpdatedAt() != null
+        || member.isLivePaused();
   }
 
   /**

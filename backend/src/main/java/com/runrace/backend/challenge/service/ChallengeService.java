@@ -385,9 +385,10 @@ public class ChallengeService {
     OffsetDateTime now = OffsetDateTime.now();
 
     UUID userId = currentUserId.orElse(null);
+    // 바로 위에서 로스터를 통째로 읽었으므로 참여 여부는 메모리에서 판정한다. 별도 조회를 두면
+    // 상세를 여는 모든 조회자가 폴링 주기마다 같은 정보를 한 번 더 읽는다.
     boolean isMember =
-        userId != null
-            && challengeMemberRepository.findByChallengeIdAndUserId(id, userId).isPresent();
+        userId != null && members.stream().anyMatch(m -> m.getUser().getId().equals(userId));
     boolean isOwner = challenge.isOwner(userId);
 
     // 로그인 사용자가 등록한 라이벌이 이 방에 있으면 표시(색/라벨)용으로 id 집합을 넘긴다.

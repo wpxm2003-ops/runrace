@@ -360,10 +360,14 @@ export function useWorkoutSession(
     void clearLiveProgress(user, nextLiveSentAt()).catch(() => {});
   }, [nextLiveSentAt]);
 
+  // 러닝 중일 때만 타이머를 건다. 상시 등록하면 운동하지 않는 동안에도 90초마다 콜백이
+  // 깨어난다(요청은 가드가 막지만 깨우는 것 자체가 낭비다). 재개 시 위상이 처음부터 다시
+  // 시작되는데, 재개는 어차피 force 핑을 따로 보내므로 공백이 생기지 않는다.
   useEffect(() => {
+    if (status !== "running") return;
     const timer = setInterval(sendLivePing, LIVE_PING_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [sendLivePing]);
+  }, [status, sendLivePing]);
 
   // ── GPS 유틸 ──────────────────────────────────────────────────────────────
   /**

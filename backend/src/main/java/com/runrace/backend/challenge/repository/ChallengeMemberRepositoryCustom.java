@@ -10,6 +10,10 @@ import java.util.UUID;
 /** QueryDSL 기반 커스텀 쿼리 — fetch join·집계 등. */
 public interface ChallengeMemberRepositoryCustom {
 
+  /**
+   * 한 레이스의 전체 참가자. <b>순서를 보장하지 않는다</b> — 필요한 정렬은 호출부가 한다.
+   * 우연한 순서에 기대는 코드가 생기지 않도록 명시해 둔다.
+   */
   List<ChallengeMember> findAllForChallenge(Long challengeId);
 
   /**
@@ -25,6 +29,15 @@ public interface ChallengeMemberRepositoryCustom {
   List<Long> findMemberChallengeIds(UUID userId, List<Long> ids);
 
   List<ChallengeMember> findAllByChallengeIdIn(List<Long> challengeIds);
+
+  /**
+   * 주어진 레이스들에서 지정한 사용자들의 멤버 행만 — 라이브 핑의 라이벌 격차 계산용.
+   *
+   * <p>{@link #findAllByChallengeIdIn}은 로스터 전체를 읽는데, 격차에 실제로 필요한 건 내가
+   * 등록한 라이벌뿐이다. 대형 레이스에서는 핑 한 번이 수천 행을 읽고 대부분 버리게 된다.
+   */
+  List<ChallengeMember> findAllByChallengeIdInAndUserIdIn(
+      List<Long> challengeIds, java.util.Collection<UUID> userIds);
 
   /** 진행 중인 레이스를 운동한 사용자와 함께 참가 중인 다른 사용자 목록. */
   List<SharedRaceParticipant> findSharedActiveRaceParticipants(UUID userId, OffsetDateTime now);
