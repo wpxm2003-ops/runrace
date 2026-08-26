@@ -728,9 +728,7 @@ export const translations = {
     my_notification_desc: "레이스 소식과 운동 리마인더를 받아요.",
     my_live_sharing_title: "실시간 진행률 공유",
     my_live_sharing_public_label: "공개 레이스",
-    my_live_sharing_public_desc: "켜면 참여 중인 공개 레이스에서, 그 레이스를 보는 로그인 사용자에게 내 실시간 진행 상황이 표시돼요.",
     my_live_sharing_crew_label: "크루 레이스",
-    my_live_sharing_crew_desc: "크루 내부 레이스에서 내 실시간 진행 상황을 보여줘요. 기본은 켜짐이에요.",
     push_no_token_message: "최초에 앱 푸시 알림에 동의하지 않아 설정을 변경할 수 없어요. 앱을 재설치한 뒤 알림을 허용해주세요.",
     push_ios_unavailable_message:
       "iPhone은 아직 정식 앱을 준비 중이라 지금은 푸시 알림을 받을 수 없어요. 불편을 드려 죄송합니다. 빠르게 준비해서 알림도 챙겨드릴게요. 🙏",
@@ -1837,9 +1835,7 @@ export const translations = {
     my_notification_desc: "Get race updates and workout reminders.",
     my_live_sharing_title: "Live progress sharing",
     my_live_sharing_public_label: "Public races",
-    my_live_sharing_public_desc: "When on, anyone signed in who views a public race you have joined can see your progress in real time.",
     my_live_sharing_crew_label: "Crew races",
-    my_live_sharing_crew_desc: "Share your progress in real time in your crew races. On by default.",
     push_no_token_message: "You didn't allow push notifications when you first installed the app, so this can't be changed. Please reinstall the app and allow notifications.",
     push_ios_unavailable_message:
       "Push notifications aren't available on iPhone yet — the iOS app is still in the works. Sorry for the inconvenience; we're working to bring them to you soon. 🙏",
@@ -2944,9 +2940,7 @@ export const translations = {
     my_notification_desc: "Recibe novedades de carreras y recordatorios.",
     my_live_sharing_title: "Progreso en tiempo real",
     my_live_sharing_public_label: "Carreras públicas",
-    my_live_sharing_public_desc: "Si lo activas, cualquier persona con sesión iniciada que vea una carrera pública en la que participas puede ver tu progreso en tiempo real.",
     my_live_sharing_crew_label: "Carreras de crew",
-    my_live_sharing_crew_desc: "Comparte tu progreso en tiempo real en las carreras de tu crew. Activado por defecto.",
     push_no_token_message: "No permitiste las notificaciones push al instalar la app, así que no se puede cambiar. Reinstala la app y permite las notificaciones.",
     push_ios_unavailable_message:
       "Las notificaciones push aún no están disponibles en iPhone: la app para iOS está en preparación. Perdona las molestias; trabajamos para traerlas pronto. 🙏",
@@ -4051,9 +4045,7 @@ export const translations = {
     my_notification_desc: "レースの最新情報と運動リマインダーを受け取ります。",
     my_live_sharing_title: "リアルタイム進行状況の共有",
     my_live_sharing_public_label: "公開レース",
-    my_live_sharing_public_desc: "オンにすると、参加中の公開レースを閲覧しているログイン済みのユーザーに、あなたのリアルタイムの進行状況が表示されます。",
     my_live_sharing_crew_label: "クルーレース",
-    my_live_sharing_crew_desc: "クルー内のレースでリアルタイムの進行状況を共有します。初期設定はオンです。",
     push_no_token_message: "アプリの初回起動時にプッシュ通知を許可しなかったため、設定を変更できません。アプリを再インストールして通知を許可してください。",
     push_ios_unavailable_message:
       "iPhoneは正式アプリを準備中のため、現在プッシュ通知を受け取れません。ご不便をおかけして申し訳ありません。早急に対応いたします。🙏",
@@ -5159,9 +5151,7 @@ export const translations = {
     my_notification_desc: "接收比赛动态和运动提醒。",
     my_live_sharing_title: "实时进度共享",
     my_live_sharing_public_label: "公开比赛",
-    my_live_sharing_public_desc: "开启后，任何已登录并查看你所参加的公开比赛的用户，都能实时看到你的进度。",
     my_live_sharing_crew_label: "跑团比赛",
-    my_live_sharing_crew_desc: "在跑团内部比赛中实时共享你的进度。默认开启。",
     push_no_token_message: "首次安装时未允许推送通知，无法更改此设置。请重新安装应用并允许通知。",
     push_ios_unavailable_message:
       "iPhone 正式应用仍在准备中，目前无法接收推送通知。抱歉给您带来不便，我们会尽快解决。🙏",

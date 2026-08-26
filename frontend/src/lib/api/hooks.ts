@@ -669,7 +669,7 @@ export function useNotificationSetting(user: User | null) {
   );
 }
 
-/** 공개 레이스 실시간 진행률 공유 opt-in — 내정보 토글용. */
+/** 실시간 진행률 공유 설정(공개/크루 두 축) — 내정보 토글용. */
 export function useLiveProgressSetting(user: User | null) {
   return useSWR(
     user ? (["live-progress-setting", user.uid] as const) : null,

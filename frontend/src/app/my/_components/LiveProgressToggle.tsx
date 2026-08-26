@@ -10,9 +10,9 @@ import { useLocale } from "@/lib/i18n";
 import { toast } from "sonner";
 
 /**
- * 실시간 진행률 공유 토글 — 공개 레이스·크루 레이스를 각각 켜고 끈다.
- * 기본값이 다른 것은 의도다(공개=꺼짐/동의 후 시작, 크루=켜짐/폐쇄 로스터). 다만 "끌 수
- * 있어야 한다"는 원칙은 두 축이 같아서, 크루도 토글을 준다.
+ * 실시간 진행률 공유 토글 — 공개 레이스·크루 레이스를 각각 켜고 끈다. 둘 다 기본 켜짐이고,
+ * 축을 나눈 건 노출 범위가 달라서다(공개=인증된 아무나 / 크루=폐쇄 로스터). 한쪽만 끄고 싶은
+ * 사람이 있으므로 한 개로 합치지 않는다.
  */
 export function LiveProgressToggle({ user }: { user: User }) {
   const { t } = useLocale();
@@ -20,7 +20,7 @@ export function LiveProgressToggle({ user }: { user: User }) {
   const [saving, setSaving] = useState<keyof LiveProgressSetting | null>(null);
 
   const current: LiveProgressSetting = {
-    publicEnabled: data?.publicEnabled ?? false,
+    publicEnabled: data?.publicEnabled ?? true,
     crewEnabled: data?.crewEnabled ?? true,
   };
 
@@ -41,31 +41,22 @@ export function LiveProgressToggle({ user }: { user: User }) {
     }
   }
 
-  const rows: { key: keyof LiveProgressSetting; label: string; desc: string }[] = [
-    {
-      key: "publicEnabled",
-      label: t.my_live_sharing_public_label,
-      desc: t.my_live_sharing_public_desc,
-    },
-    {
-      key: "crewEnabled",
-      label: t.my_live_sharing_crew_label,
-      desc: t.my_live_sharing_crew_desc,
-    },
+  // 설명은 두지 않는다 — 제목("실시간 진행률 공유")이 이미 무엇을 켜고 끄는지 말하고,
+  // 축마다 같은 말을 반복하면 길기만 하다.
+  const rows: { key: keyof LiveProgressSetting; label: string }[] = [
+    { key: "publicEnabled", label: t.my_live_sharing_public_label },
+    { key: "crewEnabled", label: t.my_live_sharing_crew_label },
   ];
 
   return (
     <Card className="mt-4">
       <div className="text-sm font-medium text-zinc-900">{t.my_live_sharing_title}</div>
-      <div className="mt-3 flex flex-col gap-4">
-        {rows.map(({ key, label, desc }) => {
+      <div className="mt-3 flex flex-col gap-3">
+        {rows.map(({ key, label }) => {
           const enabled = current[key];
           return (
             <div key={key} className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm text-zinc-900">{label}</div>
-                <p className="mt-0.5 text-xs text-zinc-500">{desc}</p>
-              </div>
+              <div className="min-w-0 text-sm text-zinc-900">{label}</div>
               <button
                 type="button"
                 role="switch"

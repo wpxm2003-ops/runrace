@@ -58,12 +58,16 @@ public class AppUser {
   private boolean pushEnabled = false;
 
   /**
-   * 공개(비크루) 레이스에서 본인의 실시간(잠정) 진행률을 보여줄지 동의. 기본 false(비공개) —
-   * 공개 레이스는 모르는 사람도 조회할 수 있어 동의를 받고 시작한다.
+   * 공개(비크루) 레이스에서 본인의 실시간(잠정) 진행률을 보여줄지. 기본 true.
+   *
+   * <p>처음에는 기본 false로 냈다 — 공개 레이스 상세는 모르는 사람도 조회할 수 있어 동의를 받고
+   * 시작한다는 판단이었다. 실사용에서 대다수가 설정을 건드리지 않아 기능이 죽은 채로 보이는 게
+   * 먼저 드러나 켜짐으로 뒤집었다(V71). 노출 범위 자체는 그대로다 — 인증된 사용자에게만,
+   * 종료 전 레이스에서만, 좌표 없이, 15분 미갱신 시 자동 소멸.
    */
   @Builder.Default
   @Column(name = "live_public_opt_in", nullable = false)
-  private boolean livePublicOptIn = false;
+  private boolean livePublicOptIn = true;
 
   /**
    * 크루 내부 레이스에서 본인의 실시간(잠정) 진행률을 보여줄지. 기본 true(허용) —

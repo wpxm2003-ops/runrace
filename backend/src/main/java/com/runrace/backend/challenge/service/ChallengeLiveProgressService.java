@@ -98,7 +98,7 @@ public class ChallengeLiveProgressService {
       Challenge challenge = member.getChallenge();
       AppUser caller = member.getUser();
       boolean isPublicRace = challenge.getCrewId() == null;
-      // 두 축을 각각 끌 수 있다 — 공개는 동의(기본 꺼짐), 크루는 기본 켜짐.
+      // 두 축 모두 기본 켜짐이고 각각 끌 수 있다.
       boolean shareAllowed =
           isPublicRace ? caller.isLivePublicOptIn() : caller.isLiveCrewEnabled();
       // 라이브가 목표를 넘겨 진행률을 밀어 올리지 못하게 남은 거리만큼으로 자른다. 상대의
@@ -111,10 +111,9 @@ public class ChallengeLiveProgressService {
         // 반드시 이 행만 지운다 — 사용자 단위로 지우면 공개는 끄고 크루는 켠 사용자의
         // 크루 값이 같은 루프 안에서 함께 날아간다.
         //
-        // 지울 게 있을 때만 쿼리를 낸다. 공개 공유는 기본이 꺼짐이라 대다수 사용자가 러닝 내내
-        // 이 분기를 타는데, 이미 빈 행이면 0행 UPDATE라도 SQL 실행·인덱스 탐색·DB 왕복은 그대로
-        // 든다. 필요한 값은 이미 로드돼 있으니 메모리에서 먼저 거른다(쿼리의 같은 조건은 동시
-        // 변경 방어용으로 남겨 둔다).
+        // 지울 게 있을 때만 쿼리를 낸다. 이미 빈 행이면 0행 UPDATE라도 SQL 실행·인덱스 탐색·
+        // DB 왕복은 그대로 든다. 필요한 값은 이미 로드돼 있으니 메모리에서 먼저 거른다
+        // (쿼리의 같은 조건은 동시 변경 방어용으로 남겨 둔다).
         if (hasLiveState(member)) {
           challengeMemberRepository.discardLiveProgressForMember(member.getId(), sentAt);
         }
