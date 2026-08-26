@@ -61,10 +61,8 @@ public class ChallengeMember {
   @Column(name = "finished_at")
   private OffsetDateTime finishedAt;
 
-  @Column(name = "created_at", nullable = false)
-  private OffsetDateTime createdAt;
-
-  @Column(name = "joined_at", nullable = false)
+  /** 레이스 참가 시각. V18 이전 비방장 데이터는 실제 시각을 알 수 없어 null일 수 있다. */
+  @Column(name = "joined_at")
   private OffsetDateTime joinedAt;
 
   /** 레이스 종료 시 확정되는 최종 순위(1=우승). 진행 중·모집 중이면 null. 전적 도출의 기준값. */
@@ -113,12 +111,8 @@ public class ChallengeMember {
 
   @PrePersist
   void onCreate() {
-    OffsetDateTime now = OffsetDateTime.now();
-    if (createdAt == null) {
-      createdAt = now;
-    }
     if (joinedAt == null) {
-      joinedAt = now;
+      joinedAt = OffsetDateTime.now();
     }
   }
 

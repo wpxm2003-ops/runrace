@@ -353,7 +353,10 @@ public class ChallengeController {
   private static Comparator<ChallengeMember> memberDisplayOrder(
       boolean hasStarted, boolean foldLive, boolean crewRace, OffsetDateTime now) {
     if (!hasStarted) {
-      return Comparator.comparing(ChallengeMember::getJoinedAt);
+      // V18 이전 비방장 데이터는 실제 참가 시각을 복원할 수 없어 null이다.
+      return Comparator.comparing(
+          ChallengeMember::getJoinedAt,
+          Comparator.nullsLast(Comparator.naturalOrder()));
     }
     return foldLive
         ? RaceFinalizationService.displayOrder(now, member -> member.sharesLive(crewRace))

@@ -514,10 +514,12 @@ public class ChallengeService {
   }
 
   private ChallengeMember newMember(Challenge challenge, AppUser user) {
+    boolean isCreator = challenge.getCreator().getId().equals(user.getId());
     return ChallengeMember.builder()
         .challenge(challenge)
         .user(user)
         .totalKm(BigDecimal.ZERO)
+        .joinedAt(isCreator ? challenge.getCreatedAt() : OffsetDateTime.now())
         .build();
   }
 
