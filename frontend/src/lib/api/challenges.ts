@@ -124,7 +124,7 @@ export function fetchRejectedApprovals(challengeId: number, user: User) {
  * 라이브 요청 타임아웃(ms). 이 요청들은 클라이언트에서 직렬 큐로 순서를 맞추기 때문에,
  * 응답 없는 요청 하나가 뒤에 줄 선 일시정지·종료 신호를 무한정 막을 수 있다
  * (모바일에서 소켓이 RST 없이 멈추면 fetch는 OS 타임아웃까지 pending이다).
- * 핑 주기(90초)보다 짧게 잡아 최악의 지연을 한 주기 안으로 묶는다.
+ * 핑 주기(60초)보다 짧게 잡아 최악의 지연을 한 주기 안으로 묶는다.
  */
 const LIVE_REQUEST_TIMEOUT_MS = 20_000;
 

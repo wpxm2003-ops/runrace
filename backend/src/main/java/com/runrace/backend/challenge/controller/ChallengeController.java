@@ -132,7 +132,7 @@ public class ChallengeController {
 
   /**
    * 러닝 도중(정지·저장 전) 잠정 진행률 핑. 표시 전용 — 완주·우승자·경품 판정에는 관여하지
-   * 않는다. 클라이언트는 60~180초 간격(기본 90초)으로 호출한다.
+   * 않는다. 클라이언트는 현재 60초 간격으로 호출한다(시작·재개 시에는 즉시 호출).
    */
   @PostMapping("/live-progress")
   public ResponseEntity<LiveProgressResponse> liveProgress(

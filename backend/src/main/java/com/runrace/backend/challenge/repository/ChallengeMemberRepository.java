@@ -92,7 +92,7 @@ public interface ChallengeMemberRepository
    * 꺼진 축의 행을 처리하면서 같은 루프에서 방금 갱신한 켜진 축의 값까지 날아간다.
    *
    * <p>이미 비어 있는 행은 건드리지 않는다. 지울 게 없는데도 토큰만 갱신하면 공유를 끈 사용자의
-   * 러닝 내내 무의미한 행 버전(dead tuple)이 90초마다 쌓인다. 건너뛰어도 안전하다 — 값이 없으면
+   * 러닝 내내 무의미한 행 버전(dead tuple)이 60초마다 쌓인다. 건너뛰어도 안전하다 — 값이 없으면
    * 되살아날 것도 없고, 지각 핑 역시 자기 트랜잭션에서 설정을 다시 읽어 같은 분기로 들어온다.
    */
   @Modifying(clearAutomatically = false, flushAutomatically = false)

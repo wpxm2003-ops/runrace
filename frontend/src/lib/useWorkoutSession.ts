@@ -50,8 +50,8 @@ const GPS_WATCHDOG_POLL_MS = 5_000;
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
 /** 공백 원인 확인용 위치 한 점을 기다리는 최대 시간. 그동안 방치 판정을 미룬다. */
 const IDLE_GAP_VERIFY_TIMEOUT_MS = 15_000;
-/** 실시간 진행률 핑 주기 — 서버 계약상 60~180초 권장, 기본 90초. */
-const LIVE_PING_INTERVAL_MS = 90_000;
+/** 실시간 진행률 핑 주기 — 시작·재개 때는 별도로 즉시 전송하고 이후 60초마다 갱신한다. */
+const LIVE_PING_INTERVAL_MS = 60_000;
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────────────
 function computeElapsedSec(
@@ -270,12 +270,12 @@ export function useWorkoutSession(
   // 상태나 방치 자동 일시정지 중에는 보내지 않는다(부정확하거나 멈춘 값이 라이벌 격차에 섞이지 않게).
   // best-effort — 실패해도 러닝 자체는 계속되며 이전 격차 값을 그대로 둔다.
   const sendLivePing = useCallback((opts?: { force?: boolean }) => {
-    // 주기 핑은 앞선 핑이 안 끝났으면 건너뛴다. 느린 네트워크에서 주기(90초)보다 오래 걸리면
+    // 주기 핑은 앞선 핑이 안 끝났으면 건너뛴다. 느린 네트워크에서 주기(60초)보다 오래 걸리면
     // 핑이 계속 쌓여 큐가 길어지고, 뒤에 들어올 해제 요청도 그만큼 밀린다.
     // 건너뛰어도 손해가 없다 — 다음 주기에 더 최신 거리로 보낸다.
     //
     // 시작·재개·복귀는 force로 반드시 넣는다. 건너뛰면 앞서 큐에 들어간 일시정지 요청이
-    // 뒤에 도착해, 실제로는 달리는 중인데 다음 주기(최대 90초)까지 멈춘 것으로 보인다 —
+    // 뒤에 도착해, 실제로는 달리는 중인데 다음 주기(최대 60초)까지 멈춘 것으로 보인다 —
     // 큐의 마지막이 항상 사용자의 현재 의도여야 한다. 서버 판정과는 무관한 클라이언트 개념이다.
     if (!opts?.force && livePingPendingRef.current > 0) return;
     livePingPendingRef.current++;
@@ -298,7 +298,7 @@ export function useWorkoutSession(
       //
       // 최소 1초로 올린다. 시작 직후 핑은 경과가 0초라 그대로 보내면 서버가 duration_invalid로
       // 거절하고(그래서 예전에는 여기서 조기 반환했다), 그러면 시작 핑이 통째로 버려져
-      // 최대 90초 동안 남들 화면에 안 보인다. 거리 0에 1초면 속도 0이라 검증에도 안전하고,
+      // 최대 60초 동안 남들 화면에 안 보인다. 거리 0에 1초면 속도 0이라 검증에도 안전하고,
       // 분모를 줄이는 방향이라 조작에 유리해지지도 않는다.
       const elapsedSec = Math.max(
         1,
@@ -360,7 +360,7 @@ export function useWorkoutSession(
     void clearLiveProgress(user, nextLiveSentAt()).catch(() => {});
   }, [nextLiveSentAt]);
 
-  // 러닝 중일 때만 타이머를 건다. 상시 등록하면 운동하지 않는 동안에도 90초마다 콜백이
+  // 러닝 중일 때만 타이머를 건다. 상시 등록하면 운동하지 않는 동안에도 60초마다 콜백이
   // 깨어난다(요청은 가드가 막지만 깨우는 것 자체가 낭비다). 재개 시 위상이 처음부터 다시
   // 시작되는데, 재개는 어차피 force 핑을 따로 보내므로 공백이 생기지 않는다.
   useEffect(() => {
@@ -542,7 +542,7 @@ export function useWorkoutSession(
         const ownerUid = sessionOwnerUidRef.current;
         if (ownerUid != null) pauseLiveRun(ownerUid);
       } else if (previousTier !== "normal" && vehicle.tier === "normal") {
-        // 판정이 풀리면 즉시 복귀를 알린다. 주기 핑은 다음 틱(최대 90초)까지 안 나가고,
+        // 판정이 풀리면 즉시 복귀를 알린다. 주기 핑은 다음 틱(최대 60초)까지 안 나가고,
         // 그동안 실제로 달리는 사람이 계속 "멈춘 사람"으로 표시된다. 재개와 같은 전이다.
         sendLivePing({ force: true });
       }
@@ -738,7 +738,7 @@ export function useWorkoutSession(
     startWatch();
     // 백그라운드에서 WebView가 잠들면 주기 타이머도 함께 멈춘다(이 함수의 존재 이유이기도
     // 하다). 신선도 윈도를 넘겼으면 서버는 이미 이 사람을 "안 뛰는 사람"으로 보고 있고,
-    // 복귀 후 다음 틱까지 기다리면 최대 90초를 더 그대로 둔다. 재개와 같은 전이로 취급한다.
+    // 복귀 후 다음 틱까지 기다리면 최대 60초를 더 그대로 둔다. 재개와 같은 전이로 취급한다.
     sendLivePing({ force: true });
     void track("running_gps_watch_restart", { reason });
   }, [isCurrentSessionOwner, startWatch, resetIdleAnchor, verifyForegroundGap, sendLivePing]);
@@ -1088,7 +1088,7 @@ export function useWorkoutSession(
     if (startSeed) setPosition(startSeed);
     startWatch();
     // 시작 즉시 한 번 보낸다. 주기 타이머는 마운트 시점에 걸려 런 시작과 위상이 맞지 않아,
-    // 이게 없으면 최대 90초 동안 남들 화면에 아무 변화가 없고 90초 미만 런은 아예 반영되지
+    // 이게 없으면 최대 60초 동안 남들 화면에 아무 변화가 없고 60초 미만 런은 아예 반영되지
     // 않는다(그런데 종료 신호는 나가서 비대칭이 된다). 재개와 같은 이유다.
     sendLivePing({ force: true });
     // 같은 계정에서 직전 런을 끝내고 곧바로 새 런을 시작해도, 직전 getCurrentPosition
@@ -1211,7 +1211,7 @@ export function useWorkoutSession(
     setStatus("running");
     statusRef.current = "running";
     startWatch();
-    // 일시정지 표시를 다음 주기(90초)까지 기다리지 않고 곧바로 푼다. force가 필수다 —
+    // 일시정지 표시를 다음 주기(60초)까지 기다리지 않고 곧바로 푼다. force가 필수다 —
     // 느린 핑이 아직 큐에 남아 있으면 일반 핑은 건너뛰어지고, 그러면 앞서 넣은 일시정지
     // 요청이 마지막 의도로 남아 실제로는 달리는 중인데 계속 멈춘 것으로 보인다.
     sendLivePing({ force: true });
