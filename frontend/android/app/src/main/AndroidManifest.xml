@@ -61,6 +61,8 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- 고스트/라이벌 추월 상태가 바뀔 때 짧은 햅틱 피드백을 제공한다. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Android 13+: the persistent foreground-location notification is part of
          the tracking contract. Declare it here instead of relying only on the
          transitive plugin manifest. -->

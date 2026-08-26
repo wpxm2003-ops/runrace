@@ -181,7 +181,7 @@ export const translations = {
     rival_label: "라이벌",
     rival_manage: "라이벌 관리",
     live_runner_count: (n: number) => `지금 ${n}명이 레이스 중`,
-    live_runner_badge: "지금 뛰는 중",
+    live_runner_badge: "지금 레이스 중!",
 
     // ── 크루 ──────────────────────────────
     crew_title: "크루",
@@ -1289,7 +1289,7 @@ export const translations = {
     rival_label: "Rival",
     rival_manage: "Manage rivals",
     live_runner_count: (n: number) => `${n} runners racing now`,
-    live_runner_badge: "Running now",
+    live_runner_badge: "Racing now!",
 
     // ── Crew ──────────────────────────────
     crew_title: "Crew",
@@ -2394,7 +2394,7 @@ export const translations = {
     rival_label: "Rival",
     rival_manage: "Gestionar rivales",
     live_runner_count: (n: number) => `${n} corredores compitiendo ahora`,
-    live_runner_badge: "Corriendo ahora",
+    live_runner_badge: "¡Compitiendo ahora!",
 
     // ── Crew ──────────────────────────────
     crew_title: "Crew",
@@ -3499,7 +3499,7 @@ export const translations = {
     rival_label: "ライバル",
     rival_manage: "ライバル管理",
     live_runner_count: (n: number) => `現在${n}人がレース中`,
-    live_runner_badge: "走行中",
+    live_runner_badge: "レース中！",
 
     // ── クルー ─────────────────────────────
     crew_title: "クルー",
@@ -4605,7 +4605,7 @@ export const translations = {
     rival_label: "劲敌",
     rival_manage: "劲敌管理",
     live_runner_count: (n: number) => `现在有${n}人正在比赛`,
-    live_runner_badge: "正在跑步",
+    live_runner_badge: "正在比赛！",
 
     // ── 跑团 ──────────────────────────────
     crew_title: "跑团",
