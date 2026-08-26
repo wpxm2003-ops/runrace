@@ -1,11 +1,13 @@
 package com.runrace.backend.push.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -19,9 +21,10 @@ import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.domain.DeviceToken;
 import com.runrace.backend.push.domain.SystemPushHistory;
 import com.runrace.backend.push.repository.DeviceTokenRepository;
-import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.time.OffsetDateTime;
+import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -41,7 +44,7 @@ class PushServiceTest {
 
   @Mock DeviceTokenRepository deviceTokenRepository;
   @Mock AppUserRepository appUserRepository;
-  @Mock SystemPushHistoryRepository systemPushHistoryRepository;
+  @Mock PushHistoryWriter pushHistoryWriter;
   @Mock MessageSource messageSource;
   @Mock ErrorLogService errorLogService;
   @Mock FirebaseMessaging firebaseMessaging;
@@ -57,6 +60,13 @@ class PushServiceTest {
         .fcmToken(fcmToken)
         .updatedAt(OffsetDateTime.now())
         .build();
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, String> dataOf(Message message) throws Exception {
+    Method getData = Message.class.getDeclaredMethod("getData");
+    getData.setAccessible(true);
+    return (Map<String, String>) getData.invoke(message);
   }
 
   /** FirebaseApp.getApps()를 구성됨 상태로 스텁 — 대부분 테스트의 공통 전제. */
@@ -75,7 +85,7 @@ class PushServiceTest {
 
         service.sendLocalized(userId, "t", "b", null);
 
-        verifyNoInteractions(appUserRepository, deviceTokenRepository, systemPushHistoryRepository, messageSource);
+        verifyNoInteractions(appUserRepository, deviceTokenRepository, pushHistoryWriter, messageSource);
       }
     }
 
@@ -132,7 +142,7 @@ class PushServiceTest {
         service.sendLocalized(userId, "t", "b", "철수", "/link", "some_type");
 
         ArgumentCaptor<SystemPushHistory> captor = ArgumentCaptor.forClass(SystemPushHistory.class);
-        verify(systemPushHistoryRepository).save(captor.capture());
+        verify(pushHistoryWriter).write(captor.capture());
         assertEquals("안녕 철수", captor.getValue().getTitle());
         assertEquals("본문 철수", captor.getValue().getBody());
       }
@@ -152,7 +162,7 @@ class PushServiceTest {
         service.sendLocalized(userId, "t", "b", "철수", "영희", "/link", "some_type");
 
         ArgumentCaptor<SystemPushHistory> captor = ArgumentCaptor.forClass(SystemPushHistory.class);
-        verify(systemPushHistoryRepository).save(captor.capture());
+        verify(pushHistoryWriter).write(captor.capture());
         assertEquals("철수님 알림", captor.getValue().getTitle());
         assertEquals("철수 vs 영희", captor.getValue().getBody());
       }
@@ -171,7 +181,7 @@ class PushServiceTest {
 
         service.sendLocalized(userId, "t", "b", null); // pushType 없는 4-인자 오버로드
 
-        verify(systemPushHistoryRepository, never()).save(any());
+        verify(pushHistoryWriter, never()).write(any());
       }
     }
 
@@ -185,7 +195,48 @@ class PushServiceTest {
 
         service.sendLocalized(userId, "t", "b", null, "/link", "some_type");
 
-        verify(systemPushHistoryRepository, never()).save(any());
+        verify(pushHistoryWriter, never()).write(any());
+      }
+    }
+
+    @Test void 이력저장실패는_발송호출자에게_전파하지않음() throws Exception {
+      try (MockedStatic<FirebaseApp> app = appConfigured();
+           MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
+        fm.when(FirebaseMessaging::getInstance).thenReturn(firebaseMessaging);
+        when(appUserRepository.findPushEnabledById(userId)).thenReturn(Optional.of(true));
+        when(appUserRepository.findLangCdById(userId)).thenReturn(Optional.of("ko"));
+        when(messageSource.getMessage(eq("t"), any(), any(Locale.class))).thenReturn("제목");
+        when(messageSource.getMessage(eq("b"), any(), any(Locale.class))).thenReturn("본문");
+        when(deviceTokenRepository.findAllByUserId(userId)).thenReturn(List.of(token("android", "tok1")));
+        when(firebaseMessaging.send(any(Message.class))).thenReturn("msg-1");
+        doThrow(new RuntimeException("db down")).when(pushHistoryWriter).write(any());
+
+        assertDoesNotThrow(() ->
+            service.sendLocalized(userId, "t", "b", null, "/link", "race_workout"));
+
+        verify(errorLogService).recordServiceError(
+            eq("push_history"), eq("RuntimeException"), eq("db down"), any(),
+            eq("userId=" + userId + " pushType=race_workout"));
+      }
+    }
+
+    @Test void 라이벌푸시에는_uuid를제외한_분석타입을싣는다() throws Exception {
+      try (MockedStatic<FirebaseApp> app = appConfigured();
+           MockedStatic<FirebaseMessaging> fm = mockStatic(FirebaseMessaging.class)) {
+        fm.when(FirebaseMessaging::getInstance).thenReturn(firebaseMessaging);
+        when(appUserRepository.findPushEnabledById(userId)).thenReturn(Optional.of(true));
+        when(appUserRepository.findLangCdById(userId)).thenReturn(Optional.of("ko"));
+        when(messageSource.getMessage(eq("rival.workout.title"), any(), any(Locale.class))).thenReturn("제목");
+        when(messageSource.getMessage(eq("rival.workout.0"), any(), any(Locale.class))).thenReturn("본문");
+        when(deviceTokenRepository.findAllByUserId(userId)).thenReturn(List.of(token("android", "tok1")));
+        when(firebaseMessaging.send(any(Message.class))).thenReturn("msg-1");
+
+        service.sendLocalized(userId, "rival.workout.title", "rival.workout.0",
+            "철수", "3.0", "/rivals", "rival_workout:" + UUID.randomUUID());
+
+        ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
+        verify(firebaseMessaging).send(message.capture());
+        assertEquals("rival_workout", dataOf(message.getValue()).get("type"));
       }
     }
   }

@@ -43,6 +43,7 @@ public class ReengagementScheduler {
   private static final ZoneId KST = KstTime.ZONE;
   /** 운동 유도 푸시 탭 시 실내러닝 등록 화면으로 보낸다. */
   private static final String LINK_INDOOR = "/workout/indoor";
+  private static final String LINK_FIRST_RUN = "/workout";
   /** 스트릭 위험 알림을 보낼 최소 연속일(짧은 연속은 알림 가치가 낮아 제외). */
   private static final int MIN_STREAK_FOR_RISK = 5;
 
@@ -99,7 +100,7 @@ public class ReengagementScheduler {
       forEachSafely(c.getUserId(), () -> {
         if (weeklyLimitReached(c.getUserId(), weekStart)) return;
         pushService.sendLocalized(
-            c.getUserId(), "reengage.onboarding.title", "reengage.onboarding.body", null, LINK_INDOOR, TYPE_ONBOARDING);
+            c.getUserId(), "reengage.onboarding.title", "reengage.onboarding.body", null, LINK_FIRST_RUN, TYPE_ONBOARDING);
       });
     }
   }

@@ -12,7 +12,6 @@ import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.domain.DeviceToken;
 import com.runrace.backend.push.domain.SystemPushHistory;
 import com.runrace.backend.push.repository.DeviceTokenRepository;
-import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.util.List;
 import java.util.Locale;
@@ -27,10 +26,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PushService {
   private static final Logger log = LoggerFactory.getLogger(PushService.class);
+  private static final String TITLE_SUFFIX = ".title";
 
   private final DeviceTokenRepository deviceTokenRepository;
   private final AppUserRepository appUserRepository;
-  private final SystemPushHistoryRepository systemPushHistoryRepository;
+  private final PushHistoryWriter pushHistoryWriter;
   private final MessageSource messageSource;
   private final ErrorLogService errorLogService;
 
@@ -74,11 +74,29 @@ public class PushService {
     Locale locale = localeOf(userId);
     String title = render(titleKey, locale, args.length > 0 ? args[0] : null);
     String body = render(bodyKey, locale, args);
-    int sent = sendToUserTokens(userId, title, body, link);
+    int sent = sendToUserTokens(userId, title, body, link, analyticsType(pushType, titleKey));
     // 토큰이 없어 실제로 한 건도 접수되지 않았으면 이력을 남기지 않는다.
     if (pushType != null && sent > 0) {
-      systemPushHistoryRepository.save(SystemPushHistory.of(userId, pushType, title, body));
+      try {
+        pushHistoryWriter.write(SystemPushHistory.of(userId, pushType, title, body));
+      } catch (Exception e) {
+        // 푸시는 이미 접수됐다. 이력 실패 때문에 원 요청을 실패로 보이게 하지 않는다.
+        log.error("푸시 이력 저장 실패 (userId={}, pushType={})", userId, pushType, e);
+        errorLogService.recordServiceError(
+            "push_history", e.getClass().getSimpleName(), e.getMessage(),
+            ErrorLogService.stackTraceOf(e), "userId=" + userId + " pushType=" + pushType);
+      }
     }
+  }
+
+  private static String analyticsType(String pushType, String titleKey) {
+    if (pushType != null && !pushType.isBlank()) {
+      int separator = pushType.indexOf(':');
+      return separator >= 0 ? pushType.substring(0, separator) : pushType;
+    }
+    return titleKey.endsWith(TITLE_SUFFIX)
+        ? titleKey.substring(0, titleKey.length() - TITLE_SUFFIX.length())
+        : titleKey;
   }
 
   private Locale localeOf(UUID userId) {
@@ -96,13 +114,17 @@ public class PushService {
 
   /** @return FCM 접수에 성공한 토큰 수(실제 전송된 건수). 0이면 전송 대상 없음. */
   public int sendToUserTokens(UUID userId, String title, String body, String link) {
+    return sendToUserTokens(userId, title, body, link, null);
+  }
+
+  private int sendToUserTokens(UUID userId, String title, String body, String link, String type) {
     if (FirebaseApp.getApps().isEmpty()) return 0;
     // 알림을 끈 사용자에게는 모든 푸시(이벤트·리텐션)를 보내지 않는다.
     if (!appUserRepository.findPushEnabledById(userId).orElse(true)) return 0;
     List<DeviceToken> tokens = deviceTokenRepository.findAllByUserId(userId);
     int sent = 0;
     for (DeviceToken t : tokens) {
-      Message msg = buildMessage(t, title, body, link);
+      Message msg = buildMessage(t, title, body, link, type);
       try {
         FirebaseMessaging.getInstance().send(msg);
         sent++;
@@ -125,7 +147,8 @@ public class PushService {
     return sent;
   }
 
-  private static Message buildMessage(DeviceToken token, String title, String body, String link) {
+  private static Message buildMessage(
+      DeviceToken token, String title, String body, String link, String type) {
     Message.Builder builder =
         Message.builder()
             .setToken(token.getFcmToken())
@@ -134,6 +157,9 @@ public class PushService {
     // 알림 탭 시 이동할 앱 내 경로 — 네이티브/웹 공통 data 페이로드로 전달
     if (link != null && !link.isBlank()) {
       builder.putData("link", link);
+    }
+    if (type != null && !type.isBlank()) {
+      builder.putData("type", type);
     }
 
     if (isWebPlatform(token.getPlatform())) {

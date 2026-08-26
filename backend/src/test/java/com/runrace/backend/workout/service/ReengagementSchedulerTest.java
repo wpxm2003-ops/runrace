@@ -165,7 +165,7 @@ class ReengagementSchedulerTest {
 
       verify(pushService).sendLocalized(
           eq(userId), eq("reengage.onboarding.title"), eq("reengage.onboarding.body"),
-          eq((String) null), eq("/workout/indoor"), eq("onboarding"));
+          eq((String) null), eq("/workout"), eq("onboarding"));
     }
 
     @Test void 신규가입자도_주간한도차면_발송안함() {

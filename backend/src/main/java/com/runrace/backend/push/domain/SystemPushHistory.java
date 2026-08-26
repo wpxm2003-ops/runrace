@@ -25,7 +25,7 @@ public class SystemPushHistory {
   @Column(nullable = false)
   private UUID userId;
 
-  @Column(nullable = false, length = 30)
+  @Column(nullable = false, length = 200)
   private String pushType;
 
   @Column(nullable = false, columnDefinition = "text")
