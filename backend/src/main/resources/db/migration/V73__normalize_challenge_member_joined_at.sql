@@ -4,6 +4,9 @@
 -- V18 적용 전에 이미 존재했던 비방장 행은 당시 실제 참가 시각이 없어 레이스 생성 시각에
 -- UUID 순서대로 1초를 더한 합성값으로 채웠다. Flyway 적용 시각을 경계로 이 값만 NULL로
 -- 되돌려, 합성 시각을 실제 참가 시각처럼 노출하지 않는다.
+alter table challenge_member
+  alter column joined_at drop not null;
+
 update challenge_member cm
    set joined_at = null
   from challenge c,
@@ -22,7 +25,6 @@ update challenge_member cm
    and cm.user_id = c.creator_user_id;
 
 alter table challenge_member
-  alter column joined_at drop not null,
   drop column created_at;
 
 comment on column challenge_member.joined_at is
