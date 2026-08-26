@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -50,8 +51,13 @@ public class RaceFinalizationService {
    * <p>확정 순위(final_rank) 부여에는 절대 쓰지 않는다 — 그 경로는 라이브가 이미 리셋된
    * total_km만 봐야 한다. 비인증 조회도 라이브를 볼 수 없으므로 이 정렬을 쓰지 않는다.
    */
-  public static Comparator<ChallengeMember> displayOrder(OffsetDateTime now) {
-    return comparingBy(m -> m.effectiveTotalKm(now));
+  /**
+   * 화면 표시용 정렬이되, 멤버별 라이브 공개 여부까지 반영한다. 공개하지 않는 멤버에게 지각 핑이
+   * 남아 있어도 숨긴 거리 때문에 순서가 바뀌지 않아 표시값과 정렬이 항상 일치한다.
+   */
+  public static Comparator<ChallengeMember> displayOrder(
+      OffsetDateTime now, Predicate<ChallengeMember> mayFoldLive) {
+    return comparingBy(m -> mayFoldLive.test(m) ? m.effectiveTotalKm(now) : m.getTotalKm());
   }
 
   /** 완주 우선(완주 시각 순) → 미완주는 {@code distance} 내림차순. 두 정렬의 공통 규칙. */

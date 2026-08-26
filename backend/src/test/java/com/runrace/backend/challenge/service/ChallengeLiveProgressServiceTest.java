@@ -359,6 +359,24 @@ class ChallengeLiveProgressServiceTest {
     assertEquals(-500L, gap.gapM(), "1000m - (1000m total + 500m live) = -500m");
   }
 
+  @Test
+  void 공유를_끈_라이벌의_지각_라이브값은_격차에서_제외한다() {
+    // 설정 해제 직전에 시작된 핑이 정리 쿼리보다 늦게 반영돼도 읽기 시점 설정이 최종 경계다.
+    AppUser me = user(ME_ID, "me", true);
+    UUID rivalId = UUID.randomUUID();
+    Challenge publicRace = Challenge.builder().id(2L).build();
+    ChallengeMember mine = member(publicRace, me, 0.0);
+    ChallengeMember optedOutRival = memberWithLive(
+        publicRace, user(rivalId, "rival", false), 1.0, 0.5,
+        OffsetDateTime.now().minusMinutes(1));
+    stub(List.of(mine), List.of(mine, optedOutRival), List.of(rivalId));
+
+    LiveProgressResponse res = service.submit(ME_ID, 1000, 600, SENT_AT);
+
+    RivalGapRow gap = res.challenges().get(0).rivalGaps().get(0);
+    assertEquals(0L, gap.gapM(), "공유를 끈 상대는 확정 1000m만 사용");
+  }
+
   // ── 해제 ─────────────────────────────────────────────────────────────────
 
   @Test

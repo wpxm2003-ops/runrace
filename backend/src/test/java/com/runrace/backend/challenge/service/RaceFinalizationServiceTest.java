@@ -245,7 +245,7 @@ class RaceFinalizationServiceTest {
       ChallengeMember b = member(user("b"), 5, null);
 
       assertEquals(List.of("a", "b"), nicks(Stream.of(b, a)
-          .sorted(RaceFinalizationService.displayOrder(T0)).toList()));
+          .sorted(RaceFinalizationService.displayOrder(T0, m -> true)).toList()));
     }
 
     @Test
@@ -254,7 +254,16 @@ class RaceFinalizationServiceTest {
       ChallengeMember b = member(user("b"), 5, null);
 
       assertEquals(List.of("b", "a"), nicks(Stream.of(a, b)
-          .sorted(RaceFinalizationService.displayOrder(T0)).toList()));
+          .sorted(RaceFinalizationService.displayOrder(T0, m -> true)).toList()));
+    }
+
+    @Test
+    void 공유를_끈_멤버의_지각_라이브값은_정렬에서_제외한다() {
+      ChallengeMember hidden = live(user("hidden"), 0, 8, T0.minusMinutes(1));
+      ChallengeMember visible = member(user("visible"), 5, null);
+
+      assertEquals(List.of("visible", "hidden"), nicks(Stream.of(hidden, visible)
+          .sorted(RaceFinalizationService.displayOrder(T0, m -> m != hidden)).toList()));
     }
 
     @Test
@@ -272,7 +281,7 @@ class RaceFinalizationServiceTest {
       ChallengeMember running = live(user("running"), 0, 50, T0.minusMinutes(1));
 
       assertEquals(List.of("done", "running"), nicks(Stream.of(running, finished)
-          .sorted(RaceFinalizationService.displayOrder(T0)).toList()));
+          .sorted(RaceFinalizationService.displayOrder(T0, m -> true)).toList()));
     }
   }
 }

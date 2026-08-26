@@ -129,7 +129,8 @@ public class ChallengeLiveProgressService {
           .map(m -> new RivalGapRow(
               m.getUser().getId(),
               m.getUser().getNickname(),
-              myEffectiveM - Distance.toM(m.effectiveTotalKm(now))))
+              myEffectiveM - Distance.toM(
+                  m.sharesLive(!isPublicRace) ? m.effectiveTotalKm(now) : m.getTotalKm())))
           .toList();
       results.add(new ChallengeLiveGaps(challenge.getId(), gaps));
     }

@@ -291,7 +291,8 @@ public class ChallengeController {
 
     List<MemberRow> rows =
         detail.members().stream()
-            .sorted(memberDisplayOrder(detail.hasStarted(), foldLive, now))
+            .sorted(memberDisplayOrder(
+                detail.hasStarted(), foldLive, challenge.getCrewId() != null, now))
             .map(member -> toMemberRow(member, challenge, goal, detail.rivalUserIds(),
                 foldLive && member.sharesLive(challenge.getCrewId() != null), now))
             .toList();
@@ -350,12 +351,12 @@ public class ChallengeController {
    * 누적 km). {@code foldLive}면 라이브 반영분을 접은 값으로 정렬해 표시값과 순서를 일치시킨다.
    */
   private static Comparator<ChallengeMember> memberDisplayOrder(
-      boolean hasStarted, boolean foldLive, OffsetDateTime now) {
+      boolean hasStarted, boolean foldLive, boolean crewRace, OffsetDateTime now) {
     if (!hasStarted) {
       return Comparator.comparing(ChallengeMember::getJoinedAt);
     }
     return foldLive
-        ? RaceFinalizationService.displayOrder(now)
+        ? RaceFinalizationService.displayOrder(now, member -> member.sharesLive(crewRace))
         : RaceFinalizationService.RACE_RESULT_ORDER;
   }
 
