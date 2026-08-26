@@ -27,14 +27,14 @@ export function WelcomeOnboarding() {
     setOpen(false);
   }
 
+  function goWorkout() {
+    close();
+    nativeNavigate("/workout");
+  }
+
   function goRaces() {
     close();
     nativeNavigate("/challenges");
-  }
-
-  function goTraining() {
-    close();
-    nativeNavigate("/training");
   }
 
   useNativeBack(close, open);
@@ -89,14 +89,14 @@ export function WelcomeOnboarding() {
           <div className="mt-5">
             <button
               type="button"
-              onClick={goRaces}
+              onClick={goWorkout}
               className="h-12 w-full rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800"
             >
               {t.onboarding_join_race}
             </button>
             <button
               type="button"
-              onClick={goTraining}
+              onClick={goRaces}
               className="mt-2 h-11 w-full rounded-xl text-sm font-medium text-zinc-500 hover:bg-zinc-50"
             >
               {t.onboarding_try_training}
