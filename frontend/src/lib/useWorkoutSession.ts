@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { User } from "firebase/auth";
 import { usePathname } from "next/navigation";
+import { clearLiveProgress, pauseLiveProgress, postLiveProgress } from "@/lib/api/challenges";
+import type { LiveRivalGap } from "@/lib/api/types";
 import {
   estimateCalories,
   evaluateVehicleTier,
@@ -47,6 +50,8 @@ const GPS_WATCHDOG_POLL_MS = 5_000;
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
 /** 공백 원인 확인용 위치 한 점을 기다리는 최대 시간. 그동안 방치 판정을 미룬다. */
 const IDLE_GAP_VERIFY_TIMEOUT_MS = 15_000;
+/** 실시간 진행률 핑 주기 — 서버 계약상 60~180초 권장, 기본 90초. */
+const LIVE_PING_INTERVAL_MS = 90_000;
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────────────
 function computeElapsedSec(
@@ -87,7 +92,12 @@ type WorkoutSessionAuth = {
   /** Firebase가 확정한 현재 사용자 UID. hint 같은 낙관값은 사용하지 않는다. */
   currentUid: string | null;
   loading: boolean;
+  /** 실시간 진행률 핑(인증 필요) 전송용 Firebase User. currentUid와 항상 같은 사용자를 가리킨다. */
+  user: User | null;
 };
+
+/** 챌린지별 실시간 라이벌 격차 — live-progress 핑 응답을 워크아웃 화면 렌더용으로 펼친 것. */
+export type LiveRivalGapEntry = LiveRivalGap & { challengeId: number };
 
 /** 번역 코드이거나(로케일 따라 문구가 바뀜) 번역 대상이 아닌 원문이거나 둘 중 하나다. */
 type GeoErrorState = { code: GeoErrorCode } | { text: string };
@@ -111,15 +121,26 @@ export function useWorkoutSession(
   const pathname = usePathname();
   const currentUidRef = useRef(authState.currentUid);
   const authLoadingRef = useRef(authState.loading);
+  const authUserRef = useRef(authState.user);
   // 인증 변경과 같은 렌더 안에서 GPS 콜백·액션 가드가 즉시 새 UID를 보게 한다.
   currentUidRef.current = authState.currentUid;
   authLoadingRef.current = authState.loading;
+  authUserRef.current = authState.user;
   // ── 기본 상태 ─────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<WorkoutStatus>("idle");
   const [path, setPath] = useState<LatLng[]>([]);
   const [position, setPosition] = useState<LatLng | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [distanceM, setDistanceM] = useState(0);
+  /** 최근 live-progress 핑 응답 — 챌린지별 라이벌 격차를 펼친 목록. 핑이 없거나 실패하면 이전 값 유지. */
+  const [liveRivalGaps, setLiveRivalGaps] = useState<LiveRivalGapEntry[]>([]);
+  /** 아직 끝나지 않은 주기 핑 수 — 느린 네트워크에서 핑이 쌓이지 않게 한다. */
+  const livePingPendingRef = useRef(0);
+  /**
+   * 마지막으로 발급한 라이브 요청 순서 토큰. 서버는 더 큰 값만 받아들이므로, 같은 ms에 두 요청이
+   * 만들어져도 반드시 증가하도록 직접 단조성을 보장한다.
+   */
+  const liveSentAtRef = useRef(0);
   /**
    * 로케일이 바뀌면 문구도 따라 바뀌어야 하므로 완성된 문자열이 아니라 코드를 담는다.
    * 예전에는 번역된 문자열을 넣어, 언어를 바꿔도 이미 떠 있는 배너만 이전 언어로 남았다.
@@ -229,6 +250,121 @@ export function useWorkoutSession(
     };
   }, []);
 
+  // ── 실시간 진행률 핑: 서버에 현재 누적 거리를 보내 참여 중인 레이스의 라이벌과의
+  // 실시간 격차를 받는다. 로컬 저장(위 SAVE_INTERVAL_MS)과 달리 서버 호출이라, 탈것 의심/확정
+  // 상태나 방치 자동 일시정지 중에는 보내지 않는다(부정확하거나 멈춘 값이 라이벌 격차에 섞이지 않게).
+  // best-effort — 실패해도 러닝 자체는 계속되며 이전 격차 값을 그대로 둔다.
+  /**
+   * 단조 증가하는 요청 순서 토큰. 서버는 더 큰 값만 반영하므로 이 값이 핑·일시정지·삭제의
+   * 순서를 정한다 — 네트워크 재정렬과 무관하다. 같은 ms에 두 요청이 나가도 뒤엣것이 크도록
+   * 직접 단조성을 보장한다.
+   */
+  const nextLiveSentAt = useCallback(() => {
+    const next = Math.max(Date.now(), liveSentAtRef.current + 1);
+    liveSentAtRef.current = next;
+    return next;
+  }, []);
+
+  // ── 실시간 진행률 핑: 서버에 현재 누적 거리를 보내 참여 중인 레이스의 라이벌과의
+  // 실시간 격차를 받는다. 로컬 저장(위 SAVE_INTERVAL_MS)과 달리 서버 호출이라, 탈것 의심/확정
+  // 상태나 방치 자동 일시정지 중에는 보내지 않는다(부정확하거나 멈춘 값이 라이벌 격차에 섞이지 않게).
+  // best-effort — 실패해도 러닝 자체는 계속되며 이전 격차 값을 그대로 둔다.
+  const sendLivePing = useCallback((opts?: { force?: boolean }) => {
+    // 주기 핑은 앞선 핑이 안 끝났으면 건너뛴다. 느린 네트워크에서 주기(90초)보다 오래 걸리면
+    // 핑이 계속 쌓여 큐가 길어지고, 뒤에 들어올 해제 요청도 그만큼 밀린다.
+    // 건너뛰어도 손해가 없다 — 다음 주기에 더 최신 거리로 보낸다.
+    //
+    // 시작·재개·복귀는 force로 반드시 넣는다. 건너뛰면 앞서 큐에 들어간 일시정지 요청이
+    // 뒤에 도착해, 실제로는 달리는 중인데 다음 주기(최대 90초)까지 멈춘 것으로 보인다 —
+    // 큐의 마지막이 항상 사용자의 현재 의도여야 한다. 서버 판정과는 무관한 클라이언트 개념이다.
+    if (!opts?.force && livePingPendingRef.current > 0) return;
+    livePingPendingRef.current++;
+    void (async () => {
+      // 가드·페이로드는 큐에서 실제로 실행되는 시점에 읽는다(대기 중 상태가 바뀔 수 있다).
+      const ownerUid = sessionOwnerUidRef.current;
+      const user = authUserRef.current;
+      if (
+        statusRef.current !== "running"
+        || ownerUid == null
+        || user == null
+        || user.uid !== ownerUid
+        || vehicleStateRef.current.tier !== "normal"
+        || autoPausedRef.current
+      ) {
+        return Promise.resolve();
+      }
+      // 경과 시간을 함께 보내 서버가 첫 핑부터 평균 속도를 검증할 수 있게 한다
+      // (이전 핑과의 델타만으로는 비교 대상이 없는 첫 핑을 걸러내지 못한다).
+      //
+      // 최소 1초로 올린다. 시작 직후 핑은 경과가 0초라 그대로 보내면 서버가 duration_invalid로
+      // 거절하고(그래서 예전에는 여기서 조기 반환했다), 그러면 시작 핑이 통째로 버려져
+      // 최대 90초 동안 남들 화면에 안 보인다. 거리 0에 1초면 속도 0이라 검증에도 안전하고,
+      // 분모를 줄이는 방향이라 조작에 유리해지지도 않는다.
+      const elapsedSec = Math.max(
+        1,
+        computeElapsedSec(
+          runStartedRef.current ?? Date.now(),
+          pausedAccumRef.current,
+          pauseStartedRef.current,
+        ),
+      );
+      return await postLiveProgress(
+        Math.round(distanceAccumRef.current),
+        elapsedSec,
+        nextLiveSentAt(),
+        user,
+      ).then(
+        (res) => {
+          // 응답 도착 시점에도 여전히 같은 소유자의 같은 런이 진행 중일 때만 반영 —
+          // 그 사이 런이 끝나거나 계정이 바뀌었으면 낡은 격차를 화면에 남기지 않는다.
+          if (sessionOwnerUidRef.current !== ownerUid || statusRef.current !== "running") return;
+          setLiveRivalGaps(
+            res.challenges.flatMap((c) =>
+              c.rivalGaps.map((g) => ({ ...g, challengeId: c.challengeId })),
+            ),
+          );
+        },
+      );
+    })().catch(() => {}).finally(() => {
+      livePingPendingRef.current--;
+    });
+  }, [nextLiveSentAt]);
+
+  /**
+   * "지금 뛰고 있지 않다"를 서버에 알린다 — 거리는 남기고 "러닝 중" 표시만 끈다.
+   * 앞선 핑 뒤에 실행되도록 같은 큐에 넣는다(먼저 보내면 늦게 도착한 핑이 되살린다).
+   * best-effort — 실패해도 신선도 윈도가 지나면 어차피 사라진다.
+   *
+   * <p>일시정지·종료 모두 이걸 쓴다. 종료에도 삭제를 쓰지 않는 이유: 이 시점엔 확정 저장이
+   * 아직 안 끝났다. 먼저 지우면 total_km이 오르기 전까지 진행바가 이번 런 이전 값으로
+   * 뒷걸음질 치고, 저장이 실패해 보류되면 그 상태가 오래 간다(결승 직전에 0으로 떨어져 보인다).
+   * 저장이 성공하면 서버의 확정 경로가 리셋하고, 실패하면 신선도 윈도가 정리한다.
+   */
+  const pauseLiveRun = useCallback((expectedUid: string) => {
+    const user = authUserRef.current;
+    if (user == null || user.uid !== expectedUid) return;
+    // 큐에 넣지 않고 바로 보낸다. 순서는 토큰이 보장하므로(서버가 더 큰 값만 반영) 줄을
+    // 세울 이유가 없고, 세우면 응답 없는 핑 뒤에 멈춤 신호가 갇혀 "러닝 중"이 남는다.
+    void pauseLiveProgress(user, nextLiveSentAt()).catch(() => {});
+  }, [nextLiveSentAt]);
+
+  /**
+   * 이번 런을 저장하지 않기로 확정됐을 때 라이브 값을 통째로 지운다(1m 미만 저장 취소, 경로 없음).
+   * 일시정지로 남겨 두면 저장되지도 않을 거리가 신선도 윈도(15분) 동안 남아 있다가 뒤늦게
+   * 떨어진다 — 종료 경로가 일시정지를 쓰는 이유(확정 저장이 곧 따라온다)가 여기엔 없다.
+   */
+  const discardLiveRun = useCallback((expectedUid: string) => {
+    const user = authUserRef.current;
+    if (user == null || user.uid !== expectedUid) return;
+    setLiveRivalGaps([]);
+    void clearLiveProgress(user, nextLiveSentAt()).catch(() => {});
+  }, [nextLiveSentAt]);
+
+  useEffect(() => {
+    const timer = setInterval(sendLivePing, LIVE_PING_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [sendLivePing]);
+
   // ── GPS 유틸 ──────────────────────────────────────────────────────────────
   /**
    * 워처 등록 세대 토큰. 네이티브 addWatcher는 비동기(권한 다이얼로그로 수초 걸릴 수 있음)라,
@@ -290,6 +426,7 @@ export function useWorkoutSession(
     setGeoErrorState(null);
     setVehicleTier("normal");
     setAutoPaused(false);
+    setLiveRivalGaps([]);
   }, []);
 
   /**
@@ -326,6 +463,10 @@ export function useWorkoutSession(
     setStatus("paused");
     statusRef.current = "paused";
     clearWatch();
+    // 방치 자동 일시정지 = 종료를 잊은 채 30분 넘게 안 움직인 상태. 라이브 값을 그대로 두면
+    // 이 사람이 계속 "러닝 중"으로 보인다 — 가장 오래 남는 경우라 여기서 반드시 해제한다.
+    const ownerUid = sessionOwnerUidRef.current;
+    if (ownerUid != null) pauseLiveRun(ownerUid);
     if (runStartedRef.current != null) {
       setElapsedSec(
         computeElapsedSec(runStartedRef.current, pausedAccumRef.current, pausedAt),
@@ -333,7 +474,7 @@ export function useWorkoutSession(
     }
     void track("running_auto_pause");
     return true;
-  }, [clearWatch, clampIdlePauseAt, isCurrentSessionOwner]);
+  }, [clearWatch, clampIdlePauseAt, isCurrentSessionOwner, pauseLiveRun]);
 
   const peekSpeedMps = useCallback(
     (coords: GeoCoords, point: LatLng, now: number): number | null => {
@@ -372,6 +513,7 @@ export function useWorkoutSession(
         accuracyM,
       );
 
+      const previousTier = vehicleStateRef.current.tier;
       const vehicle = evaluateVehicleTier({
         speedMps,
         accuracyM,
@@ -389,6 +531,17 @@ export function useWorkoutSession(
         hasHadGoodFix: vehicle.hasHadGoodFix,
         accuracyRecent: vehicle.accuracyRecent,
       };
+      // 탈것 판정이 걸리면 핑이 멈춘다. 그 사실을 서버에 알리지 않으면 마지막 값이 신선한
+      // 동안(15분) 계속 "러닝 중"으로 보이고, 그 뒤 만료되면서 거리까지 한 번에 뒤로 내려앉는다
+      // — 일시정지 표시를 만든 이유와 같은 현상이다. 판정에 들어가는 순간 한 번만 알린다.
+      if (previousTier === "normal" && vehicle.tier !== "normal") {
+        const ownerUid = sessionOwnerUidRef.current;
+        if (ownerUid != null) pauseLiveRun(ownerUid);
+      } else if (previousTier !== "normal" && vehicle.tier === "normal") {
+        // 판정이 풀리면 즉시 복귀를 알린다. 주기 핑은 다음 틱(최대 90초)까지 안 나가고,
+        // 그동안 실제로 달리는 사람이 계속 "멈춘 사람"으로 표시된다. 재개와 같은 전이다.
+        sendLivePing({ force: true });
+      }
       setVehicleTier(vehicle.tier);
 
       // Even when we suppress path/distance accumulation, keep the raw GPS baseline
@@ -438,7 +591,8 @@ export function useWorkoutSession(
       setPath((prev) => [...prev, pointWithT]);
       setDistanceM(distanceAccumRef.current);
     },
-    [peekSpeedMps, commitRawPosition, autoPauseIfIdle, isCurrentSessionOwner],
+    [peekSpeedMps, commitRawPosition, autoPauseIfIdle, isCurrentSessionOwner, pauseLiveRun,
+     sendLivePing],
   );
 
   const startWatch = useCallback(() => {
@@ -578,8 +732,12 @@ export function useWorkoutSession(
     lastRawPosRef.current = null;
     lastPosTimeRef.current = null;
     startWatch();
+    // 백그라운드에서 WebView가 잠들면 주기 타이머도 함께 멈춘다(이 함수의 존재 이유이기도
+    // 하다). 신선도 윈도를 넘겼으면 서버는 이미 이 사람을 "안 뛰는 사람"으로 보고 있고,
+    // 복귀 후 다음 틱까지 기다리면 최대 90초를 더 그대로 둔다. 재개와 같은 전이로 취급한다.
+    sendLivePing({ force: true });
     void track("running_gps_watch_restart", { reason });
-  }, [isCurrentSessionOwner, startWatch, resetIdleAnchor, verifyForegroundGap]);
+  }, [isCurrentSessionOwner, startWatch, resetIdleAnchor, verifyForegroundGap, sendLivePing]);
 
   // Android may reclaim the WebView bridge or the native location callback while
   // the app is backgrounded. Re-register the watcher whenever the app becomes
@@ -672,6 +830,11 @@ export function useWorkoutSession(
         });
       }
       clearWatch();
+      // 라이브 값은 여기서 정리하지 않는다. 러닝 중 로그아웃·계정 삭제는 UI에서 이미 막혀
+      // 있어(SiteHeader·설정 화면의 "운동을 종료한 뒤" 안내) 이 경로로 오는 건 토큰 만료·
+      // 서버측 취소 같은 예외뿐인데, 그때는 이전 소유자 토큰이 이미 무효라 요청 자체가
+      // 나가지 않는다. 거의 실패할 정리 코드를 두면 "인증이 바뀌어도 정리된다"는 잘못된
+      // 기대만 남으므로, 그 예외는 신선도 윈도(15분) 만료에 맡긴다.
       restoreAttemptedUidRef.current = null;
       resetRuntime();
     },
@@ -920,6 +1083,10 @@ export function useWorkoutSession(
     statusRef.current = "running";
     if (startSeed) setPosition(startSeed);
     startWatch();
+    // 시작 즉시 한 번 보낸다. 주기 타이머는 마운트 시점에 걸려 런 시작과 위상이 맞지 않아,
+    // 이게 없으면 최대 90초 동안 남들 화면에 아무 변화가 없고 90초 미만 런은 아예 반영되지
+    // 않는다(그런데 종료 신호는 나가서 비대칭이 된다). 재개와 같은 이유다.
+    sendLivePing({ force: true });
     // 같은 계정에서 직전 런을 끝내고 곧바로 새 런을 시작해도, 직전 getCurrentPosition
     // 콜백이 새 런의 첫 좌표로 들어오지 않도록 워처 세대를 함께 고정한다.
     const seedWatchSeq = watchSeqRef.current;
@@ -989,7 +1156,7 @@ export function useWorkoutSession(
       },
     );
     return true;
-  }, [isCurrentSessionOwner, startWatch]);
+  }, [isCurrentSessionOwner, startWatch, sendLivePing]);
 
   const pause = useCallback((expectedUid: string) => {
     if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "running") return;
@@ -1003,6 +1170,9 @@ export function useWorkoutSession(
     setStatus("paused");
     statusRef.current = "paused";
     clearWatch();
+    // 일시정지 = 지금 뛰고 있지 않다. 라이브 값을 남겨 두면 신선도 윈도(15분) 동안
+    // 남들에게 "러닝 중"으로 계속 보인다. 재개하면 아래에서 곧바로 다시 올린다.
+    pauseLiveRun(expectedUid);
     void track("running_pause");
     if (runStartedRef.current) {
       setElapsedSec(
@@ -1013,7 +1183,7 @@ export function useWorkoutSession(
         ),
       );
     }
-  }, [clearWatch, autoPauseIfIdle, isCurrentSessionOwner]);
+  }, [clearWatch, autoPauseIfIdle, isCurrentSessionOwner, pauseLiveRun]);
 
   const resume = useCallback((expectedUid: string) => {
     if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "paused") return;
@@ -1037,7 +1207,11 @@ export function useWorkoutSession(
     setStatus("running");
     statusRef.current = "running";
     startWatch();
-  }, [isCurrentSessionOwner, startWatch]);
+    // 일시정지 표시를 다음 주기(90초)까지 기다리지 않고 곧바로 푼다. force가 필수다 —
+    // 느린 핑이 아직 큐에 남아 있으면 일반 핑은 건너뛰어지고, 그러면 앞서 넣은 일시정지
+    // 요청이 마지막 의도로 남아 실제로는 달리는 중인데 계속 멈춘 것으로 보인다.
+    sendLivePing({ force: true });
+  }, [isCurrentSessionOwner, startWatch, sendLivePing]);
 
   const stop = useCallback((expectedUid: string): WorkoutFinishSnapshot | null => {
     if (
@@ -1091,6 +1265,11 @@ export function useWorkoutSession(
     };
 
     clearWatch();
+    // 라이브(잠정) 진행률 즉시 해제 — 저장이 성공하면 서버가 어차피 리셋하지만, 저장에
+    // 실패하거나 기록을 버리면 아무도 지우지 않아 "러닝 중" 표시와 부풀려진 진행바가
+    // 신선도 윈도(15분) 동안 남는다. best-effort — 실패해도 종료 자체는 진행한다.
+    setLiveRivalGaps([]);
+    pauseLiveRun(expectedUid);
     // 이 런의 스냅샷일 때만 지운다 — 웹에서 다른 탭이 진행 중이면 그쪽을 날리지 않는다.
     clearWorkout(runStartedRef.current ?? undefined);
     restoreAttemptedUidRef.current = expectedUid;
@@ -1101,6 +1280,7 @@ export function useWorkoutSession(
     clearWatch,
     position,
     clampIdlePauseAt,
+    pauseLiveRun,
     isCurrentSessionOwner,
     resetRuntime,
   ]);
@@ -1132,6 +1312,7 @@ export function useWorkoutSession(
     geoError: sessionVisible ? geoErrorMessage : null,
     vehicleTier: sessionVisible ? vehicleTier : "normal",
     autoPaused: sessionVisible ? autoPaused : false,
+    liveRivalGaps: sessionVisible ? liveRivalGaps : [],
     elapsedLabel: formatClock(visibleElapsedSec),
     paceLabel: formatPace(visibleDistanceM, visibleElapsedSec, unit),
     calories: estimateCalories(visibleDistanceM),
@@ -1139,5 +1320,6 @@ export function useWorkoutSession(
     pause,
     resume,
     stop,
+    discardLiveRun,
   };
 }

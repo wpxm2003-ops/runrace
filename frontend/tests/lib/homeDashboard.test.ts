@@ -47,6 +47,7 @@ function member(
     finishedAt: null,
     finalRank: null,
     isRival,
+    liveActive: false,
   };
 }
 
@@ -71,6 +72,7 @@ function detail(members: ChallengeMember[]): ChallengeDetail {
     canLeave: true,
     memberCount: members.length,
     members,
+    liveRunnerCount: 0,
   };
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "@/lib/i18n";
 import { formatGapDistance, type DistanceUnit } from "@/lib/units";
+import { useGapFlash } from "@/lib/useGapFlash";
 
 type Flash = "overtook" | "overtaken" | "finished" | null;
 
@@ -17,33 +18,24 @@ const FLASH_MS = 2_500;
 
 export function GhostGapBanner({ gapM, ghostFinished, unit }: Props) {
   const { t } = useLocale();
-  const [flash, setFlash] = useState<Flash>(null);
-  const prevSignRef = useRef<number | null>(null);
+  // 추월/역전 감지(부호 반전)는 RivalGapBanner와 공유하는 훅이 담당한다.
+  const gapFlash = useGapFlash(gapM, FLASH_MS);
+  const [finishedFlash, setFinishedFlash] = useState(false);
   const prevFinishedRef = useRef(false);
 
-  // 추월/역전 감지 — 부호가 바뀌는 순간 잠깐 강조
+  // 유령 완주(총 소요시간 도달) 순간 1회 강조 — finished는 추월/역전과 달리 gapM 부호와 무관해 별도 트리거.
   useEffect(() => {
-    const sign = gapM === 0 ? 0 : gapM > 0 ? 1 : -1;
-    const prevSign = prevSignRef.current;
-    if (prevSign != null && prevSign !== 0 && sign !== 0 && prevSign !== sign) {
-      setFlash(sign > 0 ? "overtook" : "overtaken");
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(80);
-    }
-    prevSignRef.current = sign;
-  }, [gapM]);
-
-  // 유령 완주(총 소요시간 도달) 순간 1회 강조
-  useEffect(() => {
-    if (ghostFinished && !prevFinishedRef.current) setFlash("finished");
+    if (ghostFinished && !prevFinishedRef.current) setFinishedFlash(true);
     prevFinishedRef.current = ghostFinished;
   }, [ghostFinished]);
 
   useEffect(() => {
-    if (!flash) return;
-    const id = setTimeout(() => setFlash(null), FLASH_MS);
+    if (!finishedFlash) return;
+    const id = setTimeout(() => setFinishedFlash(false), FLASH_MS);
     return () => clearTimeout(id);
-  }, [flash]);
+  }, [finishedFlash]);
 
+  const flash: Flash = finishedFlash ? "finished" : gapFlash;
   const ahead = gapM >= 0;
   const gapLabel = formatGapDistance(Math.abs(gapM), unit);
   const steadyText = ahead ? t.ghost_gap_ahead(gapLabel) : t.ghost_gap_behind(gapLabel);

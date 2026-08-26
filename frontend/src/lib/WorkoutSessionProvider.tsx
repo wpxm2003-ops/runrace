@@ -29,6 +29,7 @@ export function WorkoutSessionProvider({ children }: { children: ReactNode }) {
     {
       currentUid: user?.uid ?? null,
       loading,
+      user: user ?? null,
     },
     {
       unavailable: t.geo_err_unavailable,

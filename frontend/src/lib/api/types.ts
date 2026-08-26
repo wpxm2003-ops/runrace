@@ -45,6 +45,11 @@ export type ChallengeMember = {
   finalRank: number | null;
   /** 로그인 사용자가 등록한 라이벌인지 — 색/라벨 표시용. */
   isRival: boolean;
+  /**
+   * 이 멤버의 실시간 진행률이 신선(15분 이내)한지 — 로그인 사용자에게만 true일 수 있다.
+   * 비인증 호출자에게는 항상 false. true면 totalKm에 라이브 값이 이미 접혀 있다.
+   */
+  liveActive: boolean;
 };
 
 /** 현재 사용자 기준, 특정 상대(라이벌)와의 누적 전적. */
@@ -60,6 +65,34 @@ export type RivalRow = {
   nickname: string | null;
   wins: number;
   losses: number;
+};
+
+// ── 실시간 진행률(live progress) ────────────────────────────────────
+/** 러닝 중 라이벌과의 실시간 격차 한 줄. gapM: (내 진행 distanceM) - (라이벌의 현재 최선값, m). 양수 = 내가 앞섬. */
+export type LiveRivalGap = {
+  userId: string;
+  nickname: string | null;
+  gapM: number;
+};
+
+/** 핑 응답에서 챌린지 하나에 대한 라이벌 격차 묶음. */
+export type LiveProgressChallenge = {
+  challengeId: number;
+  rivalGaps: LiveRivalGap[];
+};
+
+/** POST /api/challenges/live-progress 응답. */
+export type LiveProgressResponse = {
+  challenges: LiveProgressChallenge[];
+};
+
+/**
+ * 실시간 진행률 공유 설정 — 공개 레이스·크루 레이스를 각각 켜고 끈다.
+ * 기본값이 다르다: 공개는 false(동의 후 시작), 크루는 true(폐쇄 로스터라 기본 허용).
+ */
+export type LiveProgressSetting = {
+  publicEnabled: boolean;
+  crewEnabled: boolean;
 };
 
 // ── 크루(crew) ────────────────────────────────────────────────────
@@ -299,6 +332,11 @@ export type ChallengeDetail = {
   canLeave: boolean;
   memberCount: number;
   members: ChallengeMember[];
+  /**
+   * 지금 달리는 중인 다른 멤버 수(익명 집계, 본인 제외).
+   * 라이브를 볼 자격이 없는 조회자(비인증·종료된 레이스·크루 외부)에게는 항상 0이다.
+   */
+  liveRunnerCount: number;
 };
 
 export type ChallengeWorkoutListItem = {

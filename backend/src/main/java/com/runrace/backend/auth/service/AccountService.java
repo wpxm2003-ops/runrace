@@ -1,7 +1,9 @@
 package com.runrace.backend.auth.service;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.runrace.backend.auth.dto.LiveProgressSettingResponse;
 import com.runrace.backend.auth.service.AccountWithdrawalTx.WithdrawalCleanup;
+import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
@@ -36,6 +38,7 @@ public class AccountService {
   private final ImageUploadService imageUploadService;
   private final DeviceTokenRepository deviceTokenRepository;
   private final ActivityHistoryService activityHistoryService;
+  private final ChallengeMemberRepository challengeMemberRepository;
 
   @Transactional(readOnly = true)
   public AppUser getUser(UUID userId) {
@@ -83,6 +86,40 @@ public class AccountService {
           enabled ? ActivityAction.PUSH_ENABLED : ActivityAction.PUSH_DISABLED,
           ActivityTargetType.NOTIFICATION_SETTING,
           userId);
+    }
+  }
+
+  /** 실시간 진행률 공유 설정 조회(공개 레이스·크루 레이스 각각). */
+  @Transactional(readOnly = true)
+  public LiveProgressSettingResponse getLiveProgressSetting(UUID userId) {
+    AppUser user = appUserRepository.getRequired(userId);
+    return new LiveProgressSettingResponse(user.isLivePublicOptIn(), user.isLiveCrewEnabled());
+  }
+
+  /**
+   * 실시간 진행률 공유 설정 변경(내정보 토글). 요청에 담긴 축만 바꾼다 — 토글 하나를 눌렀을 때
+   * 다른 축을 함께 덮어쓰지 않는다.
+   *
+   * <p>끄는 축은 이미 반영된 라이브 값을 같은 트랜잭션에서 즉시 지운다. 플래그만 뒤집으면
+   * 조회 경로는 그 값을 계속 신선하다고 보므로, 공유를 껐는데도 신선도 윈도(15분) 동안
+   * 계속 보인다.
+   */
+  @Transactional
+  public void updateLiveProgressSetting(
+      UUID userId, Boolean publicEnabled, Boolean crewEnabled) {
+    AppUser user = appUserRepository.getRequired(userId);
+    if (publicEnabled != null) {
+      user.changeLivePublicOptIn(publicEnabled);
+    }
+    if (crewEnabled != null) {
+      user.changeLiveCrewEnabled(crewEnabled);
+    }
+    appUserRepository.save(user);
+    if (Boolean.FALSE.equals(publicEnabled)) {
+      challengeMemberRepository.clearLiveProgressForUserPublicRaces(userId);
+    }
+    if (Boolean.FALSE.equals(crewEnabled)) {
+      challengeMemberRepository.clearLiveProgressForUserCrewRaces(userId);
     }
   }
 

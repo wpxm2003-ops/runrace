@@ -1,5 +1,6 @@
 package com.runrace.backend.auth.service;
 
+import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.crew.service.CrewService;
 import com.runrace.backend.fitness.repository.DailyDistanceRepository;
@@ -36,6 +37,7 @@ class AccountWithdrawalTx {
   private final NudgeRepository nudgeRepository;
   private final DeviceTokenRepository deviceTokenRepository;
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
+  private final ChallengeMemberRepository challengeMemberRepository;
   private final DailyDistanceRepository dailyDistanceRepository;
   private final CrewService crewService;
   private final ActivityHistoryService activityHistoryService;
@@ -63,6 +65,10 @@ class AccountWithdrawalTx {
     deviceTokenRepository.deleteAllByUser(userId);
     indoorRunApprovalRepository.deleteAllByVoter(userId);
     dailyDistanceRepository.deleteAllByUser(userId);
+    // 라이브(잠정) 진행률 — 러닝 중 탈퇴하면 익명화된 계정이 신선도 윈도(15분) 동안
+    // "지금 뛰는 중"으로 리더보드에 남고 진행바까지 부풀어 있다. challenge_member 행 자체는
+    // 레이스 정합성을 위해 보존하되 이 두 컬럼만 비운다.
+    challengeMemberRepository.clearLiveProgressForUser(userId);
     // 크루 멤버십 정리 — 리더면 승계, 혼자면 크루 삭제 (REQUIRED 전파로 같은 트랜잭션에 합류).
     crewService.removeMembershipForWithdrawal(userId);
     activityHistoryService.recordSelf(

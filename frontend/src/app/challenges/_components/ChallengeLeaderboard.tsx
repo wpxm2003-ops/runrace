@@ -103,6 +103,11 @@ const MemberRow = memo(function MemberRow({
               <span className={`truncate text-sm font-medium ${nameColor}`}>
                 {m.nickname ?? t.no_name}
               </span>
+              {m.liveActive ? (
+                <span className="shrink-0 text-xs" title={t.live_runner_badge} aria-label={t.live_runner_badge}>
+                  🏃
+                </span>
+              ) : null}
               {isMe ? (
                 <Badge tone="emerald">{t.me_label}</Badge>
               ) : isRival ? (

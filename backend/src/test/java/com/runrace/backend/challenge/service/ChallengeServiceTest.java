@@ -1,7 +1,9 @@
 package com.runrace.backend.challenge.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -111,8 +113,8 @@ class ChallengeServiceTest {
       return Challenge.builder().goalKm(BigDecimal.valueOf(km)).build();
     }
 
-    private static ChallengeMember memberKm(double km) {
-      return ChallengeMember.builder().totalKm(BigDecimal.valueOf(km)).build();
+    private static BigDecimal memberKm(double km) {
+      return BigDecimal.valueOf(km);
     }
 
     // BigDecimal.equals()는 scale 포함 비교 → compareTo로 값만 비교한다.
@@ -313,6 +315,44 @@ class ChallengeServiceTest {
 
       ApiException ex = assertThrows(ApiException.class, () -> service.leaveRoom(p, 1L));
       assertEquals("not_member", ex.code());
+    }
+  }
+
+  /**
+   * 라이브(잠정) 진행률 공개 판정 — 프라이버시 경계라 조건 하나가 빠져도 잡히도록 잠근다.
+   * 컨트롤러는 이 판정을 그대로 쓰고, 컨트롤러 자체에는 테스트가 없다.
+   */
+  @Nested
+  class MayFoldLive {
+
+    private static ChallengeService.ChallengeDetailView view(
+        boolean hasEnded, boolean crewInsider, boolean isMember) {
+      return new ChallengeService.ChallengeDetailView(
+          null, java.util.List.of(), null, isMember, false, true, hasEnded, 0,
+          java.util.Set.of(), null, crewInsider);
+    }
+
+    @Test void 비인증이면_공개하지_않는다() {
+      assertFalse(view(false, true, true).mayFoldLive(false),
+          "비인증 조회자에게는 개인 식별 가능한 실시간 신호를 내보내지 않는다");
+    }
+
+    @Test void 종료된_레이스는_공개하지_않는다() {
+      // final_rank는 확정값 기준이라, 종료 화면에서 라이브를 접으면 순위·메달이 어긋난다.
+      assertFalse(view(true, true, true).mayFoldLive(true));
+    }
+
+    @Test void 크루_외부인에게는_공개하지_않는다() {
+      // 크루 레이스 상세는 크루 밖 로그인 사용자도 조회할 수 있다.
+      assertFalse(view(false, false, false).mayFoldLive(true));
+    }
+
+    @Test void 크루를_나갔어도_그_레이스_참가자면_공개한다() {
+      assertTrue(view(false, false, true).mayFoldLive(true));
+    }
+
+    @Test void 진행중_크루_내부자에게는_공개한다() {
+      assertTrue(view(false, true, false).mayFoldLive(true));
     }
   }
 }

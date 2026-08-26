@@ -7,7 +7,7 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import { appMutate, getAppCacheKeys } from "@/lib/swrMutate";
 import type { User } from "firebase/auth";
-import type { CrewRegion, WorkoutDetail } from "./types";
+import type { ChallengeDetail, CrewRegion, WorkoutDetail } from "./types";
 import {
   removeChallengeFromListCaches,
   revalidateChallengeInfiniteListCaches,
@@ -22,6 +22,7 @@ import {
   fetchCrewRaces,
   fetchCrewRacesPage,
   fetchHeadToHead,
+  fetchLiveProgressSetting,
   fetchPendingApprovals,
   fetchRejectedApprovals,
   DEFAULT_PAGE_SIZE,
@@ -165,8 +166,16 @@ export function useMyChallengeListInfinite(user: User | null, phase: string) {
   );
 }
 
+/** 레이스 상세 폴링 주기 — 진행 중(hasStarted && !hasEnded)일 때만, livePoll 옵트인 화면에서. */
+const CHALLENGE_DETAIL_POLL_MS = 60_000;
+
 // ── 레이스 상세 ────────────────────────────────────────────────────────────────
-export function useChallengeDetail(id: number | null, user?: User | null) {
+/**
+ * livePoll=true면 진행 중인 레이스일 동안 CHALLENGE_DETAIL_POLL_MS마다 재검증한다
+ * (실시간 진행률·liveActive 뱃지 반영용). 기본 false — 상세 페이지 외 다른 화면(수정 폼 등)은
+ * 기존처럼 폴링하지 않는다.
+ */
+export function useChallengeDetail(id: number | null, user?: User | null, livePoll = false) {
   const uid = cacheUid(user);
   return useSWR(
     id == null ? null : (["challenge", id, uid] as const),
@@ -176,6 +185,10 @@ export function useChallengeDetail(id: number | null, user?: User | null) {
       // preload(onPointerDown)로 시작된 in-flight 요청을 재활용할 수 있도록 dedup 허용.
       // LIVE_CONFIG의 0은 매 진입마다 새 요청을 강제하지만 preload와 충돌한다.
       dedupingInterval: 3000,
+      refreshInterval: livePoll
+        ? (data: ChallengeDetail | undefined) =>
+            data?.hasStarted && !data?.hasEnded ? CHALLENGE_DETAIL_POLL_MS : 0
+        : 0,
     },
   );
 }
@@ -652,6 +665,15 @@ export function useNotificationSetting(user: User | null) {
   return useSWR(
     user ? (["notification-setting", user.uid] as const) : null,
     () => fetchNotificationSetting(user!),
+    COLD_CONFIG,
+  );
+}
+
+/** 공개 레이스 실시간 진행률 공유 opt-in — 내정보 토글용. */
+export function useLiveProgressSetting(user: User | null) {
+  return useSWR(
+    user ? (["live-progress-setting", user.uid] as const) : null,
+    () => fetchLiveProgressSetting(user!),
     COLD_CONFIG,
   );
 }

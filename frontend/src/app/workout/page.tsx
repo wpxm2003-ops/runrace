@@ -23,6 +23,7 @@ import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance } from "@/lib/units";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
+import type { LiveRivalGapEntry } from "@/lib/useWorkoutSession";
 import type { WorkoutFinishSnapshot } from "@/lib/workoutTrack";
 import { computeBestSegments } from "@/lib/workoutTrack";
 import type { Achievement, PersonalBest } from "@/lib/api/types";
@@ -32,6 +33,7 @@ import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
 import { RunLockOverlay } from "@/app/workout/_components/RunLockOverlay";
 import { GhostPicker, type GhostSelection } from "@/app/workout/_components/GhostPicker";
 import { GhostGapBanner } from "@/app/workout/_components/GhostGapBanner";
+import { RivalGapBanner } from "@/app/workout/_components/RivalGapBanner";
 import {
   computeGhostRaceResult,
   ensureGhostTimestamps,
@@ -49,6 +51,9 @@ import {
   type PendingWorkoutSave,
 } from "@/lib/workoutPendingSave";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+/** 러닝 화면에 동시에 띄우는 라이벌 격차 배너 상한 — 지도가 배너로 덮이지 않게. */
+const MAX_RIVAL_GAP_BANNERS = 3;
 
 const WorkoutMap = dynamic(() => import("@/app/workout/_components/WorkoutMap"), {
   ssr: false,
@@ -112,6 +117,30 @@ export default function WorkoutPage() {
   currentUserUidRef.current = user?.uid ?? null;
 
   const active = session.status !== "idle";
+
+  /**
+   * 라이벌 격차 배너 — 라이벌 1명당 한 줄만 남긴다.
+   *
+   * 서버는 (레이스 × 라이벌)마다 격차를 주는데, 격차는 레이스별 누적 거리를 포함하므로 같은
+   * 사람이 레이스마다 다른 값으로 나온다. 그대로 렌더하면 "○○보다 8.5km 앞" 바로 밑에
+   * "○○보다 7.5km 뒤"가 붙어 서로 모순돼 보이고(배너에 레이스 이름도 없다), 부호가 엇갈리면
+   * 진동도 두 번 울린다.
+   *
+   * 어느 레이스를 남길지는 challengeId로 고정한다. "가장 접전인 레이스"로 고르면 핑마다
+   * 선택이 바뀔 수 있는데, 배너 key가 userId라 재마운트되지 않아 추월 감지가 이전 레이스의
+   * 부호와 비교된다 — 실제로는 순위가 그대로인데 "추월했다" 문구와 진동이 발동한다.
+   */
+  const liveRivalGaps = session.liveRivalGaps;
+  const visibleRivalGaps = useMemo(() => {
+    const perRival = new Map<string, LiveRivalGapEntry>();
+    for (const gap of liveRivalGaps) {
+      const prev = perRival.get(gap.userId);
+      if (!prev || gap.challengeId < prev.challengeId) perRival.set(gap.userId, gap);
+    }
+    return [...perRival.values()]
+      .sort((a, b) => a.challengeId - b.challengeId || a.userId.localeCompare(b.userId))
+      .slice(0, MAX_RIVAL_GAP_BANNERS);
+  }, [liveRivalGaps]);
 
   // 유령 레이스 — 유령은 활동시간 시계(elapsedSec, 일시정지 제외·1초 갱신)를 따라 달린다.
   // 마지막 GPS 포인트의 t를 쓰면 내가 제자리에 서 있는 동안(새 포인트 없음) 유령까지
@@ -339,6 +368,8 @@ export default function WorkoutPage() {
       if (currentUserUidRef.current !== ownerUid) return;
       if (!ok) {
         session.stop(ownerUid);
+        // 저장하지 않기로 확정 — 일시정지로 남기면 저장되지도 않을 거리가 15분간 보인다.
+        session.discardLiveRun(ownerUid);
         setSaveError(null);
         setGhost(null);
         return;
@@ -351,6 +382,8 @@ export default function WorkoutPage() {
     const nsmLog = buildNsmLog(nsmToday);
     clearNsmProgress(); // 런 종료 — NSM 렙 진행 정리
     if (snapshot.path.length === 0) {
+      // 경로가 없어 저장이 불가능 — 위와 같은 이유로 라이브 값을 남기지 않는다.
+      session.discardLiveRun(ownerUid);
       setSaveError(t.workout_no_route);
       setGhost(null);
       return;
@@ -499,6 +532,16 @@ export default function WorkoutPage() {
           {ghost && active && ghostGapM != null ? (
             <GhostGapBanner gapM={ghostGapM} ghostFinished={ghostFinished} unit={unit} />
           ) : null}
+          {active
+            ? visibleRivalGaps.map((g) => (
+                <RivalGapBanner
+                  key={`${g.challengeId}-${g.userId}`}
+                  nickname={g.nickname ?? t.no_name}
+                  gapM={g.gapM}
+                  unit={unit}
+                />
+              ))
+            : null}
         </div>
         {!session.position && !session.geoError ? (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-zinc-100/80 text-sm text-zinc-600">

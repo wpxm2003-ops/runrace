@@ -12,6 +12,7 @@ import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.domain.IndoorRunApproval;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
+import com.runrace.backend.common.Distance;
 import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.service.CrewMatchService;
 import com.runrace.backend.event.WorkoutEvents;
@@ -59,8 +60,9 @@ public class WorkoutService {
   private static final int KCAL_PER_KM = 65;
 
   // 입력 상한 — 비정상/조작 값 차단 (치팅·메모리 DoS 방지)
-  private static final int MAX_DISTANCE_M = 300_000; // 300km
-  private static final int MAX_DURATION_SEC = 36 * 3600; // 36h
+  // 거리 상한은 라이브 진행률 핑과 공유한다(Distance가 단일 출처).
+  private static final int MAX_DISTANCE_M = Distance.MAX_DISTANCE_M;
+  private static final int MAX_DURATION_SEC = Distance.MAX_DURATION_SEC;
   private static final int MAX_CALORIES = 100_000;
   private static final int MAX_PATH_POINTS = 100_000;
   /** 실내러닝 시작 시각의 미래 허용 오차(분) — 기기 시계가 조금 빠른 경우를 흡수한다. */

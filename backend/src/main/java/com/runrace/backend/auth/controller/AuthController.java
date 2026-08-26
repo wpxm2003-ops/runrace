@@ -3,6 +3,8 @@ package com.runrace.backend.auth.controller;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.auth.JwtService;
 import com.runrace.backend.auth.dto.LanguageUpdateRequest;
+import com.runrace.backend.auth.dto.LiveProgressSettingRequest;
+import com.runrace.backend.auth.dto.LiveProgressSettingResponse;
 import com.runrace.backend.auth.dto.LoginResponse;
 import com.runrace.backend.auth.dto.MeResponse;
 import com.runrace.backend.auth.dto.NicknameUpdateRequest;
@@ -83,6 +85,20 @@ public class AuthController {
   public ResponseEntity<Void> setNotificationSetting(
       AuthPrincipal principal, @RequestBody NotificationSettingRequest body) {
     accountService.updatePushEnabled(principal.userId(), body.enabled());
+    return ResponseEntity.ok().build();
+  }
+
+  /** 실시간 진행률을 다른 사람에게 보여줄지 — 공개 레이스·크루 레이스 각각 설정한다. */
+  @GetMapping("/me/live-progress-setting")
+  public LiveProgressSettingResponse getLiveProgressSetting(AuthPrincipal principal) {
+    return accountService.getLiveProgressSetting(principal.userId());
+  }
+
+  @PutMapping("/me/live-progress-setting")
+  public ResponseEntity<Void> setLiveProgressSetting(
+      AuthPrincipal principal, @RequestBody LiveProgressSettingRequest body) {
+    accountService.updateLiveProgressSetting(
+        principal.userId(), body.publicEnabled(), body.crewEnabled());
     return ResponseEntity.ok().build();
   }
 

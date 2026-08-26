@@ -85,6 +85,31 @@ class ChallengeProgressServiceTest {
     verify(raceFinalization, never()).finalizeRace(any(), anyList(), any());
   }
 
+  /**
+   * total_km이 확정 반영되는 순간(addDistance 직후) 라이브(잠정) 값을 리셋하지 않으면,
+   * 다음 GET 상세 조회가 total_km + live_km으로 이중합산한다 — 회귀 잠금.
+   */
+  @Test
+  void 거리_확정_반영_시_라이브_진행률을_리셋한다() {
+    AppUser me = user("me");
+    Challenge c = Challenge.builder().id(1L).goalKm(BigDecimal.valueOf(10)).build();
+    ChallengeMember mine = ChallengeMember.builder()
+        .id(UUID.randomUUID())
+        .user(me)
+        .challenge(c)
+        .totalKm(BigDecimal.valueOf(2))
+        .liveKm(BigDecimal.valueOf(1.5))
+        .liveUpdatedAt(T0.minusMinutes(1))
+        .build();
+
+    // 2 + 1 = 3 < 목표 10 — 완주 판정(및 그 안의 count 조회)에 도달하지 않는다
+    service.applyDistanceToMemberWithContext(mine, BigDecimal.valueOf(1), T0, List.of(mine));
+
+    // 엔티티 변이가 아니라 명시적 UPDATE로 지운다 — @DynamicUpdate는 로드 스냅샷과 같은 값이면
+    // SET에서 빼버려, 그 사이 커밋된 핑의 값이 살아남는다.
+    verify(challengeMemberRepository).clearLiveOnConfirm(mine.getId());
+  }
+
   @Test
   void 전원_완주시_먼저_끝난_사람을_승자로_계산해_종료_처리를_위임한다() {
     AppUser me = user("me");

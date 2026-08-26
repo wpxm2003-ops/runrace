@@ -57,6 +57,22 @@ public class AppUser {
   @Column(name = "push_enabled", nullable = false)
   private boolean pushEnabled = false;
 
+  /**
+   * 공개(비크루) 레이스에서 본인의 실시간(잠정) 진행률을 보여줄지 동의. 기본 false(비공개) —
+   * 공개 레이스는 모르는 사람도 조회할 수 있어 동의를 받고 시작한다.
+   */
+  @Builder.Default
+  @Column(name = "live_public_opt_in", nullable = false)
+  private boolean livePublicOptIn = false;
+
+  /**
+   * 크루 내부 레이스에서 본인의 실시간(잠정) 진행률을 보여줄지. 기본 true(허용) —
+   * 이미 서로 아는 폐쇄 로스터라 기본은 켜두되, 끌 수 있어야 한다는 원칙은 공개 레이스와 같다.
+   */
+  @Builder.Default
+  @Column(name = "live_crew_enabled", nullable = false)
+  private boolean liveCrewEnabled = true;
+
   /** 탈퇴(익명화) 시각. null=정상 회원. 값이 있으면 개인정보가 제거된 탈퇴 계정. */
   @Column(name = "withdrawn_at")
   private OffsetDateTime withdrawnAt;
@@ -91,6 +107,16 @@ public class AppUser {
   /** 푸시 알림 수신 선호 변경(내정보 토글). */
   public void changePushEnabled(boolean pushEnabled) {
     this.pushEnabled = pushEnabled;
+  }
+
+  /** 공개 레이스 실시간 진행률 노출 동의 변경(내정보 토글). */
+  public void changeLivePublicOptIn(boolean livePublicOptIn) {
+    this.livePublicOptIn = livePublicOptIn;
+  }
+
+  /** 크루 레이스 실시간 진행률 노출 변경(내정보 토글). */
+  public void changeLiveCrewEnabled(boolean liveCrewEnabled) {
+    this.liveCrewEnabled = liveCrewEnabled;
   }
 
   // 탈퇴(익명화) 계정의 닉네임은 null 그대로 내보낸다. 예전에는 서버가 "탈퇴한 러너"를

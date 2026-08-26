@@ -35,17 +35,37 @@ public class RaceFinalizationService {
 
   /**
    * 레이스 결과 순위: 완주자 우선(완주 시각 빠른 순) → 미완주는 누적 km 내림차순.
-   * 종료 시 final_rank 부여와 화면 표시 순서의 단일 기준.
+   * 종료 시 final_rank 부여의 단일 기준 — 확정값(total_km)만 본다.
+   *
+   * <p>화면 표시 순서는 {@link #displayOrder}를 쓴다(라이브 반영분 포함). 이 상수를 표시에
+   * 그대로 쓰면 진행바는 라이브가 접힌 값을 그리는데 정렬은 확정값 기준이라 순서가 어긋난다.
    */
   public static final Comparator<ChallengeMember> RACE_RESULT_ORDER =
-      (m1, m2) -> {
-        boolean f1 = m1.getFinishedAt() != null;
-        boolean f2 = m2.getFinishedAt() != null;
-        if (f1 && f2) return m1.getFinishedAt().compareTo(m2.getFinishedAt());
-        if (f1) return -1;
-        if (f2) return 1;
-        return m2.getTotalKm().compareTo(m1.getTotalKm());
-      };
+      comparingBy(ChallengeMember::getTotalKm);
+
+  /**
+   * 화면 표시용 정렬 — {@link #RACE_RESULT_ORDER}와 규칙은 같되 누적 거리에 신선한 라이브 값을
+   * 접어 비교한다. 라이브로 추월하면 순서도 함께 바뀌어 표시값과 정렬이 일치한다.
+   *
+   * <p>확정 순위(final_rank) 부여에는 절대 쓰지 않는다 — 그 경로는 라이브가 이미 리셋된
+   * total_km만 봐야 한다. 비인증 조회도 라이브를 볼 수 없으므로 이 정렬을 쓰지 않는다.
+   */
+  public static Comparator<ChallengeMember> displayOrder(OffsetDateTime now) {
+    return comparingBy(m -> m.effectiveTotalKm(now));
+  }
+
+  /** 완주 우선(완주 시각 순) → 미완주는 {@code distance} 내림차순. 두 정렬의 공통 규칙. */
+  private static Comparator<ChallengeMember> comparingBy(
+      java.util.function.Function<ChallengeMember, BigDecimal> distance) {
+    return (m1, m2) -> {
+      boolean f1 = m1.getFinishedAt() != null;
+      boolean f2 = m2.getFinishedAt() != null;
+      if (f1 && f2) return m1.getFinishedAt().compareTo(m2.getFinishedAt());
+      if (f1) return -1;
+      if (f2) return 1;
+      return distance.apply(m2).compareTo(distance.apply(m1));
+    };
+  }
 
   /** 누적 거리 내림차순, 동률이면 먼저 완주한 멤버 우선(미완주는 후순위). */
   private static final Comparator<ChallengeMember> BY_DISTANCE_THEN_FINISH =
@@ -166,6 +186,9 @@ public class RaceFinalizationService {
     List<ChallengeMember> ordered = members.stream().sorted(RACE_RESULT_ORDER).toList();
     int rank = 1;
     for (ChallengeMember m : ordered) {
+      // 종료된 레이스는 잠정값을 보여주지 않으므로 여기서 함께 비운다(남겨 두면 종료 화면에
+      // stale 값이 영구히 남는다).
+      challengeMemberRepository.clearLiveOnConfirm(m.getId());
       if (m.getTotalKm().compareTo(java.math.BigDecimal.ZERO) > 0) {
         m.assignFinalRank(rank++);
       }

@@ -54,10 +54,13 @@ public class ChallengeMemberRepositoryImpl implements ChallengeMemberRepositoryC
 
   @Override
   public List<ChallengeMember> findAllActiveForUser(UUID userId, OffsetDateTime now) {
+    // 정렬은 잠금 순서 계약이다 — 확정 경로와 라이브 경로가 같은 행들을 서로 다른 순서로
+    // 갱신하면 교착이 난다. 두 경로 모두 이 조회를 쓰므로 여기서 한 번에 고정한다.
     return query.selectFrom(member)
         .join(member.challenge).fetchJoin()
         .join(member.user).fetchJoin()
         .where(activeForUser(userId, now))
+        .orderBy(member.id.asc())
         .fetch();
   }
 

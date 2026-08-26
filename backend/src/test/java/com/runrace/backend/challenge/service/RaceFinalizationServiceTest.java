@@ -221,4 +221,58 @@ class RaceFinalizationServiceTest {
       assertNull(resolveWinner(challenge(null, T0), List.of(m1, m2), T0.plusDays(1)));
     }
   }
+
+  /**
+   * 표시 정렬(라이브 반영)과 확정 정렬(final_rank 기준)의 분리 — 둘이 같은 comparator를 쓰면
+   * 종료 화면에서 순서·메달이 확정 순위와 어긋난다.
+   */
+  @Nested
+  class DisplayOrder {
+
+    private static ChallengeMember live(AppUser u, double totalKm, double liveKm, OffsetDateTime at) {
+      return ChallengeMember.builder()
+          .user(u)
+          .totalKm(BigDecimal.valueOf(totalKm))
+          .liveKm(BigDecimal.valueOf(liveKm))
+          .liveUpdatedAt(at)
+          .build();
+    }
+
+    @Test
+    void 신선한_라이브를_접어_정렬한다() {
+      // 확정만 보면 b(5km)가 앞이지만, a는 지금 8km를 뛰는 중이다.
+      ChallengeMember a = live(user("a"), 0, 8, T0.minusMinutes(1));
+      ChallengeMember b = member(user("b"), 5, null);
+
+      assertEquals(List.of("a", "b"), nicks(Stream.of(b, a)
+          .sorted(RaceFinalizationService.displayOrder(T0)).toList()));
+    }
+
+    @Test
+    void 신선하지_않은_라이브는_무시한다() {
+      ChallengeMember a = live(user("a"), 0, 8, T0.minusMinutes(30));
+      ChallengeMember b = member(user("b"), 5, null);
+
+      assertEquals(List.of("b", "a"), nicks(Stream.of(a, b)
+          .sorted(RaceFinalizationService.displayOrder(T0)).toList()));
+    }
+
+    @Test
+    void 확정_정렬은_라이브를_보지_않는다() {
+      // 같은 입력이라도 RACE_RESULT_ORDER는 확정값만 본다 — final_rank가 잠정값에 흔들리면 안 된다.
+      ChallengeMember a = live(user("a"), 0, 8, T0.minusMinutes(1));
+      ChallengeMember b = member(user("b"), 5, null);
+
+      assertEquals(List.of("b", "a"), nicks(Stream.of(a, b).sorted(RACE_RESULT_ORDER).toList()));
+    }
+
+    @Test
+    void 완주자_우선_규칙은_라이브와_무관하게_유지된다() {
+      ChallengeMember finished = member(user("done"), 1, T0.minusHours(1));
+      ChallengeMember running = live(user("running"), 0, 50, T0.minusMinutes(1));
+
+      assertEquals(List.of("done", "running"), nicks(Stream.of(running, finished)
+          .sorted(RaceFinalizationService.displayOrder(T0)).toList()));
+    }
+  }
 }

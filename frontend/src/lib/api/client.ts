@@ -202,6 +202,8 @@ export async function apiFetch<T>(
     body?: unknown;
     redirectOn401?: boolean;
     returnTo?: string;
+    /** 응답이 오지 않는 요청을 끊는다. 뒤에 줄 서 있는 요청이 무한정 막히는 걸 막을 때 쓴다. */
+    signal?: AbortSignal;
   } = {},
 ): Promise<T> {
   const redirectOn401 = opts.redirectOn401 !== false;
@@ -218,12 +220,12 @@ export async function apiFetch<T>(
   const body = opts.body ? JSON.stringify(opts.body) : undefined;
 
   let headers = await authHeaders(opts.user);
-  let res = await fetch(url, { method, headers, body, cache: "no-store" });
+  let res = await fetch(url, { method, headers, body, cache: "no-store", signal: opts.signal });
 
   if (res.status === 401) {
     // JWT 만료 → Firebase로 새 JWT 발급 후 재시도
     headers = await refreshAccessToken(opts.user);
-    res = await fetch(url, { method, headers, body, cache: "no-store" });
+    res = await fetch(url, { method, headers, body, cache: "no-store", signal: opts.signal });
   }
 
   if (!res.ok) {

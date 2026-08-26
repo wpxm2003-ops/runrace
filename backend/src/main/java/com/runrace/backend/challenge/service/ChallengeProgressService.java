@@ -143,6 +143,10 @@ public class ChallengeProgressService {
     member.addDistance(deltaKm, now);
     onMemberProgress(member, next, allChallengeMembers);
     challengeMemberRepository.save(member);
+    // total_km이 확정 반영됐으므로 라이브(잠정) 값을 비운다 — 그대로 두면 다음 GET 조회가
+    // total_km + live_km으로 이중합산한다. 엔티티 변이가 아니라 명시적 UPDATE인 이유는
+    // 그 쿼리 주석 참조(@DynamicUpdate가 SET에서 빼버리는 경우가 있다).
+    challengeMemberRepository.clearLiveOnConfirm(member.getId());
 
     publishMilestoneEvents(member, prevKm, next, goal, allChallengeMembers);
     publishOvertakeEvent(member, prevKm, next, allChallengeMembers);
@@ -224,6 +228,8 @@ public class ChallengeProgressService {
         .ifPresent(member -> {
           BigDecimal next = member.getTotalKm().subtract(subtractKm).max(BigDecimal.ZERO);
           member.setDistanceAndSync(next, OffsetDateTime.now());
+          // 거리가 바뀌는 시점이므로 확정 반영과 같은 규칙으로 라이브를 리셋한다.
+          challengeMemberRepository.clearLiveOnConfirm(member.getId());
 
           // 목표 미달로 내려가면 완주 상태 초기화
           if (member.getFinishedAt() != null

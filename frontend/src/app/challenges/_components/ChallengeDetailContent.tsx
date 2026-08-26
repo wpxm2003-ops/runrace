@@ -100,7 +100,7 @@ export default function ChallengeDetailContent() {
     isLoading,
     error: fetchError,
     mutate,
-  } = useChallengeDetail(notFoundId === id ? null : id, user);
+  } = useChallengeDetail(notFoundId === id ? null : id, user, true);
 
   const fetchedNotFound = id != null && isNotFoundError(fetchError);
   const { notFound, detail } = selectChallengeDetailForRender(
@@ -377,6 +377,11 @@ export default function ChallengeDetailContent() {
             <div className="mt-1 text-xs text-zinc-500">
               {formatDateRange(detail.startAt, detail.endAt, locale)}
             </div>
+            {detail.liveRunnerCount > 0 ? (
+              <div className="mt-1.5 text-xs font-medium text-emerald-600">
+                🏃 {t.live_runner_count(detail.liveRunnerCount)}
+              </div>
+            ) : null}
             {detail.stake ? (
               <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
                 🎁 {t.detail_stake_label}: {detail.stake}

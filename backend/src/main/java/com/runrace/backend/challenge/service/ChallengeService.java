@@ -399,8 +399,11 @@ public class ChallengeService {
         ? null
         : crewRepository.findById(challenge.getCrewId()).map(Crew::getName).orElse(null);
 
-    // 크루 레이스는 크루 멤버만 참가 버튼을 본다(비멤버는 눌러도 403이므로 버튼 자체를 숨김).
-    boolean crewJoinable = challenge.getCrewId() == null
+    // 이 레이스의 "내부자"인지 — 크루 레이스면 그 크루 멤버, 일반 레이스면 누구나.
+    // 두 곳에서 쓴다. (1) 참가 버튼 노출: 비멤버는 눌러도 403이라 버튼 자체를 숨긴다.
+    // (2) 라이브(잠정) 진행률 공개: 크루 레이스 상세는 크루 밖 로그인 사용자도 조회할 수
+    //     있으므로, 인증만으로 열어 주면 크루 기본 허용의 근거인 "폐쇄 로스터"가 성립하지 않는다.
+    boolean crewInsider = challenge.getCrewId() == null
         || (userId != null
             && crewMemberRepository.findByCrewIdAndUserId(challenge.getCrewId(), userId).isPresent());
 
@@ -415,7 +418,7 @@ public class ChallengeService {
         members.size(),
         rivalUserIds,
         crewName,
-        crewJoinable);
+        crewInsider);
   }
 
   /**
@@ -476,12 +479,17 @@ public class ChallengeService {
     return challengeWorkoutRepository.findApprovedWorkoutListItems(challengeId);
   }
 
-  public BigDecimal progressPercent(ChallengeMember member, Challenge challenge) {
+  /**
+   * km 기준 진행률(%) — GET 상세는 라이브 folding된 km을 넘겨 진행바가 실시간처럼 움직이게 한다.
+   *
+   * <p>멤버를 받는 오버로드는 두지 않는다. 그쪽은 항상 raw total_km을 쓰게 되는데, 호출부에서
+   * 그 차이가 드러나지 않아 라이브가 접히지 않은 값을 무심코 쓰기 쉽다.
+   */
+  public BigDecimal progressPercent(BigDecimal km, Challenge challenge) {
     if (challenge.getGoalKm() == null || challenge.getGoalKm().signum() <= 0) {
       return BigDecimal.ZERO;
     }
-    return member
-        .getTotalKm()
+    return km
         .multiply(HUNDRED)
         .divide(challenge.getGoalKm(), 1, RoundingMode.HALF_UP)
         .min(HUNDRED);
@@ -563,5 +571,28 @@ public class ChallengeService {
       int memberCount,
       Set<UUID> rivalUserIds,
       String crewName,
-      boolean crewJoinable) {}
+      /** 크루 레이스면 그 크루 멤버인지, 일반 레이스면 항상 true. 참가 버튼·라이브 공개 기준. */
+      boolean crewInsider) {
+
+    /**
+     * 라이브(잠정) 진행률을 이 조회자에게 보여줘도 되는지 — 표시 여부를 가르는 단일 판정.
+     *
+     * <p>셋 다 만족해야 한다.
+     * <ul>
+     *   <li>인증: 비인증 조회자에게는 개인 식별 가능한 실시간 신호를 절대 내보내지 않는다.
+     *   <li>미종료: 끝난 레이스는 확정값만 보여야 한다. final_rank는 확정값 기준으로 매겨지므로
+     *       종료 화면에서 라이브를 접으면 순서·메달·추격 문구가 확정 순위와 어긋난다
+     *       (종료 확정 경로는 live_km을 지우지 않아 15분간 남는다).
+     *   <li>내부자: 크루 레이스 상세는 크루 밖 로그인 사용자도 조회할 수 있다. 인증만으로 열면
+     *       크루 공유를 기본 허용한 근거인 "이미 서로 아는 폐쇄 로스터"가 성립하지 않는다.
+     *       크루를 나간 뒤에도 그 레이스를 뛰는 참가자는 isMember로 함께 통과시킨다.
+     * </ul>
+     *
+     * <p>컨트롤러 인라인 조건이 아니라 여기 둔 이유: 이 판정이 프라이버시 경계라 단위 테스트로
+     * 잠글 수 있어야 한다. 조건 하나가 조용히 빠져도 컨트롤러 테스트가 없어 아무도 못 잡는다.
+     */
+    public boolean mayFoldLive(boolean authenticated) {
+      return authenticated && !hasEnded && (crewInsider || isMember);
+    }
+  }
 }

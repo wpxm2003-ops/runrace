@@ -9,6 +9,7 @@ import { pageLoading } from "@/app/_components/pageLoading";
 import { UnitToggle } from "@/app/_components/ui/UnitToggle";
 import { NicknameEditor } from "@/app/my/_components/NicknameEditor";
 import { NotificationToggle } from "@/app/my/_components/NotificationToggle";
+import { LiveProgressToggle } from "@/app/my/_components/LiveProgressToggle";
 import { useMe } from "@/lib/api";
 import { deleteAccount } from "@/lib/api/auth";
 import { logout } from "@/lib/auth";
@@ -43,6 +44,7 @@ function MySettingsContent({ user }: { user: User }) {
       </Card>
 
       <NotificationToggle user={user} />
+      <LiveProgressToggle user={user} />
 
       <div className="mt-6 overflow-hidden rounded-card border border-line bg-panel shadow-card">
         <a

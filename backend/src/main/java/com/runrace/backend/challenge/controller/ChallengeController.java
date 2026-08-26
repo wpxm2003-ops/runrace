@@ -16,12 +16,16 @@ import com.runrace.backend.challenge.dto.ChallengeListItem;
 import com.runrace.backend.challenge.dto.ChallengeListPage;
 import com.runrace.backend.challenge.dto.CreateChallengeRequest;
 import com.runrace.backend.challenge.dto.CreateChallengeResponse;
+import com.runrace.backend.challenge.dto.LiveProgressRequest;
+import com.runrace.backend.challenge.dto.LiveProgressResponse;
+import com.runrace.backend.challenge.dto.LiveSignalRequest;
 import com.runrace.backend.challenge.dto.MemberRow;
 import com.runrace.backend.challenge.dto.PendingApprovalResponse;
 import com.runrace.backend.challenge.dto.RejectedApprovalResponse;
 import com.runrace.backend.challenge.dto.UpdateChallengeRequest;
 import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
 import com.runrace.backend.challenge.dto.HeadToHeadRow;
+import com.runrace.backend.challenge.service.ChallengeLiveProgressService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
@@ -52,6 +56,7 @@ public class ChallengeController {
 
   private final ChallengeService challengeService;
   private final IndoorApprovalService indoorApprovalService;
+  private final ChallengeLiveProgressService challengeLiveProgressService;
 
   @GetMapping("/active-count")
   public ResponseEntity<ActiveCountResponse> activeCount(AuthPrincipal principal) {
@@ -125,6 +130,48 @@ public class ChallengeController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * 러닝 도중(정지·저장 전) 잠정 진행률 핑. 표시 전용 — 완주·우승자·경품 판정에는 관여하지
+   * 않는다. 클라이언트는 60~180초 간격(기본 90초)으로 호출한다.
+   */
+  @PostMapping("/live-progress")
+  public ResponseEntity<LiveProgressResponse> liveProgress(
+      AuthPrincipal principal, @RequestBody LiveProgressRequest body) {
+    return ResponseEntity.ok(
+        challengeLiveProgressService.submit(
+            principal.userId(), body.distanceM(), body.elapsedSec(), body.sentAt()));
+  }
+
+  /**
+   * 라이브 진행률 일시정지 — 뛰는 걸 멈춘 동안 거리는 유지하되 "러닝 중" 표시에서만 뺀다.
+   * 운동 일시정지·종료 모두 이 경로를 쓴다.
+   *
+   * <p>종료에도 삭제가 아니라 이걸 쓰는 이유: 종료 시점엔 아직 확정 저장(POST /api/workouts)이
+   * 끝나지 않았다. 먼저 지우면 total_km이 오르기 전까지 진행바가 이번 런 이전 값으로 뒷걸음질
+   * 친다 — 저장이 실패해 보류되면 그 상태가 오래 간다. 저장이 성공하면 확정 경로가 리셋하고,
+   * 실패하면 신선도 윈도(15분)가 정리한다.
+   */
+  @PostMapping("/live-progress/pause")
+  public ResponseEntity<Void> pauseLiveProgress(
+      AuthPrincipal principal, @RequestBody LiveSignalRequest body) {
+    challengeLiveProgressService.pause(principal.userId(), body.sentAt());
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * 라이브 진행률 즉시 삭제 — 이번 런을 저장하지 않기로 확정된 순간에만 쓴다(1m 미만 저장 취소,
+   * 경로 없음). 일시정지로 남겨 두면 저장되지도 않을 거리가 15분간 남았다가 뒤늦게 떨어진다.
+   *
+   * <p>DELETE가 아니라 POST인 이유: 순서 토큰을 본문으로 받아야 하는데, 중간 프록시가 DELETE의
+   * 본문을 떨구면 토큰이 0으로 도착해 요청이 통째로 거부된다.
+   */
+  @PostMapping("/live-progress/discard")
+  public ResponseEntity<Void> discardLiveProgress(
+      AuthPrincipal principal, @RequestBody LiveSignalRequest body) {
+    challengeLiveProgressService.discard(principal.userId(), body.sentAt());
+    return ResponseEntity.noContent().build();
+  }
+
   @GetMapping
   public ResponseEntity<ChallengeListPage> list(
       Optional<AuthPrincipal> principal,
@@ -177,7 +224,7 @@ public class ChallengeController {
       Optional<AuthPrincipal> principal, @PathVariable("id") Long id) {
     ChallengeService.ChallengeDetailView detail =
         challengeService.getDetail(principal.map(AuthPrincipal::userId), id);
-    return ResponseEntity.ok(toDetailResponse(detail));
+    return ResponseEntity.ok(toDetailResponse(detail, principal.isPresent()));
   }
 
   /** 현재 사용자 기준, 이 레이스의 라이벌 참여자와의 누적 전적(끝난 레이스 전부 합산). */
@@ -233,15 +280,35 @@ public class ChallengeController {
         challenge.getCrewId() != null);
   }
 
-  private ChallengeDetailResponse toDetailResponse(ChallengeService.ChallengeDetailView detail) {
+  private ChallengeDetailResponse toDetailResponse(
+      ChallengeService.ChallengeDetailView detail, boolean authenticated) {
     Challenge challenge = detail.challenge();
     BigDecimal goal = challenge.getGoalKm();
+    OffsetDateTime now = OffsetDateTime.now();
+
+    // 판정 근거는 ChallengeDetailView.mayFoldLive 참조(프라이버시 경계라 그쪽에서 테스트한다).
+    boolean foldLive = detail.mayFoldLive(authenticated);
 
     List<MemberRow> rows =
         detail.members().stream()
-            .sorted(memberDisplayOrder(detail.hasStarted()))
-            .map(member -> toMemberRow(member, challenge, goal, detail.rivalUserIds()))
+            .sorted(memberDisplayOrder(detail.hasStarted(), foldLive, now))
+            .map(member -> toMemberRow(member, challenge, goal, detail.rivalUserIds(),
+                foldLive && member.sharesLive(challenge.getCrewId() != null), now))
             .toList();
+
+    // 익명 집계치라도 로스터가 작으면 지목이 된다(1인 레이스면 그 사람이 지금 밖에서 뛰는 중이라는
+    // 사실이 그대로 드러난다). 상세는 비로그인도 조회할 수 있으므로 라이브를 볼 자격과 같은
+    // 조건으로 묶는다. 본인은 세지 않는다 — 혼자 뛰면서 자기 레이스를 열면 "1명이 레이스 중"이
+    // 자기 자신을 가리켜 다른 사람이 있는 것처럼 읽힌다.
+    UUID viewerId = detail.currentUserId();
+    boolean crewRace = challenge.getCrewId() != null;
+    int liveRunnerCount = foldLive
+        ? (int) detail.members().stream()
+            .filter(m -> !m.getUser().getId().equals(viewerId))
+            .filter(m -> m.sharesLive(crewRace))
+            .filter(m -> m.isLiveRunning(now))
+            .count()
+        : 0;
 
     boolean showManage = detail.isOwner() && !detail.hasStarted();
     boolean canJoin =
@@ -249,7 +316,7 @@ public class ChallengeController {
             && !detail.hasStarted()
             && !detail.hasEnded()
             && detail.memberCount() < challenge.getMaxMembers()
-            && detail.crewJoinable();
+            && detail.crewInsider();
     boolean canLeave =
         detail.isMember()
             && !detail.isOwner()
@@ -274,28 +341,49 @@ public class ChallengeController {
         canJoin,
         canLeave,
         detail.memberCount(),
+        liveRunnerCount,
         rows);
   }
 
-  /** 시작 전: 참여 순(먼저 참여한 사람이 위). 시작 후: 레이스 결과 순(완주 우선 → 완주 시각 → 누적 km). */
-  private static Comparator<ChallengeMember> memberDisplayOrder(boolean hasStarted) {
-    return hasStarted
-        ? RaceFinalizationService.RACE_RESULT_ORDER
-        : Comparator.comparing(ChallengeMember::getJoinedAt);
+  /**
+   * 시작 전: 참여 순(먼저 참여한 사람이 위). 시작 후: 레이스 결과 순(완주 우선 → 완주 시각 →
+   * 누적 km). {@code foldLive}면 라이브 반영분을 접은 값으로 정렬해 표시값과 순서를 일치시킨다.
+   */
+  private static Comparator<ChallengeMember> memberDisplayOrder(
+      boolean hasStarted, boolean foldLive, OffsetDateTime now) {
+    if (!hasStarted) {
+      return Comparator.comparing(ChallengeMember::getJoinedAt);
+    }
+    return foldLive
+        ? RaceFinalizationService.displayOrder(now)
+        : RaceFinalizationService.RACE_RESULT_ORDER;
   }
 
+  /**
+   * {@code foldLive}가 false면(비인증 조회·종료된 레이스·그 멤버가 공유를 껐거나 탈퇴) 라이브
+   * folding 없이 raw total_km만 내려주고 liveActive도 항상 false로 고정한다.
+   *
+   * <p>공유 설정을 여기서 다시 보는 이유: 쓰기 시점에만 막으면 설정을 끄기 직전에 발신된 핑이
+   * 뒤늦게 값을 되살릴 수 있다. 설정은 사건이 아니라 상태이므로 읽을 때 확인해야 순서와
+   * 무관하게 즉시 반영된다.
+   */
   private MemberRow toMemberRow(
-      ChallengeMember member, Challenge challenge, BigDecimal goal, java.util.Set<UUID> rivalUserIds) {
+      ChallengeMember member, Challenge challenge, BigDecimal goal, java.util.Set<UUID> rivalUserIds,
+      boolean foldLive, OffsetDateTime now) {
     UUID memberUserId = member.getUser().getId();
+    // 뱃지는 "지금 달리는 중"만 — 거리는 유지하되 쉬는 동안에는 표시하지 않는다.
+    boolean liveActive = foldLive && member.isLiveRunning(now);
+    BigDecimal effectiveKm = foldLive ? member.effectiveTotalKm(now) : member.getTotalKm();
     return new MemberRow(
         memberUserId,
         member.getUser().getNickname(),
-        member.getTotalKm(),
-        goal.subtract(member.getTotalKm()).max(BigDecimal.ZERO),
-        challengeService.progressPercent(member, challenge),
+        effectiveKm,
+        goal.subtract(effectiveKm).max(BigDecimal.ZERO),
+        challengeService.progressPercent(effectiveKm, challenge),
         member.getFinishedAt() != null,
         IsoTime.formatOrNull(member.getFinishedAt()),
         member.getFinalRank(),
-        rivalUserIds.contains(memberUserId));
+        rivalUserIds.contains(memberUserId),
+        liveActive);
   }
 }
