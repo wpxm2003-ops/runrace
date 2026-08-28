@@ -22,7 +22,6 @@ import {
   fetchCrewRaces,
   fetchCrewRacesPage,
   fetchHeadToHead,
-  fetchLiveProgressSetting,
   fetchPendingApprovals,
   fetchRejectedApprovals,
   DEFAULT_PAGE_SIZE,
@@ -44,10 +43,10 @@ import { fetchRivals } from "./rivals";
 import { fetchShoes } from "./shoes";
 import { fetchNsmBlockReport, fetchNsmMyReport, fetchNsmWeeklyProgress, fetchTrainingPlan } from "./training";
 import { fetchWorkout, fetchWorkoutComparison, fetchWorkoutShare, fetchWorkoutSummary, fetchWorkoutsByYear, fetchPersonalBests } from "./workouts";
-import { fetchMe } from "./auth";
-import { fetchNotificationSetting } from "./push";
 import { SWR_ERROR_RETRY } from "./swrConfig";
 import { getStoredAuthUid } from "@/lib/accessToken";
+
+export { useLiveProgressSetting, useMe, useNotificationSetting } from "./accountHooks";
 
 const onSwrError = (error: unknown) => {
   void reportClientError({
@@ -647,33 +646,6 @@ export function useWorkoutShare(id: number | null) {
   return useSWR(
     id != null ? (["workout-share", id] as const) : null,
     () => fetchWorkoutShare(id!),
-    COLD_CONFIG,
-  );
-}
-
-// ── 내 정보 (닉네임 포함) ────────────────────────────────────────────────────
-export function useMe(user: User | null) {
-  return useSWR(
-    user ? (["me", user.uid] as const) : null,
-    () => fetchMe(user!),
-    LIVE_CONFIG,
-  );
-}
-
-/** 푸시 알림 수신 설정 — 내정보 토글용 */
-export function useNotificationSetting(user: User | null) {
-  return useSWR(
-    user ? (["notification-setting", user.uid] as const) : null,
-    () => fetchNotificationSetting(user!),
-    COLD_CONFIG,
-  );
-}
-
-/** 실시간 진행률 공유 설정(공개/크루 두 축) — 내정보 토글용. */
-export function useLiveProgressSetting(user: User | null) {
-  return useSWR(
-    user ? (["live-progress-setting", user.uid] as const) : null,
-    () => fetchLiveProgressSetting(user!),
     COLD_CONFIG,
   );
 }

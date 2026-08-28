@@ -32,6 +32,11 @@ import {
   type WorkoutStartFix,
   type WorkoutStatus,
 } from "./workoutTrack";
+import {
+  computeWorkoutElapsedSec,
+  computeWorkoutSpeedMps,
+  initialVehicleDetectState,
+} from "./workoutSessionMath";
 import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersistence";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
@@ -53,41 +58,6 @@ const GPS_RESTART_DEBOUNCE_MS = 2_000;
 const IDLE_GAP_VERIFY_TIMEOUT_MS = 15_000;
 /** 실시간 진행률 핑 주기 — 시작·재개 때는 별도로 즉시 전송하고 이후 60초마다 갱신한다. */
 const LIVE_PING_INTERVAL_MS = 60_000;
-
-// ── 헬퍼 ──────────────────────────────────────────────────────────────────────
-function computeElapsedSec(
-  runStarted: number,
-  pausedAccum: number,
-  pauseStarted: number | null,
-  nowMs: number = Date.now(),
-): number {
-  let extra = pausedAccum;
-  if (pauseStarted != null) extra += nowMs - pauseStarted;
-  return Math.max(0, Math.floor((nowMs - runStarted - extra) / 1000));
-}
-
-/** GPS 연속 두 점과 시간 차로 속도(m/s)를 계산한다. */
-function computeSpeedMps(
-  prev: LatLng,
-  curr: LatLng,
-  dtMs: number,
-): number | null {
-  if (dtMs <= 0) return null;
-  return haversineMeters(prev, curr) / (dtMs / 1000);
-}
-
-function resetVehicleState(): VehicleDetectState {
-  return {
-    tier: "normal",
-    suspectHighSinceMs: null,
-    confirmedHighSinceMs: null,
-    lowSpeedSinceMs: null,
-    weakGpsSinceMs: null,
-    recoveringFromWeakGps: false,
-    hasHadGoodFix: false,
-    accuracyRecent: [],
-  };
-}
 
 type WorkoutSessionAuth = {
   /** Firebase가 확정한 현재 사용자 UID. hint 같은 낙관값은 사용하지 않는다. */
@@ -178,7 +148,7 @@ export function useWorkoutSession(
   const warmupFixesRef = useRef<WorkoutStartFix[]>([]);
 
   // ── 탈것 Tiered 감지 레프 ─────────────────────────────────────────────────
-  const vehicleStateRef = useRef<VehicleDetectState>(resetVehicleState());
+  const vehicleStateRef = useRef<VehicleDetectState>(initialVehicleDetectState());
   const lastPosTimeRef = useRef<number | null>(null);
   const lastRawPosRef = useRef<LatLng | null>(null);
   const distanceAccumRef = useRef(0);
@@ -309,7 +279,7 @@ export function useWorkoutSession(
       // 분모를 줄이는 방향이라 조작에 유리해지지도 않는다.
       const elapsedSec = Math.max(
         1,
-        computeElapsedSec(
+        computeWorkoutElapsedSec(
           runStartedRef.current ?? Date.now(),
           pausedAccumRef.current,
           pauseStartedRef.current,
@@ -430,7 +400,7 @@ export function useWorkoutSession(
     autoPausedRef.current = false;
     idleAnchorRef.current = null;
     warmupFixesRef.current = [];
-    vehicleStateRef.current = resetVehicleState();
+    vehicleStateRef.current = initialVehicleDetectState();
     distanceAccumRef.current = 0;
     lastPathPointRef.current = null;
     lastAppendWallMsRef.current = null;
@@ -492,7 +462,7 @@ export function useWorkoutSession(
     if (ownerUid != null) pauseLiveRun(ownerUid);
     if (runStartedRef.current != null) {
       setElapsedSec(
-        computeElapsedSec(runStartedRef.current, pausedAccumRef.current, pausedAt),
+        computeWorkoutElapsedSec(runStartedRef.current, pausedAccumRef.current, pausedAt),
       );
     }
     void track("running_auto_pause");
@@ -503,7 +473,7 @@ export function useWorkoutSession(
     (coords: GeoCoords, point: LatLng, now: number): number | null => {
       let speed = coords.speed ?? null;
       if (speed == null && lastRawPosRef.current && lastPosTimeRef.current) {
-        speed = computeSpeedMps(lastRawPosRef.current, point, now - lastPosTimeRef.current);
+        speed = computeWorkoutSpeedMps(lastRawPosRef.current, point, now - lastPosTimeRef.current);
       }
       return speed;
     },
@@ -812,7 +782,7 @@ export function useWorkoutSession(
       if (!runStartedRef.current) return;
       if (autoPauseIfIdle(Date.now())) return;
       setElapsedSec(
-        computeElapsedSec(
+        computeWorkoutElapsedSec(
           runStartedRef.current,
           pausedAccumRef.current,
           pauseStartedRef.current,
@@ -937,7 +907,7 @@ export function useWorkoutSession(
         autoPausedRef.current = true;
         setAutoPaused(true);
         setElapsedSec(
-          computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, idlePausedAt),
+          computeWorkoutElapsedSec(saved.runStartedAt, saved.pausedAccumMs, idlePausedAt),
         );
         setStatus("paused");
         statusRef.current = "paused";
@@ -945,7 +915,7 @@ export function useWorkoutSession(
         pauseStartedRef.current = null;
         autoPausedRef.current = false;
         setAutoPaused(false);
-        setElapsedSec(computeElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null));
+        setElapsedSec(computeWorkoutElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null));
         setStatus("running");
         statusRef.current = "running";
         // 여기서 곧바로 워처를 건다. 예전에는 ref 플래그를 세우고 별도 이펙트가 그것을
@@ -962,7 +932,7 @@ export function useWorkoutSession(
       setAutoPaused(saved.autoPaused === true);
       pauseStartedRef.current = saved.pauseStartedAt;
       setElapsedSec(
-        computeElapsedSec(
+        computeWorkoutElapsedSec(
           saved.runStartedAt,
           saved.pausedAccumMs,
           saved.pauseStartedAt,
@@ -1093,7 +1063,7 @@ export function useWorkoutSession(
     reanchorNextRef.current = false;
     setDistanceM(0);
     setElapsedSec(0);
-    vehicleStateRef.current = resetVehicleState();
+    vehicleStateRef.current = initialVehicleDetectState();
     setVehicleTier("normal");
     pausedAccumRef.current = 0;
     pauseStartedRef.current = null;
@@ -1203,7 +1173,7 @@ export function useWorkoutSession(
     void track("running_pause");
     if (runStartedRef.current) {
       setElapsedSec(
-        computeElapsedSec(
+        computeWorkoutElapsedSec(
           runStartedRef.current,
           pausedAccumRef.current,
           pauseStartedRef.current,
@@ -1224,7 +1194,7 @@ export function useWorkoutSession(
     idleAnchorRef.current = { timeMs: now, distanceM: distanceAccumRef.current };
     setAutoPaused(false);
     // 치팅 상태 리셋 — 재개 후 새로 측정
-    vehicleStateRef.current = resetVehicleState();
+    vehicleStateRef.current = initialVehicleDetectState();
     setVehicleTier("normal");
     // 일시정지 동안의 이동(도보·이동수단)을 정지 전 마지막 점과 직선으로 이어
     // 거리에 합산하지 않도록 재정박하고, 속도 추정 기준점도 리셋한다.
@@ -1266,7 +1236,7 @@ export function useWorkoutSession(
     const endedAt = new Date(effectiveEndedAt).toISOString();
     const startedAt = new Date(runStartedRef.current).toISOString();
     const startedAtLocal = toWallClockIso(runStartedRef.current);
-    const finalElapsed = computeElapsedSec(
+    const finalElapsed = computeWorkoutElapsedSec(
       runStartedRef.current,
       pausedAccumRef.current,
       pauseStartedRef.current,

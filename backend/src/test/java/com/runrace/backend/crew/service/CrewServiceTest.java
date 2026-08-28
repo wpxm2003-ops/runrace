@@ -48,6 +48,7 @@ class CrewServiceTest {
   @Mock CrewJoinRequestRepository crewJoinRequestRepository;
   @Mock AppUserRepository appUserRepository;
   @Mock ImageUploadService imageUploadService;
+  @Mock CrewProfileImages crewProfileImages;
   @Mock ApplicationEventPublisher eventPublisher;
   @Mock ActivityHistoryService activityHistoryService;
 
@@ -58,6 +59,10 @@ class CrewServiceTest {
   @BeforeEach
   void allowCurrentUserLock() {
     lenient().when(appUserRepository.getRequiredForUpdate(meId)).thenReturn(user(meId));
+    lenient().when(crewProfileImages.validate(any(), any(), org.mockito.ArgumentMatchers.anyInt()))
+        .thenReturn(List.of());
+    lenient().when(crewProfileImages.from(any(), org.mockito.ArgumentMatchers.anyInt()))
+        .thenReturn(List.of());
   }
 
   private AppUser user(UUID id) {

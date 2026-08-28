@@ -1,7 +1,5 @@
 package com.runrace.backend.crew.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.common.KstTime;
@@ -24,7 +22,6 @@ import com.runrace.backend.event.CrewEvents;
 import com.runrace.backend.history.domain.ActivityAction;
 import com.runrace.backend.history.domain.ActivityTargetType;
 import com.runrace.backend.history.service.ActivityHistoryService;
-import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.math.BigDecimal;
@@ -92,9 +89,8 @@ public class CrewService {
   private final CrewMemberRepository crewMemberRepository;
   private final CrewJoinRequestRepository crewJoinRequestRepository;
   private final AppUserRepository appUserRepository;
-  private final ImageUploadService imageUploadService;
   private final ApplicationEventPublisher eventPublisher;
-  private final ObjectMapper objectMapper;
+  private final CrewProfileImages crewProfileImages;
   private final ActivityHistoryService activityHistoryService;
 
   // ── 조회 ──────────────────────────────────────────────────────
@@ -193,7 +189,7 @@ public class CrewService {
 
     return new CrewDetailResponse(
         crew.getId(), crew.getName(), crew.getRegion(), crew.getImageUrl(),
-        profileImageUrls(crew), crew.getIntro(),
+        crewProfileImages.from(crew, PROFILE_IMAGE_MAX), crew.getIntro(),
         memberCount, crew.getMaxMembers(),
         crew.getMeetupPlace(), parseMeetupDaysCsv(crew.getMeetupDays()), crew.getMeetupTime(),
         crew.getCreatedAt(), crew.getFoundedAt(), crew.getLeader().getNickname(),
@@ -358,16 +354,16 @@ public class CrewService {
       String rawMeetupPlace, int[] meetupDays, String rawMeetupTime, LocalDate rawFoundedAt) {
     Crew crew = requireLeader(meId, crewId);
     String region = validateRegion(rawRegion);
-    List<String> imageUrls = validateImageUrls(rawImageUrls, rawImageUrl);
+    List<String> imageUrls = crewProfileImages.validate(rawImageUrls, rawImageUrl, PROFILE_IMAGE_MAX);
     String imageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
-    String imageUrlsJson = toImageUrlsJson(imageUrls);
+    String imageUrlsJson = crewProfileImages.toJson(imageUrls);
     String intro = validateBoundedText(rawIntro, INTRO_MAX, "invalid_intro");
     String meetupPlace = validateBoundedText(rawMeetupPlace, MEETUP_PLACE_MAX, "invalid_meetup_place");
     String meetupTime = validateBoundedText(rawMeetupTime, MEETUP_TIME_MAX, "invalid_meetup_time");
     String meetupDaysCsv = normalizeMeetupDays(meetupDays);
     LocalDate foundedAt = validateFoundedAt(rawFoundedAt);
 
-    List<String> previousImageUrls = profileImageUrls(crew);
+    List<String> previousImageUrls = crewProfileImages.from(crew, PROFILE_IMAGE_MAX);
     crew.updateProfile(region, imageUrl, imageUrlsJson, intro, meetupPlace, meetupDaysCsv, meetupTime, foundedAt);
     crewRepository.save(crew);
 
@@ -749,57 +745,6 @@ public class CrewService {
       throw ApiException.badRequest("invalid_region");
     }
     return region;
-  }
-
-  /** 대표 이미지 URL 검증 — 우리 S3 버킷에서 발급된 URL만 허용(외부 URL 주입 차단). null/빈 값=이미지 없음. */
-  private String validateImageUrl(String raw) {
-    if (raw == null || raw.isBlank()) {
-      return null;
-    }
-    String url = raw.trim();
-    if (!imageUploadService.isStoredUrl(url)) {
-      throw ApiException.badRequest("invalid_image_url");
-    }
-    return url;
-  }
-
-  private List<String> validateImageUrls(List<String> rawImageUrls, String fallbackImageUrl) {
-    List<String> rawList = rawImageUrls != null ? rawImageUrls : (fallbackImageUrl == null ? List.of() : List.of(fallbackImageUrl));
-    List<String> urls = new ArrayList<>();
-    for (String raw : rawList) {
-      String url = validateImageUrl(raw);
-      if (url == null || urls.contains(url)) continue;
-      urls.add(url);
-      if (urls.size() > PROFILE_IMAGE_MAX) {
-        throw ApiException.badRequest("too_many_images");
-      }
-    }
-    return urls;
-  }
-
-  private List<String> profileImageUrls(Crew crew) {
-    String json = crew.getImageUrlsJson();
-    if (json != null && !json.isBlank()) {
-      try {
-        List<String> parsed = objectMapper.readValue(
-            json,
-            objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
-        return validateImageUrls(parsed, crew.getImageUrl());
-      } catch (JsonProcessingException e) {
-        throw new IllegalStateException("crew_image_urls_decode_failed", e);
-      }
-    }
-    String imageUrl = crew.getImageUrl();
-    return imageUrl == null || imageUrl.isBlank() ? List.of() : List.of(imageUrl);
-  }
-
-  private String toImageUrlsJson(List<String> imageUrls) {
-    if (imageUrls == null || imageUrls.isEmpty()) return null;
-    try {
-      return objectMapper.writeValueAsString(imageUrls);
-    } catch (JsonProcessingException e) {
-      throw new IllegalStateException("crew_image_urls_encode_failed", e);
-    }
   }
 
   /** CSV(월=0…일=6) → 요일 배열. null/빈 값은 빈 배열(정기런 없음). */

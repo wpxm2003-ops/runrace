@@ -20,6 +20,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.core.exception.SdkException;
 
 /**
  * 이미지 파일을 S3에 저장한다.
@@ -77,7 +78,7 @@ public class ImageUploadService {
               .contentType(contentType)
               .build(),
           RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-    } catch (IOException e) {
+    } catch (IOException | SdkException e) {
       // 인프라 실패 — 안정적인 에러 코드로 전달하되 운영 추적을 위해 로깅한다.
       log.error("S3 업로드 실패: key={}", key, e);
       throw ApiException.internal("upload_failed");
@@ -119,9 +120,12 @@ public class ImageUploadService {
       java.net.URI uri = java.net.URI.create(imageUrl);
       String key = uri.getPath().replaceFirst("^/", "");
       s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
-    } catch (Exception e) {
-      // 삭제 실패해도 운동 기록 삭제는 계속 진행
-      log.warn("S3 이미지 삭제 실패: {}", imageUrl, e);
+    } catch (IllegalArgumentException e) {
+      // 이 서비스가 발급한 URL만 받지만, 손상된 저장값은 삭제 대신 기록만 남긴다.
+      log.warn("S3 이미지 URL 파싱 실패: {}", imageUrl, e);
+    } catch (SdkException e) {
+      // AWS SDK의 기본 재시도 후에도 실패한 경우다. 원 요청(운동/프로필 변경)은 유지한다.
+      log.warn("S3 이미지 삭제 실패(재시도 소진): {}", imageUrl, e);
     }
   }
 
@@ -144,7 +148,7 @@ public class ImageUploadService {
               .contentType(contentTypeForExtension(ext))
               .build(),
           RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-    } catch (IOException e) {
+    } catch (IOException | SdkException e) {
       log.error("S3 비공개 업로드 실패: key={}", key, e);
       throw ApiException.internal("upload_failed");
     }
@@ -162,9 +166,12 @@ public class ImageUploadService {
       var bytes = s3.getObjectAsBytes(GetObjectRequest.builder().bucket(privateBucket).key(key).build());
       String contentType = bytes.response().contentType();
       return new StoredImage(bytes.asByteArray(), contentType != null ? contentType : "image/jpeg");
-    } catch (Exception e) {
-      log.warn("S3 비공개 객체 조회 실패: key={}", key, e);
+    } catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) {
       throw ApiException.notFound("image_not_found");
+    } catch (SdkException e) {
+      // SDK 기본 재시도 후에도 실패한 인프라 오류는 404로 위장하지 않는다.
+      log.error("S3 비공개 객체 조회 실패(재시도 소진): key={}", key, e);
+      throw ApiException.internal("private_image_load_failed");
     }
   }
 
@@ -173,8 +180,9 @@ public class ImageUploadService {
     if (!isPrivateKey(key)) return;
     try {
       s3.deleteObject(DeleteObjectRequest.builder().bucket(privateBucket).key(key).build());
-    } catch (Exception e) {
-      log.warn("S3 비공개 객체 삭제 실패: key={}", key, e);
+    } catch (SdkException e) {
+      // 삭제는 best-effort. SDK 기본 재시도 뒤 실패해도 원래 경품 변경은 유지한다.
+      log.warn("S3 비공개 객체 삭제 실패(재시도 소진): key={}", key, e);
     }
   }
 
