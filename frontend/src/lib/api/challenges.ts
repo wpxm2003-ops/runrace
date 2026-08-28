@@ -151,13 +151,14 @@ export function postLiveProgress(
   distanceM: number,
   elapsedSec: number,
   sentAt: number,
+  clientWorkoutId: string,
   user: User,
 ) {
   return withLiveTimeout((signal) =>
     apiFetch<LiveProgressResponse>("/api/challenges/live-progress", {
       method: "POST",
       user,
-      body: { distanceM, elapsedSec, sentAt },
+      body: { distanceM, elapsedSec, sentAt, clientWorkoutId },
       redirectOn401: false,
       signal,
     }),

@@ -51,6 +51,9 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
 
   Optional<WorkoutSession> findByUserIdAndClientWorkoutId(UUID userId, UUID clientWorkoutId);
 
+  /** 확정 저장된 클라이언트 런인지 — 지각 라이브 핑 차단용. */
+  boolean existsByUserIdAndClientWorkoutId(UUID userId, UUID clientWorkoutId);
+
   /** 이 URL을 아직 참조 중인 운동 기록이 있는지 — 이미지 삭제 전 소유권 없는 URL 재사용 방어용. */
   boolean existsByImageUrl(String imageUrl);
 

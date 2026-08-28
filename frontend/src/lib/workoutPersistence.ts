@@ -4,6 +4,11 @@ import { localJson, sessionJson } from "./safeStorage";
 export type PersistedWorkout = {
   /** 운동 시작 시점의 Firebase UID. 다른 계정으로는 복원·저장할 수 없다. */
   ownerUid: string;
+  /**
+   * 시작 시 한 번 만든 런 식별자. 라이브 핑과 최종 저장이 같은 런임을 서버가 확인한다.
+   * 이 필드가 생기기 전 저장본은 복원 시 새 식별자를 발급하므로 optional이다.
+   */
+  clientWorkoutId?: string;
   status: "running" | "paused";
   path: LatLng[];
   /**

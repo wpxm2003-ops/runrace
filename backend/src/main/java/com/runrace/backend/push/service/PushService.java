@@ -31,8 +31,8 @@ public class PushService {
   private final DeviceTokenRepository deviceTokenRepository;
   private final AppUserRepository appUserRepository;
   private final PushHistoryWriter pushHistoryWriter;
+  private final PushSideEffectWriter pushSideEffectWriter;
   private final MessageSource messageSource;
-  private final ErrorLogService errorLogService;
 
   /**
    * 수신자 언어로 title/body 키를 렌더링해 전송한다. {0} 자리표시자는 직접 치환하므로
@@ -82,7 +82,7 @@ public class PushService {
       } catch (Exception e) {
         // 푸시는 이미 접수됐다. 이력 실패 때문에 원 요청을 실패로 보이게 하지 않는다.
         log.error("푸시 이력 저장 실패 (userId={}, pushType={})", userId, pushType, e);
-        errorLogService.recordServiceError(
+        recordErrorBestEffort(
             "push_history", e.getClass().getSimpleName(), e.getMessage(),
             ErrorLogService.stackTraceOf(e), "userId=" + userId + " pushType=" + pushType);
       }
@@ -133,18 +133,37 @@ public class PushService {
         String code = e.getMessagingErrorCode() != null ? e.getMessagingErrorCode().name() : "UNKNOWN";
         String ctx = "userId=" + userId + " platform=" + t.getPlatform();
         if (isDeadToken(e.getMessagingErrorCode())) {
-          deviceTokenRepository.delete(t);
+          deleteDeadTokenBestEffort(t);
         } else {
           log.warn("FCM 전송 실패 (userId={}, platform={}, code={})", userId, t.getPlatform(), code);
-          errorLogService.recordServiceError("push", code, e.getMessage(), null, ctx);
+          recordErrorBestEffort("push", code, e.getMessage(), null, ctx);
         }
       } catch (Exception e) {
         log.warn("FCM 전송 중 예외 (userId={}, platform={})", userId, t.getPlatform(), e);
-        errorLogService.recordServiceError("push", e.getClass().getSimpleName(), e.getMessage(),
+        recordErrorBestEffort("push", e.getClass().getSimpleName(), e.getMessage(),
             ErrorLogService.stackTraceOf(e), "userId=" + userId + " platform=" + t.getPlatform());
       }
     }
     return sent;
+  }
+
+  private void deleteDeadTokenBestEffort(DeviceToken token) {
+    try {
+      pushSideEffectWriter.deleteDeadToken(token.getId());
+    } catch (Exception e) {
+      // 푸시 발송은 이미 실패했다. 정리 실패까지 호출자에게 전파해 이벤트 흐름을 깨지 않는다.
+      log.warn("무효 FCM 토큰 삭제 실패 (tokenId={}): {}", token.getId(), e.getMessage());
+    }
+  }
+
+  private void recordErrorBestEffort(
+      String source, String errorCode, String message, String stack, String context) {
+    try {
+      pushSideEffectWriter.recordError(source, errorCode, message, stack, context);
+    } catch (Exception e) {
+      // 관측 데이터 저장 실패가 원래 푸시·도메인 이벤트의 성공 여부를 바꾸면 안 된다.
+      log.warn("푸시 오류 로그 저장 실패 (source={}, code={}): {}", source, errorCode, e.getMessage());
+    }
   }
 
   private static Message buildMessage(

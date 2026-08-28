@@ -1,6 +1,7 @@
 import type { User } from "firebase/auth";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  apiUrl,
   apiFetch,
   exchangeFirebaseTokenForJwt,
   publicFetch,
@@ -14,9 +15,13 @@ import {
 const firebaseAuth = vi.hoisted(() => ({
   currentUser: null as { uid: string } | null,
 }));
+const capacitorState = vi.hoisted(() => ({ native: false }));
 
 vi.mock("@/lib/auth", () => ({ redirectToLogin: vi.fn() }));
 vi.mock("@/lib/firebase", () => ({ auth: firebaseAuth }));
+vi.mock("@capacitor/core", () => ({
+  Capacitor: { isNativePlatform: () => capacitorState.native },
+}));
 
 class MemoryStorage {
   private store = new Map<string, string>();
@@ -52,11 +57,34 @@ beforeEach(() => {
   vi.stubGlobal("window", { location: { protocol: "http:" } });
   vi.stubGlobal("localStorage", new MemoryStorage());
   firebaseAuth.currentUser = null;
+  capacitorState.native = false;
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+
+describe("API base URL 환경 판정", () => {
+  it("Capacitor localhost WebView에서는 설정된 절대 API 주소를 보존한다", () => {
+    capacitorState.native = true;
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.runrace.test");
+    vi.stubGlobal("window", {
+      location: { protocol: "http:", origin: "http://localhost" },
+    });
+
+    expect(apiUrl("/api/me")).toBe("https://api.runrace.test/api/me");
+  });
+
+  it("일반 웹의 교차 출처 API 주소는 같은 출처 프록시 경로로 바꾼다", () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.runrace.test");
+    vi.stubGlobal("window", {
+      location: { protocol: "https:", origin: "https://runrace.test" },
+    });
+
+    expect(apiUrl("/api/me")).toBe("/api/me");
+  });
 });
 
 describe("API JWT 소유자 검증", () => {
@@ -116,5 +144,26 @@ describe("API JWT 소유자 검증", () => {
 
     expect(getAccessToken()).toBe("jwt-user-b");
     expect(getStoredAuthUid()).toBe("user-b");
+  });
+
+  it("401 뒤 Firebase 토큰 갱신이 멈춰도 AbortSignal로 대기를 끝낸다", async () => {
+    storeAccessToken("expired-jwt", "user-a");
+    const never = new Promise<string>(() => {});
+    const userA = {
+      uid: "user-a",
+      getIdToken: vi.fn().mockReturnValue(never),
+    } as unknown as User;
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("unauthorized", { status: 401 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+
+    const request = apiFetch("/api/test", { user: userA, signal: controller.signal });
+    await vi.waitFor(() => expect(userA.getIdToken).toHaveBeenCalledWith(true));
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

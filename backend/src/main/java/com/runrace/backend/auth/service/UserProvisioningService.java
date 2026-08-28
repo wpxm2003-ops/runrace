@@ -44,7 +44,7 @@ public class UserProvisioningService {
       String langHint) {
 
     // 이미 있는 uid면 프로필만 갱신
-    AppUser existing = appUserRepository.findByFirebaseUid(firebaseUid).orElse(null);
+    AppUser existing = appUserRepository.findByFirebaseUidForUpdate(firebaseUid).orElse(null);
     if (existing != null) {
       return updateExistingProfile(existing, firebaseUid, email, displayName, provider);
     }
@@ -91,7 +91,7 @@ public class UserProvisioningService {
   private AppUser mergeByVerifiedEmail(
       String firebaseUid, String email, String displayName, String provider, boolean emailVerified) {
     if (email == null || !emailVerified) return null;
-    AppUser byEmail = appUserRepository.findByEmail(email).orElse(null);
+    AppUser byEmail = appUserRepository.findByEmailForUpdate(email).orElse(null);
     if (byEmail == null) return null;
 
     log.info("Merging account [{}] into existing [{}] by email", firebaseUid, byEmail.getFirebaseUid());
@@ -131,7 +131,7 @@ public class UserProvisioningService {
         return userInsertTx.insert(candidate);
       } catch (DataIntegrityViolationException e) {
         // 동시 가입으로 같은 firebaseUid 행이 이미 생성됐으면 그 행을 사용(경쟁에서 진 경우)
-        AppUser raced = appUserRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        AppUser raced = appUserRepository.findByFirebaseUidForUpdate(firebaseUid).orElse(null);
         if (raced != null) return raced;
         // 닉네임 경쟁에서 진 경우 → 다음 후보로 재시도
       }

@@ -10,6 +10,7 @@ import com.runrace.backend.auth.service.FirebaseUserService;
 import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.observability.RequestIdFilter;
 import com.runrace.backend.observability.service.ErrorLogService;
+import com.runrace.backend.user.repository.AppUserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -59,6 +60,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
   private final FirebaseUserService firebaseUserService;
   private final JwtService jwtService;
   private final ErrorLogService errorLogService;
+  private final AppUserRepository appUserRepository;
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -173,10 +175,16 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
    */
   private Optional<String> authenticate(String token, String langHint)
       throws FirebaseAuthException {
-    // 자체 JWT이면 로컬 HMAC 검증만으로 즉시 인증 (Firebase 네트워크 호출 없음)
+    // 자체 JWT는 Firebase 네트워크 없이 검증하되, 현재도 같은 활성 계정인지는 로컬 DB에서
+    // 확인한다. 서명만 확인하면 탈퇴 직전에 발급한 토큰이 만료일까지 계속 살아남는다.
     var jwtPrincipal = jwtService.verify(token);
     if (jwtPrincipal.isPresent()) {
-      AuthContext.set(jwtPrincipal.get());
+      var principal = jwtPrincipal.get();
+      if (!appUserRepository.existsByIdAndFirebaseUidAndWithdrawnAtIsNull(
+          principal.userId(), principal.firebaseUid())) {
+        return Optional.of("account_inactive");
+      }
+      AuthContext.set(principal);
       return Optional.empty();
     }
     // Firebase ID 토큰 폴백 (최초 로그인, 토큰 만료 후 재발급 시)

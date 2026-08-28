@@ -19,6 +19,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.Distance;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
+import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -39,6 +40,7 @@ class ChallengeLiveProgressServiceTest {
 
   @Mock ChallengeMemberRepository challengeMemberRepository;
   @Mock RivalRepository rivalRepository;
+  @Mock WorkoutSessionRepository workoutSessionRepository;
 
   @InjectMocks ChallengeLiveProgressService service;
 
@@ -99,6 +101,34 @@ class ChallengeLiveProgressServiceTest {
     LiveProgressResponse res = service.submit(ME_ID, 300, OK_ELAPSED_SEC, SENT_AT);
 
     assertEquals(List.of(), res.challenges());
+  }
+
+  @Test
+  void 이미_확정저장된_런의_지각핑은_반영하지_않는다() {
+    UUID clientWorkoutId = UUID.randomUUID();
+    when(workoutSessionRepository.existsByUserIdAndClientWorkoutId(ME_ID, clientWorkoutId))
+        .thenReturn(true);
+
+    LiveProgressResponse res =
+        service.submit(ME_ID, 300, OK_ELAPSED_SEC, SENT_AT, clientWorkoutId);
+
+    assertEquals(List.of(), res.challenges());
+    verify(challengeMemberRepository, never()).findAllActiveForUser(any(), any());
+    verify(challengeMemberRepository, never())
+        .updateLiveProgress(any(), any(), any(), any(), anyLong(), any());
+  }
+
+  @Test
+  void 새_런_UUID는_DB_UPDATE의_최종_확정저장_가드까지_전달한다() {
+    UUID clientWorkoutId = UUID.randomUUID();
+    AppUser me = user(ME_ID, "me", true);
+    ChallengeMember mine = member(Challenge.builder().id(2L).crewId(99L).build(), me, 2.0);
+    stub(List.of(mine), List.of(mine), List.of());
+
+    service.submit(ME_ID, 300, OK_ELAPSED_SEC, SENT_AT, clientWorkoutId);
+
+    verify(challengeMemberRepository).updateLiveProgress(
+        eq(mine.getId()), any(), any(), any(), eq(SENT_AT), eq(clientWorkoutId));
   }
 
   @Test

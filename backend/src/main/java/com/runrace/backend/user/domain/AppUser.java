@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -23,6 +24,16 @@ public class AppUser {
   @Id
   @UuidGenerator
   private UUID id;
+
+  /**
+   * 사용자 행의 낙관적 잠금 버전.
+   *
+   * <p>계정 설정·프로필 갱신처럼 서로 다른 요청이 같은 {@code users} 행을 저장할 때, 먼저
+   * 읽은 오래된 엔티티가 나중에 탈퇴 익명화나 다른 설정을 통째로 덮어쓰지 못하게 한다.
+   */
+  @Version
+  @Column(name = "row_version", nullable = false)
+  private long version;
 
   @Column(name = "firebase_uid", nullable = false, unique = true, length = 128)
   private String firebaseUid;

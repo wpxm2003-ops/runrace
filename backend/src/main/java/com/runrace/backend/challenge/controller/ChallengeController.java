@@ -139,7 +139,8 @@ public class ChallengeController {
       AuthPrincipal principal, @RequestBody LiveProgressRequest body) {
     return ResponseEntity.ok(
         challengeLiveProgressService.submit(
-            principal.userId(), body.distanceM(), body.elapsedSec(), body.sentAt()));
+            principal.userId(), body.distanceM(), body.elapsedSec(), body.sentAt(),
+            body.clientWorkoutId()));
   }
 
   /**

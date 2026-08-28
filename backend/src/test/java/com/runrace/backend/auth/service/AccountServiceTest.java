@@ -39,7 +39,7 @@ class AccountServiceTest {
 
     @Test void changedValueIsRecorded() {
       AppUser user = AppUser.builder().id(userId).pushEnabled(false).build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
 
       service.updatePushEnabled(userId, true);
 
@@ -49,7 +49,7 @@ class AccountServiceTest {
 
     @Test void unchangedValueIsNotRecorded() {
       AppUser user = AppUser.builder().id(userId).pushEnabled(false).build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
 
       service.updatePushEnabled(userId, false);
 
@@ -76,7 +76,7 @@ class AccountServiceTest {
 
     @Test void 다른_닉네임_이미_존재하면_nickname_taken() {
       AppUser user = AppUser.builder().id(userId).nickname("old").build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
       when(appUserRepository.existsByNicknameAndWithdrawnAtIsNull("newname")).thenReturn(true);
 
       ApiException ex = assertThrows(ApiException.class,
@@ -86,7 +86,7 @@ class AccountServiceTest {
 
     @Test void 자기_닉네임_그대로면_중복_체크_안함() {
       AppUser user = AppUser.builder().id(userId).nickname("same").build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
       when(appUserRepository.saveAndFlush(user)).thenReturn(user);
 
       service.updateNickname(userId, "same");
@@ -96,7 +96,7 @@ class AccountServiceTest {
 
     @Test void 새_닉네임_중복없으면_저장() {
       AppUser user = AppUser.builder().id(userId).nickname("old").build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
       when(appUserRepository.existsByNicknameAndWithdrawnAtIsNull("newname")).thenReturn(false);
       when(appUserRepository.saveAndFlush(user)).thenReturn(user);
 
@@ -125,7 +125,7 @@ class AccountServiceTest {
 
     @Test void 지원하는_언어코드_ko는_통과() {
       AppUser user = AppUser.builder().id(userId).nickname("nick").build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
       when(appUserRepository.save(user)).thenReturn(user);
 
       service.updateLanguage(userId, "ko");
@@ -135,7 +135,7 @@ class AccountServiceTest {
 
     @Test void 지원하는_언어코드_en은_통과() {
       AppUser user = AppUser.builder().id(userId).nickname("nick").build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
       when(appUserRepository.save(user)).thenReturn(user);
 
       service.updateLanguage(userId, "en");
@@ -149,7 +149,7 @@ class AccountServiceTest {
 
     @Test void validIanaTimeZoneIsSaved() {
       AppUser user = AppUser.builder().id(userId).build();
-      when(appUserRepository.getRequired(userId)).thenReturn(user);
+      when(appUserRepository.getRequiredActiveForUpdate(userId)).thenReturn(user);
       when(appUserRepository.save(user)).thenReturn(user);
 
       service.updatePreferences(userId, "en", "America/New_York");
@@ -164,7 +164,7 @@ class AccountServiceTest {
           () -> service.updatePreferences(userId, null, "Not/A_TimeZone"));
 
       assertEquals("invalid_time_zone", ex.code());
-      verify(appUserRepository, never()).getRequired(any());
+      verify(appUserRepository, never()).getRequiredActiveForUpdate(any());
     }
   }
 }

@@ -1,4 +1,5 @@
 import type { User } from "firebase/auth";
+import { Capacitor } from "@capacitor/core";
 import { redirectToLogin } from "@/lib/auth";
 import { auth } from "@/lib/firebase";
 import {
@@ -25,9 +26,11 @@ function resolveApiBaseUrl(): string {
   // 웹에서는 현재 페이지와 다른 출처의 API를 직접 호출하지 않는다. www/non-www가
   // 섞이면 Authorization 헤더 때문에 CORS preflight가 발생할 수 있으므로, 항상
   // 같은 출처의 Nginx /api 프록시를 사용한다. Capacitor처럼 http(s) 출처가 아닌
-  // 네이티브 환경은 설정된 절대 API 주소를 그대로 사용한다.
+  // 네이티브 환경은 설정된 절대 API 주소를 그대로 사용한다. Capacitor의 번들형
+  // WebView도 http://localhost 출처를 쓰므로 프로토콜만으로 웹 여부를 판정하면 안 된다.
   if (
     typeof window !== "undefined"
+    && !Capacitor.isNativePlatform()
     && (window.location.protocol === "http:" || window.location.protocol === "https:")
     && base
   ) {
@@ -39,6 +42,45 @@ function resolveApiBaseUrl(): string {
   }
 
   return base;
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  if (signal.reason !== undefined) return signal.reason;
+  const error = new Error("The operation was aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+/**
+ * Firebase getIdToken은 AbortSignal을 받지 않는다. 호출 자체를 취소할 수는 없지만, 기다리는
+ * API 요청은 즉시 중단해 라이브 핑이 영구 pending으로 남지 않게 한다. 원 promise에는 양쪽
+ * 핸들러를 붙여 나중에 실패해도 unhandled rejection이 생기지 않는다.
+ */
+function waitForWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  throwIfAborted(signal);
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(abortReason(signal));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
 }
 
 export function apiUrl(path: string): string {
@@ -67,7 +109,8 @@ export async function publicPost<T>(path: string, body: unknown): Promise<T> {
  * 저장된 자체 JWT를 우선 사용한다. 없거나 forceRefresh이면 Firebase 토큰으로 폴백.
  * forceRefresh=true는 JWT 만료 후 재발급 경로에서만 사용한다.
  */
-async function authHeaders(user: User, forceRefresh = false) {
+async function authHeaders(user: User, forceRefresh = false, signal?: AbortSignal) {
+  throwIfAborted(signal);
   if (!forceRefresh) {
     const stored = getAccessToken();
     // localStorage JWT는 함께 저장한 Firebase UID가 호출자의 UID와 정확히 같을 때만 쓴다.
@@ -76,7 +119,7 @@ async function authHeaders(user: User, forceRefresh = false) {
       return { "Content-Type": "application/json", Authorization: `Bearer ${stored}` };
     }
   }
-  const idToken = await user.getIdToken(forceRefresh);
+  const idToken = await waitForWithSignal(user.getIdToken(forceRefresh), signal);
   return { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` };
 }
 
@@ -84,15 +127,21 @@ async function authHeaders(user: User, forceRefresh = false) {
  * Firebase 토큰을 백엔드(/api/auth/login)에 보내 자체 JWT를 발급받아 저장한다.
  * 토큰 교환의 단일 출처(로그인 동기화·만료 재발급 공용). 에러는 호출부가 처리한다(여기선 삼키지 않음).
  */
-export async function exchangeFirebaseTokenForJwt(user: User, forceRefresh = false): Promise<void> {
-  const firebaseToken = await user.getIdToken(forceRefresh);
+export async function exchangeFirebaseTokenForJwt(
+  user: User,
+  forceRefresh = false,
+  signal?: AbortSignal,
+): Promise<void> {
+  const firebaseToken = await waitForWithSignal(user.getIdToken(forceRefresh), signal);
   const res = await fetch(apiUrl("/api/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${firebaseToken}` },
     cache: "no-store",
+    signal,
   });
   if (res.ok) {
     const data = (await res.json()) as { accessToken?: string; firebaseUid?: string };
+    throwIfAborted(signal);
     // 교환 응답이 돌아오는 사이 로그아웃/계정 전환이 일어날 수 있다. 요청 사용자와
     // 현재 Firebase 사용자, 백엔드가 확인한 UID가 모두 같을 때만 전역 JWT를 갱신한다.
     if (
@@ -106,17 +155,23 @@ export async function exchangeFirebaseTokenForJwt(user: User, forceRefresh = fal
 }
 
 /** JWT 만료(401) 시 Firebase 토큰으로 새 JWT를 발급받아 저장한다. */
-async function refreshAccessToken(user: User): Promise<{ "Content-Type": string; Authorization: string }> {
+async function refreshAccessToken(
+  user: User,
+  signal?: AbortSignal,
+): Promise<{ "Content-Type": string; Authorization: string }> {
+  throwIfAborted(signal);
   // 호출자가 현재 저장 JWT의 소유자가 아니면 다른 계정 토큰을 지우거나 덮지 않는다.
   // 해당 Firebase User의 토큰으로만 한 번 재시도한다.
   if (getStoredAuthUid() !== user.uid) {
-    return await authHeaders(user, true);
+    return await authHeaders(user, true, signal);
   }
   clearAccessToken();
   try {
-    await exchangeFirebaseTokenForJwt(user, true);
-  } catch {}
-  return await authHeaders(user, false);
+    await exchangeFirebaseTokenForJwt(user, true, signal);
+  } catch {
+    throwIfAborted(signal);
+  }
+  return await authHeaders(user, false, signal);
 }
 
 /** 이미지 multipart 업로드 공용 코어. 응답에서 responseField(url|key)를 꺼내 반환한다. */
@@ -219,12 +274,12 @@ export async function apiFetch<T>(
   const method = opts.method ?? "GET";
   const body = opts.body ? JSON.stringify(opts.body) : undefined;
 
-  let headers = await authHeaders(opts.user);
+  let headers = await authHeaders(opts.user, false, opts.signal);
   let res = await fetch(url, { method, headers, body, cache: "no-store", signal: opts.signal });
 
   if (res.status === 401) {
     // JWT 만료 → Firebase로 새 JWT 발급 후 재시도
-    headers = await refreshAccessToken(opts.user);
+    headers = await refreshAccessToken(opts.user, opts.signal);
     res = await fetch(url, { method, headers, body, cache: "no-store", signal: opts.signal });
   }
 

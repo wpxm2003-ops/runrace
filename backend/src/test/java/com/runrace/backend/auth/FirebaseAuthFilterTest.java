@@ -15,12 +15,14 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.runrace.backend.auth.service.FirebaseUserService;
 import com.runrace.backend.observability.service.ErrorLogService;
+import com.runrace.backend.user.repository.AppUserRepository;
 import jakarta.servlet.FilterChain;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,10 +56,18 @@ class FirebaseAuthFilterTest {
   @Mock FirebaseUserService firebaseUserService;
   @Mock JwtService jwtService;
   @Mock ErrorLogService errorLogService;
+  @Mock AppUserRepository appUserRepository;
   @Mock FilterChain chain;
 
   private FirebaseAuthFilter filter() {
-    return new FirebaseAuthFilter(firebaseUserService, jwtService, errorLogService);
+    return new FirebaseAuthFilter(
+        firebaseUserService, jwtService, errorLogService, appUserRepository);
+  }
+
+  @BeforeEach
+  void activeJwtSubjectByDefault() {
+    when(appUserRepository.existsByIdAndFirebaseUidAndWithdrawnAtIsNull(any(), anyString()))
+        .thenReturn(true);
   }
 
   private static MockHttpServletRequest request(String method, String path) {
@@ -296,6 +306,25 @@ class FirebaseAuthFilterTest {
         verify(chain).doFilter(any(), any());
         verify(firebaseUserService, never()).upsertAndCreatePrincipal(any(), anyString());
       });
+    }
+
+    @Test
+    void withdrawnAccountJwtIsRejectedWithoutFirebaseLookup() throws Exception {
+      UUID userId = UUID.randomUUID();
+      AuthPrincipal principal = new AuthPrincipal(userId, "withdrawn-uid");
+      when(jwtService.verify("old-jwt")).thenReturn(Optional.of(principal));
+      when(appUserRepository.existsByIdAndFirebaseUidAndWithdrawnAtIsNull(
+          userId, "withdrawn-uid"))
+          .thenReturn(false);
+      MockHttpServletResponse res = new MockHttpServletResponse();
+
+      filter().doFilterInternal(
+          bearer("GET", "/api/workouts", "Bearer old-jwt"), res, chain);
+
+      assertEquals(401, res.getStatus());
+      assertTrue(res.getContentAsString().contains("account_inactive"));
+      verify(chain, never()).doFilter(any(), any());
+      verify(firebaseUserService, never()).upsertAndCreatePrincipal(any(), anyString());
     }
 
     /**

@@ -10,6 +10,7 @@ import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.Distance;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
+import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -53,11 +54,26 @@ public class ChallengeLiveProgressService {
 
   private final ChallengeMemberRepository challengeMemberRepository;
   private final RivalRepository rivalRepository;
+  private final WorkoutSessionRepository workoutSessionRepository;
 
+  /** 구버전 앱·기존 내부 호출 호환. 런 식별자가 없으면 기존 순서 토큰 방어만 적용한다. */
   @Transactional
   public LiveProgressResponse submit(
       UUID userId, int distanceM, int elapsedSec, long sentAt) {
+    return submit(userId, distanceM, elapsedSec, sentAt, null);
+  }
+
+  @Transactional
+  public LiveProgressResponse submit(
+      UUID userId, int distanceM, int elapsedSec, long sentAt, UUID clientWorkoutId) {
     validateInput(distanceM, elapsedSec, sentAt);
+
+    // 확정 저장이 끝난 런의 지각 핑은 표시값에 다시 얹지 않는다. 아래 UPDATE에도 같은 조건을
+    // 넣는다 — 이 조회 직후 저장 트랜잭션이 커밋되는 경합 창까지 닫으려면 둘 다 필요하다.
+    if (clientWorkoutId != null
+        && workoutSessionRepository.existsByUserIdAndClientWorkoutId(userId, clientWorkoutId)) {
+      return new LiveProgressResponse(List.of());
+    }
 
     OffsetDateTime now = OffsetDateTime.now();
     // 정렬은 findAllActiveForUser가 id 오름차순으로 보장한다(잠금 순서 계약 — 확정 경로와 같은
@@ -118,7 +134,7 @@ public class ChallengeLiveProgressService {
           challengeMemberRepository.discardLiveProgressForMember(member.getId(), sentAt);
         }
       } else if (plausibleOverall) {
-        applyLiveIfPlausible(member, cappedKm, now, sentAt);
+        applyLiveIfPlausible(member, cappedKm, now, sentAt, clientWorkoutId);
       }
 
       // 내 쪽도 상대와 같은 기준(레이스 누적 + 이번 런)이어야 한다. 이번 런 거리만 쓰면
@@ -211,7 +227,8 @@ public class ChallengeLiveProgressService {
    * 전체 컬럼 UPDATE가 나가 확정 경로가 올린 total_km을 덮어쓸 수 있다.
    */
   private void applyLiveIfPlausible(
-      ChallengeMember member, BigDecimal distanceKm, OffsetDateTime now, long sentAt) {
+      ChallengeMember member, BigDecimal distanceKm, OffsetDateTime now, long sentAt,
+      UUID clientWorkoutId) {
     BigDecimal prevKm = member.getLiveKm();
     OffsetDateTime prevAt = member.getLiveUpdatedAt();
     if (prevKm != null && prevAt != null) {
@@ -228,8 +245,13 @@ public class ChallengeLiveProgressService {
       }
     }
     // 더 나중에 만들어진 요청(종료 시 일시정지 등)이 이미 반영됐으면 쿼리가 떨군다.
-    challengeMemberRepository.updateLiveProgress(
-        member.getId(), distanceKm, now, member.getTotalKm(), sentAt);
+    if (clientWorkoutId == null) {
+      challengeMemberRepository.updateLiveProgress(
+          member.getId(), distanceKm, now, member.getTotalKm(), sentAt);
+    } else {
+      challengeMemberRepository.updateLiveProgress(
+          member.getId(), distanceKm, now, member.getTotalKm(), sentAt, clientWorkoutId);
+    }
   }
 
   /** 지울 라이브 상태가 실제로 남아 있는지 — 빈 행에 0행 UPDATE를 날리지 않기 위한 사전 검사. */

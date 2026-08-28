@@ -48,7 +48,7 @@ public class AccountService {
   @Transactional
   public AppUser updateNickname(UUID userId, String rawNickname) {
     String trimmed = TextValidation.requireCleanText(rawNickname, NICKNAME_MAX_LEN, false, "nickname");
-    AppUser user = appUserRepository.getRequired(userId);
+    AppUser user = appUserRepository.getRequiredActiveForUpdate(userId);
     if (!trimmed.equals(user.getNickname()) && appUserRepository.existsByNicknameAndWithdrawnAtIsNull(trimmed)) {
       throw ApiException.badRequest("nickname_taken");
     }
@@ -76,7 +76,7 @@ public class AccountService {
   /** 푸시 알림 수신 선호 변경(내정보 토글). */
   @Transactional
   public void updatePushEnabled(UUID userId, boolean enabled) {
-    AppUser user = appUserRepository.getRequired(userId);
+    AppUser user = appUserRepository.getRequiredActiveForUpdate(userId);
     boolean changed = user.isPushEnabled() != enabled;
     user.changePushEnabled(enabled);
     appUserRepository.save(user);
@@ -107,7 +107,7 @@ public class AccountService {
   @Transactional
   public void updateLiveProgressSetting(
       UUID userId, Boolean publicEnabled, Boolean crewEnabled) {
-    AppUser user = appUserRepository.getRequired(userId);
+    AppUser user = appUserRepository.getRequiredActiveForUpdate(userId);
     if (publicEnabled != null) {
       user.changeLivePublicOptIn(publicEnabled);
     }
@@ -129,7 +129,7 @@ public class AccountService {
     if (!SupportedLanguages.isSupported(langCd)) {
       throw ApiException.badRequest("invalid_lang_cd");
     }
-    AppUser user = appUserRepository.getRequired(userId);
+    AppUser user = appUserRepository.getRequiredActiveForUpdate(userId);
     user.changeLangCd(langCd);
     return appUserRepository.save(user);
   }
@@ -143,7 +143,7 @@ public class AccountService {
     if (timeZone != null && !ZoneId.getAvailableZoneIds().contains(timeZone)) {
       throw ApiException.badRequest("invalid_time_zone");
     }
-    AppUser user = appUserRepository.getRequired(userId);
+    AppUser user = appUserRepository.getRequiredActiveForUpdate(userId);
     if (langCd != null) user.changeLangCd(langCd);
     if (timeZone != null) user.changeTimeZone(timeZone);
     return appUserRepository.save(user);

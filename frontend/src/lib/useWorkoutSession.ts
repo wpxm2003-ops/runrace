@@ -42,6 +42,7 @@ import { track } from "./analytics";
 import { Capacitor } from "@capacitor/core";
 import { waitForNativePermissions } from "./nativePermissions";
 import { createClientWorkoutId } from "./workoutRequestId";
+import { isLatestLiveProgressResponse } from "./liveProgressFreshness";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const SAVE_INTERVAL_MS = 10_000;
@@ -161,6 +162,8 @@ export function useWorkoutSession(
   const pausedAccumRef = useRef(0);
   const pauseStartedRef = useRef<number | null>(null);
   const runStartedRef = useRef<number | null>(null);
+  /** 시작부터 라이브 핑·최종 저장까지 유지하는 런 식별자. */
+  const clientWorkoutIdRef = useRef<string | null>(null);
   const autoPausedRef = useRef(false);
   /** 시작 시 고정한 Firebase UID. 현재 인증 UID와 다르면 모든 액션·GPS 반영을 차단한다. */
   const sessionOwnerUidRef = useRef<string | null>(null);
@@ -206,6 +209,7 @@ export function useWorkoutSession(
     if (status === "idle" || runStartedRef.current == null || ownerUid == null) return;
     saveWorkout({
       ownerUid,
+      clientWorkoutId: clientWorkoutIdRef.current ?? undefined,
       status: status as "running" | "paused",
       path: pathRef.current,
       distanceM: distanceAccumRef.current,
@@ -224,6 +228,7 @@ export function useWorkoutSession(
       if (statusRef.current === "idle" || runStartedRef.current == null || ownerUid == null) return;
       saveWorkout({
         ownerUid,
+        clientWorkoutId: clientWorkoutIdRef.current ?? undefined,
         status: statusRef.current as "running" | "paused",
         path: pathRef.current,
         distanceM: distanceAccumRef.current,
@@ -282,10 +287,12 @@ export function useWorkoutSession(
     void (async () => {
       // 가드·페이로드는 큐에서 실제로 실행되는 시점에 읽는다(대기 중 상태가 바뀔 수 있다).
       const ownerUid = sessionOwnerUidRef.current;
+      const clientWorkoutId = clientWorkoutIdRef.current;
       const user = authUserRef.current;
       if (
         statusRef.current !== "running"
         || ownerUid == null
+        || clientWorkoutId == null
         || user == null
         || user.uid !== ownerUid
         || vehicleStateRef.current.tier !== "normal"
@@ -308,16 +315,27 @@ export function useWorkoutSession(
           pauseStartedRef.current,
         ),
       );
+      const sentAt = nextLiveSentAt();
       return await postLiveProgress(
         Math.round(distanceAccumRef.current),
         elapsedSec,
-        nextLiveSentAt(),
+        sentAt,
+        clientWorkoutId,
         user,
       ).then(
         (res) => {
           // 응답 도착 시점에도 여전히 같은 소유자의 같은 런이 진행 중일 때만 반영 —
           // 그 사이 런이 끝나거나 계정이 바뀌었으면 낡은 격차를 화면에 남기지 않는다.
-          if (sessionOwnerUidRef.current !== ownerUid || statusRef.current !== "running") return;
+          if (
+            sessionOwnerUidRef.current !== ownerUid
+            || statusRef.current !== "running"
+            || !isLatestLiveProgressResponse(
+              clientWorkoutId,
+              sentAt,
+              clientWorkoutIdRef.current,
+              liveSentAtRef.current,
+            )
+          ) return;
           setLiveRivalGaps(
             res.challenges.flatMap((c) =>
               c.rivalGaps.map((g) => ({ ...g, challengeId: c.challengeId })),
@@ -405,6 +423,7 @@ export function useWorkoutSession(
     statusRef.current = "idle";
     pathRef.current = [];
     sessionOwnerUidRef.current = null;
+    clientWorkoutIdRef.current = null;
     pauseStartedRef.current = null;
     pausedAccumRef.current = 0;
     runStartedRef.current = null;
@@ -823,6 +842,7 @@ export function useWorkoutSession(
         }
         saveWorkout({
           ownerUid,
+          clientWorkoutId: clientWorkoutIdRef.current ?? undefined,
           status: "paused",
           path: pathRef.current,
           distanceM: distanceAccumRef.current,
@@ -870,6 +890,8 @@ export function useWorkoutSession(
     const saved = loadWorkoutForOwner(ownerUid);
     if (!saved) return;
     sessionOwnerUidRef.current = ownerUid;
+    // 구버전 저장본에는 런 ID가 없다. 복원 시 한 번 발급하고 이후 주기 저장에서 보존한다.
+    clientWorkoutIdRef.current = saved.clientWorkoutId ?? createClientWorkoutId();
 
     runStartedRef.current = saved.runStartedAt;
     pausedAccumRef.current = saved.pausedAccumMs;
@@ -1061,6 +1083,7 @@ export function useWorkoutSession(
     warmupFixesRef.current = [];
     const initialPath = startSeed ? [startSeed] : [];
     sessionOwnerUidRef.current = expectedUid;
+    clientWorkoutIdRef.current = createClientWorkoutId();
     restoreAttemptedUidRef.current = expectedUid;
     setPath(initialPath);
     pathRef.current = initialPath;
@@ -1257,7 +1280,7 @@ export function useWorkoutSession(
     const finalDistance = Math.round(distanceAccumRef.current);
 
     const snapshot: WorkoutFinishSnapshot = {
-      clientWorkoutId: createClientWorkoutId(),
+      clientWorkoutId: clientWorkoutIdRef.current ?? createClientWorkoutId(),
       startedAt,
       startedAtLocal,
       endedAt,

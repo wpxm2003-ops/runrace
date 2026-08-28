@@ -25,6 +25,7 @@ class MemoryStorage {
 
 const baseWorkout: Omit<PersistedWorkout, "savedAt"> = {
   ownerUid: "user-a",
+  clientWorkoutId: "run-a",
   status: "running",
   path: [{ lat: 37.5, lng: 127, t: 0 }],
   distanceM: 0,
@@ -53,6 +54,12 @@ afterEach(() => {
 });
 
 describe("workoutPersistence owner", () => {
+  it("라이브 핑과 최종 저장에 쓸 런 식별자를 그대로 복원한다", () => {
+    saveWorkout(baseWorkout);
+
+    expect(loadWorkoutForOwner("user-a")?.clientWorkoutId).toBe("run-a");
+  });
+
   it("같은 Firebase UID만 진행 중 운동을 복원한다", () => {
     saveWorkout(baseWorkout);
 

@@ -17,7 +17,6 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
-import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.domain.DeviceToken;
 import com.runrace.backend.push.domain.SystemPushHistory;
 import com.runrace.backend.push.repository.DeviceTokenRepository;
@@ -45,8 +44,8 @@ class PushServiceTest {
   @Mock DeviceTokenRepository deviceTokenRepository;
   @Mock AppUserRepository appUserRepository;
   @Mock PushHistoryWriter pushHistoryWriter;
+  @Mock PushSideEffectWriter pushSideEffectWriter;
   @Mock MessageSource messageSource;
-  @Mock ErrorLogService errorLogService;
   @Mock FirebaseMessaging firebaseMessaging;
 
   @InjectMocks PushService service;
@@ -214,7 +213,7 @@ class PushServiceTest {
         assertDoesNotThrow(() ->
             service.sendLocalized(userId, "t", "b", null, "/link", "race_workout"));
 
-        verify(errorLogService).recordServiceError(
+        verify(pushSideEffectWriter).recordError(
             eq("push_history"), eq("RuntimeException"), eq("db down"), any(),
             eq("userId=" + userId + " pushType=race_workout"));
       }
@@ -274,8 +273,8 @@ class PushServiceTest {
         int sent = service.sendToUserTokens(userId, "제목", "본문", null);
 
         assertEquals(0, sent);
-        verify(deviceTokenRepository).delete(deadToken);
-        verifyNoInteractions(errorLogService);
+        verify(pushSideEffectWriter).deleteDeadToken(deadToken.getId());
+        verify(pushSideEffectWriter, never()).recordError(any(), any(), any(), any(), any());
       }
     }
 
@@ -292,7 +291,7 @@ class PushServiceTest {
 
         service.sendToUserTokens(userId, "제목", "본문", null);
 
-        verify(deviceTokenRepository).delete(badToken);
+        verify(pushSideEffectWriter).deleteDeadToken(badToken.getId());
       }
     }
 
@@ -311,8 +310,8 @@ class PushServiceTest {
         int sent = service.sendToUserTokens(userId, "제목", "본문", null);
 
         assertEquals(0, sent);
-        verify(deviceTokenRepository, never()).delete(any());
-        verify(errorLogService).recordServiceError(
+        verify(pushSideEffectWriter, never()).deleteDeadToken(any());
+        verify(pushSideEffectWriter).recordError(
             eq("push"), eq("INTERNAL"), eq("internal error"), eq(null), eq("userId=" + userId + " platform=android"));
       }
     }
@@ -332,7 +331,7 @@ class PushServiceTest {
         int sent = service.sendToUserTokens(userId, "제목", "본문", null);
 
         assertEquals(1, sent);
-        verify(errorLogService).recordServiceError(
+        verify(pushSideEffectWriter).recordError(
             eq("push"), eq("RuntimeException"), eq("network"), any(),
             eq("userId=" + userId + " platform=android"));
       }

@@ -47,7 +47,9 @@ class AccountWithdrawalTx {
 
   @Transactional
   public WithdrawalCleanup anonymize(UUID userId) {
-    AppUser user = appUserRepository.getRequired(userId);
+    // 모든 계정 변경과 같은 행 잠금을 사용한다. 탈퇴가 시작된 뒤 오래된 설정/프로필
+    // 엔티티가 개인정보와 firebaseUid를 다시 저장하는 경쟁을 막는다.
+    AppUser user = appUserRepository.getRequiredActiveForUpdate(userId);
     String originalFirebaseUid = user.getFirebaseUid();
 
     // 1. 운동 기록: 행·집계는 보존, GPS 경로·이미지(개인 위치정보)만 제거. 이미지는 S3 정리용 URL 수집.

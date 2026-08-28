@@ -36,6 +36,9 @@ public interface ChallengeMemberRepository
    *       핑·일시정지·삭제가 같은 토큰을 쓰므로, 종료 시 보낸 일시정지가 그보다 먼저 만들어진
    *       지각 핑을 무효화한다. 이게 없으면 확정 저장 뒤 도착한 핑이 방금 확정된 거리를 다시
    *       얹고(이중 계상), 일시정지 뒤 도착한 핑이 "러닝 중"을 되살린다.
+   *   <li>{@code not exists(workout_session...)} — 이 런이 이미 확정 저장됐다면 떨군다. 서비스의
+   *       사전 exists 조회만으로는 조회 직후 저장이 커밋되는 창이 남으므로 UPDATE 문에서도
+   *       같은 조건을 최종 확인한다. null은 구버전 앱 호환을 위해 허용한다.
    * </ul>
    *
    * @return 갱신된 행 수(0이면 확정 반영이 끼어들었거나 더 나중 요청이 이미 반영됐다는 뜻)
@@ -43,13 +46,23 @@ public interface ChallengeMemberRepository
   @Modifying(clearAutomatically = false, flushAutomatically = false)
   @Query("update ChallengeMember m "
       + "set m.liveKm = :liveKm, m.liveUpdatedAt = :now, m.livePaused = false, m.liveSentAt = :sentAt "
-      + "where m.id = :id and m.totalKm = :expectedTotalKm and m.liveSentAt < :sentAt")
+      + "where m.id = :id and m.totalKm = :expectedTotalKm and m.liveSentAt < :sentAt "
+      + "and (:clientWorkoutId is null or not exists ("
+      + "select w.id from WorkoutSession w "
+      + "where w.user.id = m.user.id and w.clientWorkoutId = :clientWorkoutId))")
   int updateLiveProgress(
       @Param("id") UUID id,
       @Param("liveKm") BigDecimal liveKm,
       @Param("now") OffsetDateTime now,
       @Param("expectedTotalKm") BigDecimal expectedTotalKm,
-      @Param("sentAt") long sentAt);
+      @Param("sentAt") long sentAt,
+      @Param("clientWorkoutId") UUID clientWorkoutId);
+
+  /** 구버전 앱 호환 — 런 UUID가 없는 요청에도 나머지 원자 조건은 동일하게 적용한다. */
+  default int updateLiveProgress(
+      UUID id, BigDecimal liveKm, OffsetDateTime now, BigDecimal expectedTotalKm, long sentAt) {
+    return updateLiveProgress(id, liveKm, now, expectedTotalKm, sentAt, null);
+  }
 
   /**
    * 확정 반영 시점의 라이브 정리 — 서버 권위 경로 전용이라 순서 토큰을 보지도, 올리지도 않는다.
@@ -91,15 +104,15 @@ public interface ChallengeMemberRepository
    * <p>사용자 단위로 지우면 안 된다. 공개는 껐지만 크루는 켠 사용자가 두 레이스에 동시 참여하면,
    * 꺼진 축의 행을 처리하면서 같은 루프에서 방금 갱신한 켜진 축의 값까지 날아간다.
    *
-   * <p>이미 비어 있는 행은 건드리지 않는다. 지울 게 없는데도 토큰만 갱신하면 공유를 끈 사용자의
-   * 러닝 내내 무의미한 행 버전(dead tuple)이 60초마다 쌓인다. 건너뛰어도 안전하다 — 값이 없으면
-   * 되살아날 것도 없고, 지각 핑 역시 자기 트랜잭션에서 설정을 다시 읽어 같은 분기로 들어온다.
+   * <p>값이 이미 비어 있어도 명시적 discard는 토큰을 기록해야 한다. 첫 핑이 DB에 도착하기 전에
+   * discard가 먼저 도착할 수 있고, 이때 토큰을 래치하지 않으면 뒤늦은 첫 핑이 폐기한 런을
+   * 되살린다. 공유 opt-out의 주기 정리는 서비스가 {@code hasLiveState}로 먼저 걸러 불필요한
+   * dead tuple을 만들지 않는다.
    */
   @Modifying(clearAutomatically = false, flushAutomatically = false)
   @Query("update ChallengeMember m "
       + "set m.liveKm = null, m.liveUpdatedAt = null, m.livePaused = false, m.liveSentAt = :sentAt "
-      + "where m.id = :id and m.liveSentAt < :sentAt "
-      + "and (m.liveKm is not null or m.liveUpdatedAt is not null or m.livePaused = true)")
+      + "where m.id = :id and m.liveSentAt < :sentAt")
   int discardLiveProgressForMember(@Param("id") UUID id, @Param("sentAt") long sentAt);
 
   /**

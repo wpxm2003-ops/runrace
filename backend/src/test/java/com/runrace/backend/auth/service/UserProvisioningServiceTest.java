@@ -51,7 +51,7 @@ class UserProvisioningServiceTest {
   @Nested class ExistingUser {
     @Test void 변경없으면_저장안하고_그대로반환() {
       AppUser user = existing("e@x.com", "철수", "google");
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.of(user));
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.of(user));
 
       AppUser result = service.upsert(firebaseUid, "e@x.com", "철수", "google", true, "ko");
 
@@ -61,7 +61,7 @@ class UserProvisioningServiceTest {
 
     @Test void 이메일과이름이변경되면_업데이트후저장() {
       AppUser user = existing("old@x.com", "Old", "google");
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.of(user));
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.of(user));
       when(appUserRepository.save(user)).thenReturn(user);
 
       service.upsert(firebaseUid, "new@x.com", "New", "google", true, "ko");
@@ -73,7 +73,7 @@ class UserProvisioningServiceTest {
 
     @Test void 이름이빈값으로들어오면_기존이름유지() {
       AppUser user = existing("old@x.com", "기존이름", "google");
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.of(user));
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.of(user));
       when(appUserRepository.save(user)).thenReturn(user);
 
       // 이메일은 바뀌어 저장은 발생하되, 이름은 blank라 기존값 유지돼야 한다.
@@ -84,7 +84,7 @@ class UserProvisioningServiceTest {
 
     @Test void 이메일이null로들어오면_기존이메일유지() {
       AppUser user = existing("old@x.com", "이름", "google");
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.of(user));
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.of(user));
       when(appUserRepository.save(user)).thenReturn(user);
 
       service.upsert(firebaseUid, null, "새이름", "google", true, "ko");
@@ -95,7 +95,7 @@ class UserProvisioningServiceTest {
     @Test void provider가custom으로들어오면_기존provider유지() {
       // 카카오 로그인은 Firebase 커스텀 토큰이라 sign_in_provider가 "custom"으로 넘어온다.
       AppUser user = existing("e@x.com", "이름", "kakao");
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.of(user));
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.of(user));
       when(appUserRepository.save(user)).thenReturn(user);
 
       service.upsert(firebaseUid, "e@x.com", "새이름", "custom", true, "ko");
@@ -105,7 +105,7 @@ class UserProvisioningServiceTest {
 
     @Test void provider가실제값으로들어오면_교체() {
       AppUser user = existing("e@x.com", "이름", "google");
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.of(user));
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.of(user));
       when(appUserRepository.save(user)).thenReturn(user);
 
       service.upsert(firebaseUid, "e@x.com", "이름", "apple", true, "ko");
@@ -118,9 +118,9 @@ class UserProvisioningServiceTest {
 
   @Nested class NewUserOrMerge {
     @Test void 검증된이메일로_기존계정있으면_병합() {
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.empty());
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.empty());
       AppUser byEmail = existing("shared@x.com", "기존", "google");
-      when(appUserRepository.findByEmail("shared@x.com")).thenReturn(Optional.of(byEmail));
+      when(appUserRepository.findByEmailForUpdate("shared@x.com")).thenReturn(Optional.of(byEmail));
       when(appUserRepository.save(byEmail)).thenReturn(byEmail);
 
       AppUser result = service.upsert(firebaseUid, "shared@x.com", "새이름", "google", true, "ko");
@@ -131,19 +131,19 @@ class UserProvisioningServiceTest {
     }
 
     @Test void 이메일미검증이면_병합하지않고_새로생성() {
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.empty());
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.empty());
       when(appUserRepository.existsByNicknameAndWithdrawnAtIsNull(any())).thenReturn(false);
       AppUser created = existing("shared@x.com", "새이름", "google");
       when(userInsertTx.insert(any())).thenReturn(created);
 
       service.upsert(firebaseUid, "shared@x.com", "새이름", "google", false, "ko");
 
-      verify(appUserRepository, never()).findByEmail(any());
+      verify(appUserRepository, never()).findByEmailForUpdate(any());
       verify(userInsertTx).insert(any());
     }
 
     @Test void 이메일없으면_새로생성() {
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.empty());
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.empty());
       when(appUserRepository.existsByNicknameAndWithdrawnAtIsNull(any())).thenReturn(false);
       AppUser created = existing(null, "새이름", "google");
       when(userInsertTx.insert(any())).thenReturn(created);
@@ -151,7 +151,7 @@ class UserProvisioningServiceTest {
       AppUser result = service.upsert(firebaseUid, null, "새이름", "google", false, "ko");
 
       assertSame(created, result);
-      verify(appUserRepository, never()).findByEmail(any());
+      verify(appUserRepository, never()).findByEmailForUpdate(any());
     }
   }
 
@@ -159,7 +159,7 @@ class UserProvisioningServiceTest {
 
   @Nested class NicknameCollision {
     @Test void 닉네임이미존재하면_다음후보로재시도() {
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.empty());
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.empty());
       when(appUserRepository.existsByNicknameAndWithdrawnAtIsNull(any())).thenReturn(true, false);
       AppUser created = existing(null, null, "google");
       when(userInsertTx.insert(any())).thenReturn(created);
@@ -175,7 +175,7 @@ class UserProvisioningServiceTest {
       when(appUserRepository.existsByNicknameAndWithdrawnAtIsNull(any())).thenReturn(false);
       when(userInsertTx.insert(any())).thenThrow(new DataIntegrityViolationException("dup"));
       AppUser racedRow = existing(null, null, "google");
-      when(appUserRepository.findByFirebaseUid(firebaseUid))
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid))
           .thenReturn(Optional.empty(), Optional.of(racedRow));
 
       AppUser result = service.upsert(firebaseUid, null, null, "google", false, "ko");
@@ -190,7 +190,7 @@ class UserProvisioningServiceTest {
       when(userInsertTx.insert(any()))
           .thenThrow(new DataIntegrityViolationException("dup"))
           .thenReturn(created);
-      when(appUserRepository.findByFirebaseUid(firebaseUid))
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid))
           .thenReturn(Optional.empty(), Optional.empty());
 
       AppUser result = service.upsert(firebaseUid, null, null, "google", false, "ko");
@@ -200,7 +200,7 @@ class UserProvisioningServiceTest {
     }
 
     @Test void 모든시도실패하면_nickname_unavailable() {
-      when(appUserRepository.findByFirebaseUid(firebaseUid)).thenReturn(Optional.empty());
+      when(appUserRepository.findByFirebaseUidForUpdate(firebaseUid)).thenReturn(Optional.empty());
       when(appUserRepository.existsByNicknameAndWithdrawnAtIsNull(any())).thenReturn(false);
       when(userInsertTx.insert(any())).thenThrow(new DataIntegrityViolationException("dup"));
 
