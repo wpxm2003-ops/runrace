@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { usePathname } from "next/navigation";
-import { clearLiveProgress, pauseLiveProgress, postLiveProgress } from "@/lib/api/challenges";
-import type { LiveRivalGap } from "@/lib/api/types";
 import {
   estimateCalories,
   evaluateVehicleTier,
@@ -38,6 +36,7 @@ import {
   initialVehicleDetectState,
 } from "./workoutSessionMath";
 import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersistence";
+import { useWorkoutPersistenceFlush } from "./useWorkoutPersistenceFlush";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
 import { avgPaceSecPerKm } from "./paceMath";
@@ -48,9 +47,10 @@ import { Capacitor } from "@capacitor/core";
 import { waitForNativePermissions } from "./nativePermissions";
 import { createClientWorkoutId } from "./workoutRequestId";
 import { isLatestLiveProgressResponse } from "./liveProgressFreshness";
+import type { LiveRivalGap } from "@/lib/api/types";
+import { clearLiveProgress, pauseLiveProgress, postLiveProgress } from "@/lib/api/challenges";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
-const SAVE_INTERVAL_MS = 10_000;
 const WARMUP_FIX_BUFFER_SIZE = 6;
 const GPS_WATCHDOG_POLL_MS = 5_000;
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
@@ -58,6 +58,7 @@ const GPS_RESTART_DEBOUNCE_MS = 2_000;
 const IDLE_GAP_VERIFY_TIMEOUT_MS = 15_000;
 /** 실시간 진행률 핑 주기 — 시작·재개 때는 별도로 즉시 전송하고 이후 60초마다 갱신한다. */
 const LIVE_PING_INTERVAL_MS = 60_000;
+/** 실시간 진행률 핑 주기 — 시작·재개 때는 별도로 즉시 전송하고 이후 60초마다 갱신한다. */
 
 type WorkoutSessionAuth = {
   /** Firebase가 확정한 현재 사용자 UID. hint 같은 낙관값은 사용하지 않는다. */
@@ -170,60 +171,18 @@ export function useWorkoutSession(
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { pathRef.current = path; }, [path]);
 
-  // ── 퍼시스턴스: 상태 전환(running↔paused) 시 즉시 저장 ────────────────────
-  // 경로(path)는 의존성에서 제외한다 — GPS 포인트마다 재저장하면 매번 전체 배열을
-  // JSON.stringify 하여 O(n^2)로 커진다. 경로 스냅샷은 아래 주기적 flush(SAVE_INTERVAL_MS)
-  // + pagehide/visibilitychange flush가 담당하며, 이 효과는 상태 전환만 즉시 반영한다.
-  useEffect(() => {
-    const ownerUid = sessionOwnerUidRef.current;
-    if (status === "idle" || runStartedRef.current == null || ownerUid == null) return;
-    saveWorkout({
-      ownerUid,
-      clientWorkoutId: clientWorkoutIdRef.current ?? undefined,
-      status: status as "running" | "paused",
-      path: pathRef.current,
-      distanceM: distanceAccumRef.current,
-      runStartedAt: runStartedRef.current,
-      pausedAccumMs: pausedAccumRef.current,
-      pauseStartedAt: pauseStartedRef.current,
-      idleAnchor: idleAnchorRef.current ?? undefined,
-      autoPaused: autoPausedRef.current,
-    });
-  }, [status, autoPaused]);
-
-  // ── 퍼시스턴스: pagehide / visibilitychange / 주기적 저장 ────────────────
-  useEffect(() => {
-    const flush = () => {
-      const ownerUid = sessionOwnerUidRef.current;
-      if (statusRef.current === "idle" || runStartedRef.current == null || ownerUid == null) return;
-      saveWorkout({
-        ownerUid,
-        clientWorkoutId: clientWorkoutIdRef.current ?? undefined,
-        status: statusRef.current as "running" | "paused",
-        path: pathRef.current,
-        distanceM: distanceAccumRef.current,
-        runStartedAt: runStartedRef.current,
-        pausedAccumMs: pausedAccumRef.current,
-        pauseStartedAt: pauseStartedRef.current,
-        idleAnchor: idleAnchorRef.current ?? undefined,
-        autoPaused: autoPausedRef.current,
-      });
-    };
-
-    const onVisibility = () => { if (document.hidden) flush(); };
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", flush);
-
-    const timer = setInterval(() => {
-      if (statusRef.current === "running") flush();
-    }, SAVE_INTERVAL_MS);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", flush);
-      clearInterval(timer);
-    };
-  }, []);
+  useWorkoutPersistenceFlush(status, autoPaused, {
+    sessionOwnerUidRef,
+    clientWorkoutIdRef,
+    statusRef,
+    pathRef,
+    distanceAccumRef,
+    runStartedRef,
+    pausedAccumRef,
+    pauseStartedRef,
+    idleAnchorRef,
+    autoPausedRef,
+  });
 
   // ── 실시간 진행률 핑: 서버에 현재 누적 거리를 보내 참여 중인 레이스의 라이벌과의
   // 실시간 격차를 받는다. 로컬 저장(위 SAVE_INTERVAL_MS)과 달리 서버 호출이라, 탈것 의심/확정

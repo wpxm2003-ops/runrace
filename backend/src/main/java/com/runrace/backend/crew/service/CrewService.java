@@ -78,8 +78,6 @@ public class CrewService {
   /** 월간 보드 경계의 단일 기준 — 기존 운동일 집계와 동일하게 KST를 쓴다. */
   private static final ZoneId KST = KstTime.ZONE;
 
-  /** 명예의 전당에 노출할 완결 개월 수 — 조회 하한과 표시 개수가 함께 쓰는 단일 출처. */
-  private static final int HALL_OF_FAME_MONTHS = 12;
   /** 초대 코드 문자 — 혼동되는 I·L·O·0·1 제외. */
   private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   private static final int CODE_LEN = 6;
@@ -91,6 +89,7 @@ public class CrewService {
   private final AppUserRepository appUserRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final CrewProfileImages crewProfileImages;
+  private final CrewInsightsReader crewInsightsReader;
   private final ActivityHistoryService activityHistoryService;
 
   // ── 조회 ──────────────────────────────────────────────────────
@@ -202,70 +201,7 @@ public class CrewService {
     CrewMember membership = requireMembership(meId);
     Crew crew = membership.getCrew();
     List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
-    OffsetDateTime heatmapFrom = monthStartKst();
-
-    List<CrewInsightsResponse.DayCell> heatmap = buildHeatmap(crew.getId(), members, heatmapFrom);
-    // 이번 달(진행 중)은 어차피 제외하므로, 이번 달 1일에서 노출 개월 수만큼 거슬러 올라가면
-    // 완결된 달이 정확히 HALL_OF_FAME_MONTHS개 들어온다.
-    List<CrewInsightsResponse.HallEntry> hallOfFame =
-        buildHallOfFame(crew.getId(), members, heatmapFrom.minusMonths(HALL_OF_FAME_MONTHS));
-
-    return new CrewInsightsResponse(
-        heatmapFrom.atZoneSameInstant(KST).toLocalDate().toString(),
-        members.size(), heatmap, hallOfFame);
-  }
-
-  /**
-   * 잔디 — 이번 달(캘린더 월 1일 시작). 날짜별 뛴 멤버 닉네임(가입 순, 최대 10명).
-   * 달마다 실제 날짜 수·시작 요일이 달라 매달 그리드 모양이 자연히 달라진다(고정 윈도우가 아님).
-   */
-  private List<CrewInsightsResponse.DayCell> buildHeatmap(
-      Long crewId, List<CrewMember> members, OffsetDateTime heatmapFrom) {
-    Map<LocalDate, Set<UUID>> runnersByDay = new HashMap<>();
-    for (var row : crewMemberRepository.findDailyRunners(crewId, heatmapFrom)) {
-      runnersByDay.computeIfAbsent(row.getDay(), k -> new HashSet<>()).add(row.getUserId());
-    }
-    return runnersByDay.entrySet().stream()
-        .map(e -> {
-          List<String> names = members.stream()
-              .filter(m -> e.getValue().contains(m.getUser().getId()))
-              .map(m -> m.getUser().getNickname())
-              .filter(Objects::nonNull)
-              .limit(10)
-              .toList();
-          return new CrewInsightsResponse.DayCell(e.getKey().toString(), e.getValue().size(), names);
-        })
-        .toList();
-  }
-
-  /**
-   * 명예의 전당 — 월별 최다 거리 멤버. 진행 중인 이번 달은 제외, 최신월 우선 최대
-   * {@value #HALL_OF_FAME_MONTHS}개. {@code from}은 그 개월 수에서 계산된 조회 하한이라
-   * 아래 limit과 같은 상수를 공유해야 한다(한쪽만 바꾸면 개수가 어긋난다).
-   */
-  private List<CrewInsightsResponse.HallEntry> buildHallOfFame(
-      Long crewId, List<CrewMember> members, OffsetDateTime from) {
-    Map<UUID, String> nicknames = new HashMap<>();
-    for (CrewMember m : members) {
-      nicknames.put(m.getUser().getId(), m.getUser().getNickname());
-    }
-
-    String currentYm = LocalDate.now(KST).toString().substring(0, 7);
-    Map<String, CrewInsightsResponse.HallEntry> bestByMonth = new HashMap<>();
-    for (var row : crewMemberRepository.aggregateMonthlyMemberDistance(crewId, from)) {
-      if (row.getYm().compareTo(currentYm) >= 0) {
-        continue;
-      }
-      CrewInsightsResponse.HallEntry cur = bestByMonth.get(row.getYm());
-      if (cur == null || row.getDistanceM() > cur.distanceM()) {
-        bestByMonth.put(row.getYm(), new CrewInsightsResponse.HallEntry(
-            row.getYm(), nicknames.get(row.getUserId()), row.getDistanceM()));
-      }
-    }
-    return bestByMonth.values().stream()
-        .sorted(Comparator.comparing(CrewInsightsResponse.HallEntry::month).reversed())
-        .limit(HALL_OF_FAME_MONTHS)
-        .toList();
+    return crewInsightsReader.read(crew.getId(), members);
   }
 
   // ── 생성·가입·탈퇴 ────────────────────────────────────────────

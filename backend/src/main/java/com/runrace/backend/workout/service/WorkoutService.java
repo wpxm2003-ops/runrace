@@ -85,8 +85,6 @@ public class WorkoutService {
   private static final int MIN_GHOST_OVERLAP_M = 500;
   private static final long GHOST_DELTA_TOLERANCE_MS = 1_000;
   private static final long MAX_GHOST_TIME_MS = MAX_DURATION_SEC * 1_000L;
-  /** 공유 페이지에서 경로 시작·종료 부근을 잘라내는 반경(m) — 거주지 추론 방지. */
-  private static final double SHARE_PATH_TRUNCATE_M = 250;
 
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
@@ -656,13 +654,10 @@ public class WorkoutService {
     }
   }
 
-  /** 좌표 저장 정밀도(소수 6자리 ≈ 0.11m). GPS 오차(3~5m)보다 충분히 정밀하면서 저장 용량을 줄인다. */
-  private static final double COORD_SCALE = 1_000_000d;
-
   String toJson(List<PathPoint> path) {
     try {
       // 원본 GPS 고도를 보존해야 DEM 교체·장애·데이터셋 변경 시 언제든 다시 보정할 수 있다.
-      return objectMapper.writeValueAsString(roundCoords(path));
+      return objectMapper.writeValueAsString(WorkoutPathSupport.roundForStorage(path));
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("path_json_encode_failed", e);
     }
@@ -709,27 +704,6 @@ public class WorkoutService {
     private static final GhostRaceData EMPTY = new GhostRaceData(null, null);
   }
 
-  /** 저장 직전 좌표를 6자리로 반올림한다(거리·페이스는 클라이언트 계산값을 쓰므로 영향 없음). */
-  private static List<PathPoint> roundCoords(List<PathPoint> path) {
-    return path.stream()
-        .map(p -> new PathPoint(
-            roundCoord(p.lat()),
-            roundCoord(p.lng()),
-            p.t(),
-            roundElevation(p.ele()),
-            p.breakBefore()))
-        .toList();
-  }
-
-  private static double roundCoord(double value) {
-    return Math.round(value * COORD_SCALE) / COORD_SCALE;
-  }
-
-  private static Double roundElevation(Double value) {
-    if (value == null || !Double.isFinite(value)) return null;
-    return Math.round(value * 10d) / 10d;
-  }
-
   private List<PathPoint> parsePath(String pathJson) {
     try {
       return objectMapper.readValue(
@@ -744,55 +718,13 @@ public class WorkoutService {
   public List<PathPointDto> toPath(String pathJson) {
     return parsePath(pathJson).stream()
         .map(p -> new PathPointDto(
-            p.lat(), p.lng(), p.t(), roundElevation(p.ele()), p.breakBefore()))
+            p.lat(), p.lng(), p.t(), WorkoutPathSupport.roundElevation(p.ele()), p.breakBefore()))
         .toList();
   }
 
   /** 공유 페이지 전용 — {@link #toPath}에 프라이버시 절단을 더한 것. */
   public List<PathPointDto> toSharePath(String pathJson) {
-    return truncateForShare(toPath(pathJson));
-  }
-
-  private static double haversineMeters(PathPointDto a, PathPointDto b) {
-    double toRad = Math.PI / 180;
-    double dLat = (b.lat() - a.lat()) * toRad;
-    double dLng = (b.lng() - a.lng()) * toRad;
-    double lat1 = a.lat() * toRad;
-    double lat2 = b.lat() * toRad;
-    double h = Math.pow(Math.sin(dLat / 2), 2)
-        + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dLng / 2), 2);
-    // 부동소수 오차로 h가 [0,1]을 살짝 벗어나면 asin이 NaN이 되므로 클램프한다.
-    double clampedH = Math.max(0, Math.min(1, h));
-    return 2 * 6_371_000 * Math.asin(Math.sqrt(clampedH));
-  }
-
-  private static double creditedPathMeters(PathPointDto a, PathPointDto b) {
-    return Boolean.TRUE.equals(b.breakBefore()) ? 0 : haversineMeters(a, b);
-  }
-
-  /**
-   * 공유용 경로 — 시작·종료 {@value #SHARE_PATH_TRUNCATE_M}m 구간을 잘라 거주지 추론을 어렵게 한다.
-   * 잘라내고 남는 중간 구간이 2점 미만이면(짧은 왕복 러닝 등) 통째로 빈 경로를 반환한다 —
-   * 노출보다 "경로 없음" 표시가 낫다.
-   */
-  private static List<PathPointDto> truncateForShare(List<PathPointDto> path) {
-    // 1점 이하는 잘라낼 앞뒤 구간이 없다 — 있는 그대로 내보내면 "노출보다 없음이 낫다"는
-    // 이 메서드의 목적과 어긋나므로(1점=사실상 시작·끝이 같은 지점) 빈 경로로 취급한다.
-    if (path.size() < 2) return List.of();
-    int startIdx = 0;
-    double acc = 0;
-    while (startIdx < path.size() - 1 && acc < SHARE_PATH_TRUNCATE_M) {
-      acc += creditedPathMeters(path.get(startIdx), path.get(startIdx + 1));
-      startIdx++;
-    }
-    int endIdx = path.size() - 1;
-    acc = 0;
-    while (endIdx > 0 && acc < SHARE_PATH_TRUNCATE_M) {
-      acc += creditedPathMeters(path.get(endIdx - 1), path.get(endIdx));
-      endIdx--;
-    }
-    if (endIdx <= startIdx) return List.of();
-    return path.subList(startIdx, endIdx + 1);
+    return WorkoutPathSupport.truncateForShare(toPath(pathJson));
   }
 
   /** 평균 페이스(초/km). {@link #MIN_DISTANCE_FOR_PACE_M} 미만이면 null. */

@@ -107,7 +107,8 @@ export const IDLE_AUTO_PAUSE_WINDOW_MS = 30 * 60_000;
 /** 창 안에 이만큼도 못 나아가면 방치로 판정한다(가장 느린 산책도 30분에 1km+는 간다). */
 export const IDLE_AUTO_PAUSE_MIN_PROGRESS_M = 100;
 /** 누적 거리와 함께 요구할 최소 공간 폭 — 5~10m GPS 왕복 드리프트를 실제 이동과 구분한다. */
-export const IDLE_AUTO_PAUSE_MIN_SPAN_M = 50;
+export { IDLE_AUTO_PAUSE_MIN_SPAN_M } from "./workoutThresholds";
+import { IDLE_AUTO_PAUSE_MIN_SPAN_M } from "./workoutThresholds";
 
 type GeoPoint = { lat: number; lng: number };
 
@@ -718,213 +719,16 @@ export function estimateCalories(distanceM: number): number {
   return Math.round(km * 65);
 }
 
-/**
- * GPS 실패 사유. 문구가 아니라 코드를 돌려준다 — 이 모듈은 로케일을 모르는데
- * 예전에는 한국어 문장을 그대로 반환해, 어떤 언어를 쓰든 위치 오류 배너만 한국어로 떴다.
- * 문구 매핑은 화면 계층(useWorkoutSession의 geoMessages)이 담당한다.
- */
-export type GeoErrorCode = "unavailable" | "insecure" | "permission" | "timeout" | "unknown";
-
-/** http://IP 등 비보안 페이지에서는 Geolocation API 사용 불가 */
-export function geolocationBlockedCode(): GeoErrorCode | null {
-  if (typeof window === "undefined") return null;
-  if (!navigator.geolocation) return "unavailable";
-  if (!window.isSecureContext) return "insecure";
-  return null;
-}
-
-export const GPS_WATCHDOG_TIMEOUT_MS = 15_000;
-/**
- * After this long without a GPS callback while Android was backgrounded, the
- * app cannot distinguish a genuine rest from a suspended WebView bridge. Do
- * not turn that unknown gap into a false "idle" auto-pause when it returns.
- */
-export const GPS_FOREGROUND_RECOVERY_GAP_MS = 30_000;
-
-/** A running foreground watch is stale when neither startup nor the last fix is recent. */
-export function shouldRestartGpsWatch(
-  nowMs: number,
-  watchStartedAtMs: number | null,
-  lastFixAtMs: number | null,
-  timeoutMs: number = GPS_WATCHDOG_TIMEOUT_MS,
-): boolean {
-  if (watchStartedAtMs == null) return true;
-  const lastActivityAtMs = Math.max(watchStartedAtMs, lastFixAtMs ?? 0);
-  return nowMs - lastActivityAtMs >= timeoutMs;
-}
-
-/**
- * 공백이 "실제 이동"이었다고 볼 최소 변위. 방치 판정의 공간 폭 기준과 같은 값을 쓴다 —
- * 두 장치가 서로 다른 "움직였다"를 쓰면 한쪽이 통과시킨 것을 다른 쪽이 방치로 잡는다.
- */
-export const IDLE_GAP_MOVEMENT_THRESHOLD_M = IDLE_AUTO_PAUSE_MIN_SPAN_M;
-
-/**
- * 포그라운드 복귀로 드러난 GPS 공백이 실제 이동 때문인지 판정한다.
- *
- * <p>공백의 원인은 둘인데 콜백만 보면 구분되지 않는다 — 안드로이드가 WebView를 재워
- * 실제로 뛴 구간이 기록되지 않았거나, 사용자가 가만히 서 있어 distanceFilter가 침묵했거나.
- * 공백 시작 지점과 복귀 직후 위치의 거리를 재면 갈린다.
- *
- * <p>둘 중 하나라도 위치를 모르면 이동한 것으로 본다 — 진짜 러닝을 방치로 오인해
- * 잘라내는 실패가, 쉰 시간이 조금 섞이는 실패보다 훨씬 나쁘다.
- *
- * <p>한계: 한 바퀴 돌아 제자리로 돌아온 코스는 변위가 작아 방치로 판정된다.
- */
-export function foregroundGapLooksLikeMovement(
-  reference: GeoPoint | null | undefined,
-  recovered: GeoPoint | null | undefined,
-  thresholdM: number = IDLE_GAP_MOVEMENT_THRESHOLD_M,
-): boolean {
-  if (!reference || !recovered) return true;
-  return haversineMeters(reference, recovered) >= thresholdM;
-}
-
-/** Whether a foreground return has an unobservable GPS gap that must reset the idle anchor. */
-export function shouldResetIdleAnchorAfterForegroundGap(
-  nowMs: number,
-  lastFixAtMs: number | null,
-  maxGapMs: number = GPS_FOREGROUND_RECOVERY_GAP_MS,
-): boolean {
-  if (!Number.isFinite(nowMs) || !Number.isFinite(maxGapMs) || maxGapMs < 0) return false;
-  if (lastFixAtMs == null || !Number.isFinite(lastFixAtMs)) return true;
-  return nowMs - lastFixAtMs >= maxGapMs;
-}
-
-export type KmSplit = {
-  km: number;
-  distanceM: number;
-  paceSec: number;
-  /** 이전 구간 대비 페이스 차(초). 양수 = 느려짐, 음수 = 빨라짐. 첫 구간은 null. */
-  paceChange: number | null;
-};
-
-/**
- * 경로 포인트에서 km 구간별 페이스를 계산한다.
- * t(경과 ms)가 없는 구형 기록은 빈 배열을 반환한다.
- * 마지막 미완 구간은 100m 이상일 때만 포함한다.
- */
-export function computeKmSplits(path: LatLng[]): KmSplit[] {
-  const pts = path.filter((p) => p.t != null);
-  if (pts.length < 2) return [];
-
-  const splits: KmSplit[] = [];
-  let kmIndex = 1;
-  let kmStartM = 0;
-  let tStart = pts[0].t!;
-  let cumM = 0;
-
-  for (let i = 1; i < pts.length; i++) {
-    // 명시적 재정박·추적 끊김(>120m) 구간은 거리 0으로 취급 — 라이브 거리 집계와 일치시키고,
-    // 끊김을 직선으로 이어 구간 페이스가 실제보다 빨라지는 것을 막는다(시간은 흐른 대로 반영).
-    const seg = creditedSegmentMeters(pts[i - 1], pts[i]);
-    const tPrev = pts[i - 1].t!;
-    const tCurr = pts[i].t!;
-    const prevCumM = cumM;
-    cumM += seg;
-
-    while (cumM >= kmIndex * 1000) {
-      const targetM = kmIndex * 1000;
-      const frac = seg > 0 ? (targetM - prevCumM) / seg : 1;
-      const tAtKm = tPrev + frac * (tCurr - tPrev);
-      const paceSec = (tAtKm - tStart) / 1000;
-      const prev = splits[splits.length - 1] ?? null;
-      splits.push({ km: kmIndex, distanceM: 1000, paceSec, paceChange: prev ? paceSec - prev.paceSec : null });
-      kmStartM = targetM;
-      tStart = tAtKm;
-      kmIndex++;
-    }
-  }
-
-  const lastM = cumM - kmStartM;
-  if (lastM >= 100 && splits.length > 0) {
-    const tEnd = pts[pts.length - 1].t!;
-    const paceSec = lastM > 0 ? ((tEnd - tStart) / 1000) / (lastM / 1000) : 0;
-    const prev = splits[splits.length - 1];
-    splits.push({ km: kmIndex, distanceM: Math.round(lastM), paceSec, paceChange: paceSec - prev.paceSec });
-  }
-
-  return splits;
-}
-
-const PB_TARGETS = [
-  { key: "3k", m: 3_000 },
-  { key: "5k", m: 5_000 },
-  { key: "10k", m: 10_000 },
-  { key: "half", m: 21_097 },
-  { key: "marathon", m: 42_195 },
-] as const;
-
-/**
- * 경로에서 각 목표 거리(5k/10k/하프/마라톤)의 최고 구간 페이스(초/km)를 반환한다.
- * 슬라이딩 윈도우 O(n) 알고리즘. t 없는 구형 경로는 빈 객체 반환.
- * 서버에 전송해 PB 판정에 사용한다.
- */
-export function computeBestSegments(path: LatLng[]): Record<string, number> {
-  const pts = path.filter((p) => p.t != null);
-  if (pts.length < 2) return {};
-
-  // 명시적 재정박·추적 끊김(>120m)을 가로지르는 윈도우 금지 — 지하철·일시정지 중 이동을 직선으로 이으면
-  // 비현실적으로 빠른 구간이 만들어져 가짜 PB가 서버에 등록된다(PB→NSM·유령까지 오염).
-  // 끊김 없는 연속 구간별로만 최고 구간을 찾는다.
-  const subpaths: LatLng[][] = [];
-  let run: LatLng[] = [pts[0]];
-  for (let i = 1; i < pts.length; i++) {
-    if (isPathBreak(pts[i - 1], pts[i])) {
-      if (run.length >= 2) subpaths.push(run);
-      run = [pts[i]];
-    } else {
-      run.push(pts[i]);
-    }
-  }
-  if (run.length >= 2) subpaths.push(run);
-
-  const best: Record<string, number> = {};
-
-  for (const sub of subpaths) {
-    const cumDist: number[] = [0];
-    for (let i = 1; i < sub.length; i++) {
-      cumDist.push(cumDist[i - 1] + haversineMeters(sub[i - 1], sub[i]));
-    }
-    const totalDist = cumDist[sub.length - 1];
-
-    for (const { key, m: targetM } of PB_TARGETS) {
-      if (totalDist < targetM) continue;
-
-      let bestPaceSec = best[key] ?? Infinity;
-      let j = 1;
-
-      for (let i = 0; i < sub.length - 1; i++) {
-        if (j <= i) j = i + 1;
-        while (j < sub.length && cumDist[j] - cumDist[i] < targetM) j++;
-        if (j >= sub.length) break;
-
-        const segStart = cumDist[j - 1] - cumDist[i];
-        const segLen = cumDist[j] - cumDist[j - 1];
-        const frac = segLen > 0 ? (targetM - segStart) / segLen : 1;
-        const tAtTarget = sub[j - 1].t! + frac * (sub[j].t! - sub[j - 1].t!);
-
-        const elapsedSec = (tAtTarget - sub[i].t!) / 1000;
-        if (elapsedSec > 0) {
-          const paceSec = elapsedSec / (targetM / 1000);
-          if (paceSec < bestPaceSec) bestPaceSec = paceSec;
-        }
-      }
-
-      if (bestPaceSec !== Infinity) best[key] = bestPaceSec;
-    }
-  }
-
-  const result: Record<string, number> = {};
-  for (const [key, paceSec] of Object.entries(best)) result[key] = Math.round(paceSec);
-  return result;
-}
-
-export function geolocationErrorCode(err: GeolocationPositionError): GeoErrorCode {
-  const blocked = geolocationBlockedCode();
-  if (blocked) return blocked;
-  if (/secure origins/i.test(err.message || "")) return "insecure";
-  if (err.code === err.PERMISSION_DENIED) return "permission";
-  if (err.code === err.TIMEOUT) return "timeout";
-  return "unknown";
-}
+export { computeBestSegments, computeKmSplits } from "./workoutPathAnalysis";
+export type { KmSplit } from "./workoutPathAnalysis";
+export {
+  foregroundGapLooksLikeMovement,
+  geolocationBlockedCode,
+  geolocationErrorCode,
+  GPS_FOREGROUND_RECOVERY_GAP_MS,
+  GPS_WATCHDOG_TIMEOUT_MS,
+  IDLE_GAP_MOVEMENT_THRESHOLD_M,
+  shouldResetIdleAnchorAfterForegroundGap,
+  shouldRestartGpsWatch,
+} from "./workoutGpsWatchdog";
+export type { GeoErrorCode } from "./workoutGpsWatchdog";
