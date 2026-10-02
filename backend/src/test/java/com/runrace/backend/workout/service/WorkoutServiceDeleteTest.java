@@ -5,26 +5,18 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
-import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
-import com.runrace.backend.challenge.service.IndoorApprovalService;
-import com.runrace.backend.crew.service.CrewMatchService;
 import com.runrace.backend.history.service.ActivityHistoryService;
 import com.runrace.backend.history.domain.ActivityAction;
 import com.runrace.backend.history.domain.ActivityTargetType;
-import com.runrace.backend.shoe.service.ShoeService;
 import com.runrace.backend.upload.ImageUploadService;
 import com.runrace.backend.user.domain.AppUser;
-import com.runrace.backend.user.repository.AppUserRepository;
 import com.runrace.backend.workout.domain.PersonalBest;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.repository.PersonalBestRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,38 +31,25 @@ import org.springframework.context.ApplicationEventPublisher;
 class WorkoutServiceDeleteTest {
 
   @Mock WorkoutSessionRepository workoutRepository;
-  @Mock AppUserRepository userRepository;
   @Mock ChallengeProgressService challengeProgressService;
-  @Mock CrewMatchService crewMatchService;
-  @Mock IndoorApprovalService indoorApprovalService;
-  @Mock ChallengeWorkoutRepository challengeWorkoutRepository;
-  @Mock IndoorRunApprovalRepository indoorRunApprovalRepository;
   @Mock ImageUploadService imageUploadService;
   @Mock PersonalBestRepository personalBestRepository;
-  @Mock ShoeService shoeService;
   @Mock ApplicationEventPublisher eventPublisher;
   @Mock ActivityHistoryService activityHistoryService;
   @Mock AppUser user;
 
-  private WorkoutService service;
+  private WorkoutMutationService service;
   private UUID userId;
   private AuthPrincipal principal;
 
   @BeforeEach
   void setUp() {
-    service = new WorkoutService(
+    service = new WorkoutMutationService(
         workoutRepository,
-        userRepository,
-        challengeProgressService,
-        crewMatchService,
-        indoorApprovalService,
-        challengeWorkoutRepository,
-        indoorRunApprovalRepository,
         imageUploadService,
         personalBestRepository,
-        shoeService,
+        challengeProgressService,
         eventPublisher,
-        new ObjectMapper(),
         activityHistoryService);
     userId = UUID.randomUUID();
     principal = new AuthPrincipal(userId, "uid");

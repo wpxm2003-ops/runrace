@@ -7,19 +7,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.domain.ApprovalStatus;
 import com.runrace.backend.challenge.domain.ChallengeWorkout;
 import com.runrace.backend.challenge.domain.IndoorRunApproval;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
-import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.upload.ImageUploadService;
-import com.runrace.backend.user.repository.AppUserRepository;
-import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,23 +23,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 /** 실내러닝 투표 플로우(중복투표 차단·거부 미반영·전원승인 시 1회 반영) 회귀 잠금. */
 @ExtendWith(MockitoExtension.class)
 class WorkoutServiceVoteTest {
 
-  @Mock WorkoutSessionRepository workoutSessionRepository;
-  @Mock AppUserRepository appUserRepository;
-  @Mock ChallengeProgressService challengeProgressService;
   @Mock IndoorApprovalService indoorApprovalService;
   @Mock ChallengeWorkoutRepository challengeWorkoutRepository;
   @Mock IndoorRunApprovalRepository indoorRunApprovalRepository;
-  @Mock ImageUploadService imageUploadService;
-  @Mock ApplicationEventPublisher eventPublisher;
-  @Mock ObjectMapper objectMapper;
-
-  @InjectMocks WorkoutService service;
+  @InjectMocks IndoorRunVoteService service;
 
   private static final long WORKOUT_ID = 100L;
   private final AuthPrincipal principal = new AuthPrincipal(UUID.randomUUID(), "fuid");
@@ -61,7 +48,7 @@ class WorkoutServiceVoteTest {
   void 대기중인_승인이_없으면_예외() {
     when(challengeWorkoutRepository.findAllByWorkoutSessionIdForUpdate(WORKOUT_ID))
         .thenReturn(List.of());
-    assertThrows(ApiException.class, () -> service.voteIndoorRun(principal, WORKOUT_ID, true));
+    assertThrows(ApiException.class, () -> service.vote(principal, WORKOUT_ID, true));
   }
 
   @Test
@@ -70,7 +57,7 @@ class WorkoutServiceVoteTest {
         .thenReturn(List.of(pendingCw()));
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.empty());
-    assertThrows(ApiException.class, () -> service.voteIndoorRun(principal, WORKOUT_ID, true));
+    assertThrows(ApiException.class, () -> service.vote(principal, WORKOUT_ID, true));
   }
 
   @Test
@@ -79,7 +66,7 @@ class WorkoutServiceVoteTest {
         .thenReturn(List.of(pendingCw()));
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.of(myVote(true))); // approved != null
-    assertThrows(ApiException.class, () -> service.voteIndoorRun(principal, WORKOUT_ID, true));
+    assertThrows(ApiException.class, () -> service.vote(principal, WORKOUT_ID, true));
   }
 
   @Test
@@ -91,7 +78,7 @@ class WorkoutServiceVoteTest {
     when(indoorRunApprovalRepository.findByChallengeWorkoutIdAndVoterId(1L, principal.userId()))
         .thenReturn(Optional.of(vote));
 
-    service.voteIndoorRun(principal, WORKOUT_ID, false);
+    service.vote(principal, WORKOUT_ID, false);
 
     assertEquals(Boolean.FALSE, vote.getApproved());
     assertEquals(ApprovalStatus.REJECTED, cw.getApprovalStatus());
@@ -109,7 +96,7 @@ class WorkoutServiceVoteTest {
         .thenReturn(Optional.of(myVote(null)));
     when(indoorApprovalService.isFullyApproved(1L)).thenReturn(false);
 
-    service.voteIndoorRun(principal, WORKOUT_ID, true);
+    service.vote(principal, WORKOUT_ID, true);
 
     verify(indoorApprovalService, never()).applyApprovedIndoorRun(anyLong());
   }
@@ -123,7 +110,7 @@ class WorkoutServiceVoteTest {
         .thenReturn(Optional.of(myVote(null)));
     when(indoorApprovalService.isFullyApproved(1L)).thenReturn(true);
 
-    service.voteIndoorRun(principal, WORKOUT_ID, true);
+    service.vote(principal, WORKOUT_ID, true);
 
     verify(indoorApprovalService).applyApprovedIndoorRun(1L);
   }
@@ -137,7 +124,7 @@ class WorkoutServiceVoteTest {
         .thenReturn(Optional.of(myVote(null)));
     when(indoorApprovalService.isFullyApproved(1L)).thenReturn(false);
 
-    service.voteIndoorRun(principal, WORKOUT_ID, true);
+    service.vote(principal, WORKOUT_ID, true);
 
     verify(challengeWorkoutRepository).findAllByWorkoutSessionIdForUpdate(WORKOUT_ID);
     verify(challengeWorkoutRepository, never()).findAllByWorkoutSessionId(anyLong());

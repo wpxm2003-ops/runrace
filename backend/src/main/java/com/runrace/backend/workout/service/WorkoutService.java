@@ -4,13 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.domain.ApprovalStatus;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
-import com.runrace.backend.challenge.domain.ChallengeWorkout;
-import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
-import com.runrace.backend.challenge.domain.IndoorRunApproval;
-import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.Distance;
 import com.runrace.backend.common.KstTime;
@@ -27,14 +22,8 @@ import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.domain.WorkoutType;
 import com.runrace.backend.workout.dto.GhostRaceResultDto;
 import com.runrace.backend.workout.dto.PathPointDto;
-import com.runrace.backend.workout.dto.PreviousWorkoutDto;
-import com.runrace.backend.workout.dto.WorkoutComparisonResponse;
-import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
-import com.runrace.backend.workout.repository.PersonalBestRepository;
-import com.runrace.backend.workout.repository.WorkoutComparisonItem;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -91,10 +80,7 @@ public class WorkoutService {
   private final ChallengeProgressService challengeProgressService;
   private final CrewMatchService crewMatchService;
   private final IndoorApprovalService indoorApprovalService;
-  private final ChallengeWorkoutRepository challengeWorkoutRepository;
-  private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ImageUploadService imageUploadService;
-  private final PersonalBestRepository personalBestRepository;
   private final ShoeService shoeService;
   private final ApplicationEventPublisher eventPublisher;
   private final ObjectMapper objectMapper;
@@ -451,207 +437,6 @@ public class WorkoutService {
 
   private static boolean sameInstant(OffsetDateTime left, OffsetDateTime right) {
     return left != null && right != null && left.isEqual(right);
-  }
-
-  @Transactional
-  public void voteIndoorRun(AuthPrincipal principal, Long workoutId, boolean approved) {
-    // 마지막 두 투표가 거의 동시에 들어와도 행 잠금으로 서로를 직렬화해
-    // 뒤 트랜잭션이 앞 트랜잭션의 커밋된 투표 상태를 반드시 보게 한다.
-    List<ChallengeWorkout> pending = challengeWorkoutRepository
-        .findAllByWorkoutSessionIdForUpdate(workoutId)
-        .stream()
-        .filter(cw -> cw.getApprovalStatus() == ApprovalStatus.PENDING)
-        .toList();
-
-    if (pending.isEmpty()) throw ApiException.notFound("no_pending_approval");
-
-    boolean voted = false;
-    for (ChallengeWorkout cw : pending) {
-      voted |= applyMyVote(cw, principal.userId(), approved);
-    }
-    if (!voted) throw ApiException.forbidden("not_a_voter");
-  }
-
-  /**
-   * 한 ChallengeWorkout에 대한 내 승인/거부 투표를 반영한다.
-   * 투표권이 없으면 아무것도 하지 않고 false, 반영했으면 true를 반환한다.
-   * 거부 시 즉시 reject, 승인으로 전원 승인이 충족되면 거리 반영을 위임한다.
-   */
-  private boolean applyMyVote(ChallengeWorkout cw, UUID voterId, boolean approved) {
-    IndoorRunApproval myVote = indoorRunApprovalRepository
-        .findByChallengeWorkoutIdAndVoterId(cw.getId(), voterId)
-        .orElse(null);
-    if (myVote == null) return false;
-    if (myVote.getApproved() != null) throw ApiException.badRequest("already_voted");
-
-    myVote.castVote(approved);
-    indoorRunApprovalRepository.save(myVote);
-
-    if (!approved) {
-      cw.reject();
-      challengeWorkoutRepository.save(cw);
-    } else if (indoorApprovalService.isFullyApproved(cw.getId())) {
-      indoorApprovalService.applyApprovedIndoorRun(cw.getId());
-    }
-    return true;
-  }
-
-  @Transactional(readOnly = true)
-  public WorkoutSession getForUser(UUID userId, Long id) {
-    return workoutSessionRepository
-        .findDetailByIdAndUserId(id, userId)
-        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
-  }
-
-  /** 공개 공유 페이지용 — 소유자 확인 없이 ID로만 조회. */
-  @Transactional(readOnly = true)
-  public WorkoutSession getForShare(Long id) {
-    return workoutSessionRepository
-        .findById(id)
-        .orElseThrow(() -> ApiException.notFound("workout_not_found"));
-  }
-
-  @Transactional(readOnly = true)
-  public WorkoutSummaryResponse summaryForUser(UUID userId) {
-    WorkoutSessionRepository.WorkoutSummaryAggregate agg =
-        workoutSessionRepository.aggregateForUser(userId);
-    long totalDistanceM = agg.getTotalDistanceM();
-    long totalDurationSec = agg.getTotalDurationSec();
-
-    Integer avgPaceSecPerKm = avgPaceSecPerKm(totalDistanceM, totalDurationSec);
-
-    int maxStreakDays = workoutSessionRepository.maxStreakDaysForUser(userId);
-
-    return new WorkoutSummaryResponse(
-        totalDistanceM,
-        totalDurationSec,
-        (int) agg.getTotalCalories(),
-        (int) agg.getWorkoutCount(),
-        (int) agg.getWorkoutDayCount(),
-        avgPaceSecPerKm,
-        maxStreakDays);
-  }
-
-  @Transactional(readOnly = true)
-  /** 기록 달력 연도 경계 — 기기 현지 날짜(started_at_local) 기준. 달력의 "2026년"과 일치한다. */
-  public List<WorkoutSessionRepository.WorkoutListView> listForUserInYear(UUID userId, int year) {
-    LocalDateTime from = LocalDate.of(year, 1, 1).atStartOfDay();
-    LocalDateTime to = LocalDate.of(year + 1, 1, 1).atStartOfDay();
-    return workoutSessionRepository
-        .findListByUserIdAndStartedAtLocalGreaterThanEqualAndStartedAtLocalLessThanOrderByStartedAtLocalDesc(
-            userId, from, to);
-  }
-
-  private static final int COMPARISON_LOOKBACK_DAYS = 30;
-
-  /** 최근 30일 평균 비교 + 직전 기록. */
-  @Transactional(readOnly = true)
-  public WorkoutComparisonResponse getComparison(AuthPrincipal principal, Long id) {
-    WorkoutSession current = getForUser(principal.userId(), id);
-    OffsetDateTime from = current.getStartedAt().minusDays(COMPARISON_LOOKBACK_DAYS);
-
-    // 상한은 기준 운동의 시작 시각 — 그 이후 기록이 "이전 30일 평균"에 섞이지 않게 한다.
-    List<WorkoutComparisonItem> recent =
-        workoutSessionRepository.findRecentForComparison(
-            principal.userId(), id, from, current.getStartedAt());
-
-    PreviousWorkoutDto previous =
-        findPreviousWorkout(principal.userId(), id, current.getStartedAt());
-
-    // 비교할 최근 기록이 없으면 직전 기록만 담아 반환
-    if (recent.isEmpty()) return WorkoutComparisonResponse.builder().previous(previous).build();
-
-    return averageComparison(recent, previous);
-  }
-
-  private PreviousWorkoutDto findPreviousWorkout(UUID userId, Long id, OffsetDateTime before) {
-    return workoutSessionRepository
-        .findPreviousForComparison(userId, id, before)
-        .map(w -> new PreviousWorkoutDto(w.distanceM(), w.durationSec(), w.avgPaceSecPerKm()))
-        .orElse(null);
-  }
-
-  /** 최근 기록들의 평균 거리·시간·페이스를 낸다. 페이스는 값이 있는 기록만 평균한다. */
-  private WorkoutComparisonResponse averageComparison(
-      List<WorkoutComparisonItem> recent, PreviousWorkoutDto previous) {
-    int count = recent.size();
-
-    long totalDist = 0;
-    long totalDur = 0;
-    long paceSum = 0;
-    int paceCount = 0;
-    for (WorkoutComparisonItem w : recent) {
-      totalDist += w.distanceM();
-      totalDur += w.durationSec();
-      if (w.avgPaceSecPerKm() != null) {
-        paceSum += w.avgPaceSecPerKm();
-        paceCount++;
-      }
-    }
-
-    return WorkoutComparisonResponse.builder()
-        .recentCount(count)
-        .avgDistanceM((int) (totalDist / count))
-        .avgDurationSec((int) (totalDur / count))
-        .avgPaceSec(paceCount > 0 ? (int) (paceSum / paceCount) : null)
-        .previous(previous)
-        .build();
-  }
-
-  private static final int MAX_MEMO_LENGTH = 500;
-
-  @Transactional
-  public void updateMemo(AuthPrincipal principal, Long id, String memo) {
-    if (memo != null && memo.length() > MAX_MEMO_LENGTH) {
-      throw ApiException.badRequest("memo_too_long");
-    }
-    WorkoutSession session = workoutSessionRepository.getRequiredForUser(id, principal.userId());
-    session.updateMemo(memo == null || memo.isBlank() ? null : memo.strip());
-    workoutSessionRepository.save(session);
-  }
-
-  /** 운동 사진 설정·교체·삭제. imageUrl이 null/blank면 삭제. 교체로 떨어진 기존 이미지는 커밋 후 정리. */
-  @Transactional
-  public void updateImage(AuthPrincipal principal, Long id, String imageUrl) {
-    String normalized = imageUrl == null || imageUrl.isBlank() ? null : imageUrl.strip();
-    // 우리 S3 버킷에서 발급된 URL만 허용 (외부 URL 주입·타인 이미지 삭제 차단)
-    if (normalized != null && !imageUploadService.isStoredUrl(normalized)) {
-      throw ApiException.badRequest("invalid_image_url");
-    }
-    WorkoutSession session = workoutSessionRepository.getRequiredForUser(id, principal.userId());
-    String previous = session.getImageUrl();
-    session.updateImage(normalized);
-    workoutSessionRepository.save(session);
-    // 교체·삭제로 떨어져 나간 기존 이미지는 커밋 후 S3에서 정리
-    if (previous != null && !previous.isBlank() && !previous.equals(normalized)) {
-      eventPublisher.publishEvent(new WorkoutEvents.WorkoutImageDeletedEvent(previous));
-    }
-  }
-
-  @Transactional
-  public void deleteForUser(AuthPrincipal principal, Long id) {
-    WorkoutSession session =
-        workoutSessionRepository.getRequiredForUser(id, principal.userId());
-    // 레이스에 반영된 거리 먼저 차감 (cascade 삭제 전에 호출해야 함)
-    challengeProgressService.reverseWorkoutDistance(session.getId());
-    // 이 운동이 근거인 개인 기록도 함께 삭제한다. personal_best.workout_id는 ON DELETE가
-    // 없는 FK라(V33) 남겨두면 삭제가 통째로 롤백된다. 기록의 근거가 사라지면 기록도
-    // 사라지는 게 정합이며(레이스 거리 차감과 같은 철학), 다음 달성 시 다시 등록된다.
-    personalBestRepository.deleteAll(personalBestRepository.findAllByWorkoutId(session.getId()));
-    String imageUrl = session.getImageUrl();
-    workoutSessionRepository.delete(session);
-    activityHistoryService.recordSelf(
-        principal.userId(),
-        ActivityAction.WORKOUT_DELETED,
-        ActivityTargetType.WORKOUT,
-        session.getId(),
-        Map.of(
-            "distanceM", session.getDistanceM(),
-            "workoutType", session.getWorkoutType().name()));
-    // S3 삭제는 커밋 후 처리 — 트랜잭션 내 네트워크 I/O로 인한 커넥션 점유 방지
-    if (imageUrl != null && !imageUrl.isBlank()) {
-      eventPublisher.publishEvent(new WorkoutEvents.WorkoutImageDeletedEvent(imageUrl));
-    }
   }
 
   String toJson(List<PathPoint> path) {

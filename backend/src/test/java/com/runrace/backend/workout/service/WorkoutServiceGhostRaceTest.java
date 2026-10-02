@@ -7,8 +7,6 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
-import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.crew.service.CrewMatchService;
@@ -36,8 +34,6 @@ class WorkoutServiceGhostRaceTest {
     ChallengeProgressService challengeProgressService = mock(ChallengeProgressService.class);
     CrewMatchService crewMatchService = mock(CrewMatchService.class);
     IndoorApprovalService indoorApprovalService = mock(IndoorApprovalService.class);
-    ChallengeWorkoutRepository challengeWorkoutRepository = mock(ChallengeWorkoutRepository.class);
-    IndoorRunApprovalRepository indoorRunApprovalRepository = mock(IndoorRunApprovalRepository.class);
     ImageUploadService imageUploadService = mock(ImageUploadService.class);
     ShoeService shoeService = mock(ShoeService.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
@@ -56,10 +52,7 @@ class WorkoutServiceGhostRaceTest {
         challengeProgressService,
         crewMatchService,
         indoorApprovalService,
-        challengeWorkoutRepository,
-        indoorRunApprovalRepository,
         imageUploadService,
-        null, // personalBestRepository — 이 테스트 경로는 삭제를 타지 않는다
         shoeService,
         eventPublisher,
         new ObjectMapper(),

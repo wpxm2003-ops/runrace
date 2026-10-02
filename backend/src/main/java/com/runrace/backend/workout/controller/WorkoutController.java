@@ -26,6 +26,9 @@ import com.runrace.backend.workout.dto.WorkoutShareResponse;
 import com.runrace.backend.workout.dto.WorkoutSummaryResponse;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.service.WorkoutService;
+import com.runrace.backend.workout.service.WorkoutQueryService;
+import com.runrace.backend.workout.service.IndoorRunVoteService;
+import com.runrace.backend.workout.service.WorkoutMutationService;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -51,6 +54,9 @@ public class WorkoutController {
   private static final String ID_PATH = PathPatterns.ID;
 
   private final WorkoutService workoutService;
+  private final WorkoutQueryService workoutQueryService;
+  private final IndoorRunVoteService indoorRunVoteService;
+  private final WorkoutMutationService workoutMutationService;
   private final PersonalBestService personalBestService;
   private final AchievementService achievementService;
   private final ShoeService shoeService;
@@ -166,14 +172,14 @@ public class WorkoutController {
       AuthPrincipal principal,
       @PathVariable("id") Long id,
       @RequestBody IndoorRunVoteRequest body) {
-    workoutService.voteIndoorRun(principal, id, body.approved());
+    indoorRunVoteService.vote(principal, id, body.approved());
     return ResponseEntity.noContent().build();
   }
 
   /** 전체 운동 기록 요약 (내정보). */
   @GetMapping("/summary")
   public ResponseEntity<WorkoutSummaryResponse> summary(AuthPrincipal principal) {
-    return ResponseEntity.ok(workoutService.summaryForUser(principal.userId()));
+    return ResponseEntity.ok(workoutQueryService.summaryForUser(principal.userId()));
   }
 
   /** 내 개인 기록(PB) 목록 — NSM 페이스 자동 입력 등. */
@@ -186,7 +192,7 @@ public class WorkoutController {
   @GetMapping
   public ResponseEntity<List<WorkoutListItem>> list(
       AuthPrincipal principal, @RequestParam Integer year) {
-    var sessions = workoutService.listForUserInYear(principal.userId(), year);
+    var sessions = workoutQueryService.listForUserInYear(principal.userId(), year);
     List<WorkoutListItem> items =
         sessions.stream()
             .map(
@@ -208,7 +214,7 @@ public class WorkoutController {
   @GetMapping("/{id:" + ID_PATH + "}")
   public ResponseEntity<WorkoutDetailResponse> detail(
       AuthPrincipal principal, @PathVariable("id") Long id) {
-    WorkoutSession session = workoutService.getForUser(principal.userId(), id);
+    WorkoutSession session = workoutQueryService.getForUser(principal.userId(), id);
     return ResponseEntity.ok(
         WorkoutDetailResponse.from(session, workoutService.toPath(session.getPathJson())));
   }
@@ -216,7 +222,7 @@ public class WorkoutController {
   /** 공개 공유 페이지 — 인증 불필요. */
   @GetMapping("/{id:" + ID_PATH + "}/share")
   public ResponseEntity<WorkoutShareResponse> share(@PathVariable("id") Long id) {
-    WorkoutSession session = workoutService.getForShare(id);
+    WorkoutSession session = workoutQueryService.getForShare(id);
     return ResponseEntity.ok(
         WorkoutShareResponse.from(session, workoutService.toSharePath(session.getPathJson())));
   }
@@ -224,7 +230,7 @@ public class WorkoutController {
   @GetMapping("/{id:" + ID_PATH + "}/comparison")
   public ResponseEntity<WorkoutComparisonResponse> comparison(
       AuthPrincipal principal, @PathVariable("id") Long id) {
-    return ResponseEntity.ok(workoutService.getComparison(principal, id));
+    return ResponseEntity.ok(workoutQueryService.getComparison(principal, id));
   }
 
   @PatchMapping("/{id:" + ID_PATH + "}/memo")
@@ -232,7 +238,7 @@ public class WorkoutController {
       AuthPrincipal principal,
       @PathVariable("id") Long id,
       @RequestBody UpdateWorkoutMemoRequest body) {
-    workoutService.updateMemo(principal, id, body.memo());
+    workoutMutationService.updateMemo(principal, id, body.memo());
     return ResponseEntity.noContent().build();
   }
 
@@ -242,7 +248,7 @@ public class WorkoutController {
       AuthPrincipal principal,
       @PathVariable("id") Long id,
       @RequestBody UpdateWorkoutImageRequest body) {
-    workoutService.updateImage(principal, id, body.imageUrl());
+    workoutMutationService.updateImage(principal, id, body.imageUrl());
     return ResponseEntity.noContent().build();
   }
 
@@ -265,14 +271,14 @@ public class WorkoutController {
   @Deprecated
   @DeleteMapping("/{id:" + ID_PATH + "}")
   public ResponseEntity<Void> delete(AuthPrincipal principal, @PathVariable("id") Long id) {
-    workoutService.deleteForUser(principal, id);
+    workoutMutationService.deleteForUser(principal, id);
     return ResponseEntity.noContent().build();
   }
 
   /** 운동 삭제 — 정적 export 환경에서 DELETE가 막히는 경우가 있어 POST 경로가 표준이다. */
   @PostMapping("/{id:" + ID_PATH + "}/delete")
   public ResponseEntity<Void> deleteByPost(AuthPrincipal principal, @PathVariable("id") Long id) {
-    workoutService.deleteForUser(principal, id);
+    workoutMutationService.deleteForUser(principal, id);
     return ResponseEntity.noContent().build();
   }
 }

@@ -13,8 +13,6 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
-import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
-import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.common.ApiException;
@@ -49,8 +47,6 @@ class WorkoutServiceIdempotencyTest {
   @Mock ChallengeProgressService challengeProgressService;
   @Mock CrewMatchService crewMatchService;
   @Mock IndoorApprovalService indoorApprovalService;
-  @Mock ChallengeWorkoutRepository challengeWorkoutRepository;
-  @Mock IndoorRunApprovalRepository indoorRunApprovalRepository;
   @Mock ImageUploadService imageUploadService;
   @Mock ShoeService shoeService;
   @Mock ApplicationEventPublisher eventPublisher;
@@ -69,10 +65,7 @@ class WorkoutServiceIdempotencyTest {
         challengeProgressService,
         crewMatchService,
         indoorApprovalService,
-        challengeWorkoutRepository,
-        indoorRunApprovalRepository,
         imageUploadService,
-        null, // personalBestRepository — 이 테스트 경로는 삭제를 타지 않는다
         shoeService,
         eventPublisher,
         new ObjectMapper(),

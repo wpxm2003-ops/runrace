@@ -120,7 +120,7 @@ public class IndoorApprovalService {
    * PENDING이 아니면 skip(동시 투표·재호출 멱등성). 이미 종료된 레이스면 거리·알림 반영 없이
    * REJECTED로 닫아 대기 목록에서만 내린다(순위·경품 결과 불변 유지).
    *
-   * <p>이 멱등성은 {@link com.runrace.backend.workout.service.WorkoutService#voteIndoorRun}이
+   * <p>이 멱등성은 {@link com.runrace.backend.workout.service.IndoorRunVoteService#vote}가
    * {@code findAllByWorkoutSessionIdForUpdate}로 대상 행에 PESSIMISTIC_WRITE 잠금을 걸어주는 덕에
    * 실제로 보장된다 — 각 투표 트랜잭션은 자기 차례에 잠금을 얻고 나서야 진행하므로,
    * 두 번째 트랜잭션이 여기 들어올 때는 이미 첫 번째가 반영한 APPROVED 상태를 정확히 본다.
