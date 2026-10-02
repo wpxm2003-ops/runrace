@@ -22,7 +22,6 @@ import {
   geolocationBlockedCode,
   geolocationErrorCode,
   type GeoErrorCode,
-  shouldRestartGpsWatch,
   shouldResetIdleAnchorAfterForegroundGap,
   foregroundGapLooksLikeMovement,
   WORKOUT_START_FIX_MAX_AGE_MS,
@@ -38,11 +37,8 @@ import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersist
 import { useWorkoutPersistenceFlush } from "./useWorkoutPersistenceFlush";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
-import { avgPaceSecPerKm } from "./paceMath";
-import { toWallClockIso } from "./format";
 import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
 import { track } from "./analytics";
-import { Capacitor } from "@capacitor/core";
 import { waitForNativePermissions } from "./nativePermissions";
 import { createClientWorkoutId } from "./workoutRequestId";
 import { useWorkoutLiveProgress } from "./useWorkoutLiveProgress";
@@ -50,9 +46,14 @@ import {
   useWorkoutGpsWarmup,
   type GeoErrorState,
 } from "./useWorkoutGpsWarmup";
+import {
+  buildWorkoutFinishSnapshot,
+  isWorkoutSessionVisible,
+  resolveWorkoutGeoError,
+} from "./workoutSessionPresentation";
+import { useWorkoutRuntimeEffects } from "./useWorkoutRuntimeEffects";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
-const GPS_WATCHDOG_POLL_MS = 5_000;
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
 /** 공백 원인 확인용 위치 한 점을 기다리는 최대 시간. 그동안 방치 판정을 미룬다. */
 const IDLE_GAP_VERIFY_TIMEOUT_MS = 15_000;
@@ -66,15 +67,6 @@ type WorkoutSessionAuth = {
 };
 
 export type { LiveRivalGapEntry } from "./useWorkoutLiveProgress";
-
-/** geoMessages를 주입하지 않는 호출자(테스트 등)를 위한 최소 문구. */
-const FALLBACK_GEO_MESSAGES: Record<GeoErrorCode, string> = {
-  unavailable: "Location (GPS) is not available on this device.",
-  insecure: "GPS only works over a secure (HTTPS) connection.",
-  permission: "Location permission was denied.",
-  timeout: "Timed out getting your location.",
-  unknown: "Couldn't get your location.",
-};
 
 // ── 메인 훅 ───────────────────────────────────────────────────────────────────
 export function useWorkoutSession(
@@ -571,65 +563,18 @@ export function useWorkoutSession(
     void track("running_gps_watch_restart", { reason });
   }, [isCurrentSessionOwner, startWatch, resetIdleAnchor, verifyForegroundGap, sendLivePing]);
 
-  // Android may reclaim the WebView bridge or the native location callback while
-  // the app is backgrounded. Re-register the watcher whenever the app becomes
-  // active; the sequence guard makes late callbacks from the old watcher harmless.
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    let cancelled = false;
-    let listener: { remove: () => Promise<void> } | undefined;
-
-    void import("@capacitor/app").then(async ({ App }) => {
-      if (cancelled) return;
-      listener = await App.addListener("appStateChange", ({ isActive }) => {
-        if (!cancelled && isActive) restartWatch("foreground");
-      });
-      if (cancelled) void listener.remove();
-    });
-
-    return () => {
-      cancelled = true;
-      void listener?.remove();
-    };
-  }, [restartWatch]);
-
-  // A watcher can resolve successfully yet stop delivering callbacks. While the
-  // app is visible, recover it automatically instead of leaving distance frozen.
-  useEffect(() => {
-    if (status !== "running") return;
-    const id = window.setInterval(() => {
-      if (document.hidden || statusRef.current !== "running") return;
-      if (
-        shouldRestartGpsWatch(
-          Date.now(),
-          watchStartedAtRef.current,
-          lastGpsFixAtRef.current,
-        )
-      ) {
-        restartWatch("stale");
-      }
-    }, GPS_WATCHDOG_POLL_MS);
-    return () => clearInterval(id);
-  }, [status, restartWatch]);
-
-  // ── 타이머 ────────────────────────────────────────────────────────────────
-  // 방치 판정도 여기서 함께 돈다 — 정지 중엔 네이티브 GPS 콜백(distanceFilter)이
-  // 침묵하므로 콜백만으로는 발동 시점을 놓친다.
-  useEffect(() => {
-    if (status !== "running") return;
-    const id = window.setInterval(() => {
-      if (!runStartedRef.current) return;
-      if (autoPauseIfIdle(Date.now())) return;
-      setElapsedSec(
-        computeWorkoutElapsedSec(
-          runStartedRef.current,
-          pausedAccumRef.current,
-          pauseStartedRef.current,
-        ),
-      );
-    }, 1000);
-    return () => clearInterval(id);
-  }, [status, autoPauseIfIdle]);
+  useWorkoutRuntimeEffects({
+    status,
+    statusRef,
+    watchStartedAtRef,
+    lastGpsFixAtRef,
+    runStartedRef,
+    pausedAccumRef,
+    pauseStartedRef,
+    restartWatch,
+    autoPauseIfIdle,
+    setElapsedSec,
+  });
 
   /**
    * Firebase 계정이 바뀌면 현재 런을 원래 소유자 명의의 paused 스냅샷으로 동결한다.
@@ -995,33 +940,16 @@ export function useWorkoutSession(
       autoPausedRef.current && pauseStartedRef.current != null
         ? pauseStartedRef.current
         : now;
-    const endedAt = new Date(effectiveEndedAt).toISOString();
-    const startedAt = new Date(runStartedRef.current).toISOString();
-    const startedAtLocal = toWallClockIso(runStartedRef.current);
-    const finalElapsed = computeWorkoutElapsedSec(
-      runStartedRef.current,
-      pausedAccumRef.current,
-      pauseStartedRef.current,
-      now,
-    );
-
-    let finalPath = [...pathRef.current];
-    if (finalPath.length === 0 && position) {
-      finalPath = [position];
-    }
-    const finalDistance = Math.round(distanceAccumRef.current);
-
-    const snapshot: WorkoutFinishSnapshot = {
+    const snapshot = buildWorkoutFinishSnapshot({
       clientWorkoutId: clientWorkoutIdRef.current ?? createClientWorkoutId(),
-      startedAt,
-      startedAtLocal,
-      endedAt,
-      durationSec: Math.max(1, finalElapsed),
-      distanceM: finalDistance,
-      calories: estimateCalories(finalDistance),
-      avgPaceSecPerKm: avgPaceSecPerKm(finalDistance, finalElapsed),
-      path: finalPath,
-    };
+      runStartedAt: runStartedRef.current,
+      pausedAccumMs: pausedAccumRef.current,
+      pauseStartedAt: pauseStartedRef.current,
+      endedAtMs: effectiveEndedAt,
+      distanceM: distanceAccumRef.current,
+      path: pathRef.current,
+      position,
+    });
 
     clearWatch();
     // 라이브(잠정) 진행률 즉시 해제 — 저장이 성공하면 서버가 어차피 리셋하지만, 저장에
@@ -1047,21 +975,19 @@ export function useWorkoutSession(
 
   // Firebase가 로딩 중이거나 세션 소유자가 현재 계정과 달라진 렌더에서는 effect가 워처와
   // 런타임을 정리하기 전이라도 경로·통계·액션 상태를 즉시 숨긴다.
-  const sessionVisible =
-    !authState.loading
-    && authState.currentUid != null
-    && (status === "idle" || sessionOwnerUidRef.current === authState.currentUid);
+  const sessionVisible = isWorkoutSessionVisible(
+    authState.loading,
+    authState.currentUid,
+    status,
+    sessionOwnerUidRef.current,
+  );
   const visibleStatus = sessionVisible ? status : "idle";
   const visiblePath = sessionVisible ? path : [];
   const visiblePosition = sessionVisible ? position : null;
   const visibleElapsedSec = sessionVisible ? elapsedSec : 0;
   const visibleDistanceM = sessionVisible ? distanceM : 0;
   // ref가 아니라 prop을 읽는다 — 로케일이 바뀌면 이미 떠 있는 배너도 함께 바뀌어야 한다.
-  const geoErrorMessage = geoErrorState == null
-    ? null
-    : "code" in geoErrorState
-      ? (geoMessages?.[geoErrorState.code] ?? FALLBACK_GEO_MESSAGES[geoErrorState.code])
-      : geoErrorState.text;
+  const geoErrorMessage = resolveWorkoutGeoError(geoErrorState, geoMessages);
 
   return {
     status: visibleStatus,
