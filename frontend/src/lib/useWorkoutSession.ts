@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { usePathname } from "next/navigation";
 import {
@@ -27,7 +27,6 @@ import {
   foregroundGapLooksLikeMovement,
   WORKOUT_START_FIX_MAX_AGE_MS,
   type WorkoutFinishSnapshot,
-  type WorkoutStartFix,
   type WorkoutStatus,
 } from "./workoutTrack";
 import {
@@ -46,19 +45,17 @@ import { track } from "./analytics";
 import { Capacitor } from "@capacitor/core";
 import { waitForNativePermissions } from "./nativePermissions";
 import { createClientWorkoutId } from "./workoutRequestId";
-import { isLatestLiveProgressResponse } from "./liveProgressFreshness";
-import type { LiveRivalGap } from "@/lib/api/types";
-import { clearLiveProgress, pauseLiveProgress, postLiveProgress } from "@/lib/api/challenges";
+import { useWorkoutLiveProgress } from "./useWorkoutLiveProgress";
+import {
+  useWorkoutGpsWarmup,
+  type GeoErrorState,
+} from "./useWorkoutGpsWarmup";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
-const WARMUP_FIX_BUFFER_SIZE = 6;
 const GPS_WATCHDOG_POLL_MS = 5_000;
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
 /** 공백 원인 확인용 위치 한 점을 기다리는 최대 시간. 그동안 방치 판정을 미룬다. */
 const IDLE_GAP_VERIFY_TIMEOUT_MS = 15_000;
-/** 실시간 진행률 핑 주기 — 시작·재개 때는 별도로 즉시 전송하고 이후 60초마다 갱신한다. */
-const LIVE_PING_INTERVAL_MS = 60_000;
-/** 실시간 진행률 핑 주기 — 시작·재개 때는 별도로 즉시 전송하고 이후 60초마다 갱신한다. */
 
 type WorkoutSessionAuth = {
   /** Firebase가 확정한 현재 사용자 UID. hint 같은 낙관값은 사용하지 않는다. */
@@ -68,11 +65,7 @@ type WorkoutSessionAuth = {
   user: User | null;
 };
 
-/** 챌린지별 실시간 라이벌 격차 — live-progress 핑 응답을 워크아웃 화면 렌더용으로 펼친 것. */
-export type LiveRivalGapEntry = LiveRivalGap & { challengeId: number };
-
-/** 번역 코드이거나(로케일 따라 문구가 바뀜) 번역 대상이 아닌 원문이거나 둘 중 하나다. */
-type GeoErrorState = { code: GeoErrorCode } | { text: string };
+export type { LiveRivalGapEntry } from "./useWorkoutLiveProgress";
 
 /** geoMessages를 주입하지 않는 호출자(테스트 등)를 위한 최소 문구. */
 const FALLBACK_GEO_MESSAGES: Record<GeoErrorCode, string> = {
@@ -104,15 +97,6 @@ export function useWorkoutSession(
   const [position, setPosition] = useState<LatLng | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [distanceM, setDistanceM] = useState(0);
-  /** 최근 live-progress 핑 응답 — 챌린지별 라이벌 격차를 펼친 목록. 핑이 없거나 실패하면 이전 값 유지. */
-  const [liveRivalGaps, setLiveRivalGaps] = useState<LiveRivalGapEntry[]>([]);
-  /** 아직 끝나지 않은 주기 핑 수 — 느린 네트워크에서 핑이 쌓이지 않게 한다. */
-  const livePingPendingRef = useRef(0);
-  /**
-   * 마지막으로 발급한 라이브 요청 순서 토큰. 서버는 더 큰 값만 받아들이므로, 같은 ms에 두 요청이
-   * 만들어져도 반드시 증가하도록 직접 단조성을 보장한다.
-   */
-  const liveSentAtRef = useRef(0);
   /**
    * 로케일이 바뀌면 문구도 따라 바뀌어야 하므로 완성된 문자열이 아니라 코드를 담는다.
    * 예전에는 번역된 문자열을 넣어, 언어를 바꿔도 이미 떠 있는 배너만 이전 언어로 남았다.
@@ -145,9 +129,6 @@ export function useWorkoutSession(
   const idleCheckDeferredUntilRef = useRef(0);
   /** 확인 요청 세대 — 늦게 도착한 응답이 최신 판단을 덮어쓰지 않게 한다. */
   const gapVerifySeqRef = useRef(0);
-  /** 시작 직전의 양호한 GPS 한 점을 녹화 시작점으로 넘기기 위한 짧은 예열 버퍼. */
-  const warmupFixesRef = useRef<WorkoutStartFix[]>([]);
-
   // ── 탈것 Tiered 감지 레프 ─────────────────────────────────────────────────
   const vehicleStateRef = useRef<VehicleDetectState>(initialVehicleDetectState());
   const lastPosTimeRef = useRef<number | null>(null);
@@ -184,137 +165,36 @@ export function useWorkoutSession(
     autoPausedRef,
   });
 
-  // ── 실시간 진행률 핑: 서버에 현재 누적 거리를 보내 참여 중인 레이스의 라이벌과의
-  // 실시간 격차를 받는다. 로컬 저장(위 SAVE_INTERVAL_MS)과 달리 서버 호출이라, 탈것 의심/확정
-  // 상태나 방치 자동 일시정지 중에는 보내지 않는다(부정확하거나 멈춘 값이 라이벌 격차에 섞이지 않게).
-  // best-effort — 실패해도 러닝 자체는 계속되며 이전 격차 값을 그대로 둔다.
-  /**
-   * 단조 증가하는 요청 순서 토큰. 서버는 더 큰 값만 반영하므로 이 값이 핑·일시정지·삭제의
-   * 순서를 정한다 — 네트워크 재정렬과 무관하다. 같은 ms에 두 요청이 나가도 뒤엣것이 크도록
-   * 직접 단조성을 보장한다.
-   */
-  const nextLiveSentAt = useCallback(() => {
-    const next = Math.max(Date.now(), liveSentAtRef.current + 1);
-    liveSentAtRef.current = next;
-    return next;
-  }, []);
+  const liveProgressRefs = useMemo(() => ({
+    authUserRef,
+    statusRef,
+    sessionOwnerUidRef,
+    clientWorkoutIdRef,
+    vehicleStateRef,
+    autoPausedRef,
+    runStartedRef,
+    pausedAccumRef,
+    pauseStartedRef,
+    distanceAccumRef,
+  }), []);
+  const {
+    liveRivalGaps,
+    sendLivePing,
+    pauseLiveRun,
+    discardLiveRun,
+    clearLiveRivalGaps,
+  } = useWorkoutLiveProgress(status, liveProgressRefs);
 
-  // ── 실시간 진행률 핑: 서버에 현재 누적 거리를 보내 참여 중인 레이스의 라이벌과의
-  // 실시간 격차를 받는다. 로컬 저장(위 SAVE_INTERVAL_MS)과 달리 서버 호출이라, 탈것 의심/확정
-  // 상태나 방치 자동 일시정지 중에는 보내지 않는다(부정확하거나 멈춘 값이 라이벌 격차에 섞이지 않게).
-  // best-effort — 실패해도 러닝 자체는 계속되며 이전 격차 값을 그대로 둔다.
-  const sendLivePing = useCallback((opts?: { force?: boolean }) => {
-    // 주기 핑은 앞선 핑이 안 끝났으면 건너뛴다. 느린 네트워크에서 주기(60초)보다 오래 걸리면
-    // 핑이 계속 쌓여 큐가 길어지고, 뒤에 들어올 해제 요청도 그만큼 밀린다.
-    // 건너뛰어도 손해가 없다 — 다음 주기에 더 최신 거리로 보낸다.
-    //
-    // 시작·재개·복귀는 force로 반드시 넣는다. 건너뛰면 앞서 큐에 들어간 일시정지 요청이
-    // 뒤에 도착해, 실제로는 달리는 중인데 다음 주기(최대 60초)까지 멈춘 것으로 보인다 —
-    // 큐의 마지막이 항상 사용자의 현재 의도여야 한다. 서버 판정과는 무관한 클라이언트 개념이다.
-    if (!opts?.force && livePingPendingRef.current > 0) return;
-    livePingPendingRef.current++;
-    void (async () => {
-      // 가드·페이로드는 큐에서 실제로 실행되는 시점에 읽는다(대기 중 상태가 바뀔 수 있다).
-      const ownerUid = sessionOwnerUidRef.current;
-      const clientWorkoutId = clientWorkoutIdRef.current;
-      const user = authUserRef.current;
-      if (
-        statusRef.current !== "running"
-        || ownerUid == null
-        || clientWorkoutId == null
-        || user == null
-        || user.uid !== ownerUid
-        || vehicleStateRef.current.tier !== "normal"
-        || autoPausedRef.current
-      ) {
-        return Promise.resolve();
-      }
-      // 경과 시간을 함께 보내 서버가 첫 핑부터 평균 속도를 검증할 수 있게 한다
-      // (이전 핑과의 델타만으로는 비교 대상이 없는 첫 핑을 걸러내지 못한다).
-      //
-      // 최소 1초로 올린다. 시작 직후 핑은 경과가 0초라 그대로 보내면 서버가 duration_invalid로
-      // 거절하고(그래서 예전에는 여기서 조기 반환했다), 그러면 시작 핑이 통째로 버려져
-      // 최대 60초 동안 남들 화면에 안 보인다. 거리 0에 1초면 속도 0이라 검증에도 안전하고,
-      // 분모를 줄이는 방향이라 조작에 유리해지지도 않는다.
-      const elapsedSec = Math.max(
-        1,
-        computeWorkoutElapsedSec(
-          runStartedRef.current ?? Date.now(),
-          pausedAccumRef.current,
-          pauseStartedRef.current,
-        ),
-      );
-      const sentAt = nextLiveSentAt();
-      return await postLiveProgress(
-        Math.round(distanceAccumRef.current),
-        elapsedSec,
-        sentAt,
-        clientWorkoutId,
-        user,
-      ).then(
-        (res) => {
-          // 응답 도착 시점에도 여전히 같은 소유자의 같은 런이 진행 중일 때만 반영 —
-          // 그 사이 런이 끝나거나 계정이 바뀌었으면 낡은 격차를 화면에 남기지 않는다.
-          if (
-            sessionOwnerUidRef.current !== ownerUid
-            || statusRef.current !== "running"
-            || !isLatestLiveProgressResponse(
-              clientWorkoutId,
-              sentAt,
-              clientWorkoutIdRef.current,
-              liveSentAtRef.current,
-            )
-          ) return;
-          setLiveRivalGaps(
-            res.challenges.flatMap((c) =>
-              c.rivalGaps.map((g) => ({ ...g, challengeId: c.challengeId })),
-            ),
-          );
-        },
-      );
-    })().catch(() => {}).finally(() => {
-      livePingPendingRef.current--;
-    });
-  }, [nextLiveSentAt]);
-
-  /**
-   * "지금 뛰고 있지 않다"를 서버에 알린다 — 거리는 남기고 "러닝 중" 표시만 끈다.
-   * 앞선 핑 뒤에 실행되도록 같은 큐에 넣는다(먼저 보내면 늦게 도착한 핑이 되살린다).
-   * best-effort — 실패해도 신선도 윈도가 지나면 어차피 사라진다.
-   *
-   * <p>일시정지·종료 모두 이걸 쓴다. 종료에도 삭제를 쓰지 않는 이유: 이 시점엔 확정 저장이
-   * 아직 안 끝났다. 먼저 지우면 total_km이 오르기 전까지 진행바가 이번 런 이전 값으로
-   * 뒷걸음질 치고, 저장이 실패해 보류되면 그 상태가 오래 간다(결승 직전에 0으로 떨어져 보인다).
-   * 저장이 성공하면 서버의 확정 경로가 리셋하고, 실패하면 신선도 윈도가 정리한다.
-   */
-  const pauseLiveRun = useCallback((expectedUid: string) => {
-    const user = authUserRef.current;
-    if (user == null || user.uid !== expectedUid) return;
-    // 큐에 넣지 않고 바로 보낸다. 순서는 토큰이 보장하므로(서버가 더 큰 값만 반영) 줄을
-    // 세울 이유가 없고, 세우면 응답 없는 핑 뒤에 멈춤 신호가 갇혀 "러닝 중"이 남는다.
-    void pauseLiveProgress(user, nextLiveSentAt()).catch(() => {});
-  }, [nextLiveSentAt]);
-
-  /**
-   * 이번 런을 저장하지 않기로 확정됐을 때 라이브 값을 통째로 지운다(1m 미만 저장 취소, 경로 없음).
-   * 일시정지로 남겨 두면 저장되지도 않을 거리가 신선도 윈도(15분) 동안 남아 있다가 뒤늦게
-   * 떨어진다 — 종료 경로가 일시정지를 쓰는 이유(확정 저장이 곧 따라온다)가 여기엔 없다.
-   */
-  const discardLiveRun = useCallback((expectedUid: string) => {
-    const user = authUserRef.current;
-    if (user == null || user.uid !== expectedUid) return;
-    setLiveRivalGaps([]);
-    void clearLiveProgress(user, nextLiveSentAt()).catch(() => {});
-  }, [nextLiveSentAt]);
-
-  // 러닝 중일 때만 타이머를 건다. 상시 등록하면 운동하지 않는 동안에도 60초마다 콜백이
-  // 깨어난다(요청은 가드가 막지만 깨우는 것 자체가 낭비다). 재개 시 위상이 처음부터 다시
-  // 시작되는데, 재개는 어차피 force 핑을 따로 보내므로 공백이 생기지 않는다.
-  useEffect(() => {
-    if (status !== "running") return;
-    const timer = setInterval(sendLivePing, LIVE_PING_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [status, sendLivePing]);
+  const warmupFixesRef = useWorkoutGpsWarmup({
+    authLoading: authState.loading,
+    currentUid: authState.currentUid,
+    status,
+    pathname,
+    currentUidRef,
+    statusRef,
+    setPosition,
+    setGeoErrorState,
+  });
 
   // ── GPS 유틸 ──────────────────────────────────────────────────────────────
   /**
@@ -378,8 +258,8 @@ export function useWorkoutSession(
     setGeoErrorState(null);
     setVehicleTier("normal");
     setAutoPaused(false);
-    setLiveRivalGaps([]);
-  }, []);
+    clearLiveRivalGaps();
+  }, [clearLiveRivalGaps, warmupFixesRef]);
 
   /**
    * 방치 자동 일시정지 — 30분간 100m도 못 나아갔으면 운동 종료를 잊은 것으로 보고
@@ -907,83 +787,6 @@ export function useWorkoutSession(
     startWatch,
   ]);
 
-  // ── GPS 예열 (운동 화면 idle 동안 미리 위성 확보) ──────────────────────────
-  // 운동 화면에 있는 동안(idle) 고정밀 위치 워치를 돌려 GPS 라디오를 미리 켜둔다.
-  // 시작을 누를 땐 이미 위성이 잡혀 있어, 콜드스타트 지연·초반 정확도 저하로 거리·경로가
-  // 한동안 안 찍히던 문제를 없앤다. running/paused면 녹화 워치가 GPS를 잡으므로 건너뛴다.
-  // 이 훅은 앱 전역 프로바이더(AppShell)에 마운트되므로 반드시 /workout에서만 예열한다 —
-  // 안 그러면 홈·크루 등 모든 화면에서 GPS가 상시 켜져 배터리를 소모한다.
-  useEffect(() => {
-    if (
-      authState.loading
-      || authState.currentUid == null
-      || status !== "idle"
-      || pathname !== "/workout"
-    ) {
-      return;
-    }
-    let cancelled = false;
-    let watchId: number | null = null;
-    const warmupUid = authState.currentUid;
-    warmupFixesRef.current = [];
-
-    async function warmUp() {
-      const blocked = geolocationBlockedCode();
-      if (blocked) {
-        setGeoErrorState({ code: blocked });
-        return;
-      }
-      if (Capacitor.isNativePlatform()) {
-        await waitForNativePermissions();
-      }
-      if (cancelled || typeof navigator === "undefined" || !navigator.geolocation) return;
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          if (
-            cancelled
-            || currentUidRef.current !== warmupUid
-            || statusRef.current !== "idle"
-          ) {
-            return;
-          }
-          const receivedAtMs = Date.now();
-          warmupFixesRef.current = [
-            ...warmupFixesRef.current,
-            {
-              ownerUid: warmupUid,
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              accuracyM: normalizeGpsAccuracyM(pos.coords.accuracy),
-              fixAtMs: pos.timestamp,
-              receivedAtMs,
-            },
-          ].slice(-WARMUP_FIX_BUFFER_SIZE);
-          setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setGeoErrorState(null);
-        },
-        (err) => {
-          if (
-            !cancelled
-            && currentUidRef.current === warmupUid
-            && statusRef.current === "idle"
-          ) {
-            setGeoErrorState({ code: geolocationErrorCode(err) });
-          }
-        },
-        { enableHighAccuracy: true, maximumAge: 1_000, timeout: 30_000 },
-      );
-    }
-
-    warmUp();
-    return () => {
-      cancelled = true;
-      warmupFixesRef.current = [];
-      if (watchId != null && typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, [authState.loading, authState.currentUid, status, pathname]);
-
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
   /**
    * 런을 시작한다. 실제로 시작됐는지 반환한다 — 인증 미확정·이미 진행 중·GPS 차단이면
@@ -1112,7 +915,7 @@ export function useWorkoutSession(
       },
     );
     return true;
-  }, [isCurrentSessionOwner, startWatch, sendLivePing]);
+  }, [isCurrentSessionOwner, startWatch, sendLivePing, warmupFixesRef]);
 
   const pause = useCallback((expectedUid: string) => {
     if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "running") return;
@@ -1224,7 +1027,7 @@ export function useWorkoutSession(
     // 라이브(잠정) 진행률 즉시 해제 — 저장이 성공하면 서버가 어차피 리셋하지만, 저장에
     // 실패하거나 기록을 버리면 아무도 지우지 않아 "러닝 중" 표시와 부풀려진 진행바가
     // 신선도 윈도(15분) 동안 남는다. best-effort — 실패해도 종료 자체는 진행한다.
-    setLiveRivalGaps([]);
+    clearLiveRivalGaps();
     pauseLiveRun(expectedUid);
     // 이 런의 스냅샷일 때만 지운다 — 웹에서 다른 탭이 진행 중이면 그쪽을 날리지 않는다.
     clearWorkout(runStartedRef.current ?? undefined);
@@ -1237,6 +1040,7 @@ export function useWorkoutSession(
     position,
     clampIdlePauseAt,
     pauseLiveRun,
+    clearLiveRivalGaps,
     isCurrentSessionOwner,
     resetRuntime,
   ]);
