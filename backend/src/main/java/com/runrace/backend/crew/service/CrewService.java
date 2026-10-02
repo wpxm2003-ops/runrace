@@ -3,18 +3,9 @@ package com.runrace.backend.crew.service;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.ForbiddenTextChars;
 import com.runrace.backend.common.KstTime;
-import com.runrace.backend.common.PageParams;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewJoinRequest;
-import com.runrace.backend.crew.domain.CrewJoinRequestStatus;
 import com.runrace.backend.crew.domain.CrewMember;
-import com.runrace.backend.crew.dto.CrewDetailResponse;
-import com.runrace.backend.crew.dto.CrewInsightsResponse;
-import com.runrace.backend.crew.dto.CrewJoinRequestRow;
-import com.runrace.backend.crew.dto.MyApplicationRow;
-import com.runrace.backend.crew.dto.MyCrewResponse;
-import com.runrace.backend.crew.dto.MyCrewResponse.CrewMemberRow;
-import com.runrace.backend.crew.dto.MyCrewResponse.CrewView;
 import com.runrace.backend.crew.repository.CrewJoinRequestRepository;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
@@ -31,15 +22,12 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -62,12 +50,6 @@ public class CrewService {
   static final int MEETUP_PLACE_MAX = 60;
   static final int MEETUP_TIME_MAX = 30;
   static final int PROFILE_IMAGE_MAX = 4;
-  static final int APPLY_MESSAGE_MAX = 100;
-  static final int REJECT_REASON_MAX = 100;
-  /** 거절 후 같은 크루 재신청 쿨다운. */
-  static final int APPLY_COOLDOWN_HOURS = 24;
-  /** 도배 방지 — 크루 무관, 최근 24시간 내 전체 신청 상한. */
-  static final int APPLY_DAILY_CAP = 10;
 
   /** 시도 지역 코드 — 발견 목록 필터·크루 프로필의 유효값 화이트리스트. ETC=기타(백필 sentinel), ONLINE=온라인/전국. */
   static final Set<String> VALID_REGIONS = Set.of(
@@ -89,120 +71,7 @@ public class CrewService {
   private final AppUserRepository appUserRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final CrewProfileImages crewProfileImages;
-  private final CrewInsightsReader crewInsightsReader;
   private final ActivityHistoryService activityHistoryService;
-
-  // ── 조회 ──────────────────────────────────────────────────────
-
-  /** 내 크루 홈 — 크루 정보 + 월간 보드(이번 달 거리 내림차순) + 인사이트 스탯. 미소속이면 crew=null. */
-  @Transactional(readOnly = true)
-  public MyCrewResponse myCrew(UUID meId) {
-    Optional<CrewMember> membership = crewMemberRepository.findByUserId(meId);
-    if (membership.isEmpty()) {
-      return new MyCrewResponse(null);
-    }
-    Crew crew = membership.get().getCrew();
-    List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
-
-    // 이번 달 멤버별 누적
-    Map<UUID, long[]> agg = sumMonthDistanceByMember(crew.getId(), monthStartKst());
-
-    long allTime = crewMemberRepository.sumMemberDistanceSinceJoin(crew.getId());
-
-    List<CrewMemberRow> rows = toBoardRows(crew, members, agg, meId);
-
-    return new MyCrewResponse(new CrewView(
-        crew.getId(), crew.getName(), crew.getNotice(), crew.getJoinCode(),
-        crew.isLeader(meId), crew.getMaxMembers(), crew.getMonthGoalKm(),
-        allTime, rows));
-  }
-
-  /**
-   * 이번 달 멤버별 집계 — {userId → [거리m, 횟수]}.
-   * 가입 이후 기록만 집계 — 가입 전 과거 운동이 크루 보드·잔디에 새어 들어오지 않게 한다.
-   */
-  private Map<UUID, long[]> sumMonthDistanceByMember(Long crewId, OffsetDateTime monthStart) {
-    Map<UUID, long[]> agg = new HashMap<>();
-    for (var row : crewMemberRepository.sumMemberDistanceSince(crewId, monthStart)) {
-      agg.put(row.getUserId(), new long[] {row.getDistanceM(), row.getRuns()});
-    }
-    return agg;
-  }
-
-  /** 월간 보드 행 — 멤버마다 이번 달 집계를 채우고(없으면 0) 거리순으로 세운다. */
-  private static List<CrewMemberRow> toBoardRows(
-      Crew crew, List<CrewMember> members, Map<UUID, long[]> agg, UUID meId) {
-    return members.stream()
-        .map(m -> {
-          AppUser u = m.getUser();
-          long[] a = agg.getOrDefault(u.getId(), new long[] {0, 0});
-          return new CrewMemberRow(
-              u.getId(), u.getNickname(), crew.isLeader(u.getId()), u.getId().equals(meId),
-              a[0], (int) a[1]);
-        })
-        // 월간 거리 내림차순, 동률(0km 포함)은 가입 순 유지(stream 정렬은 stable)
-        .sorted(Comparator.comparingLong(CrewMemberRow::monthDistanceM).reversed())
-        .toList();
-  }
-
-  /**
-   * 크루 검색(도전장 상대 선택용) — 내 크루 제외, 멤버 많은 순 상위 30개.
-   * 와일드카드 문자(%·_)는 리터럴 취급을 위해 제거한다.
-   */
-  @Transactional(readOnly = true)
-  public List<CrewRepository.CrewSearchRow> search(UUID meId, String rawQuery) {
-    String query = rawQuery == null ? "" : rawQuery.trim().replaceAll("[%_]", "");
-    long excludeCrewId = crewMemberRepository.findByUserId(meId)
-        .map(m -> m.getCrew().getId())
-        .orElse(-1L);
-    return crewRepository.searchByName(query, excludeCrewId);
-  }
-
-  /**
-   * 크루 발견 목록 — 10개 단위, 지역 필터(null/빈 문자열=전체), 멤버 수 내림차순.
-   * regionCode가 유효 목록 밖이면 결과가 항상 비게 되므로("전체"로 폴백하지 않음)
-   * 사전에 화이트리스트를 검증해 조용한 오타를 막는다.
-   */
-  @Transactional(readOnly = true)
-  public List<CrewRepository.CrewDiscoveryRow> discover(String regionCode, int page, int size) {
-    PageParams.Clamped clamped = PageParams.clamp(page, size);
-    int safePage = clamped.page();
-    int safeSize = clamped.size();
-    String region = regionCode == null ? "" : regionCode.trim().toUpperCase();
-    if (!region.isEmpty() && !VALID_REGIONS.contains(region)) {
-      throw ApiException.badRequest("invalid_region");
-    }
-    return crewRepository.findDiscoverableRich(region, safeSize + 1, (long) safePage * safeSize);
-  }
-
-  /**
-   * 공개 크루 상세 — 비회원도 조회 가능. viewerId가 있으면 재신청 쿨다운 여부를 함께 채운다.
-   * 대기중 신청 여부는 담지 않는다 — {@link CrewDetailResponse} 참조.
-   */
-  @Transactional(readOnly = true)
-  public CrewDetailResponse detail(long crewId, UUID viewerId) {
-    Crew crew = crewRepository.getRequired(crewId);
-    int memberCount = crewMemberRepository.countByCrewId(crewId);
-
-    boolean inCooldown = viewerId != null && isInCooldown(crewId, viewerId);
-
-    return new CrewDetailResponse(
-        crew.getId(), crew.getName(), crew.getRegion(), crew.getImageUrl(),
-        crewProfileImages.from(crew, PROFILE_IMAGE_MAX), crew.getIntro(),
-        memberCount, crew.getMaxMembers(),
-        crew.getMeetupPlace(), parseMeetupDaysCsv(crew.getMeetupDays()), crew.getMeetupTime(),
-        crew.getCreatedAt(), crew.getFoundedAt(), crew.getLeader().getNickname(),
-        memberCount >= crew.getMaxMembers(), inCooldown);
-  }
-
-  /** 크루 잔디(최근 5주 날짜별 뛴 멤버 수) + 명예의 전당(월별 MVP). */
-  @Transactional(readOnly = true)
-  public CrewInsightsResponse insights(UUID meId) {
-    CrewMember membership = requireMembership(meId);
-    Crew crew = membership.getCrew();
-    List<CrewMember> members = crewMemberRepository.findAllByCrewIdOrderByJoinedAtAsc(crew.getId());
-    return crewInsightsReader.read(crew.getId(), members);
-  }
 
   // ── 생성·가입·탈퇴 ────────────────────────────────────────────
 
@@ -338,225 +207,6 @@ public class CrewService {
         Map.of());
   }
 
-  // ── 가입신청(승인제) ──────────────────────────────────────────
-
-  /**
-   * 발견 목록에서 가입 신청 — 초대코드 즉시가입과 별개 경로. 순서대로 가드:
-   * 미소속 → 정원 여유 → 중복 pending 없음 → 24h 쿨다운 밖 → 도배 상한 이내.
-   */
-  @Transactional
-  public void apply(UUID meId, long crewId, String rawMessage) {
-    Crew crew = crewRepository.getRequired(crewId);
-    String message = validateBoundedText(rawMessage, APPLY_MESSAGE_MAX, "invalid_apply_message");
-    AppUser applicant = appUserRepository.getRequiredForUpdate(meId);
-
-    if (crewMemberRepository.existsByUserId(meId)) {
-      throw ApiException.conflict("already_in_crew");
-    }
-    if (crewMemberRepository.countByCrewId(crewId) >= crew.getMaxMembers()) {
-      throw ApiException.conflict("crew_full");
-    }
-    if (crewJoinRequestRepository.existsByCrewIdAndUserIdAndStatus(
-        crewId, meId, CrewJoinRequestStatus.PENDING)) {
-      throw ApiException.conflict("already_pending");
-    }
-    if (isInCooldown(crewId, meId)) {
-      throw ApiException.conflict("apply_cooldown");
-    }
-    OffsetDateTime dailyWindowStart = OffsetDateTime.now().minusHours(24);
-    if (crewJoinRequestRepository.countByUserIdAndCreatedAtAfter(meId, dailyWindowStart) >= APPLY_DAILY_CAP) {
-      throw ApiException.conflict("apply_rate_limited");
-    }
-
-    CrewJoinRequest request = CrewJoinRequest.of(crew, applicant, message);
-    crewJoinRequestRepository.save(request);
-    activityHistoryService.recordSelf(
-        meId,
-        ActivityAction.CREW_APPLICATION_SUBMITTED,
-        ActivityTargetType.CREW_APPLICATION,
-        request.getId(),
-        Map.of("crewId", crewId));
-    eventPublisher.publishEvent(new CrewEvents.CrewApplyReceived(
-        crew.getLeader().getId(), applicant.getNickname(), crewId));
-  }
-
-  /**
-   * 가입 신청 승인(리더 전용) — 승인 순간 정원·소속 상태를 재확인한다(신청 이후 상황이 바뀔 수 있음).
-   * 승인되면 신청자의 다른 대기중 신청은 전부 자동취소된다(1인 1크루 전제와 정합).
-   *
-   * <p>{@code noRollbackFor}인 이유: 신청자가 이미 다른 크루에 들어간 경우
-   * {@link #requireApplicantStillJoinable}가 그 신청을 취소해 두고 conflict를 던지는데,
-   * 기본 설정이면 {@code ApiException}(RuntimeException)에 롤백돼 그 취소가 사라진다.
-   * 그러면 프론트는 "자동으로 취소됐어요"라고 안내하는데 신청은 계속 대기중으로 남는다.
-   * 이 메서드에서 예외 전에 일어나는 쓰기는 그 의도된 취소뿐이라 커밋해도 안전하다.
-   */
-  @Transactional(noRollbackFor = ApiException.class)
-  public void approve(UUID leaderId, long requestId) {
-    // 멤버십을 만드는 모든 경로가 신청자 행을 첫 잠금으로 사용한다. 그러면 pending ID를
-    // 읽은 뒤 새 신청·즉시가입·크루생성이 끼어들 수 없고, user -> crew -> request 순서가
-    // 모든 경로에서 동일해진다.
-    UUID applicantId = crewJoinRequestRepository.findApplicantUserId(requestId)
-        .orElseThrow(() -> ApiException.notFound("request_not_found"));
-    Long crewId = crewJoinRequestRepository.findCrewId(requestId)
-        .orElseThrow(() -> ApiException.notFound("request_not_found"));
-    AppUser applicant = appUserRepository.getRequiredForUpdate(applicantId);
-    Crew crew = lockCrew(crewId);
-
-    List<CrewJoinRequest> locked =
-        crewJoinRequestRepository.findAllByIdsForUpdate(lockIdsForApplicant(requestId, applicantId));
-    CrewJoinRequest request = locked.stream()
-        .filter(r -> r.getId() == requestId)
-        .findFirst()
-        .orElseThrow(() -> ApiException.notFound("request_not_found"));
-    validateLeaderPending(request, leaderId);
-
-    requireApplicantStillJoinable(request, crew, applicantId);
-
-    // 가입 확정 — 멤버 등록 → 신청 승인 → 신청자의 다른 대기중 신청 정리
-    crewMemberRepository.save(
-        CrewMember.builder().crew(crew).user(applicant).joinedAt(OffsetDateTime.now()).build());
-    request.approve(leaderId);
-    crewJoinRequestRepository.save(request);
-    cancelAlreadyLocked(locked, requestId);
-
-    activityHistoryService.record(
-        leaderId,
-        applicantId,
-        ActivityAction.CREW_APPLICATION_APPROVED,
-        ActivityTargetType.CREW_APPLICATION,
-        requestId,
-        Map.of("crewId", crewId));
-    activityHistoryService.record(
-        leaderId,
-        applicantId,
-        ActivityAction.CREW_JOINED,
-        ActivityTargetType.CREW,
-        crewId,
-        Map.of("method", "application", "requestId", requestId));
-
-    eventPublisher.publishEvent(
-        new CrewEvents.CrewApplyApproved(applicantId, crew.getName(), crew.getId()));
-  }
-
-  /** requestId 자신 + 같은 신청자의 대기중 신청 id 전체(정렬) — approve()의 일괄 잠금 대상. */
-  private List<Long> lockIdsForApplicant(long requestId, UUID applicantId) {
-    TreeSet<Long> ids = new TreeSet<>(crewJoinRequestRepository.findPendingIdsByUserId(applicantId));
-    ids.add(requestId);
-    return List.copyOf(ids);
-  }
-
-  /** 이미 잠가 둔 목록에서 대상 자신을 제외하고, 여전히 대기중인 것만 취소한다(자동취소). */
-  private void cancelAlreadyLocked(List<CrewJoinRequest> locked, long exceptRequestId) {
-    for (CrewJoinRequest pending : locked) {
-      if (pending.getId() == exceptRequestId || !pending.isPending()) continue;
-      pending.cancel();
-      crewJoinRequestRepository.save(pending);
-    }
-  }
-
-  /**
-   * 신청 행 단건 잠금 조회 — 승인·거절·철회가 같은 신청을 동시에 결정할 때
-   * 뒤 트랜잭션이 앞 결정을 stale 상태로 덮어쓰지 않게 한다.
-   */
-  private CrewJoinRequest lockRequest(long requestId) {
-    return crewJoinRequestRepository.findAllByIdsForUpdate(List.of(requestId))
-        .stream().findFirst()
-        .orElseThrow(() -> ApiException.notFound("request_not_found"));
-  }
-
-  /** 승인·거절 공통 가드 — 신청 존재 + 내가 그 크루의 리더 + 아직 대기중. */
-  private CrewJoinRequest requirePendingRequestAsLeader(UUID leaderId, long requestId) {
-    CrewJoinRequest request = lockRequest(requestId);
-    validateLeaderPending(request, leaderId);
-    return request;
-  }
-
-  private static void validateLeaderPending(CrewJoinRequest request, UUID leaderId) {
-    if (!request.getCrew().isLeader(leaderId)) {
-      throw ApiException.forbidden("not_leader");
-    }
-    if (!request.isPending()) {
-      throw ApiException.conflict("request_already_decided");
-    }
-  }
-
-  /** 승인 순간의 재확인 — 신청자 소속·정원 상태는 신청 이후 바뀔 수 있다. */
-  private void requireApplicantStillJoinable(CrewJoinRequest request, Crew crew, UUID applicantId) {
-    // 신청 이후 다른 경로(초대코드 등)로 이미 크루에 들어갔으면 이 신청은 더 이상 유효하지 않다.
-    if (crewMemberRepository.existsByUserId(applicantId)) {
-      request.cancel();
-      crewJoinRequestRepository.save(request);
-      throw ApiException.conflict("applicant_already_in_crew");
-    }
-    if (crewMemberRepository.countByCrewId(crew.getId()) >= crew.getMaxMembers()) {
-      throw ApiException.conflict("crew_full");
-    }
-  }
-
-  /** 가입 신청 거절(리더 전용) — 사유는 선택. 거절 시각부터 {@value #APPLY_COOLDOWN_HOURS}h 재신청 쿨다운. */
-  @Transactional
-  public void reject(UUID leaderId, long requestId, String rawReason) {
-    CrewJoinRequest request = requirePendingRequestAsLeader(leaderId, requestId);
-    Crew crew = request.getCrew();
-    String reason = validateBoundedText(rawReason, REJECT_REASON_MAX, "invalid_reject_reason");
-
-    request.reject(leaderId, reason);
-    crewJoinRequestRepository.save(request);
-
-    activityHistoryService.record(
-        leaderId,
-        request.getUser().getId(),
-        ActivityAction.CREW_APPLICATION_REJECTED,
-        ActivityTargetType.CREW_APPLICATION,
-        requestId,
-        Map.of("crewId", crew.getId()));
-
-    eventPublisher.publishEvent(new CrewEvents.CrewApplyRejected(
-        request.getUser().getId(), crew.getName(), reason, crew.getId()));
-  }
-
-  /** 신청 철회(신청자 본인). */
-  @Transactional
-  public void cancelApplication(UUID meId, long requestId) {
-    CrewJoinRequest request = lockRequest(requestId);
-    if (!request.getUser().getId().equals(meId)) {
-      throw ApiException.forbidden("not_your_request");
-    }
-    if (!request.isPending()) {
-      throw ApiException.conflict("request_already_decided");
-    }
-    request.cancel();
-    crewJoinRequestRepository.save(request);
-    activityHistoryService.recordSelf(
-        meId,
-        ActivityAction.CREW_APPLICATION_CANCELLED,
-        ActivityTargetType.CREW_APPLICATION,
-        requestId,
-        Map.of("crewId", request.getCrew().getId()));
-  }
-
-  /** 내 신청 현황(대기중 전체) — 크루 미소속 홈에서 노출. */
-  @Transactional(readOnly = true)
-  public List<MyApplicationRow> myApplications(UUID meId) {
-    return crewJoinRequestRepository.findPendingByUserId(meId).stream()
-        .map(r -> new MyApplicationRow(
-            r.getId(), r.getCrew().getId(), r.getCrew().getName(), r.getCreatedAt()))
-        .toList();
-  }
-
-  /** 리더 인박스 — 내 크루(사용자당 1개)의 대기중 신청 전체(먼저 온 순). 리더가 아니면 forbidden. */
-  @Transactional(readOnly = true)
-  public List<CrewJoinRequestRow> leaderInbox(UUID meId) {
-    CrewMember membership = requireMembership(meId);
-    if (!membership.getCrew().isLeader(meId)) {
-      throw ApiException.forbidden("not_leader");
-    }
-    return crewJoinRequestRepository.findPendingByCrewId(membership.getCrew().getId()).stream()
-        .map(r -> new CrewJoinRequestRow(
-            r.getId(), r.getUser().getId(), r.getUser().getNickname(), r.getMessage(), r.getCreatedAt()))
-        .toList();
-  }
-
   // ── 계정 탈퇴 연동 ────────────────────────────────────────────
 
   /**
@@ -597,12 +247,6 @@ public class CrewService {
   }
 
   // ── 내부 헬퍼 ─────────────────────────────────────────────────
-
-  /** 이번 달 시작(KST 1일 00:00). 크루 보드·잔디 집계의 하한 경계. */
-  private static OffsetDateTime monthStartKst() {
-    LocalDate firstOfMonth = LocalDate.now(KST).withDayOfMonth(1);
-    return firstOfMonth.atStartOfDay(KST).toOffsetDateTime();
-  }
 
   private Crew findByCode(String rawCode) {
     String code = rawCode == null ? "" : rawCode.trim().toUpperCase();
@@ -683,14 +327,6 @@ public class CrewService {
     return region;
   }
 
-  /** CSV(월=0…일=6) → 요일 배열. null/빈 값은 빈 배열(정기런 없음). */
-  private static int[] parseMeetupDaysCsv(String csv) {
-    if (csv == null || csv.isBlank()) {
-      return new int[0];
-    }
-    return Arrays.stream(csv.split(",")).mapToInt(Integer::parseInt).toArray();
-  }
-
   /** 요일 배열(월=0…일=6) → CSV. 중복 제거·정렬·범위밖 무시. 빈 배열/전부 범위밖이면 null(미입력). */
   private static String normalizeMeetupDays(int[] days) {
     if (days == null || days.length == 0) {
@@ -702,13 +338,6 @@ public class CrewService {
     }
     return Arrays.stream(cleaned).mapToObj(Integer::toString)
         .reduce((a, b) -> a + "," + b).orElse(null);
-  }
-
-  /** 거절 후 재신청 쿨다운 — 가장 최근 거절 시각으로부터 {@value #APPLY_COOLDOWN_HOURS}시간 이내인지. */
-  private boolean isInCooldown(long crewId, UUID userId) {
-    return crewJoinRequestRepository.findLastRejectedAt(crewId, userId)
-        .map(last -> last.isAfter(OffsetDateTime.now().minusHours(APPLY_COOLDOWN_HOURS)))
-        .orElse(false);
   }
 
   /**

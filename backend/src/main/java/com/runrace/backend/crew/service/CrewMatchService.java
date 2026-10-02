@@ -2,18 +2,14 @@ package com.runrace.backend.crew.service;
 
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.IsoTime;
-import com.runrace.backend.common.PageParams;
 import com.runrace.backend.common.RaceRules;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMatch;
 import com.runrace.backend.crew.domain.CrewMatchRoster;
 import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
-import com.runrace.backend.crew.dto.CrewMatchHistoryPage;
 import com.runrace.backend.crew.dto.CrewMatchDetailResponse.RosterRow;
 import com.runrace.backend.crew.dto.CrewMatchSummary;
-import com.runrace.backend.crew.dto.MyCrewMatchesResponse;
-import com.runrace.backend.crew.dto.MyCrewMatchesResponse.MatchRecord;
 import com.runrace.backend.crew.repository.CrewMatchRepository;
 import com.runrace.backend.crew.repository.CrewMatchRosterRepository;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
@@ -35,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -231,75 +226,6 @@ public class CrewMatchService {
     crewMatchRepository.delete(match);
   }
 
-  // ── 조회 ──────────────────────────────────────────────────────
-
-  /** 크루 홈 대항전 섹션 — 전적 + 진행중 + 받은/보낸 도전장 + 최근 결과. */
-  @Transactional
-  public MyCrewMatchesResponse myMatches(UUID meId) {
-    Crew myCrew = requireMembership(meId).getCrew();
-    Long crewId = myCrew.getId();
-    OffsetDateTime now = OffsetDateTime.now();
-
-    // 진행중/받은 도전장/보낸 도전장 분류 (기간 끝난 ACCEPTED는 여기서 확정되며 빠진다)
-    ActiveMatches active = classifyActiveMatches(crewId, now);
-
-    // 가장 최근에 끝난 대항전 1건 — 위에서 방금 확정된 매치도 여기에 잡힌다.
-    CrewMatchSummary lastEnded = crewMatchRepository
-        .findEndedByCrewId(crewId, PageRequest.of(0, 1)).stream()
-        .findFirst()
-        .map(m -> toSummary(m, crewId, now))
-        .orElse(null);
-
-    MatchRecord record = new MatchRecord(
-        crewMatchRepository.countWins(crewId),
-        crewMatchRepository.countLosses(crewId),
-        crewMatchRepository.countDraws(crewId));
-    return new MyCrewMatchesResponse(
-        record, active.current(), active.received(), active.sent(), lastEnded);
-  }
-
-  /** 활성 매치 분류 결과 — 진행중(없으면 null) + 받은/보낸 도전장. */
-  private record ActiveMatches(
-      CrewMatchSummary current, List<CrewMatchSummary> received, List<CrewMatchSummary> sent) {}
-
-  private ActiveMatches classifyActiveMatches(Long crewId, OffsetDateTime now) {
-    CrewMatchSummary current = null;
-    List<CrewMatchSummary> received = new ArrayList<>();
-    List<CrewMatchSummary> sent = new ArrayList<>();
-    for (CrewMatch m : crewMatchRepository.findActiveByCrewId(crewId, now)) {
-      // 기간이 끝난 ACCEPTED는 여기서 lazy 확정 → lastEnded로 흘러가게 한다.
-      if (finalizeIfNeeded(m, now)) {
-        continue;
-      }
-      CrewMatchSummary summary = toSummary(m, crewId, now);
-      if (m.getStatus() == CrewMatch.Status.ACCEPTED) {
-        current = summary;
-      } else if (m.getOpponentCrew().getId().equals(crewId)) {
-        received.add(summary);
-      } else {
-        sent.add(summary);
-      }
-    }
-    return new ActiveMatches(current, received, sent);
-  }
-
-  /** 크루가 주고받은 전체 대항전 — 최신 신청 순 페이지. */
-  @Transactional
-  public CrewMatchHistoryPage history(UUID meId, int page, int size) {
-    Long crewId = requireMembership(meId).getCrew().getId();
-    OffsetDateTime now = OffsetDateTime.now();
-    PageParams.Clamped clamped = PageParams.clamp(page, size);
-    var slice = crewMatchRepository.findHistoryByCrewId(
-        crewId, PageRequest.of(clamped.page(), clamped.size()));
-    List<CrewMatchSummary> items = slice.getContent().stream()
-        .map(match -> {
-          finalizeIfNeeded(match, now);
-          return toSummary(match, crewId, now);
-        })
-        .toList();
-    return new CrewMatchHistoryPage(items, slice.hasNext());
-  }
-
   /** 대항전 상세 — 참가 크루 멤버만. 기간이 끝났으면 이 시점에 승자를 확정한다. */
   @Transactional
   public CrewMatchDetailResponse detail(UUID meId, long matchId) {
@@ -397,7 +323,7 @@ public class CrewMatchService {
    * endAt은 nullable 컬럼이라 null 체크를 반드시 거친다(스케줄러 쪽엔 원래 있었고, 조회 3곳은
    * 없어서 이론상 NPE 여지가 있었음 — 통합하며 전부 안전한 쪽으로 맞춤).
    */
-  private boolean finalizeIfNeeded(CrewMatch match, OffsetDateTime now) {
+  boolean finalizeIfNeeded(CrewMatch match, OffsetDateTime now) {
     if (match.getStatus() != CrewMatch.Status.ACCEPTED || match.isEnded()) return false;
     if (match.getEndAt() == null || now.isBefore(match.getEndAt())) return false;
     finalizeEnded(match);
@@ -539,7 +465,7 @@ public class CrewMatchService {
     return byUser;
   }
 
-  private CrewMatchSummary toSummary(CrewMatch match, Long myCrewId, OffsetDateTime now) {
+  CrewMatchSummary toSummary(CrewMatch match, Long myCrewId, OffsetDateTime now) {
     boolean myCrewIsChallenger = match.getChallengerCrew().getId().equals(myCrewId);
     long myDist = 0;
     long opDist = 0;

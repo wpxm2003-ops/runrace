@@ -8,6 +8,7 @@ import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
 import com.runrace.backend.crew.dto.CrewMatchHistoryPage;
 import com.runrace.backend.common.PageParams;
 import com.runrace.backend.crew.dto.MyCrewMatchesResponse;
+import com.runrace.backend.crew.service.CrewMatchQueryService;
 import com.runrace.backend.crew.service.CrewMatchService;
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CrewMatchController {
   private final CrewMatchService crewMatchService;
+  private final CrewMatchQueryService crewMatchQueryService;
 
   /** 도전장 발송(리더 전용). */
   @PostMapping
@@ -45,7 +47,7 @@ public class CrewMatchController {
   /** 크루 홈 대항전 섹션 — 전적 + 진행중 + 받은/보낸 도전장 + 최근 결과. */
   @GetMapping("/me")
   public ResponseEntity<MyCrewMatchesResponse> myMatches(AuthPrincipal principal) {
-    return ResponseEntity.ok(crewMatchService.myMatches(principal.userId()));
+    return ResponseEntity.ok(crewMatchQueryService.myMatches(principal.userId()));
   }
 
   /** 크루가 주고받은 전체 대항전 내역 — 최신 신청 순. */
@@ -55,7 +57,8 @@ public class CrewMatchController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
     PageParams.Clamped clamped = PageParams.clamp(page, size);
-    return ResponseEntity.ok(crewMatchService.history(principal.userId(), clamped.page(), clamped.size()));
+    return ResponseEntity.ok(
+        crewMatchQueryService.history(principal.userId(), clamped.page(), clamped.size()));
   }
 
   /** 대항전 상세(참가 크루 멤버만). */

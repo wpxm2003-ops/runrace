@@ -17,7 +17,9 @@ import com.runrace.backend.crew.dto.RejectJoinRequestRequest;
 import com.runrace.backend.crew.dto.UpdateCrewProfileRequest;
 import com.runrace.backend.crew.dto.UpdateCrewRequest;
 import com.runrace.backend.crew.repository.CrewRepository;
+import com.runrace.backend.crew.service.CrewApplicationService;
 import com.runrace.backend.crew.service.CrewService;
+import com.runrace.backend.crew.service.CrewQueryService;
 import com.runrace.backend.nudge.dto.NudgeRequest;
 import com.runrace.backend.nudge.service.NudgeService;
 import java.util.List;
@@ -41,18 +43,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CrewController {
   private final CrewService crewService;
+  private final CrewQueryService crewQueryService;
+  private final CrewApplicationService crewApplicationService;
   private final NudgeService nudgeService;
 
   /** 내 크루 홈(주간 보드 포함). 미소속이면 {@code crew: null}. */
   @GetMapping("/me")
   public ResponseEntity<MyCrewResponse> myCrew(AuthPrincipal principal) {
-    return ResponseEntity.ok(crewService.myCrew(principal.userId()));
+    return ResponseEntity.ok(crewQueryService.myCrew(principal.userId()));
   }
 
   /** 크루 잔디 + 명예의 전당 — 크루 홈 부가 콘텐츠. */
   @GetMapping("/me/insights")
   public ResponseEntity<CrewInsightsResponse> insights(AuthPrincipal principal) {
-    return ResponseEntity.ok(crewService.insights(principal.userId()));
+    return ResponseEntity.ok(crewQueryService.insights(principal.userId()));
   }
 
   /** 크루 검색(도전장 상대 선택) — 내 크루 제외, 멤버 많은 순 상위 30개. */
@@ -60,7 +64,7 @@ public class CrewController {
   public ResponseEntity<List<CrewSearchItem>> search(
       AuthPrincipal principal,
       @RequestParam(name = "query", required = false, defaultValue = "") String query) {
-    List<CrewSearchItem> items = crewService.search(principal.userId(), query).stream()
+    List<CrewSearchItem> items = crewQueryService.search(principal.userId(), query).stream()
         .map(r -> new CrewSearchItem(r.getId(), r.getName(), r.getMemberCount()))
         .toList();
     return ResponseEntity.ok(items);
@@ -74,7 +78,7 @@ public class CrewController {
       @RequestParam(required = false) String region,
       @RequestParam(defaultValue = "0") int page) {
     int size = 10;
-    List<CrewRepository.CrewDiscoveryRow> rows = crewService.discover(region, page, size);
+    List<CrewRepository.CrewDiscoveryRow> rows = crewQueryService.discover(region, page, size);
     boolean hasMore = rows.size() > size;
     List<CrewDiscoveryItem> crews = rows.stream().limit(size)
         .map(CrewDiscoveryItem::from)
@@ -87,7 +91,7 @@ public class CrewController {
   public ResponseEntity<CrewDetailResponse> detail(
       Optional<AuthPrincipal> principal, @PathVariable("id") long id) {
     UUID viewerId = principal.map(AuthPrincipal::userId).orElse(null);
-    return ResponseEntity.ok(crewService.detail(id, viewerId));
+    return ResponseEntity.ok(crewQueryService.detail(id, viewerId));
   }
 
   /** 같은 크루 멤버에게 콕 찌르기(하루 1회). */
@@ -141,7 +145,7 @@ public class CrewController {
   @PostMapping("/{id:" + PathPatterns.ID + "}/apply")
   public ResponseEntity<Void> apply(
       AuthPrincipal principal, @PathVariable("id") long id, @RequestBody(required = false) ApplyToCrewRequest body) {
-    crewService.apply(principal.userId(), id, body != null ? body.message() : null);
+    crewApplicationService.apply(principal.userId(), id, body != null ? body.message() : null);
     return ResponseEntity.noContent().build();
   }
 
@@ -149,7 +153,7 @@ public class CrewController {
   @PostMapping("/join-requests/{requestId:" + PathPatterns.ID + "}/approve")
   public ResponseEntity<Void> approveJoinRequest(
       AuthPrincipal principal, @PathVariable("requestId") long requestId) {
-    crewService.approve(principal.userId(), requestId);
+    crewApplicationService.approve(principal.userId(), requestId);
     return ResponseEntity.noContent().build();
   }
 
@@ -158,7 +162,7 @@ public class CrewController {
   public ResponseEntity<Void> rejectJoinRequest(
       AuthPrincipal principal, @PathVariable("requestId") long requestId,
       @RequestBody(required = false) RejectJoinRequestRequest body) {
-    crewService.reject(principal.userId(), requestId, body != null ? body.reason() : null);
+    crewApplicationService.reject(principal.userId(), requestId, body != null ? body.reason() : null);
     return ResponseEntity.noContent().build();
   }
 
@@ -166,20 +170,20 @@ public class CrewController {
   @PostMapping("/join-requests/{requestId:" + PathPatterns.ID + "}/cancel")
   public ResponseEntity<Void> cancelJoinRequest(
       AuthPrincipal principal, @PathVariable("requestId") long requestId) {
-    crewService.cancelApplication(principal.userId(), requestId);
+    crewApplicationService.cancelApplication(principal.userId(), requestId);
     return ResponseEntity.noContent().build();
   }
 
   /** 리더 인박스 — 내 크루의 대기중 가입신청 전체. */
   @GetMapping("/me/join-requests")
   public ResponseEntity<List<CrewJoinRequestRow>> myCrewJoinRequests(AuthPrincipal principal) {
-    return ResponseEntity.ok(crewService.leaderInbox(principal.userId()));
+    return ResponseEntity.ok(crewApplicationService.leaderInbox(principal.userId()));
   }
 
   /** 내 신청 현황 — 대기중인 가입신청 전체(크루 미소속 홈에서 노출). */
   @GetMapping("/my-applications")
   public ResponseEntity<List<MyApplicationRow>> myApplications(AuthPrincipal principal) {
-    return ResponseEntity.ok(crewService.myApplications(principal.userId()));
+    return ResponseEntity.ok(crewApplicationService.myApplications(principal.userId()));
   }
 
   @DeleteMapping("/{id:" + PathPatterns.ID + "}")

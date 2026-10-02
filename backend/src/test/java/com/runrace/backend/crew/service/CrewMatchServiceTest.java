@@ -29,6 +29,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,12 +51,18 @@ class CrewMatchServiceTest {
   @Mock ApplicationEventPublisher eventPublisher;
 
   @InjectMocks CrewMatchService service;
+  private CrewMatchQueryService queryService;
 
   private final UUID leaderId = UUID.randomUUID();
 
   // 대결 기간 — 레이스 등록과 동일한 규칙(RaceRules)으로 검증되므로 기본은 유효한 미래 구간.
   private final OffsetDateTime start = OffsetDateTime.now().plusDays(1);
   private final OffsetDateTime end = start.plusDays(7);
+
+  @BeforeEach
+  void setUpQueryService() {
+    queryService = new CrewMatchQueryService(crewMemberRepository, crewMatchRepository, service);
+  }
 
   private AppUser user(UUID id) {
     return AppUser.builder().id(id).nickname("u-" + id.toString().substring(0, 4)).build();
@@ -339,7 +346,7 @@ class CrewMatchServiceTest {
               agg(opRunner, 20_000))); // 상대 20km
       when(crewMatchRepository.findEndedByCrewId(eq(1L), any(Pageable.class))).thenReturn(List.of());
 
-      service.myMatches(leaderId);
+      queryService.myMatches(leaderId);
 
       assertTrue(match.isEnded());
       assertEquals(1L, match.getWinnerCrewId());
@@ -378,7 +385,7 @@ class CrewMatchServiceTest {
       when(crewMatchRosterRepository.findAllByMatchId(10L)).thenReturn(List.of());
       when(crewMatchRepository.findEndedByCrewId(eq(1L), any(Pageable.class))).thenReturn(List.of());
 
-      service.myMatches(leaderId);
+      queryService.myMatches(leaderId);
 
       assertTrue(match.isEnded());
       assertNull(match.getWinnerCrewId());
@@ -404,7 +411,7 @@ class CrewMatchServiceTest {
       when(crewMatchRepository.findEndedByCrewId(eq(1L), any(Pageable.class)))
           .thenReturn(List.of(match));
 
-      var response = service.myMatches(leaderId);
+      var response = queryService.myMatches(leaderId);
 
       assertFalse(response.lastEnded().myCrewIsChallenger());
       assertEquals(9_000, response.lastEnded().myCrewDistanceM());
