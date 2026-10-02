@@ -7,12 +7,17 @@ import { track } from "@/lib/analytics";
 import { updateWorkoutImage, uploadImage, patchWorkoutDetailImage, mapErrorMessage } from "@/lib/api";
 import { useLocale } from "@/lib/i18n";
 import type { Translations } from "@/lib/i18n/translations";
-import { RoutePath, type PathPoint } from "@/lib/routePath";
+import type { PathPoint } from "@/lib/routePath";
 import { useNativeBack } from "@/lib/useNativeBack";
 import { useUnit } from "@/lib/UnitContext";
 import { formatDistance, formatPace, type DistanceUnit } from "@/lib/units";
 import { formatClock } from "@/lib/workoutTrack";
-import { CARD_W, captureCardBlob, saveBlobLocally } from "@/lib/storyCard";
+import { captureCardBlob, saveBlobLocally } from "@/lib/storyCard";
+import {
+  PhotoStatsOverlay,
+  type OverlayLayout,
+  type OverlayStat,
+} from "./PhotoStatsOverlay";
 
 /**
  * 운동 사진 등록 에디터 — 사진을 고른 뒤 "기록 삽입"을 켜면 거리·페이스·시간(+경로)을
@@ -23,14 +28,10 @@ import { CARD_W, captureCardBlob, saveBlobLocally } from "@/lib/storyCard";
  * cacheBust가 URL에 쿼리를 붙이는데 blob: URL은 쿼리가 붙으면 fetch가 깨질 수 있다).
  */
 
-const FONT =
-  'ui-sans-serif, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
 
 /** 기록 배치 — 세로(스택) / 가로(한 줄). 사진 자체는 원본 비율 그대로 두고 배치만 바꾼다. */
-type OverlayLayout = "vertical" | "horizontal";
 
 /** 배치 전환 시 기본 위치 — 세로는 좌상단, 가로는 하단 중앙이 사진을 덜 가린다. */
 const LAYOUT_DEFAULT_POS: Record<OverlayLayout, { cx: number; cy: number }> = {
@@ -51,9 +52,6 @@ function canvasSizeFor(imageWidth: number, imageHeight: number): { width: number
   };
 }
 
-/** 경로 오버레이의 디자인 좌표계(1080 기준) — 미리보기/캡처가 같은 값으로 정규화된다. */
-const ROUTE_DESIGN = { width: 430, height: 260, padding: 16 } as const;
-
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -66,8 +64,6 @@ export function readAsDataURL(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
-
-type OverlayStat = { label: string; value: string };
 
 /** 에디터가 오버레이를 그리는 데 필요한 운동 데이터. */
 export type WorkoutStatsData = {
@@ -82,92 +78,6 @@ export type WorkoutStatsData = {
  * 미리보기(수백 px)와 캡처 캔버스가 정확히 같은 비율로 렌더된다.
  * base를 짧은 변으로 잡아 세로/가로 어느 카드에서도 오버레이 체감 크기가 같다.
  */
-function StatsOverlay({
-  base,
-  cx,
-  cy,
-  scale,
-  layout,
-  stats,
-  routePath,
-}: {
-  /** 렌더 대상 카드의 짧은 변 길이(px). */
-  base: number;
-  cx: number;
-  cy: number;
-  scale: number;
-  /** 기록 배치 — vertical(스택) / horizontal(한 줄). */
-  layout: OverlayLayout;
-  stats: OverlayStat[];
-  /** 경로 오버레이(선택) — GPS 기록 + "경로 표시" 켠 경우만. */
-  routePath: PathPoint[] | null;
-}) {
-  const u = (base / CARD_W) * scale;
-  const horizontal = layout === "horizontal";
-  // 가로 배치는 세 값이 한 줄에 들어가야 해 글자를 한 단계 줄인다(긴 기록 잘림 방지).
-  const labelSize = (horizontal ? 30 : 34) * u;
-  const valueSize = (horizontal ? 68 : 88) * u;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: `${cx * 100}%`,
-        top: `${cy * 100}%`,
-        transform: "translate(-50%, -50%)",
-        color: "#FFFFFF",
-        fontFamily: FONT,
-        textShadow: `0 ${2 * u}px ${16 * u}px rgba(0,0,0,0.65)`,
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
-        display: horizontal ? "flex" : "block",
-        flexDirection: "column",
-        alignItems: horizontal ? "center" : undefined,
-      }}
-    >
-      <div style={horizontal ? { display: "flex", gap: 52 * u, alignItems: "flex-start" } : undefined}>
-        {stats.map(({ label, value }, index) => (
-          <div key={label} style={{ marginTop: horizontal || index === 0 ? 0 : 34 * u }}>
-            <div style={{ fontSize: labelSize, fontWeight: 500, opacity: 0.92, letterSpacing: 1 * u }}>
-              {label}
-            </div>
-            <div style={{ fontSize: valueSize, fontWeight: 800, lineHeight: 1.05, letterSpacing: -1 * u }}>
-              {value}
-            </div>
-          </div>
-        ))}
-      </div>
-      {routePath && routePath.length > 1 ? (
-        <div
-          style={{
-            width: ROUTE_DESIGN.width * u,
-            height: ROUTE_DESIGN.height * u,
-            marginTop: 36 * u,
-            marginLeft: horizontal ? 0 : -ROUTE_DESIGN.padding * u,
-            filter: `drop-shadow(0 ${2 * u}px ${10 * u}px rgba(0,0,0,0.5))`,
-          }}
-        >
-          <RoutePath
-            path={routePath}
-            width={ROUTE_DESIGN.width}
-            height={ROUTE_DESIGN.height}
-            padding={ROUTE_DESIGN.padding}
-            strokeWidths={[20, 10, 4.5]}
-            startRadius={7}
-            endRadius={8}
-            endStrokeWidth={4}
-            svgProps={{ width: "100%", height: "100%", "aria-hidden": true }}
-          />
-        </div>
-      ) : null}
-      {/* 브랜드 — 기존 스토리 카드 푸터와 동일 아이덴티티(그린 점 + 도메인) */}
-      <div style={{ marginTop: 40 * u, display: "flex", alignItems: "center", gap: 12 * u }}>
-        <div style={{ width: 14 * u, height: 14 * u, borderRadius: "50%", background: "#34D399" }} />
-        <div style={{ fontSize: 34 * u, fontWeight: 700, opacity: 0.95 }}>runrace.co.kr</div>
-      </div>
-    </div>
-  );
-}
-
 /**
  * 사진 등록 에디터 본체. WorkoutPhotoButton이 사진 선택 직후 연다.
  * onUploaded는 S3 업로드+운동 연결까지 끝난 뒤 최종 URL로 호출된다.
@@ -375,7 +285,7 @@ export function WorkoutPhotoEditor({
               className="absolute inset-0 h-full w-full object-cover"
             />
             {previewW > 0 ? (
-              <StatsOverlay
+              <PhotoStatsOverlay
                 base={previewBase}
                 cx={cx}
                 cy={cy}
@@ -498,7 +408,7 @@ export function WorkoutPhotoEditor({
                 objectFit: "cover",
               }}
             />
-            <StatsOverlay
+            <PhotoStatsOverlay
               base={Math.min(canvas.width, canvas.height)}
               cx={cx}
               cy={cy}

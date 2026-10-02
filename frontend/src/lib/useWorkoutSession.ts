@@ -7,12 +7,10 @@ import {
   estimateCalories,
   evaluateVehicleTier,
   formatClock,
-  haversineMeters,
   idleAutoPauseAt,
   normalizeGpsAccuracyM,
   pickWorkoutStartSeed,
   pushAccuracySample,
-  shouldAppendPoint,
   slideIdleAnchor,
   type IdleAnchor,
   type LatLng,
@@ -27,6 +25,7 @@ import {
   type WorkoutFinishSnapshot,
   type WorkoutStatus,
 } from "./workoutTrack";
+import { haversineMeters, shouldAppendPoint } from "./workoutPath";
 import {
   computeWorkoutElapsedSec,
   computeWorkoutSpeedMps,
@@ -52,6 +51,8 @@ import {
 } from "./workoutSessionPresentation";
 import { useWorkoutRuntimeEffects } from "./useWorkoutRuntimeEffects";
 import { useWorkoutSessionRestore } from "./useWorkoutSessionRestore";
+import { clearWorkoutWatch, resetWorkoutRuntimeRefs } from "./workoutSessionRuntime";
+import { pauseWorkoutRuntime, resumeWorkoutRuntime } from "./workoutSessionTransitions";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
@@ -197,12 +198,11 @@ export function useWorkoutSession(
    */
   const watchSeqRef = useRef(0);
   const clearWatch = useCallback(() => {
-    watchSeqRef.current++;
-    watchStartedAtRef.current = null;
-    if (stopWatchRef.current) {
-      stopWatchRef.current();
-      stopWatchRef.current = null;
-    }
+    clearWorkoutWatch({
+      watchSeq: watchSeqRef,
+      watchStartedAt: watchStartedAtRef,
+      stopWatch: stopWatchRef,
+    });
   }, []);
 
   /** 현재 확정 인증 사용자가 이 라이브 세션의 소유자인지 원자적으로 확인한다. */
@@ -221,26 +221,17 @@ export function useWorkoutSession(
    * A 소유로 일시정지 저장한 뒤 이 함수를 호출해 B 화면·GPS 콜백에서 완전히 분리한다.
    */
   const resetRuntime = useCallback(() => {
-    statusRef.current = "idle";
-    pathRef.current = [];
-    sessionOwnerUidRef.current = null;
-    clientWorkoutIdRef.current = null;
-    pauseStartedRef.current = null;
-    pausedAccumRef.current = 0;
-    runStartedRef.current = null;
-    autoPausedRef.current = false;
-    idleAnchorRef.current = null;
-    warmupFixesRef.current = [];
-    vehicleStateRef.current = initialVehicleDetectState();
-    distanceAccumRef.current = 0;
-    lastPathPointRef.current = null;
-    lastAppendWallMsRef.current = null;
-    lastRawPosRef.current = null;
-    lastPosTimeRef.current = null;
-    watchStartedAtRef.current = null;
-    lastGpsFixAtRef.current = null;
-    lastWatchRestartAtRef.current = null;
-    reanchorNextRef.current = false;
+    resetWorkoutRuntimeRefs({
+      status: statusRef, path: pathRef, sessionOwnerUid: sessionOwnerUidRef,
+      clientWorkoutId: clientWorkoutIdRef, pauseStarted: pauseStartedRef,
+      pausedAccum: pausedAccumRef, runStarted: runStartedRef, autoPaused: autoPausedRef,
+      idleAnchor: idleAnchorRef, warmupFixes: warmupFixesRef,
+      vehicleState: vehicleStateRef, distanceAccum: distanceAccumRef,
+      lastPathPoint: lastPathPointRef, lastAppendWallMs: lastAppendWallMsRef,
+      lastRawPos: lastRawPosRef, lastPosTime: lastPosTimeRef,
+      watchStartedAt: watchStartedAtRef, lastGpsFixAt: lastGpsFixAtRef,
+      lastWatchRestartAt: lastWatchRestartAtRef, reanchorNext: reanchorNextRef,
+    });
 
     setStatus("idle");
     setPath([]);
@@ -741,11 +732,14 @@ export function useWorkoutSession(
     // 백그라운드에서 JS 타이머가 멈춘 채 사용자가 먼저 일시정지를 눌러도, 현재 시각으로
     // 덮기 전에 30분 방치 여부를 판정해 귀가 후 방치 시간을 소급 제외한다.
     if (autoPauseIfIdle(now)) return;
-    pauseStartedRef.current = now;
-    autoPausedRef.current = false;
+    pauseWorkoutRuntime({
+      pauseStarted: pauseStartedRef,
+      pausedAccum: pausedAccumRef,
+      autoPaused: autoPausedRef,
+      status: statusRef,
+    }, now);
     setAutoPaused(false);
     setStatus("paused");
-    statusRef.current = "paused";
     clearWatch();
     // 일시정지 = 지금 뛰고 있지 않다. 라이브 값을 남겨 두면 신선도 윈도(15분) 동안
     // 남들에게 "러닝 중"으로 계속 보인다. 재개하면 아래에서 곧바로 다시 올린다.
@@ -765,24 +759,16 @@ export function useWorkoutSession(
   const resume = useCallback((expectedUid: string) => {
     if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "paused") return;
     const now = Date.now();
-    if (pauseStartedRef.current) {
-      pausedAccumRef.current += now - pauseStartedRef.current;
-      pauseStartedRef.current = null;
-    }
-    autoPausedRef.current = false;
-    // 방치 판정 창도 새로 시작 — 일시정지 직전의 무이동 구간이 재개 직후 발동으로 이어지지 않게.
-    idleAnchorRef.current = { timeMs: now, distanceM: distanceAccumRef.current };
+    resumeWorkoutRuntime({
+      pauseStarted: pauseStartedRef, pausedAccum: pausedAccumRef,
+      autoPaused: autoPausedRef, status: statusRef, idleAnchor: idleAnchorRef,
+      distanceAccum: distanceAccumRef, vehicleState: vehicleStateRef,
+      reanchorNext: reanchorNextRef, lastRawPos: lastRawPosRef,
+      lastPosTime: lastPosTimeRef,
+    }, now);
     setAutoPaused(false);
-    // 치팅 상태 리셋 — 재개 후 새로 측정
-    vehicleStateRef.current = initialVehicleDetectState();
     setVehicleTier("normal");
-    // 일시정지 동안의 이동(도보·이동수단)을 정지 전 마지막 점과 직선으로 이어
-    // 거리에 합산하지 않도록 재정박하고, 속도 추정 기준점도 리셋한다.
-    reanchorNextRef.current = true;
-    lastRawPosRef.current = null;
-    lastPosTimeRef.current = null;
     setStatus("running");
-    statusRef.current = "running";
     startWatch();
     // 일시정지 표시를 다음 주기(60초)까지 기다리지 않고 곧바로 푼다. force가 필수다 —
     // 느린 핑이 아직 큐에 남아 있으면 일반 핑은 건너뛰어지고, 그러면 앞서 넣은 일시정지
