@@ -11,7 +11,6 @@ import {
   idleAutoPauseAt,
   normalizeGpsAccuracyM,
   pickWorkoutStartSeed,
-  creditedPathDistanceMeters,
   pushAccuracySample,
   shouldAppendPoint,
   slideIdleAnchor,
@@ -33,7 +32,7 @@ import {
   computeWorkoutSpeedMps,
   initialVehicleDetectState,
 } from "./workoutSessionMath";
-import { saveWorkout, loadWorkoutForOwner, clearWorkout } from "./workoutPersistence";
+import { clearWorkout } from "./workoutPersistence";
 import { useWorkoutPersistenceFlush } from "./useWorkoutPersistenceFlush";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
@@ -52,6 +51,7 @@ import {
   resolveWorkoutGeoError,
 } from "./workoutSessionPresentation";
 import { useWorkoutRuntimeEffects } from "./useWorkoutRuntimeEffects";
+import { useWorkoutSessionRestore } from "./useWorkoutSessionRestore";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
@@ -576,161 +576,34 @@ export function useWorkoutSession(
     setElapsedSec,
   });
 
-  /**
-   * Firebase 계정이 바뀌면 현재 런을 원래 소유자 명의의 paused 스냅샷으로 동결한다.
-   * 이후 워처와 메모리 상태를 즉시 비워 새 계정이 경로를 보거나 저장하지 못하게 한다.
-   */
-  const suspendForAuthChange = useCallback(
-    (ownerUid: string) => {
-      if (statusRef.current !== "idle" && runStartedRef.current != null) {
-        const now = Date.now();
-        if (statusRef.current === "running") {
-          const inferred =
-            idleAnchorRef.current != null
-              ? idleAutoPauseAt(idleAnchorRef.current, now)
-              : null;
-          pauseStartedRef.current =
-            inferred != null ? clampIdlePauseAt(inferred) : now;
-          autoPausedRef.current = inferred != null;
-          statusRef.current = "paused";
-        }
-        saveWorkout({
-          ownerUid,
-          clientWorkoutId: clientWorkoutIdRef.current ?? undefined,
-          status: "paused",
-          path: pathRef.current,
-          distanceM: distanceAccumRef.current,
-          runStartedAt: runStartedRef.current,
-          pausedAccumMs: pausedAccumRef.current,
-          pauseStartedAt: pauseStartedRef.current,
-          idleAnchor: idleAnchorRef.current ?? undefined,
-          autoPaused: autoPausedRef.current,
-        });
-      }
-      clearWatch();
-      // 라이브 값은 여기서 정리하지 않는다. 러닝 중 로그아웃·계정 삭제는 UI에서 이미 막혀
-      // 있어(SiteHeader·설정 화면의 "운동을 종료한 뒤" 안내) 이 경로로 오는 건 토큰 만료·
-      // 서버측 취소 같은 예외뿐인데, 그때는 이전 소유자 토큰이 이미 무효라 요청 자체가
-      // 나가지 않는다. 거의 실패할 정리 코드를 두면 "인증이 바뀌어도 정리된다"는 잘못된
-      // 기대만 남으므로, 그 예외는 신선도 윈도(15분) 만료에 맡긴다.
-      restoreAttemptedUidRef.current = null;
-      resetRuntime();
-    },
-    [clampIdlePauseAt, clearWatch, resetRuntime],
-  );
-
-  // 인증 변경은 effect가 실행되기 전 렌더부터 아래 반환값에서 마스킹되며, 여기서 실제 워처도 끈다.
-  useEffect(() => {
-    if (authState.loading) return;
-    const ownerUid = sessionOwnerUidRef.current;
-    if (ownerUid != null && ownerUid !== authState.currentUid) {
-      suspendForAuthChange(ownerUid);
-    } else if (authState.currentUid == null) {
-      restoreAttemptedUidRef.current = null;
-    }
-  }, [
-    authState.loading,
-    authState.currentUid,
-    suspendForAuthChange,
-  ]);
-
-  // ── 인증 확정 후 소유자 일치 세션만 복원 ─────────────────────────────────
-  useEffect(() => {
-    if (authState.loading || authState.currentUid == null) return;
-    const ownerUid = authState.currentUid;
-    if (statusRef.current !== "idle" || restoreAttemptedUidRef.current === ownerUid) return;
-    restoreAttemptedUidRef.current = ownerUid;
-
-    const saved = loadWorkoutForOwner(ownerUid);
-    if (!saved) return;
-    sessionOwnerUidRef.current = ownerUid;
-    // 구버전 저장본에는 런 ID가 없다. 복원 시 한 번 발급하고 이후 주기 저장에서 보존한다.
-    clientWorkoutIdRef.current = saved.clientWorkoutId ?? createClientWorkoutId();
-
-    runStartedRef.current = saved.runStartedAt;
-    pausedAccumRef.current = saved.pausedAccumMs;
-    pathRef.current = saved.path;
-    setPath(saved.path);
-    lastPathPointRef.current = saved.path[saved.path.length - 1] ?? null;
-    setPosition(lastPathPointRef.current);
-    // 복원 후 첫 GPS 포인트는 재정박 — 앱이 죽어있던 동안의 이동을 직선으로 이어
-    // 거리에 합산하지 않는다(120m 넘는 갭은 지도에서 점선으로 표시됨).
-    reanchorNextRef.current = true;
-    // 저장된 라이브 거리를 우선 사용 — 경로 재계산은 안티치트로 차단됐던 구간·추적 끊김을
-    // 직선으로 이어 거리를 부풀린다. 구버전 스냅샷만 갭 제외 재계산으로 폴백.
-    const restoredDistance = saved.distanceM ?? creditedPathDistanceMeters(saved.path);
-    distanceAccumRef.current = restoredDistance;
-    setDistanceM(restoredDistance);
-
-    // 방치 판정 앵커 복원 — 구버전 스냅샷(idleAnchor 없음)은 마지막 이동/저장 시각으로 근사.
-    const restoredAnchor = saved.idleAnchor ?? {
-      timeMs: saved.lastMovementAt ?? saved.savedAt,
-      distanceM: restoredDistance,
-    };
-    idleAnchorRef.current = restoredAnchor.position || !lastPathPointRef.current
-      ? restoredAnchor
-      : {
-          ...restoredAnchor,
-          position: {
-            lat: lastPathPointRef.current.lat,
-            lng: lastPathPointRef.current.lng,
-          },
-        };
-    // 소급 하한 복원 — 마지막 포인트의 t(경과 ms)를 벽시계 시각으로 환산한다.
-    const lastT = lastPathPointRef.current?.t;
-    lastAppendWallMsRef.current =
-      lastT != null ? saved.runStartedAt + saved.pausedAccumMs + lastT : null;
-
-    if (saved.status === "running") {
-      const rawIdlePausedAt = idleAutoPauseAt(idleAnchorRef.current, Date.now());
-      const idlePausedAt = rawIdlePausedAt != null ? clampIdlePauseAt(rawIdlePausedAt) : null;
-      if (idlePausedAt != null) {
-        // 백그라운드에 30분+ 방치된 세션 — 운동 종료를 잊은 것으로 보고 앵커 시각으로
-        // 소급해 일시정지 상태로 복원한다. 재개/종료는 사용자가 결정한다(자동 재개 없음).
-        pauseStartedRef.current = idlePausedAt;
-        autoPausedRef.current = true;
-        setAutoPaused(true);
-        setElapsedSec(
-          computeWorkoutElapsedSec(saved.runStartedAt, saved.pausedAccumMs, idlePausedAt),
-        );
-        setStatus("paused");
-        statusRef.current = "paused";
-      } else {
-        pauseStartedRef.current = null;
-        autoPausedRef.current = false;
-        setAutoPaused(false);
-        setElapsedSec(computeWorkoutElapsedSec(saved.runStartedAt, saved.pausedAccumMs, null));
-        setStatus("running");
-        statusRef.current = "running";
-        // 여기서 곧바로 워처를 건다. 예전에는 ref 플래그를 세우고 별도 이펙트가 그것을
-        // 읽어 startWatch를 부르게 했는데, 그 이펙트의 의존성이 [startWatch] 하나뿐이고
-        // startWatch의 의존성 체인이 전부 상수라 identity가 고정된다 — 즉 마운트 때 딱 한
-        // 번(플래그가 아직 false일 때) 돌고, 인증이 해소돼 플래그가 켜져도 다시 돌지 않았다.
-        // 콜드스타트에서는 항상 그 순서라, 복원된 러닝의 GPS가 워치독이 구제할 때까지
-        // 붙지 않았다. statusRef는 위에서 이미 갱신했으므로 동기 호출로 안전하다.
-        startWatch();
-      }
-    } else {
-      // 일시정지 중 재구성 — 자동 일시정지였다면 배너·종료 시각 보정을 위해 플래그 유지.
-      autoPausedRef.current = saved.autoPaused === true;
-      setAutoPaused(saved.autoPaused === true);
-      pauseStartedRef.current = saved.pauseStartedAt;
-      setElapsedSec(
-        computeWorkoutElapsedSec(
-          saved.runStartedAt,
-          saved.pausedAccumMs,
-          saved.pauseStartedAt,
-        ),
-      );
-      setStatus("paused");
-      statusRef.current = "paused";
-    }
-  }, [
-    authState.loading,
-    authState.currentUid,
+  useWorkoutSessionRestore({
+    currentUid: authState.currentUid,
+    authLoading: authState.loading,
+    statusRef,
+    runStartedRef,
+    idleAnchorRef,
+    pauseStartedRef,
+    autoPausedRef,
+    clientWorkoutIdRef,
+    pathRef,
+    distanceAccumRef,
+    pausedAccumRef,
+    sessionOwnerUidRef,
+    restoreAttemptedUidRef,
+    lastPathPointRef,
+    reanchorNextRef,
+    lastAppendWallMsRef,
     clampIdlePauseAt,
+    clearWatch,
+    resetRuntime,
     startWatch,
-  ]);
+    setPath,
+    setPosition,
+    setDistanceM,
+    setAutoPaused,
+    setElapsedSec,
+    setStatus,
+  });
 
   // ── 공개 액션 ─────────────────────────────────────────────────────────────
   /**
