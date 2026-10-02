@@ -2,6 +2,7 @@ package com.runrace.backend.share;
 
 import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.service.ChallengeService;
+import com.runrace.backend.challenge.service.ChallengeQueryService;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.PathPatterns;
 import java.util.Optional;
@@ -25,7 +26,7 @@ import org.springframework.web.util.HtmlUtils;
 @RequiredArgsConstructor
 public class SharePageController {
 
-  private final ChallengeService challengeService;
+  private final ChallengeQueryService challengeQueryService;
 
   @Value("${runrace.app-url:https://runrace.co.kr}")
   private String appUrl;
@@ -35,7 +36,7 @@ public class SharePageController {
     // 공개 상세 조회 — 없는 레이스는 미리보기 대신 404
     ChallengeService.ChallengeDetailView detail;
     try {
-      detail = challengeService.getDetail(Optional.empty(), id);
+      detail = challengeQueryService.getDetail(Optional.empty(), id);
     } catch (ApiException e) {
       if ("challenge_not_found".equals(e.code())) {
         return ResponseEntity.notFound().build();

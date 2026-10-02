@@ -47,6 +47,7 @@ public class ChallengeScheduler {
 
   private final ChallengeRepository challengeRepository;
   private final ChallengeService challengeService;
+  private final ChallengeLifecycleService challengeLifecycleService;
   private final ErrorLogService errorLogService;
 
   /** 10분마다 실행. 종료 전환은 급하지 않아 여유 주기로 충분하다. */
@@ -57,7 +58,7 @@ public class ChallengeScheduler {
     for (Long challengeId : challengeRepository.findStartedNotEndedIds(now)) {
       SchedulerGuard.runIsolated(log, errorLogService, "scheduler",
           "레이스 생명주기 처리 실패 (challengeId=" + challengeId + ")", "challengeId=" + challengeId,
-          () -> challengeService.processRaceLifecycle(challengeId, now));
+          () -> challengeLifecycleService.processRaceLifecycle(challengeId, now));
     }
   }
 

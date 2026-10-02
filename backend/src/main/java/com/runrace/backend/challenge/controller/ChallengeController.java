@@ -5,6 +5,8 @@ import com.runrace.backend.challenge.domain.Challenge;
 import com.runrace.backend.challenge.domain.ChallengeMember;
 import com.runrace.backend.challenge.domain.ChallengePhase;
 import com.runrace.backend.challenge.service.ChallengeService;
+import com.runrace.backend.challenge.service.ChallengeQueryService;
+import com.runrace.backend.challenge.service.ChallengeMembershipService;
 import com.runrace.backend.common.PageParams;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.challenge.service.RaceFinalizationService;
@@ -55,12 +57,14 @@ public class ChallengeController {
   private static final String ID_PATH = PathPatterns.ID;
 
   private final ChallengeService challengeService;
+  private final ChallengeQueryService challengeQueryService;
+  private final ChallengeMembershipService challengeMembershipService;
   private final IndoorApprovalService indoorApprovalService;
   private final ChallengeLiveProgressService challengeLiveProgressService;
 
   @GetMapping("/active-count")
   public ResponseEntity<ActiveCountResponse> activeCount(AuthPrincipal principal) {
-    long count = challengeService.countActiveRoomsForCreator(principal);
+    long count = challengeQueryService.countActiveRoomsForCreator(principal);
     return ResponseEntity.ok(
         new ActiveCountResponse(count, ChallengeService.MAX_ACTIVE_ROOMS_PER_CREATOR));
   }
@@ -90,10 +94,10 @@ public class ChallengeController {
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
     PageParams.Clamped clamped = PageParams.clamp(page, size);
-    Slice<Challenge> slice = challengeService.listCrewRacesPage(
+    Slice<Challenge> slice = challengeQueryService.listCrewRacesPage(
         principal.userId(), phase, clamped.page(), clamped.size());
     return ResponseEntity.ok(toListPage(slice, Optional.of(principal.userId()),
-        ids -> challengeService.memberChallengeIds(principal.userId(), ids)));
+        ids -> challengeQueryService.memberChallengeIds(principal.userId(), ids)));
   }
 
   @PutMapping("/{id:" + ID_PATH + "}")
@@ -120,13 +124,13 @@ public class ChallengeController {
 
   @PostMapping("/{id:" + ID_PATH + "}/join")
   public ResponseEntity<Void> join(AuthPrincipal principal, @PathVariable("id") Long id) {
-    challengeService.joinRoom(principal, id);
+    challengeMembershipService.joinRoom(principal, id);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{id:" + ID_PATH + "}/leave")
   public ResponseEntity<Void> leave(AuthPrincipal principal, @PathVariable("id") Long id) {
-    challengeService.leaveRoom(principal, id);
+    challengeMembershipService.leaveRoom(principal, id);
     return ResponseEntity.noContent().build();
   }
 
@@ -182,9 +186,9 @@ public class ChallengeController {
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
     PageParams.Clamped clamped = PageParams.clamp(page, size);
     Optional<UUID> userId = principal.map(AuthPrincipal::userId);
-    Slice<Challenge> slice = challengeService.listPublicPage(lang, phase, clamped.page(), clamped.size());
+    Slice<Challenge> slice = challengeQueryService.listPublicPage(lang, phase, clamped.page(), clamped.size());
     return ResponseEntity.ok(toListPage(slice, userId,
-        ids -> userId.map(uid -> challengeService.memberChallengeIds(uid, ids)).orElse(Set.of())));
+        ids -> userId.map(uid -> challengeQueryService.memberChallengeIds(uid, ids)).orElse(Set.of())));
   }
 
   @GetMapping("/mine")
@@ -195,7 +199,7 @@ public class ChallengeController {
       @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
     PageParams.Clamped clamped = PageParams.clamp(page, size);
     UUID userId = principal.userId();
-    Slice<Challenge> slice = challengeService.listMinePage(userId, phase, clamped.page(), clamped.size());
+    Slice<Challenge> slice = challengeQueryService.listMinePage(userId, phase, clamped.page(), clamped.size());
     return ResponseEntity.ok(toListPage(slice, Optional.of(userId),
         ids -> Set.copyOf(ids))); // 내 레이스는 전부 참여 중
   }
@@ -211,9 +215,9 @@ public class ChallengeController {
     OffsetDateTime now = OffsetDateTime.now();
     List<Challenge> challenges = slice.getContent();
     List<Long> ids = challenges.stream().map(Challenge::getId).toList();
-    Map<Long, Long> memberCounts = challengeService.batchMemberCounts(ids);
+    Map<Long, Long> memberCounts = challengeQueryService.batchMemberCounts(ids);
     Set<Long> memberIds = memberIdsResolver.apply(ids);
-    Set<Long> prizeIds = challengeService.prizeChallengeIds(ids);
+    Set<Long> prizeIds = challengeQueryService.prizeChallengeIds(ids);
     List<ChallengeListItem> items = challenges.stream()
         .map(c -> toListItem(c, now, viewerId, memberCounts, memberIds, prizeIds))
         .toList();
@@ -224,7 +228,7 @@ public class ChallengeController {
   public ResponseEntity<ChallengeDetailResponse> detail(
       Optional<AuthPrincipal> principal, @PathVariable("id") Long id) {
     ChallengeService.ChallengeDetailView detail =
-        challengeService.getDetail(principal.map(AuthPrincipal::userId), id);
+        challengeQueryService.getDetail(principal.map(AuthPrincipal::userId), id);
     return ResponseEntity.ok(toDetailResponse(detail, principal.isPresent()));
   }
 
@@ -232,13 +236,13 @@ public class ChallengeController {
   @GetMapping("/{id:" + ID_PATH + "}/head-to-head")
   public ResponseEntity<List<HeadToHeadRow>> headToHead(
       AuthPrincipal principal, @PathVariable("id") Long id) {
-    return ResponseEntity.ok(challengeService.headToHead(principal.userId(), id));
+    return ResponseEntity.ok(challengeQueryService.headToHead(principal.userId(), id));
   }
 
   /** 레이스 반영 운동 목록 — 전체 공개(인증 불필요). */
   @GetMapping("/{id:" + ID_PATH + "}/workouts")
   public ResponseEntity<List<ChallengeWorkoutListItem>> listWorkouts(@PathVariable("id") Long id) {
-    return ResponseEntity.ok(challengeService.listWorkouts(id));
+    return ResponseEntity.ok(challengeQueryService.listWorkouts(id));
   }
 
   /** 레이스 승인 대기 중인 실내러닝 목록. */
@@ -384,7 +388,7 @@ public class ChallengeController {
         member.getUser().getNickname(),
         effectiveKm,
         goal.subtract(effectiveKm).max(BigDecimal.ZERO),
-        challengeService.progressPercent(effectiveKm, challenge),
+        challengeQueryService.progressPercent(effectiveKm, challenge),
         member.getFinishedAt() != null,
         IsoTime.formatOrNull(member.getFinishedAt()),
         member.getFinalRank(),

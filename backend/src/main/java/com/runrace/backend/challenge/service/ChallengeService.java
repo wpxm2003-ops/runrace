@@ -7,42 +7,30 @@ import com.runrace.backend.challenge.domain.ChallengePrize;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.ChallengePrizeRepository;
 import com.runrace.backend.challenge.repository.ChallengeRepository;
-import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.RaceRules;
 import com.runrace.backend.common.SupportedLanguages;
 import com.runrace.backend.common.TextValidation;
-import com.runrace.backend.challenge.dto.ChallengeWorkoutListItem;
-import com.runrace.backend.challenge.dto.HeadToHeadRow;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
-import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.crew.service.CrewGuards;
 import com.runrace.backend.event.ChallengeEvents.ChallengeEndedNoParticipantsEvent;
 import com.runrace.backend.event.ChallengeEvents;
 import com.runrace.backend.history.domain.ActivityAction;
 import com.runrace.backend.history.domain.ActivityTargetType;
 import com.runrace.backend.history.service.ActivityHistoryService;
-import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,18 +42,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChallengeService {
   public static final int MAX_ACTIVE_ROOMS_PER_CREATOR = 3;
-  private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
   private final AppUserRepository appUserRepository;
   private final ChallengeRepository challengeRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
   private final ChallengePrizeRepository challengePrizeRepository;
-  private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final ApplicationEventPublisher eventPublisher;
-  private final RivalRepository rivalRepository;
-  private final RaceFinalizationService raceFinalization;
   private final CrewMemberRepository crewMemberRepository;
-  private final CrewRepository crewRepository;
   private final ActivityHistoryService activityHistoryService;
 
   @Transactional
@@ -192,16 +175,6 @@ public class ChallengeService {
     return saved;
   }
 
-  /** 내 크루 내부 레이스 — 상태별 페이지. 미소속이면 빈 페이지. */
-  @Transactional(readOnly = true)
-  public Slice<Challenge> listCrewRacesPage(UUID userId, String phase, int page, int size) {
-    PageRequest pageable = PageRequest.of(page, size);
-    return crewMemberRepository.findByUserId(userId)
-        .map(m -> challengeRepository.findCrewPage(
-            m.getCrew().getId(), normalizePhase(phase), OffsetDateTime.now(), pageable))
-        .orElseGet(() -> new SliceImpl<>(List.of(), pageable, false));
-  }
-
   @Transactional
   public Challenge updateRoom(
       AuthPrincipal principal,
@@ -252,250 +225,6 @@ public class ChallengeService {
     ChallengeEvents.publishPrizeCleanup(eventPublisher, prizeKeys);
   }
 
-  @Transactional
-  public void joinRoom(AuthPrincipal principal, Long id) {
-    // 잠근 채로 읽는다 — 잠그지 않으면 정원 마지막 한 자리를 여러 요청이 동시에 보고
-    // 전부 통과해 정원이 초과된다(인원수 확인~저장 사이 경합).
-    Challenge challenge = challengeRepository.getRequiredForUpdate(id);
-    ensureNotStarted(challenge);
-    if (isEnded(challenge, OffsetDateTime.now())) {
-      throw ApiException.conflict("ended");
-    }
-    // 크루 내부 레이스 — 해당 크루 멤버만 참가 가능
-    if (challenge.getCrewId() != null
-        && crewMemberRepository
-            .findByCrewIdAndUserId(challenge.getCrewId(), principal.userId())
-            .isEmpty()) {
-      throw ApiException.forbidden("not_crew_member");
-    }
-    if (challengeMemberRepository.findByChallengeIdAndUserId(id, principal.userId()).isPresent()) {
-      throw ApiException.conflict("already_member");
-    }
-    if (challengeMemberRepository.countByChallengeId(id) >= challenge.getMaxMembers()) {
-      throw ApiException.conflict("room_full");
-    }
-
-    AppUser me = appUserRepository.getRequired(principal.userId());
-    try {
-      challengeMemberRepository.saveAndFlush(newMember(challenge, me));
-    } catch (org.springframework.dao.DataIntegrityViolationException e) {
-      // 동시 중복 참여 — 유니크 제약 위반을 깔끔한 4xx로 변환
-      throw ApiException.conflict("already_member");
-    }
-    activityHistoryService.recordSelf(
-        principal.userId(), ActivityAction.RACE_JOINED, ActivityTargetType.RACE, id);
-  }
-
-  @Transactional
-  public void leaveRoom(AuthPrincipal principal, Long id) {
-    Challenge challenge = challengeRepository.getRequired(id);
-    ensureNotStarted(challenge);
-    if (isEnded(challenge, OffsetDateTime.now())) {
-      throw ApiException.conflict("ended");
-    }
-    if (challenge.isOwner(principal.userId())) {
-      throw ApiException.badRequest("owner_cannot_leave");
-    }
-    ChallengeMember member =
-        challengeMemberRepository
-            .findByChallengeIdAndUserId(id, principal.userId())
-            .orElseThrow(() -> ApiException.notFound("not_member"));
-    challengeMemberRepository.delete(member);
-    activityHistoryService.recordSelf(
-        principal.userId(), ActivityAction.RACE_LEFT, ActivityTargetType.RACE, id);
-  }
-
-  /**
-   * 공개 목록. lang이 지원 언어면 해당 언어방만, 그 외(null·빈값·"all")는 전체를 반환한다(소프트 필터).
-   */
-  /**
-   * 공개 목록 페이지. phase(all/scheduled/in_progress/ended) 필터 + 언어(soft) + 페이징.
-   * 참여자 1명짜리 종료방 숨김·정렬은 쿼리에서 처리한다.
-   */
-  @Transactional(readOnly = true)
-  public Slice<Challenge> listPublicPage(String lang, String phase, int page, int size) {
-    String langFilter = SupportedLanguages.isSupported(lang) ? lang : null;
-    return challengeRepository.findPublicPage(
-        langFilter, normalizePhase(phase), OffsetDateTime.now(), PageRequest.of(page, size));
-  }
-
-  /** 주어진 레이스들 중 사용자가 참여 중인 것의 id 집합 — 공개 목록 "참여" 라벨용. */
-  @Transactional(readOnly = true)
-  public Set<Long> memberChallengeIds(UUID userId, List<Long> challengeIds) {
-    if (challengeIds.isEmpty()) return Set.of();
-    return Set.copyOf(challengeMemberRepository.findMemberChallengeIds(userId, challengeIds));
-  }
-
-  /** 내가 참여한 레이스 페이지. phase(all/active/ended) 필터 + 페이징. */
-  @Transactional(readOnly = true)
-  public Slice<Challenge> listMinePage(UUID userId, String phase, int page, int size) {
-    return challengeRepository.findMinePage(
-        userId, normalizePhase(phase), OffsetDateTime.now(), PageRequest.of(page, size));
-  }
-
-  private static String normalizePhase(String phase) {
-    return ("active".equals(phase) || "scheduled".equals(phase)
-            || "in_progress".equals(phase) || "ended".equals(phase))
-        ? phase
-        : "all";
-  }
-
-
-  @Transactional(readOnly = true)
-  public long countActiveRoomsForCreator(AuthPrincipal principal) {
-    return challengeRepository.countActiveByCreator(principal.userId(), OffsetDateTime.now());
-  }
-
-  /**
-   * 시작됐는데 참여자가 1명 이하(방장 혼자)인 레이스를 삭제한다.
-   * 스케줄러·운동 반영 등 접근 시점에 호출되어 정리를 보장한다.
-   * 시작 전(모집 중)이거나 이미 종료됐거나 2명 이상이면 아무것도 하지 않는다.
-   * 호출 측의 (읽기 전용이 아닌) 트랜잭션 안에서 실행되는 것을 전제로 한다. 삭제했으면 true.
-   */
-  public boolean deleteIfSolo(Challenge challenge, OffsetDateTime now) {
-    if (challenge.isEnded()) return false;
-    if (!hasStarted(challenge, now)) return false; // 모집 중(SCHEDULED)은 유지
-    if (challengeMemberRepository.countByChallengeId(challenge.getId()) > 1) return false;
-    Long challengeId = challenge.getId();
-    UUID creatorId = challenge.getCreator().getId();
-    List<String> prizeKeys = collectPrizeImageKeys(challengeId);
-    challengeRepository.delete(challenge);
-    ChallengeEvents.publishPrizeCleanup(eventPublisher, prizeKeys);
-    eventPublisher.publishEvent(new ChallengeEndedNoParticipantsEvent(challengeId, creatorId));
-    return true;
-  }
-
-  /**
-   * 스케줄러용 — 레이스 1건의 생명주기 전환(혼자 삭제 / 기간 만료 확정)을 독립 트랜잭션으로 처리한다.
-   * 레이스별로 분리해 한 건이 실패해도 배치 전체가 롤백되지 않게 한다.
-   * 종료 확정·순위·우승자 결정은 {@link RaceFinalizationService}가 담당한다.
-   */
-  @Transactional
-  public void processRaceLifecycle(Long challengeId, OffsetDateTime now) {
-    Challenge challenge = challengeRepository.findById(challengeId).orElse(null);
-    if (challenge == null) return; // 그사이 삭제됐으면 건너뜀
-    if (deleteIfSolo(challenge, now)) return;
-    raceFinalization.finalizeIfTimeEnded(challenge, now);
-  }
-
-  @Transactional(readOnly = true)
-  public ChallengeDetailView getDetail(Optional<UUID> currentUserId, Long id) {
-    Challenge challenge = requireChallenge(id);
-    List<ChallengeMember> members = challengeMemberRepository.findAllForChallenge(id);
-    OffsetDateTime now = OffsetDateTime.now();
-
-    UUID userId = currentUserId.orElse(null);
-    // 바로 위에서 로스터를 통째로 읽었으므로 참여 여부는 메모리에서 판정한다. 별도 조회를 두면
-    // 상세를 여는 모든 조회자가 폴링 주기마다 같은 정보를 한 번 더 읽는다.
-    boolean isMember =
-        userId != null && members.stream().anyMatch(m -> m.getUser().getId().equals(userId));
-    boolean isOwner = challenge.isOwner(userId);
-
-    // 로그인 사용자가 등록한 라이벌이 이 방에 있으면 표시(색/라벨)용으로 id 집합을 넘긴다.
-    Set<UUID> rivalUserIds =
-        userId == null ? Set.of() : new HashSet<>(rivalRepository.findRivalUserIds(userId));
-
-    // 크루 내부 레이스면 뱃지 표시용 크루명(해체로 크루가 사라졌으면 null).
-    String crewName = challenge.getCrewId() == null
-        ? null
-        : crewRepository.findById(challenge.getCrewId()).map(Crew::getName).orElse(null);
-
-    // 이 레이스의 "내부자"인지 — 크루 레이스면 그 크루 멤버, 일반 레이스면 누구나.
-    // 두 곳에서 쓴다. (1) 참가 버튼 노출: 비멤버는 눌러도 403이라 버튼 자체를 숨긴다.
-    // (2) 라이브(잠정) 진행률 공개: 크루 레이스 상세는 크루 밖 로그인 사용자도 조회할 수
-    //     있으므로, 인증만으로 열어 주면 크루 기본 허용의 근거인 "폐쇄 로스터"가 성립하지 않는다.
-    boolean crewInsider = challenge.getCrewId() == null
-        || (userId != null
-            && crewMemberRepository.findByCrewIdAndUserId(challenge.getCrewId(), userId).isPresent());
-
-    return new ChallengeDetailView(
-        challenge,
-        members,
-        userId,
-        isMember,
-        isOwner,
-        hasStarted(challenge, now),
-        isEnded(challenge, now),
-        members.size(),
-        rivalUserIds,
-        crewName,
-        crewInsider);
-  }
-
-  /**
-   * 현재 사용자(meId) 기준, 이 레이스 참여자 중 "내 라이벌"과의 누적 전적.
-   * 라이벌이 아닌 참여자는 결과에 포함하지 않는다(전적은 라이벌에게만 노출).
-   */
-  @Transactional(readOnly = true)
-  public List<HeadToHeadRow> headToHead(UUID meId, Long challengeId) {
-    Set<UUID> rivalIds = new HashSet<>(rivalRepository.findRivalUserIds(meId));
-    if (rivalIds.isEmpty()) {
-      return List.of();
-    }
-    List<UUID> rivalParticipants =
-        challengeMemberRepository.findParticipantIdsIn(challengeId, new ArrayList<>(rivalIds));
-    if (rivalParticipants.isEmpty()) {
-      return List.of();
-    }
-    Map<UUID, int[]> agg = challengeMemberRepository.headToHeadRecord(meId, rivalParticipants);
-    return rivalParticipants.stream()
-        .map(uid -> {
-          int[] wl = agg.getOrDefault(uid, new int[] {0, 0});
-          return new HeadToHeadRow(uid, wl[0], wl[1]);
-        })
-        .toList();
-  }
-
-  /**
-   * 여러 챌린지의 멤버 수를 단일 쿼리로 일괄 조회한다.
-   * 챌린지 목록 API에서 챌린지별 개별 쿼리(N+1)를 방지한다.
-   */
-  @Transactional(readOnly = true)
-  public Map<Long, Long> batchMemberCounts(List<Long> challengeIds) {
-    if (challengeIds.isEmpty()) {
-      return Map.of();
-    }
-    return challengeMemberRepository.memberCountsByChallengeId(challengeIds);
-  }
-
-  /**
-   * 경품이 등록된 레이스 id 집합 — 목록의 '경품' 뱃지용. 단일 쿼리로 일괄 조회(N+1 방지).
-   * 경품 존재 여부만 노출하며 경품명·이미지는 포함하지 않는다.
-   */
-  @Transactional(readOnly = true)
-  public Set<Long> prizeChallengeIds(List<Long> challengeIds) {
-    if (challengeIds.isEmpty()) {
-      return Set.of();
-    }
-    return Set.copyOf(challengePrizeRepository.findChallengeIdsWithPrize(challengeIds));
-  }
-
-  /**
-   * 레이스 반영 운동 목록 — 전체 공개(비참여자·비로그인도 조회 가능).
-   * 스칼라 projection이라 GPS 경로(path_json)를 로딩하지 않는다.
-   */
-  @Transactional(readOnly = true)
-  public List<ChallengeWorkoutListItem> listWorkouts(Long challengeId) {
-    requireChallenge(challengeId); // 존재 검증(없으면 404)
-    return challengeWorkoutRepository.findApprovedWorkoutListItems(challengeId);
-  }
-
-  /**
-   * km 기준 진행률(%) — GET 상세는 라이브 folding된 km을 넘겨 진행바가 실시간처럼 움직이게 한다.
-   *
-   * <p>멤버를 받는 오버로드는 두지 않는다. 그쪽은 항상 raw total_km을 쓰게 되는데, 호출부에서
-   * 그 차이가 드러나지 않아 라이브가 접히지 않은 값을 무심코 쓰기 쉽다.
-   */
-  public BigDecimal progressPercent(BigDecimal km, Challenge challenge) {
-    if (challenge.getGoalKm() == null || challenge.getGoalKm().signum() <= 0) {
-      return BigDecimal.ZERO;
-    }
-    return km
-        .multiply(HUNDRED)
-        .divide(challenge.getGoalKm(), 1, RoundingMode.HALF_UP)
-        .min(HUNDRED);
-  }
-
   public static boolean hasStarted(Challenge challenge, OffsetDateTime now) {
     return !now.isBefore(challenge.getStartAt());
   }
@@ -508,8 +237,7 @@ public class ChallengeService {
   }
 
   private Challenge requireChallenge(Long id) {
-    return challengeRepository
-        .findByIdWithDetails(id)
+    return challengeRepository.findByIdWithDetails(id)
         .orElseThrow(() -> ApiException.notFound("challenge_not_found"));
   }
 

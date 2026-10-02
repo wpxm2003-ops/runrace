@@ -18,6 +18,7 @@ import com.runrace.backend.challenge.repository.ChallengeRepository;
 import com.runrace.backend.challenge.repository.ChallengeWorkoutRepository;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.history.service.ActivityHistoryService;
+import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.rival.repository.RivalRepository;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.user.repository.AppUserRepository;
@@ -46,8 +47,11 @@ class ChallengeServiceTest {
   @Mock RivalRepository rivalRepository;
   @Mock RaceFinalizationService raceFinalization;
   @Mock ActivityHistoryService activityHistoryService;
+  @Mock CrewMemberRepository crewMemberRepository;
 
   @InjectMocks ChallengeService service;
+  @InjectMocks ChallengeQueryService queryService;
+  @InjectMocks ChallengeMembershipService membershipService;
 
   private static final OffsetDateTime PAST   = OffsetDateTime.parse("2020-01-01T00:00:00Z");
   private static final OffsetDateTime FUTURE = OffsetDateTime.parse("2999-01-01T00:00:00Z");
@@ -121,22 +125,22 @@ class ChallengeServiceTest {
 
     @Test void 절반_진행이면_50() {
       assertEquals(0, BigDecimal.valueOf(50).compareTo(
-          service.progressPercent(memberKm(5), goal(10))));
+          queryService.progressPercent(memberKm(5), goal(10))));
     }
 
     @Test void 초과_진행은_100으로_클램프() {
       assertEquals(0, BigDecimal.valueOf(100).compareTo(
-          service.progressPercent(memberKm(15), goal(10))));
+          queryService.progressPercent(memberKm(15), goal(10))));
     }
 
     @Test void 정확히_목표_도달이면_100() {
       assertEquals(0, BigDecimal.valueOf(100).compareTo(
-          service.progressPercent(memberKm(10), goal(10))));
+          queryService.progressPercent(memberKm(10), goal(10))));
     }
 
     @Test void 목표거리_0이면_0() {
       assertEquals(0, BigDecimal.ZERO.compareTo(
-          service.progressPercent(memberKm(5), goal(0))));
+          queryService.progressPercent(memberKm(5), goal(0))));
     }
   }
 
@@ -200,7 +204,7 @@ class ChallengeServiceTest {
       Challenge c = challenge(UUID.randomUUID(), PAST, FUTURE);
       when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
 
-      ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
+      ApiException ex = assertThrows(ApiException.class, () -> membershipService.joinRoom(p, 1L));
       assertEquals("already_started", ex.code());
     }
 
@@ -210,7 +214,7 @@ class ChallengeServiceTest {
       c.end();
       when(challengeRepository.getRequiredForUpdate(1L)).thenReturn(c);
 
-      ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
+      ApiException ex = assertThrows(ApiException.class, () -> membershipService.joinRoom(p, 1L));
       assertEquals("ended", ex.code());
     }
 
@@ -220,7 +224,7 @@ class ChallengeServiceTest {
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(1L), any()))
           .thenReturn(Optional.of(ChallengeMember.builder().build()));
 
-      ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
+      ApiException ex = assertThrows(ApiException.class, () -> membershipService.joinRoom(p, 1L));
       assertEquals("already_member", ex.code());
     }
 
@@ -231,7 +235,7 @@ class ChallengeServiceTest {
           .thenReturn(Optional.empty());
       when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(10L); // maxMembers=10
 
-      ApiException ex = assertThrows(ApiException.class, () -> service.joinRoom(p, 1L));
+      ApiException ex = assertThrows(ApiException.class, () -> membershipService.joinRoom(p, 1L));
       assertEquals("room_full", ex.code());
     }
 
@@ -247,7 +251,7 @@ class ChallengeServiceTest {
       when(challengeMemberRepository.countByChallengeId(1L)).thenReturn(3L); // maxMembers=10
       when(appUserRepository.getRequired(userId)).thenReturn(user(userId));
 
-      service.joinRoom(p, 1L);
+      membershipService.joinRoom(p, 1L);
 
       verify(challengeRepository).getRequiredForUpdate(1L);
       verify(challengeRepository, never()).findById(1L);
@@ -300,7 +304,7 @@ class ChallengeServiceTest {
       Challenge c = challenge(ownerId, FUTURE, FUTURE.plusDays(7)); // 방장=ownerId
       when(challengeRepository.getRequired(1L)).thenReturn(c);
 
-      ApiException ex = assertThrows(ApiException.class, () -> service.leaveRoom(p, 1L));
+      ApiException ex = assertThrows(ApiException.class, () -> membershipService.leaveRoom(p, 1L));
       assertEquals("owner_cannot_leave", ex.code());
     }
 
@@ -313,7 +317,7 @@ class ChallengeServiceTest {
       when(challengeMemberRepository.findByChallengeIdAndUserId(eq(1L), eq(otherId)))
           .thenReturn(Optional.empty());
 
-      ApiException ex = assertThrows(ApiException.class, () -> service.leaveRoom(p, 1L));
+      ApiException ex = assertThrows(ApiException.class, () -> membershipService.leaveRoom(p, 1L));
       assertEquals("not_member", ex.code());
     }
   }

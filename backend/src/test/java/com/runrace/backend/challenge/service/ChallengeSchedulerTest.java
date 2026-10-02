@@ -34,6 +34,7 @@ class ChallengeSchedulerTest {
 
   @Mock ChallengeRepository challengeRepository;
   @Mock ChallengeService challengeService;
+  @Mock ChallengeLifecycleService challengeLifecycleService;
   @Mock ErrorLogService errorLogService;
 
   @InjectMocks ChallengeScheduler scheduler;
@@ -162,7 +163,7 @@ class ChallengeSchedulerTest {
 
       scheduler.sweepRaceLifecycle();
 
-      verify(challengeService, never()).processRaceLifecycle(any(), any());
+      verify(challengeLifecycleService, never()).processRaceLifecycle(any(), any());
     }
 
     @Test void 대상마다_독립처리() {
@@ -170,17 +171,17 @@ class ChallengeSchedulerTest {
 
       scheduler.sweepRaceLifecycle();
 
-      verify(challengeService).processRaceLifecycle(eq(1L), any());
-      verify(challengeService).processRaceLifecycle(eq(2L), any());
+      verify(challengeLifecycleService).processRaceLifecycle(eq(1L), any());
+      verify(challengeLifecycleService).processRaceLifecycle(eq(2L), any());
     }
 
     @Test void 한건_예외나도_나머지는_계속처리되고_에러로그남음() {
       when(challengeRepository.findStartedNotEndedIds(any())).thenReturn(List.of(1L, 2L));
-      doThrow(new RuntimeException("boom")).when(challengeService).processRaceLifecycle(eq(1L), any());
+      doThrow(new RuntimeException("boom")).when(challengeLifecycleService).processRaceLifecycle(eq(1L), any());
 
       assertDoesNotThrow(() -> scheduler.sweepRaceLifecycle());
 
-      verify(challengeService).processRaceLifecycle(eq(2L), any());
+      verify(challengeLifecycleService).processRaceLifecycle(eq(2L), any());
       verify(errorLogService).recordServiceError(
           eq("scheduler"), eq("RuntimeException"), eq("boom"), any(), eq("challengeId=1"));
     }

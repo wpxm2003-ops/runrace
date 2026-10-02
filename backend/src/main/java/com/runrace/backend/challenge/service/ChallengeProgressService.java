@@ -45,7 +45,7 @@ public class ChallengeProgressService {
   private final ChallengeWorkoutRepository challengeWorkoutRepository;
   private final WorkoutSessionRepository workoutSessionRepository;
   private final ApplicationEventPublisher eventPublisher;
-  private final ChallengeService challengeService;
+  private final ChallengeLifecycleService challengeLifecycleService;
   private final RaceFinalizationService raceFinalization;
 
   /**
@@ -104,7 +104,7 @@ public class ChallengeProgressService {
     for (ChallengeMember member : activeMembers) {
       Challenge challenge = member.getChallenge();
       // 방장 혼자인 레이스는 삭제하고 거리 반영하지 않는다.
-      if (challengeService.deleteIfSolo(challenge, now)) continue;
+      if (challengeLifecycleService.deleteIfSolo(challenge, now)) continue;
       body.accept(member, membersByChallenge.getOrDefault(challenge.getId(), List.of()));
     }
   }

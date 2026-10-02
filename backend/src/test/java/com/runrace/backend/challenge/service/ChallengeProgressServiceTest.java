@@ -43,7 +43,7 @@ class ChallengeProgressServiceTest {
   @Mock ChallengeMemberRepository challengeMemberRepository;
   @Mock ChallengeWorkoutRepository challengeWorkoutRepository;
   @Mock RaceFinalizationService raceFinalization;
-  @Mock ChallengeService challengeService;
+  @Mock ChallengeLifecycleService challengeLifecycleService;
   @Mock org.springframework.context.ApplicationEventPublisher eventPublisher;
 
   @InjectMocks ChallengeProgressService service;
@@ -226,7 +226,7 @@ class ChallengeProgressServiceTest {
     when(challengeMemberRepository.findAllActiveForUser(me.getId(), T0))
         .thenReturn(List.of(m1, m2));
     when(challengeMemberRepository.findAllByChallengeIdIn(List.of(2L, 5L))).thenReturn(List.of());
-    when(challengeService.deleteIfSolo(any(), eq(T0))).thenReturn(false);
+    when(challengeLifecycleService.deleteIfSolo(any(), eq(T0))).thenReturn(false);
 
     service.forEachActiveChallengeMember(me.getId(), T0, (member, all) -> {});
 
