@@ -1,25 +1,18 @@
 package com.runrace.backend.crew.service;
 
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.common.RaceRules;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMatch;
 import com.runrace.backend.crew.domain.CrewMatchRoster;
 import com.runrace.backend.crew.domain.CrewMember;
-import com.runrace.backend.crew.dto.CrewMatchDetailResponse;
-import com.runrace.backend.crew.dto.CrewMatchDetailResponse.RosterRow;
-import com.runrace.backend.crew.dto.CrewMatchSummary;
 import com.runrace.backend.crew.repository.CrewMatchRepository;
 import com.runrace.backend.crew.repository.CrewMatchRosterRepository;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.event.CrewMatchEvents;
-import com.runrace.backend.workout.domain.WorkoutType;
-import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,7 +45,7 @@ public class CrewMatchService {
   private final CrewMemberRepository crewMemberRepository;
   private final CrewMatchRepository crewMatchRepository;
   private final CrewMatchRosterRepository crewMatchRosterRepository;
-  private final WorkoutSessionRepository workoutSessionRepository;
+  private final CrewMatchScoringService scoringService;
   private final ApplicationEventPublisher eventPublisher;
 
   // ── 도전장 생성/수락/거절/취소 ────────────────────────────────
@@ -226,86 +219,6 @@ public class CrewMatchService {
     crewMatchRepository.delete(match);
   }
 
-  /** 대항전 상세 — 참가 크루 멤버만. 기간이 끝났으면 이 시점에 승자를 확정한다. */
-  @Transactional
-  public CrewMatchDetailResponse detail(UUID meId, long matchId) {
-    CrewMember membership = requireMembership(meId);
-    Long myCrewId = membership.getCrew().getId();
-    CrewMatch match = requireMatch(matchId);
-    if (!match.involves(myCrewId)) {
-      throw ApiException.forbidden("not_participant");
-    }
-
-    OffsetDateTime now = OffsetDateTime.now();
-    finalizeIfNeeded(match, now);
-
-    // 양측 로스터 행 + 합산 거리
-    RosterBoard board = buildRosterBoard(match, meId, now);
-
-    boolean myCrewIsChallenger = match.getChallengerCrew().getId().equals(myCrewId);
-    boolean isLeader = membership.getCrew().isLeader(meId);
-    boolean alivePending = match.getStatus() == CrewMatch.Status.PENDING && isAlivePending(match, now);
-    return new CrewMatchDetailResponse(
-        match.getId(),
-        derivedStatus(match, now),
-        match.getChallengerCrew().getName(),
-        match.getOpponentCrew().getName(),
-        myCrewIsChallenger,
-        match.getRosterSize(),
-        IsoTime.format(match.getCreatedAt()),
-        IsoTime.formatOrNull(match.getStartAt()),
-        IsoTime.formatOrNull(match.getEndAt()),
-        alivePending && !myCrewIsChallenger && isLeader,
-        alivePending && !myCrewIsChallenger && isLeader,
-        alivePending && myCrewIsChallenger && isLeader,
-        board.challengerSum(),
-        board.opponentSum(),
-        result(match, myCrewId),
-        board.challengerRows(),
-        board.opponentRows());
-  }
-
-  /** 상세 화면용 양측 로스터 — 크루별 행 목록(거리 내림차순) + 합산 거리. */
-  private record RosterBoard(
-      List<RosterRow> challengerRows, List<RosterRow> opponentRows,
-      long challengerSum, long opponentSum) {}
-
-  private RosterBoard buildRosterBoard(CrewMatch match, UUID meId, OffsetDateTime now) {
-    List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
-    Map<UUID, Long> byUser = memberDistances(match, rosters, now);
-
-    Long challengerId = match.getChallengerCrew().getId();
-    List<RosterRow> challengerRows = new ArrayList<>();
-    List<RosterRow> opponentRows = new ArrayList<>();
-    for (CrewMatchRoster r : rosters) {
-      long dist = byUser.getOrDefault(r.getUser().getId(), 0L);
-      RosterRow row = new RosterRow(
-          r.getUser().getId(), r.getUser().getNickname(),
-          r.getUser().getId().equals(meId), dist);
-      if (r.getCrewId().equals(challengerId)) {
-        challengerRows.add(row);
-      } else {
-        opponentRows.add(row);
-      }
-    }
-    CrewSums sums = sumByCrew(match, rosters, byUser);
-    long challengerSum = sums.challenger();
-    long opponentSum = sums.opponent();
-    Comparator<RosterRow> byDistance = Comparator.comparingLong(RosterRow::distanceM).reversed();
-    challengerRows.sort(byDistance);
-    opponentRows.sort(byDistance);
-
-    // 종료 확정된 매치는 확정 시점 스냅샷을 쓴다 — 그 뒤의 운동 삭제·늦은 저장으로
-    // 합계만 움직여 고정된 승자와 모순되는 화면이 나오지 않게 한다.
-    // (개인별 행은 참고용이라 실시간 값을 그대로 두고, 승패를 가르는 합계만 고정한다.)
-    // 스냅샷 이전에 확정된 구 데이터는 null이라 실시간 집계로 폴백한다.
-    if (match.isEnded()) {
-      if (match.getChallengerDistanceM() != null) challengerSum = match.getChallengerDistanceM();
-      if (match.getOpponentDistanceM() != null) opponentSum = match.getOpponentDistanceM();
-    }
-    return new RosterBoard(challengerRows, opponentRows, challengerSum, opponentSum);
-  }
-
   /**
    * 기간(endAt)이 지난 ACCEPTED 매치를 확정한다 — CrewMatchScheduler가 주기적으로 호출해,
    * 아무도 조회하지 않아도 종료 확정 + 결과 푸시가 나가게 한다. 확정했으면 true.
@@ -377,7 +290,8 @@ public class CrewMatchService {
   private record CrewSums(long challenger, long opponent) {}
 
   private CrewSums crewSums(CrewMatch match, List<CrewMatchRoster> rosters, OffsetDateTime now) {
-    return sumByCrew(match, rosters, memberDistances(match, rosters, now));
+    CrewMatchScoringService.CrewSums sums = scoringService.crewSums(match, rosters, now);
+    return new CrewSums(sums.challenger(), sums.opponent());
   }
 
   /**
@@ -386,14 +300,8 @@ public class CrewMatchService {
    */
   private CrewSums sumByCrew(
       CrewMatch match, List<CrewMatchRoster> rosters, Map<UUID, Long> byUser) {
-    Long challengerId = match.getChallengerCrew().getId();
-    long challengerSum = 0;
-    long opponentSum = 0;
-    for (CrewMatchRoster r : rosters) {
-      long dist = byUser.getOrDefault(r.getUser().getId(), 0L);
-      if (r.getCrewId().equals(challengerId)) challengerSum += dist; else opponentSum += dist;
-    }
-    return new CrewSums(challengerSum, opponentSum);
+    CrewMatchScoringService.CrewSums sums = scoringService.sumByCrew(match, rosters, byUser);
+    return new CrewSums(sums.challenger(), sums.opponent());
   }
 
   /** 추월당한 크루 로스터 전원에게 추월 푸시 이벤트를 발행한다. 대상이 없으면 생략. */
@@ -446,85 +354,6 @@ public class CrewMatchService {
           r.getUser().getId(), opponentCrewName, result));
     }
     eventPublisher.publishEvent(new CrewMatchEvents.MatchEnded(match.getId(), receivers));
-  }
-
-  /** 로스터 전원의 [startAt, min(now, endAt)) 구간 GPS 거리. 시작 전·PENDING이면 빈 맵. */
-  private Map<UUID, Long> memberDistances(
-      CrewMatch match, List<CrewMatchRoster> rosters, OffsetDateTime now) {
-    Map<UUID, Long> byUser = new HashMap<>();
-    if (match.getStartAt() == null || rosters.isEmpty() || now.isBefore(match.getStartAt())) {
-      return byUser;
-    }
-    OffsetDateTime to = now.isBefore(match.getEndAt()) ? now : match.getEndAt();
-    List<UUID> userIds = rosters.stream().map(r -> r.getUser().getId()).toList();
-    // GPS만 인정 — 실내런은 과거 시각 수동 입력이 가능해 대항전 조작 벡터가 된다.
-    for (var row : workoutSessionRepository.aggregateDistanceBetweenByType(
-        userIds, match.getStartAt(), to, WorkoutType.GPS)) {
-      byUser.put(row.getUserId(), row.getDistanceM());
-    }
-    return byUser;
-  }
-
-  CrewMatchSummary toSummary(CrewMatch match, Long myCrewId, OffsetDateTime now) {
-    boolean myCrewIsChallenger = match.getChallengerCrew().getId().equals(myCrewId);
-    long myDist = 0;
-    long opDist = 0;
-    // 종료 확정분은 상세와 같은 스냅샷을 쓴다. 내 크루가 상대편이면 양측 값을 뒤집어
-    // DTO의 my/opponent 관점에 맞춘다. 구 데이터(null)는 기존 실시간 집계로 폴백한다.
-    if (match.isEnded()
-        && match.getChallengerDistanceM() != null
-        && match.getOpponentDistanceM() != null) {
-      myDist = myCrewIsChallenger
-          ? match.getChallengerDistanceM()
-          : match.getOpponentDistanceM();
-      opDist = myCrewIsChallenger
-          ? match.getOpponentDistanceM()
-          : match.getChallengerDistanceM();
-    } else if (match.getStartAt() != null) {
-      List<CrewMatchRoster> rosters = crewMatchRosterRepository.findAllByMatchId(match.getId());
-      CrewSums sums = crewSums(match, rosters, now);
-      myDist = myCrewIsChallenger ? sums.challenger() : sums.opponent();
-      opDist = myCrewIsChallenger ? sums.opponent() : sums.challenger();
-    }
-    return new CrewMatchSummary(
-        match.getId(),
-        derivedStatus(match, now),
-        match.getChallengerCrew().getName(),
-        match.getOpponentCrew().getName(),
-        myCrewIsChallenger,
-        match.getRosterSize(),
-        IsoTime.formatOrNull(match.getStartAt()),
-        IsoTime.formatOrNull(match.getEndAt()),
-        myDist,
-        opDist,
-        result(match, myCrewId));
-  }
-
-  /** 저장 상태 + 시간으로 파생한 표시 상태. */
-  private String derivedStatus(CrewMatch match, OffsetDateTime now) {
-    return switch (match.getStatus()) {
-      case DECLINED -> "DECLINED";
-      case PENDING -> isAlivePending(match, now) ? "PENDING" : "EXPIRED";
-      case ACCEPTED -> {
-        if (match.isEnded()) yield "ENDED";
-        // start/end는 스키마상 nullable이다. create()의 validateWindow가 null을 막지만,
-        // 수기 삽입·과거 행이 섞이면 여기서 NPE가 나 대항전 목록·상세가 통째로 500이 된다.
-        if (match.getStartAt() == null || match.getEndAt() == null) yield "IN_PROGRESS";
-        if (!now.isBefore(match.getEndAt())) yield "ENDED";
-        yield now.isBefore(match.getStartAt()) ? "SCHEDULED" : "IN_PROGRESS";
-      }
-    };
-  }
-
-  /** 내 크루 관점 결과 — 종료 확정 전이면 null. */
-  private String result(CrewMatch match, Long myCrewId) {
-    if (!match.isEnded()) {
-      return null;
-    }
-    if (match.getWinnerCrewId() == null) {
-      return "DRAW";
-    }
-    return match.getWinnerCrewId().equals(myCrewId) ? "WIN" : "LOSS";
   }
 
   /**

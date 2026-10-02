@@ -34,7 +34,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,7 +49,7 @@ class CrewMatchServiceTest {
   @Mock WorkoutSessionRepository workoutSessionRepository;
   @Mock ApplicationEventPublisher eventPublisher;
 
-  @InjectMocks CrewMatchService service;
+  private CrewMatchService service;
   private CrewMatchQueryService queryService;
 
   private final UUID leaderId = UUID.randomUUID();
@@ -61,7 +60,13 @@ class CrewMatchServiceTest {
 
   @BeforeEach
   void setUpQueryService() {
-    queryService = new CrewMatchQueryService(crewMemberRepository, crewMatchRepository, service);
+    CrewMatchScoringService scoringService = new CrewMatchScoringService(workoutSessionRepository);
+    service = new CrewMatchService(
+        crewRepository, crewMemberRepository, crewMatchRepository, crewMatchRosterRepository,
+        scoringService, eventPublisher);
+    queryService = new CrewMatchQueryService(
+        crewMemberRepository, crewMatchRepository, crewMatchRosterRepository,
+        service, scoringService);
   }
 
   private AppUser user(UUID id) {
@@ -448,7 +453,7 @@ class CrewMatchServiceTest {
               agg(myRunner, 7_000),
               agg(opRunner, 6_000)));
 
-      var response = service.detail(leaderId, 10L);
+      var response = queryService.detail(leaderId, 10L);
 
       assertEquals(30_000, response.challengerDistanceM());
       assertEquals(20_000, response.opponentDistanceM());

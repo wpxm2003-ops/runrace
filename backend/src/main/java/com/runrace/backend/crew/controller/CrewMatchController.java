@@ -65,7 +65,7 @@ public class CrewMatchController {
   @GetMapping("/{id:" + PathPatterns.ID + "}")
   public ResponseEntity<CrewMatchDetailResponse> detail(
       AuthPrincipal principal, @PathVariable("id") long id) {
-    return ResponseEntity.ok(crewMatchService.detail(principal.userId(), id));
+    return ResponseEntity.ok(crewMatchQueryService.detail(principal.userId(), id));
   }
 
   /** 도전장 수락(상대 크루 리더 전용) — 로스터 지명 포함. */
