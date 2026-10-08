@@ -94,23 +94,22 @@ export function useTrainingPlanBuilder(user: User | null, t: Translations) {
 
   useEffect(() => {
     if (hydratedRef.current) return;
-
-    if (!savedPlan) {
-      const draft = nsmDraftStore.get();
-      if (draft && !result) {
-        hydratedRef.current = true;
-        nsmDraftStore.remove();
-        setSubTDays(draft.subTDays);
-        setDistM(draft.distM);
-        setTimeStr(draft.timeStr);
-        setBand(draft.band);
-        const seconds = parseTime(draft.timeStr);
-        if (seconds != null && seconds > 0) {
-          compute(draft.distM, seconds, draft.subTDays, draft.band);
-        }
+    // 로그인 전 입력을 이어가는 초안은 서버 캐시 유무와 무관하게 우선한다.
+    const draft = nsmDraftStore.get();
+    if (draft && !result) {
+      hydratedRef.current = true;
+      nsmDraftStore.remove();
+      setSubTDays(draft.subTDays);
+      setDistM(draft.distM);
+      setTimeStr(draft.timeStr);
+      setBand(draft.band);
+      const seconds = parseTime(draft.timeStr);
+      if (seconds != null && seconds > 0) {
+        compute(draft.distM, seconds, draft.subTDays, draft.band);
       }
       return;
     }
+    if (!savedPlan) return;
 
     hydratedRef.current = true;
     if (result) return;
@@ -133,6 +132,7 @@ export function useTrainingPlanBuilder(user: User | null, t: Translations) {
   }, [savedPlan]);
 
   function calculate() {
+    hydratedRef.current = true;
     const seconds = parseTime(timeStr);
     if (seconds == null || seconds <= 0) {
       setError(t.nsm_time_error);
@@ -143,6 +143,7 @@ export function useTrainingPlanBuilder(user: User | null, t: Translations) {
   }
 
   function pickPersonalBest(pb: PersonalBestRow) {
+    hydratedRef.current = true;
     const seconds = pbFinishSec(pb.bestPaceSec, pb.distanceM);
     setDistM(pb.distanceM);
     setTimeStr(formatTime(seconds));
@@ -164,11 +165,13 @@ export function useTrainingPlanBuilder(user: User | null, t: Translations) {
     } else {
       next = [...subTDays, day];
     }
+    hydratedRef.current = true;
     setSubTDays(next);
     if (result) setResult({ ...result, plan: weeklyPlan(result.threshold, next, band) });
   }
 
   function selectBand(nextBand: NsmVolumeBand) {
+    hydratedRef.current = true;
     const nextDays = clampSubTDaysToBand(subTDays, nextBand);
     setBand(nextBand);
     setSubTDays(nextDays);
@@ -251,9 +254,15 @@ export function useTrainingPlanBuilder(user: User | null, t: Translations) {
     savedPlan,
     weekly,
     distM,
-    setDistM,
+    setDistM: (next: number) => {
+      hydratedRef.current = true;
+      setDistM(next);
+    },
     timeStr,
-    setTimeStr,
+    setTimeStr: (next: string) => {
+      hydratedRef.current = true;
+      setTimeStr(next);
+    },
     subTDays,
     band,
     result,
