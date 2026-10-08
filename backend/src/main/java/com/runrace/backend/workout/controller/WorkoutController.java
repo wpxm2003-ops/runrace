@@ -1,6 +1,7 @@
 package com.runrace.backend.workout.controller;
 
 import com.runrace.backend.auth.AuthPrincipal;
+import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.IsoTime;
 import com.runrace.backend.common.PathPatterns;
 import com.runrace.backend.history.domain.ActivityAction;
@@ -88,6 +89,16 @@ public class WorkoutController {
   @PostMapping
   public ResponseEntity<CreateWorkoutResponse> create(
       AuthPrincipal principal, @RequestBody CreateWorkoutRequest body) {
+    // DTO를 서비스 입력으로 변환하기 전에 null을 거절한다(변환 중 NPE → 500 방지).
+    if (body.path() == null || body.path().isEmpty()) {
+      throw ApiException.badRequest("path_empty");
+    }
+    if (body.path().stream().anyMatch(java.util.Objects::isNull)) {
+      throw ApiException.badRequest("path_point_invalid");
+    }
+    if (body.startedAt() == null || body.endedAt() == null) {
+      throw ApiException.badRequest("time_range_invalid");
+    }
     List<WorkoutService.PathPoint> path =
         body.path().stream()
             .map(p -> new WorkoutService.PathPoint(
