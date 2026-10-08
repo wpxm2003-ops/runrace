@@ -309,6 +309,9 @@ export function useWorkoutSession(
       sendLivePing,
     ]);
 
+  // Provider는 매 렌더마다 새 객체를 넘긴다. 값이 같으면 감시 타이머의 콜백도 유지한다.
+  const notificationTitle = bgNotification?.title;
+  const notificationMessage = bgNotification?.message;
   const startWatch = useCallback(() => {
     const watchOwnerUid = sessionOwnerUidRef.current;
     if (watchOwnerUid == null || !isCurrentSessionOwner(watchOwnerUid)) return;
@@ -327,13 +330,16 @@ export function useWorkoutSession(
       clearWatch,
       appendPosition,
       setGeoErrorState,
-      notification: bgNotification,
+      notification: notificationTitle != null && notificationMessage != null
+        ? { title: notificationTitle, message: notificationMessage }
+        : undefined,
     });
   }, [
     appendPosition,
     clearWatch,
     isCurrentSessionOwner,
-    bgNotification,
+    notificationTitle,
+    notificationMessage,
   ]);
 
   const resetIdleAnchor = useCallback((nowMs: number) => {
