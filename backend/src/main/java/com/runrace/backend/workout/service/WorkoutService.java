@@ -7,8 +7,6 @@ import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
 import com.runrace.backend.common.ApiException;
-import com.runrace.backend.common.Distance;
-import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.service.CrewMatchService;
 import com.runrace.backend.event.WorkoutEvents;
 import com.runrace.backend.history.domain.ActivityAction;
@@ -23,12 +21,8 @@ import com.runrace.backend.workout.domain.WorkoutType;
 import com.runrace.backend.workout.dto.GhostRaceResultDto;
 import com.runrace.backend.workout.dto.PathPointDto;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,37 +37,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class WorkoutService {
-  /** 평균 페이스를 계산할 최소 거리(m) — 그 미만은 의미 있는 페이스를 산출하지 않는다. */
-  static final int MIN_DISTANCE_FOR_PACE_M = 10;
   /** 실내러닝 칼로리 추정 계수(kcal/km). */
   private static final int KCAL_PER_KM = 65;
 
-  // 입력 상한 — 비정상/조작 값 차단 (치팅·메모리 DoS 방지)
-  // 거리 상한은 라이브 진행률 핑과 공유한다(Distance가 단일 출처).
-  private static final int MAX_DISTANCE_M = Distance.MAX_DISTANCE_M;
-  private static final int MAX_DURATION_SEC = Distance.MAX_DURATION_SEC;
-  private static final int MAX_CALORIES = 100_000;
-  private static final int MAX_PATH_POINTS = 100_000;
-  /** 실내러닝 시작 시각의 미래 허용 오차(분) — 기기 시계가 조금 빠른 경우를 흡수한다. */
-  private static final int STARTED_AT_FUTURE_SKEW_MIN = 10;
-  /**
-   * GPS 경로 포인트 최소 밀도(m/포인트). 클라이언트는 실제로 최소 이동거리(workoutTrack.ts의
-   * MIN_MOVE_METERS=4m)마다 포인트를 하나씩 남긴다. 그보다 훨씬 느슨한 상한을 둬 GPS 끊김·정지
-   * 구간을 넉넉히 흡수하면서도, "포인트 1개로 300km" 같은 노골적 조작(신고 거리 대비 포인트가
-   * 터무니없이 적은 경우)은 걸러낸다. 경로 실거리를 재계산해 신고 거리와 비교하지는 않는다 —
-   * GPS 오차(터널·건물숲 등)로 인한 정직한 사용자 오탐을 피하려고 의도적으로 포인트 "개수"만
-   * 보고, 거리 재계산·오차허용 비교는 하지 않는다.
-   */
-  private static final int MAX_PATH_POINT_SPACING_M = 50;
-  /** durationSec(활동시간)이 시작~종료 시각 범위를 넘어설 수 없다 — 초과분은 시계 오차 흡수용 여유. */
-  private static final int TIME_CONSISTENCY_TOLERANCE_SEC = 5;
-  private static final double MIN_LAT = -90;
-  private static final double MAX_LAT = 90;
-  private static final double MIN_LNG = -180;
-  private static final double MAX_LNG = 180;
   private static final int MIN_GHOST_OVERLAP_M = 500;
   private static final long GHOST_DELTA_TOLERANCE_MS = 1_000;
-  private static final long MAX_GHOST_TIME_MS = MAX_DURATION_SEC * 1_000L;
+  private static final long MAX_GHOST_TIME_MS = com.runrace.backend.common.Distance.MAX_DURATION_SEC * 1_000L;
 
   private final WorkoutSessionRepository workoutSessionRepository;
   private final AppUserRepository appUserRepository;
@@ -111,7 +80,8 @@ public class WorkoutService {
       UUID clientWorkoutId
   ) {
     // 입력 검증 — 비정상·조작 값 차단
-    validateGpsInput(startedAt, endedAt, durationSec, distanceM, calories, avgPaceSecPerKm, path);
+    WorkoutInputValidation.validateGps(
+        startedAt, endedAt, durationSec, distanceM, calories, avgPaceSecPerKm, path);
 
     // 같은 사용자의 동시 저장을 직렬화해 요청 ID 조회와 신규 저장 사이의 경합을 막는다.
     AppUser user = appUserRepository.getRequiredForUpdate(principal.userId());
@@ -157,84 +127,6 @@ public class WorkoutService {
     return new SavedWorkout(saved, false);
   }
 
-  private void validateGpsInput(
-      OffsetDateTime startedAt,
-      OffsetDateTime endedAt,
-      int durationSec,
-      int distanceM,
-      int calories,
-      Integer avgPaceSecPerKm,
-      List<PathPoint> path) {
-    if (durationSec < 1 || durationSec > MAX_DURATION_SEC) {
-      throw ApiException.badRequest("duration_invalid");
-    }
-    if (distanceM < 0 || distanceM > MAX_DISTANCE_M) {
-      throw ApiException.badRequest("distance_invalid");
-    }
-    if (calories < 0 || calories > MAX_CALORIES) {
-      throw ApiException.badRequest("calories_invalid");
-    }
-    if (avgPaceSecPerKm != null && avgPaceSecPerKm < 0) {
-      throw ApiException.badRequest("pace_invalid");
-    }
-    if (path == null || path.isEmpty()) {
-      throw ApiException.badRequest("path_empty");
-    }
-    if (path.size() > MAX_PATH_POINTS) {
-      throw ApiException.badRequest("path_too_large");
-    }
-    if (startedAt == null || endedAt == null || !endedAt.isAfter(startedAt)) {
-      throw ApiException.badRequest("time_range_invalid");
-    }
-    if (startedAt.isAfter(OffsetDateTime.now().plusMinutes(STARTED_AT_FUTURE_SKEW_MIN))) {
-      throw ApiException.badRequest("started_at_future");
-    }
-    long wallClockSec = Duration.between(startedAt, endedAt).getSeconds();
-    if (durationSec > wallClockSec + TIME_CONSISTENCY_TOLERANCE_SEC) {
-      throw ApiException.badRequest("duration_exceeds_time_range");
-    }
-    int minPathPoints = (int) Math.ceil(distanceM / (double) MAX_PATH_POINT_SPACING_M);
-    if (path.size() < minPathPoints) {
-      throw ApiException.badRequest("path_too_sparse");
-    }
-    validatePathPoints(path);
-  }
-
-  /**
-   * 좌표 범위(및 finite 여부)와 t(경과 ms)의 비음수·비내림차순만 확인한다 — t가 없는 포인트
-   * (구형 기록)는 순서 검사를 건너뛴다. 포인트가 2개 이상인데 전부 좌표가 동일하면 거부한다
-   * ("포인트 밀도" 검사(path_too_sparse)만으로는 같은 좌표를 밀도 요건만큼 반복 제출하는
-   * 우회가 가능해서다). 실제 이동 중 GPS 기록은 좌표가 계속 바뀌므로, 이 검사는 오차 허용치
-   * 없는 단순 동일성 비교라 정직한 사용자를 오탐할 여지가 없다 — 경로 실거리 재계산·비교는
-   * 하지 않는다(터널·건물숲 등 GPS 오차로 인한 오탐 위험이 커서 의도적으로 뺐다).
-   */
-  private static void validatePathPoints(List<PathPoint> path) {
-    Long prevT = null;
-    boolean allSameCoord = path.size() > 1;
-    double firstLat = path.get(0).lat();
-    double firstLng = path.get(0).lng();
-    for (PathPoint point : path) {
-      if (!Double.isFinite(point.lat()) || !Double.isFinite(point.lng())
-          || point.lat() < MIN_LAT || point.lat() > MAX_LAT
-          || point.lng() < MIN_LNG || point.lng() > MAX_LNG) {
-        throw ApiException.badRequest("path_point_invalid");
-      }
-      if (point.lat() != firstLat || point.lng() != firstLng) {
-        allSameCoord = false;
-      }
-      Long t = point.t();
-      if (t != null) {
-        if (t < 0 || (prevT != null && t < prevT)) {
-          throw ApiException.badRequest("path_point_invalid");
-        }
-        prevT = t;
-      }
-    }
-    if (allSameCoord) {
-      throw ApiException.badRequest("path_all_same_point");
-    }
-  }
-
   private WorkoutSession saveGpsSession(
       AppUser user,
       UUID clientWorkoutId,
@@ -274,8 +166,11 @@ public class WorkoutService {
       String imageUrl,
       UUID clientWorkoutId) {
     // 입력 검증 — 비정상·조작 값 차단
-    validateIndoorInput(distanceM, durationSec, imageUrl);
-    OffsetDateTime start = parseStartedAt(startedAt);
+    WorkoutInputValidation.validateIndoor(distanceM, durationSec);
+    if (imageUrl != null && !imageUrl.isBlank() && !imageUploadService.isStoredUrl(imageUrl)) {
+      throw ApiException.badRequest("invalid_image_url");
+    }
+    OffsetDateTime start = WorkoutInputValidation.parseStartedAt(startedAt);
 
     // 운동 저장 — 칼로리·페이스는 거리와 시간에서 산출
     AppUser user = appUserRepository.getRequiredForUpdate(principal.userId());
@@ -306,38 +201,6 @@ public class WorkoutService {
     return new SavedWorkout(saved, false);
   }
 
-  private void validateIndoorInput(int distanceM, int durationSec, String imageUrl) {
-    if (durationSec < 1 || durationSec > MAX_DURATION_SEC) throw ApiException.badRequest("duration_invalid");
-    if (distanceM <= 0 || distanceM > MAX_DISTANCE_M) throw ApiException.badRequest("distance_invalid");
-    // imageUrl은 우리 S3 버킷에서 발급된 것만 허용 (외부 URL 주입·타인 이미지 삭제 차단)
-    if (imageUrl != null && !imageUrl.isBlank() && !imageUploadService.isStoredUrl(imageUrl)) {
-      throw ApiException.badRequest("invalid_image_url");
-    }
-  }
-
-  /**
-   * 실내러닝 시작 시각 파싱 — 잘못된 값은 400으로 돌려준다.
-   * 검증 없이 바로 파싱하면 null·형식 오류가 다른 입력들과 달리 500이 된다.
-   * 미래 시각은 주간·월간 집계를 앞당겨 오염시키므로 기기 시계 오차({@value #STARTED_AT_FUTURE_SKEW_MIN}분)까지만 허용한다.
-   */
-  private static OffsetDateTime parseStartedAt(String startedAt) {
-    if (startedAt == null || startedAt.isBlank()) throw ApiException.badRequest("started_at_invalid");
-    OffsetDateTime start;
-    try {
-      start = OffsetDateTime.parse(startedAt);
-    } catch (DateTimeParseException e) {
-      throw ApiException.badRequest("started_at_invalid");
-    }
-    if (start.isAfter(OffsetDateTime.now().plusMinutes(STARTED_AT_FUTURE_SKEW_MIN))) {
-      throw ApiException.badRequest("started_at_future");
-    }
-    return start;
-  }
-
-  /** 실존 UTC 오프셋 범위(분). 벽시계-UTC 차가 이 밖이면 시계 조작·버그 값으로 본다. */
-  private static final long MIN_UTC_OFFSET_MIN = -12 * 60;
-  private static final long MAX_UTC_OFFSET_MIN = 14 * 60;
-
   /**
    * 기기 벽시계(패턴 A: 활동의 로컬 날짜를 활동에 박제) 파싱.
    *
@@ -346,17 +209,7 @@ public class WorkoutService {
    * 무효면 KST 변환 폴백: 기존 저장 동작과 동일해 하위호환이 유지된다.
    */
   static LocalDateTime resolveStartedAtLocal(String startedAtLocal, OffsetDateTime startedAt) {
-    if (startedAtLocal != null && !startedAtLocal.isBlank()) {
-      try {
-        LocalDateTime local = LocalDateTime.parse(startedAtLocal);
-        long offsetMin = Duration.between(
-            startedAt.toInstant(), local.atOffset(ZoneOffset.UTC).toInstant()).toMinutes();
-        if (offsetMin >= MIN_UTC_OFFSET_MIN && offsetMin <= MAX_UTC_OFFSET_MIN) return local;
-      } catch (DateTimeParseException ignored) {
-        // 폴백으로 진행
-      }
-    }
-    return startedAt.atZoneSameInstant(KstTime.ZONE).toLocalDateTime();
+    return WorkoutInputValidation.resolveStartedAtLocal(startedAtLocal, startedAt);
   }
 
   private WorkoutSession saveIndoorSession(
@@ -440,12 +293,7 @@ public class WorkoutService {
   }
 
   String toJson(List<PathPoint> path) {
-    try {
-      // 원본 GPS 고도를 보존해야 DEM 교체·장애·데이터셋 변경 시 언제든 다시 보정할 수 있다.
-      return objectMapper.writeValueAsString(WorkoutPathSupport.roundForStorage(path));
-    } catch (JsonProcessingException e) {
-      throw new IllegalStateException("path_json_encode_failed", e);
-    }
+    return WorkoutPathSupport.toJson(objectMapper, path);
   }
 
   /**
@@ -473,7 +321,7 @@ public class WorkoutService {
     if (ghostWorkoutId == null || ghostWorkoutId <= 0 || result == null) return false;
     if (!Double.isFinite(result.overlapDistanceM())
         || result.overlapDistanceM() < MIN_GHOST_OVERLAP_M
-        || result.overlapDistanceM() > MAX_DISTANCE_M
+        || result.overlapDistanceM() > com.runrace.backend.common.Distance.MAX_DISTANCE_M
         || result.myTimeMs() <= 0
         || result.myTimeMs() > MAX_GHOST_TIME_MS
         || result.ghostTimeMs() <= 0
@@ -489,22 +337,9 @@ public class WorkoutService {
     private static final GhostRaceData EMPTY = new GhostRaceData(null, null);
   }
 
-  private List<PathPoint> parsePath(String pathJson) {
-    try {
-      return objectMapper.readValue(
-          pathJson,
-          objectMapper.getTypeFactory().constructCollectionType(List.class, PathPoint.class));
-    } catch (JsonProcessingException e) {
-      throw new IllegalStateException("path_json_decode_failed", e);
-    }
-  }
-
   /** 저장된 경로 JSON을 응답용 좌표 목록으로 변환한다(상세·공유 응답 공통). */
   public List<PathPointDto> toPath(String pathJson) {
-    return parsePath(pathJson).stream()
-        .map(p -> new PathPointDto(
-            p.lat(), p.lng(), p.t(), WorkoutPathSupport.roundElevation(p.ele()), p.breakBefore()))
-        .toList();
+    return WorkoutPathSupport.toPath(objectMapper, pathJson);
   }
 
   /** 공유 페이지 전용 — {@link #toPath}에 프라이버시 절단을 더한 것. */
@@ -514,8 +349,7 @@ public class WorkoutService {
 
   /** 평균 페이스(초/km). {@link #MIN_DISTANCE_FOR_PACE_M} 미만이면 null. */
   static Integer avgPaceSecPerKm(long distanceM, long durationSec) {
-    if (distanceM < MIN_DISTANCE_FOR_PACE_M) return null;
-    return (int) Math.round(durationSec / (distanceM / 1000.0));
+    return WorkoutInputValidation.avgPaceSecPerKm(distanceM, durationSec);
   }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
