@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eu
+# During a build, the installed application must still be the previous artifact.
+[[ $(cat "$RUNRACE_REPO/backend/target/backend-0.0.1-SNAPSHOT.jar") = old-jar ]]
+[[ "$TEST_FAIL" != build ]] || exit 1
+mkdir -p target
+printf new-jar > target/backend-0.0.1-SNAPSHOT.jar
