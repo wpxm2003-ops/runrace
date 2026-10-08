@@ -24,34 +24,40 @@ export function useWorkoutGhostRace(
   unit: DistanceUnit,
   session: WorkoutSessionValue,
 ) {
-  const [ghost, setGhost] = useState<GhostSelection | null>(null);
+  const [selection, setSelection] = useState<{
+    ownerUid: string;
+    ghost: GhostSelection;
+  } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const syncReadyRef = useRef(false);
-
-  useEffect(() => {
-    if (!syncReadyRef.current) {
-      syncReadyRef.current = true;
-      return;
-    }
-    if (ghost) saveGhostSelection(ghost.id);
-    else clearGhostSelection();
-  }, [ghost]);
+  const selectionVersionRef = useRef(0);
+  const ghost = useMemo(() => {
+    if (!selection || selection.ownerUid !== user?.uid) return null;
+    return { ...selection.ghost, label: formatDistance(selection.ghost.distanceM, unit) };
+  }, [selection, unit, user?.uid]);
 
   useEffect(() => {
     if (!user) return;
     const savedId = loadGhostSelection();
     if (savedId == null) return;
+    const version = selectionVersionRef.current;
+    let cancelled = false;
+    const isCurrent = () => !cancelled && version === selectionVersionRef.current;
     fetchWorkout(savedId, user)
       .then((detail) => {
-        setGhost({
-          id: detail.id,
-          label: formatDistance(detail.distanceM, unit),
-          distanceM: detail.distanceM,
-          path: ensureGhostTimestamps(detail.path, detail.durationSec),
+        if (!isCurrent()) return;
+        setSelection({
+          ownerUid: user.uid,
+          ghost: {
+            id: detail.id,
+            label: "", // 표시 단위는 렌더 시 계산한다. 단위 변경으로 다시 조회하지 않는다.
+            distanceM: detail.distanceM,
+            path: ensureGhostTimestamps(detail.path, detail.durationSec),
+          },
         });
       })
-      .catch(() => clearGhostSelection());
-  }, [unit, user]);
+      .catch(() => { if (isCurrent()) clearGhostSelection(); });
+    return () => { cancelled = true; };
+  }, [user]);
 
   const elapsedMs = session.status === "idle" ? 0 : session.elapsedSec * 1000;
   const totalMs = useMemo(() => (ghost ? ghostTotalDurationMs(ghost.path) : 0), [ghost]);
@@ -62,14 +68,21 @@ export function useWorkoutGhostRace(
   }, [elapsedMs, ghost, session.distanceM]);
 
   function select(next: GhostSelection) {
-    setGhost(next);
+    if (!user) return;
+    selectionVersionRef.current++;
+    setSelection({ ownerUid: user.uid, ghost: next });
+    saveGhostSelection(next.id);
     setPickerOpen(false);
     void track("ghost_race_started");
   }
 
   return {
     ghost,
-    clear: () => setGhost(null),
+    clear: () => {
+      selectionVersionRef.current++;
+      setSelection(null);
+      clearGhostSelection();
+    },
     select,
     pickerOpen,
     openPicker: () => setPickerOpen(true),
