@@ -205,6 +205,8 @@ export function useWorkoutSession(
    * A 소유로 일시정지 저장한 뒤 이 함수를 호출해 B 화면·GPS 콜백에서 완전히 분리한다.
    */
   const resetRuntime = useCallback(() => {
+    gapVerifySeqRef.current++;
+    idleCheckDeferredUntilRef.current = 0;
     resetWorkoutRuntimeRefs({
       status: statusRef, path: pathRef, sessionOwnerUid: sessionOwnerUidRef,
       clientWorkoutId: clientWorkoutIdRef, pauseStarted: pauseStartedRef,
@@ -365,10 +367,17 @@ export function useWorkoutSession(
       return;
     }
     const seq = ++gapVerifySeqRef.current;
+    const ownerUid = sessionOwnerUidRef.current;
+    const workoutId = clientWorkoutIdRef.current;
     idleCheckDeferredUntilRef.current = Date.now() + IDLE_GAP_VERIFY_TIMEOUT_MS;
 
     const settle = (moved: boolean) => {
-      if (seq !== gapVerifySeqRef.current) return;
+      if (
+        seq !== gapVerifySeqRef.current
+        || ownerUid == null
+        || !isCurrentSessionOwner(ownerUid)
+        || workoutId !== clientWorkoutIdRef.current
+      ) return;
       idleCheckDeferredUntilRef.current = 0;
       if (moved) resetIdleAnchor(Date.now());
     };
@@ -381,7 +390,7 @@ export function useWorkoutSession(
       () => settle(true),
       { enableHighAccuracy: false, maximumAge: 0, timeout: IDLE_GAP_VERIFY_TIMEOUT_MS },
     );
-  }, [resetIdleAnchor]);
+  }, [isCurrentSessionOwner, resetIdleAnchor]);
 
   const restartWatch = useCallback((reason: "foreground" | "stale") => {
     if (statusRef.current !== "running" || !isCurrentSessionOwner()) return;

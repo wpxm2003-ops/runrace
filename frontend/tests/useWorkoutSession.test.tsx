@@ -83,4 +83,31 @@ describe("workout session runtime", () => {
     await act(async () => { result.current.resume(user.uid); });
     expect(mocks.startWatch.mock.lastCall?.slice(2)).toEqual(["운동 중", "Tracking"]);
   });
+
+  it.each(["success", "failure"])("ignores a previous workout's late gap check (%s)", async (response) => {
+    const { result } = renderSession();
+    await act(async () => { result.current.start(user.uid); });
+    // 잠든 WebView처럼 타이머 없이 벽시계만 진행시킨 뒤 포그라운드로 복귀한다.
+    vi.setSystemTime(Date.now() + 31 * 60_000);
+    const foreground = mocks.addListener.mock.lastCall![1];
+    await act(async () => { foreground({ isActive: true }); });
+    const [success, failure] = vi.mocked(navigator.geolocation.getCurrentPosition).mock.lastCall!;
+    act(() => { result.current.stop(user.uid); });
+    seed();
+    const newStartedAt = Date.now();
+    await act(async () => { result.current.start(user.uid); });
+    vi.setSystemTime(newStartedAt + 10_000);
+    act(() => {
+      if (response === "success") {
+        success({ coords: { latitude: 38, longitude: 128 } } as GeolocationPosition);
+      } else {
+        failure!({ code: 3 } as GeolocationPositionError);
+      }
+    });
+    vi.setSystemTime(newStartedAt + 30 * 60_000 - 1000);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    // 예전 응답이 새 앵커를 10초 늦췄다면 여기서 아직 running이 된다.
+    expect(result.current.status).toBe("paused");
+    expect(result.current.autoPaused).toBe(true);
+  });
 });
