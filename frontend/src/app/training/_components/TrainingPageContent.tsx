@@ -1,264 +1,46 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { PageLayout } from "@/app/_components/PageLayout";
 import { Badge } from "@/app/_components/ui/Badge";
 import { Card } from "@/app/_components/ui/Card";
 import { LoadingCard } from "@/app/_components/ui/LoadingCard";
 import { TextInput } from "@/app/_components/ui/TextInput";
-import {
-  usePersonalBests,
-  useTrainingPlan,
-  useNsmWeeklyProgress,
-  saveTrainingPlan,
-  cancelTrainingPlan,
-} from "@/lib/api";
-import type { PersonalBestRow } from "@/lib/api/types";
 import { useAuthUser } from "@/lib/useAuthUser";
-import { redirectToLogin } from "@/lib/auth";
 import { nativeNavigate } from "@/lib/nativeNav";
 import { usePageScrollRestore } from "@/lib/pageStateStore";
-import { useConfirm } from "@/app/_components/ConfirmProvider";
-import { clearNsmProgress } from "@/lib/nsmSessionProgress";
-import { track } from "@/lib/analytics";
 import { useLocale } from "@/lib/i18n";
-import { toast } from "sonner";
 import {
-  vdotFromRace,
-  thresholdPaceSecPerKm,
-  weeklyPlan,
   formatPaceSec,
   nsmTodayIndex,
-  isRealisticThreshold,
   hasAdjacentSubTDays,
-  subTDayLimits,
-  clampSubTDaysToBand,
   isOverBandDose,
-  type NsmSession,
-  type NsmVolumeBand,
 } from "@/lib/nsm";
 import { weekdayLabels } from "@/lib/format";
 import { pbFinishSec } from "@/lib/paceMath";
-import { sessionJson } from "@/lib/safeStorage";
 import { NsmIntroCard } from "@/app/training/_components/NsmIntroCard";
+import { useTrainingPlanBuilder } from "@/app/training/_hooks/useTrainingPlanBuilder";
 import {
   DISTANCES,
   PB_LABEL,
   daysSince,
   formatTime,
   maskTimeInput,
-  parseTime,
   sessionLabel,
   volumeBandLabel,
 } from "@/app/training/trainingUtils";
 
-// 비로그인 계산 결과가 로그인 리다이렉트로 유실되지 않도록 입력값을 잠시 보관한다(같은 탭 세션 한정).
-type NsmDraft = { distM: number; timeStr: string; subTDays: number[]; band?: NsmVolumeBand };
-const nsmDraftStore = sessionJson<NsmDraft>("nsm_calc_draft");
-
-// PB(personal_best)에 있는 거리는 전부 있어야 한다 — 빠지면 그 PB 칩을 골랐을 때
-// 선택된 버튼이 하나도 없는 상태가 된다(3K는 입문자 진입로이기도 하다).
-
-type Result = {
-  vdot: number;
-  threshold: number;
-  plan: NsmSession[];
-  sourceDistanceM: number;
-  sourceTimeSec: number;
-};
-
 function TrainingContent({ user }: { user: User | null }) {
   const { t, locale } = useLocale();
-  const confirm = useConfirm();
-  const { data: pbs } = usePersonalBests(user);
-  const { data: savedPlan, mutate: mutatePlan } = useTrainingPlan(user);
-  const { data: weekly } = useNsmWeeklyProgress(user);
   // 다른 화면에 다녀와도 스크롤 유지 (내정보 탭과 동일 동작)
   usePageScrollRestore("page:training");
-
   const days = weekdayLabels(locale, true);
-
-  const [distM, setDistM] = useState(5000);
-  const [timeStr, setTimeStr] = useState("22:00");
-  // sub-T 요일(월=0…일=6). 기본 화·목·토 — 사용자가 자기 일정에 맞게 변경.
-  // 기본 볼륨은 4~5시간(밴드 2) — 가장 흔한 구간이라 첫 화면부터 선택돼 있게 한다. sub-T 요일도 밴드 2 상한(2개)에 맞춘 화·목.
-  const [subTDays, setSubTDays] = useState<number[]>([1, 3]);
-  const [band, setBand] = useState<NsmVolumeBand | undefined>(2);
-  const [result, setResult] = useState<Result | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [canceling, setCanceling] = useState(false);
-
-  // 저장된 플랜을 최초 1회 화면에 복원. ref 가드로 늦게 도착해도(SWR 지연) 반드시 1회 적용.
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (hydratedRef.current) return;
-
-    // 서버 플랜이 없으면 — 비로그인 계산 후 로그인 복귀 등 — 임시 저장된 초안을 복원(1회성).
-    if (!savedPlan) {
-      const draft = nsmDraftStore.get();
-      if (draft && !result) {
-        hydratedRef.current = true;
-        nsmDraftStore.remove();
-        setSubTDays(draft.subTDays);
-        setDistM(draft.distM);
-        setTimeStr(draft.timeStr);
-        setBand(draft.band);
-        const sec = parseTime(draft.timeStr);
-        if (sec != null && sec > 0) compute(draft.distM, sec, draft.subTDays, draft.band);
-      }
-      return;
-    }
-
-    hydratedRef.current = true;
-    if (result) return; // 사용자 계산값 우선 — 클로버 방지
-    // 오염 행(문자열 "Infinity"/NaN vdot 등) 방어 — 유한값이 아니면 복원 스킵.
-    const savedVdot = Number(savedPlan.vdot);
-    if (!Number.isFinite(savedVdot) || !Number.isFinite(savedPlan.thresholdPaceSec)) return;
-    const savedBand = (savedPlan.weeklyBand ?? undefined) as NsmVolumeBand | undefined;
-    setSubTDays(savedPlan.subTDays);
-    setDistM(savedPlan.sourceDistanceM);
-    setTimeStr(formatTime(savedPlan.sourceTimeSec));
-    setBand(savedBand);
-    setResult({
-      vdot: savedVdot,
-      threshold: savedPlan.thresholdPaceSec,
-      plan: weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays, savedBand),
-      sourceDistanceM: savedPlan.sourceDistanceM,
-      sourceTimeSec: savedPlan.sourceTimeSec,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedPlan]);
-
-  // 계산 성공 시 true. 거리·시간 조합이 비현실적이면 에러 노출 후 false(결과 미표시).
-  function compute(dM: number, sec: number, dys: number[], b: NsmVolumeBand | undefined = band): boolean {
-    const vdot = vdotFromRace(dM, sec);
-    const threshold = thresholdPaceSecPerKm(vdot);
-    if (!isRealisticThreshold(threshold)) {
-      setError(t.nsm_range_error);
-      setResult(null);
-      return false;
-    }
-    setError(null);
-    setResult({ vdot, threshold, plan: weeklyPlan(threshold, dys, b), sourceDistanceM: dM, sourceTimeSec: sec });
-    return true;
-  }
-
-  function onCalc() {
-    const sec = parseTime(timeStr);
-    if (sec == null || sec <= 0) {
-      setError(t.nsm_time_error);
-      setResult(null);
-      return;
-    }
-    compute(distM, sec, subTDays);
-  }
-
-  function onPickPb(pb: PersonalBestRow) {
-    const sec = pbFinishSec(pb.bestPaceSec, pb.distanceM);
-    setDistM(pb.distanceM);
-    setTimeStr(formatTime(sec));
-    setError(null);
-    compute(pb.distanceM, sec, subTDays);
-  }
-
-  // sub-T 요일 토글 — 밴드별 최소/최대 유지(미지정 시 2~3, 밴드별로 1~3).
-  // 상한에 찬 상태에서 새 요일을 누르면 가장 먼저 골랐던 요일과 교체한다(고정 개수 밴드에서 먹통 방지).
-  // 교체 대상 판단을 위해 subTDays는 선택 순서를 유지한다 — weeklyPlan·저장 경로가 각자 정렬하므로 안전.
-  function onToggleDay(d: number) {
-    const { min, max } = subTDayLimits(band);
-    let next: number[];
-    if (subTDays.includes(d)) {
-      if (subTDays.length <= min) {
-        toast(t.nsm_min_days_notice(min));
-        return;
-      }
-      next = subTDays.filter((x) => x !== d);
-    } else if (subTDays.length >= max) {
-      next = [...subTDays.slice(1), d];
-    } else {
-      next = [...subTDays, d];
-    }
-    setSubTDays(next);
-    if (result) setResult({ ...result, plan: weeklyPlan(result.threshold, next, band) });
-  }
-
-  function onSelectBand(b: NsmVolumeBand) {
-    const nextDays = clampSubTDaysToBand(subTDays, b);
-    setBand(b);
-    setSubTDays(nextDays);
-    if (result) setResult({ ...result, plan: weeklyPlan(result.threshold, nextDays, b) });
-  }
-
-  async function onSave() {
-    if (!result || saving || !user) return;
-    setSaving(true);
-    try {
-      // 백엔드 계약(밴드별 1~3개, dedup·정렬)과 동일하게 정규화해 전송 — 프론트/백 상한 정책 일치.
-      const normalizedDays = Array.from(new Set(subTDays)).sort((a, b) => a - b).slice(0, 3);
-      await saveTrainingPlan(
-        {
-          vdot: result.vdot,
-          thresholdPaceSec: result.threshold,
-          subTDays: normalizedDays,
-          sourceDistanceM: result.sourceDistanceM,
-          sourceTimeSec: result.sourceTimeSec,
-          weeklyBand: band,
-        },
-        user,
-      );
-      await mutatePlan();
-      void track("nsm_plan_saved", { weekly_band: band ?? "unknown" });
-      toast.success(t.nsm_toast_saved);
-    } catch {
-      toast.error(t.nsm_toast_save_fail);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function onCancel() {
-    if (!user || canceling) return;
-    const ok = await confirm({
-      title: t.nsm_cancel_title,
-      message: t.nsm_cancel_message,
-      confirmLabel: t.nsm_cancel_confirm,
-      cancelLabel: t.nsm_cancel_keep,
-      destructive: true,
-    });
-    if (!ok) return;
-    setCanceling(true);
-    try {
-      await cancelTrainingPlan(user);
-      // 캐시를 즉시 비워 '오늘의 세션'·운동 페이지 NSM 가이드가 바로 사라지게 한다.
-      await mutatePlan(null, { revalidate: false });
-      setResult(null); // 화면을 플랜 없는 상태로 리셋
-      hydratedRef.current = false;
-      // 동일 구조로 플랜 재생성 시 stale 렙 상태가 복원되지 않도록 진행상태 정리.
-      clearNsmProgress();
-      toast.success(t.nsm_toast_canceled);
-    } catch {
-      toast.error(t.nsm_toast_cancel_fail);
-    } finally {
-      setCanceling(false);
-    }
-  }
-
-  const sortedKey = (a: number[]) => [...a].sort((x, y) => x - y).join(",");
-  const isSaved =
-    savedPlan != null &&
-    result != null &&
-    savedPlan.thresholdPaceSec === result.threshold &&
-    savedPlan.sourceDistanceM === result.sourceDistanceM &&
-    savedPlan.sourceTimeSec === result.sourceTimeSec &&
-    (savedPlan.weeklyBand ?? undefined) === band &&
-    sortedKey(savedPlan.subTDays) === sortedKey(subTDays);
-
-  // "오늘의 세션"은 저장된 활성 플랜에서만 — 계산만 한 미저장 플랜은 미노출.
-  const todaySession = savedPlan
-    ? weeklyPlan(savedPlan.thresholdPaceSec, savedPlan.subTDays, (savedPlan.weeklyBand ?? undefined) as NsmVolumeBand | undefined)[nsmTodayIndex()]
-    : null;
+  const plan = useTrainingPlanBuilder(user, t);
+  const {
+    pbs, savedPlan, weekly, distM, setDistM, timeStr, setTimeStr, subTDays, band,
+    result, error, saving, canceling, isSaved, todaySession,
+    calculate, pickPersonalBest, toggleDay, selectBand, save, cancel, continueToLogin,
+  } = plan;
 
   return (
     <PageLayout title={t.nsm_title}>
@@ -326,7 +108,7 @@ function TrainingContent({ user }: { user: User | null }) {
               <button
                 key={pb.distanceKey}
                 type="button"
-                onClick={() => onPickPb(pb)}
+                onClick={() => pickPersonalBest(pb)}
                 className="rounded-full border border-zinc-300 bg-white px-3.5 py-2 text-sm hover:border-zinc-900 hover:bg-zinc-50"
               >
                 <span className="font-semibold text-zinc-900">{PB_LABEL[pb.distanceKey] ?? pb.distanceKey}</span>
@@ -372,7 +154,7 @@ function TrainingContent({ user }: { user: User | null }) {
           {error ? <p className="text-xs text-red-600">{error}</p> : null}
           <button
             type="button"
-            onClick={onCalc}
+            onClick={calculate}
             className="rounded-lg bg-zinc-900 py-2.5 text-sm text-white hover:bg-zinc-800"
           >
             {t.nsm_calc_button}
@@ -389,7 +171,7 @@ function TrainingContent({ user }: { user: User | null }) {
             <button
               key={b}
               type="button"
-              onClick={() => onSelectBand(b)}
+              onClick={() => selectBand(b)}
               className={`h-10 flex-1 rounded-lg border text-xs font-medium ${
                 band === b ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300 bg-white text-zinc-600"
               }`}
@@ -409,7 +191,7 @@ function TrainingContent({ user }: { user: User | null }) {
               <button
                 key={d}
                 type="button"
-                onClick={() => onToggleDay(d)}
+                onClick={() => toggleDay(d)}
                 className={`h-10 flex-1 rounded-lg border text-sm font-medium ${
                   on ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300 bg-white text-zinc-600"
                 }`}
@@ -451,11 +233,7 @@ function TrainingContent({ user }: { user: User | null }) {
             {!user ? (
               <button
                 type="button"
-                onClick={() => {
-                  // 로그인 리다이렉트로 계산 결과가 유실되지 않게 입력값을 잠시 보관.
-                  nsmDraftStore.set({ distM, timeStr, subTDays, band });
-                  redirectToLogin("/training");
-                }}
+                onClick={continueToLogin}
                 className="mt-3 w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white"
               >
                 {t.nsm_signup_cta}
@@ -467,7 +245,7 @@ function TrainingContent({ user }: { user: User | null }) {
             ) : (
               <button
                 type="button"
-                onClick={onSave}
+                onClick={save}
                 disabled={saving}
                 className="mt-3 w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
@@ -518,7 +296,7 @@ function TrainingContent({ user }: { user: User | null }) {
       {user && savedPlan ? (
         <button
           type="button"
-          onClick={onCancel}
+          onClick={cancel}
           disabled={canceling}
           className="mt-4 w-full rounded-lg border border-red-200 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
         >

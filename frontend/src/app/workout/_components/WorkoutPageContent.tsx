@@ -3,46 +3,31 @@
 import dynamic from "next/dynamic";
 import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration";
 import { WorkoutStatsGrid } from "@/app/workout/_components/WorkoutStatsGrid";
-import { useConfirm } from "@/app/_components/ConfirmProvider";
 import { Alert } from "@/app/_components/ui/Alert";
-import { fetchWorkout, recordWorkoutStart, useTrainingPlan } from "@/lib/api";
-import {
-  clearGhostSelection,
-  loadGhostSelection,
-  saveGhostSelection,
-} from "@/lib/workoutPersistence";
-import { weeklyPlan, nsmTodayIndex, type NsmSession, type NsmVolumeBand } from "@/lib/nsm";
-import { isGhostLoss, recordGhostLossStreak, shouldShowNsmCta } from "@/lib/nsmCta";
+import { recordWorkoutStart } from "@/lib/api";
 import { NsmSessionGuide } from "@/app/workout/_components/NsmSessionGuide";
 import { clearNsmProgress } from "@/lib/nsmSessionProgress";
-import { track } from "@/lib/analytics";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
 import { useUnit } from "@/lib/UnitContext";
-import { formatDistance } from "@/lib/units";
 import { useWorkoutSessionContext } from "@/lib/WorkoutSessionProvider";
 import type { LiveRivalGapEntry } from "@/lib/useWorkoutSession";
 import { WorkoutCountdown } from "@/app/workout/_components/WorkoutCountdown";
 import { RunLockOverlay } from "@/app/workout/_components/RunLockOverlay";
-import { GhostPicker, type GhostSelection } from "@/app/workout/_components/GhostPicker";
+import { GhostPicker } from "@/app/workout/_components/GhostPicker";
 import { GhostGapBanner } from "@/app/workout/_components/GhostGapBanner";
 import { RivalGapBanner } from "@/app/workout/_components/RivalGapBanner";
-import {
-  computeGhostRaceResult,
-  ensureGhostTimestamps,
-  ghostDistanceAtElapsed,
-  ghostTotalDurationMs,
-} from "@/lib/ghostRace";
 import { useWakeLock } from "@/lib/useWakeLock";
 import { isIosWeb } from "@/lib/nativeNav";
 import {
-  savePendingWorkoutSave,
   loadPendingWorkoutSave,
   type PendingWorkoutSave,
 } from "@/lib/workoutPendingSave";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorkoutSave, type CelebrationState } from "./useWorkoutSave";
-import { buildNsmLog } from "@/app/workout/workoutNsmLog";
+import { useWorkoutGhostRace } from "./useWorkoutGhostRace";
+import { useWorkoutNsmGuide } from "./useWorkoutNsmGuide";
+import { useWorkoutStop } from "./useWorkoutStop";
 
 /** 러닝 화면에 동시에 띄우는 라이벌 격차 배너 상한 — 지도가 배너로 덮이지 않게. */
 const MAX_RIVAL_GAP_BANNERS = 3;
@@ -67,7 +52,6 @@ export default function WorkoutPageContent() {
   const { t } = useLocale();
   const { unit } = useUnit();
   const session = useWorkoutSessionContext();
-  const confirm = useConfirm();
   const [celebration, setCelebration] = useState<CelebrationState | null>(null);
   const [counting, setCounting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -77,8 +61,6 @@ export default function WorkoutPageContent() {
   const [pendingSave, setPendingSave] = useState<PendingWorkoutSave | null>(null);
   const [locked, setLocked] = useState(false);
   const [showIosNotice, setShowIosNotice] = useState(false);
-  const [ghost, setGhost] = useState<GhostSelection | null>(null);
-  const [ghostPickerOpen, setGhostPickerOpen] = useState(false);
   const currentUserUidRef = useRef(user?.uid ?? null);
   currentUserUidRef.current = user?.uid ?? null;
 
@@ -108,69 +90,9 @@ export default function WorkoutPageContent() {
       .slice(0, MAX_RIVAL_GAP_BANNERS);
   }, [liveRivalGaps]);
 
-  // 유령 레이스 — 유령은 활동시간 시계(elapsedSec, 일시정지 제외·1초 갱신)를 따라 달린다.
-  // 마지막 GPS 포인트의 t를 쓰면 내가 제자리에 서 있는 동안(새 포인트 없음) 유령까지
-  // 같이 얼어붙는다 — 레이스답게 내가 멈춰도 유령은 계속 달리고, 일시정지에만 함께 멈춘다.
-  const myElapsedMs = session.status === "idle" ? 0 : session.elapsedSec * 1000;
-  const ghostTotalMs = useMemo(() => (ghost ? ghostTotalDurationMs(ghost.path) : 0), [ghost]);
-  // ghostTotalMs가 0인 퇴화 유령(타임스탬프 합성 실패 등)이 시작부터 "완주" 처리되는 것 방지.
-  const ghostFinished = ghost != null && ghostTotalMs > 0 && myElapsedMs >= ghostTotalMs;
-  const ghostGapM = useMemo(() => {
-    if (!ghost) return null;
-    return session.distanceM - ghostDistanceAtElapsed(ghost.path, myElapsedMs);
-  }, [ghost, myElapsedMs, session.distanceM]);
-
-  // 유령 선택을 러닝 본체와 별개로 저장 — id만 저장해두고, 값이 바뀔 때마다 동기화.
-  // 첫 실행(마운트)은 건너뛴다 — 초기 ghost는 항상 null이라, 여기서 지워버리면 아래
-  // 복원 effect가 읽기도 전에 저장된 선택이 사라져 복원 기능이 통째로 죽는다.
-  const ghostSyncReadyRef = useRef(false);
-  useEffect(() => {
-    if (!ghostSyncReadyRef.current) {
-      ghostSyncReadyRef.current = true;
-      return;
-    }
-    if (ghost) saveGhostSelection(ghost.id);
-    else clearGhostSelection();
-  }, [ghost]);
-
-  // 마운트 시 복원 — 백그라운드 전환으로 WebView가 재구성돼도(런은 세션 훅이 별도 복원) 고른 유령을 되찾는다.
-  useEffect(() => {
-    if (!user) return;
-    const savedId = loadGhostSelection();
-    if (savedId == null) return;
-    fetchWorkout(savedId, user)
-      .then((detail) => {
-        setGhost({
-          id: detail.id,
-          label: formatDistance(detail.distanceM, unit),
-          distanceM: detail.distanceM,
-          // 피커와 동일하게 구형 기록(t 없음)도 t를 합성해 복원한다.
-          path: ensureGhostTimestamps(detail.path, detail.durationSec),
-        });
-      })
-      .catch(() => clearGhostSelection());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  // NSM 자동 인식 — 활성 플랜이 있고 오늘이 sub-T 날이면, 일반 "운동하기"로도 세션 가이드를 띄운다.
-  const { data: trainingPlan } = useTrainingPlan(user);
-  const liveNsmToday = trainingPlan
-    ? weeklyPlan(
-        trainingPlan.thresholdPaceSec,
-        trainingPlan.subTDays,
-        (trainingPlan.weeklyBand ?? undefined) as NsmVolumeBand | undefined,
-      )[nsmTodayIndex()]
-    : null;
-  // 러닝 중엔 오늘의 세션을 런 시작 시점 값으로 고정 — 자정을 넘어 nsmTodayIndex가 바뀌어도
-  // 가이드가 세션 종류를 바꾸거나 언마운트돼 진행이 끊기지 않게 한다.
-  const [frozenNsmToday, setFrozenNsmToday] = useState<NsmSession | null>(null);
-  useEffect(() => {
-    if (active) setFrozenNsmToday((prev) => prev ?? liveNsmToday);
-    else setFrozenNsmToday(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-  const nsmToday = active ? frozenNsmToday ?? liveNsmToday : liveNsmToday;
-  const isNsmDay = !!nsmToday?.isSubT;
+  const ghostRace = useWorkoutGhostRace(user ?? null, unit, session);
+  const { ghost, elapsedMs: myElapsedMs, finished: ghostFinished, gapM: ghostGapM } = ghostRace;
+  const { trainingPlan, today: nsmToday, isNsmDay } = useWorkoutNsmGuide(user ?? null, active);
 
   // 러닝 중 화면이 꺼지지 않게 유지(포그라운드 GPS 유지). 미지원 브라우저는 무시.
   useWakeLock(session.status === "running");
@@ -207,86 +129,18 @@ export default function WorkoutPageContent() {
     user, t, unit, currentUserUidRef, setSaveError, setSaving,
     setPendingSave, setCelebration,
   });
-
-  const handleStop = useCallback(async () => {
-    if (!user) return;
-    const ownerUid = user.uid;
-
-    // distanceM은 미터 단위 — 이동 거리가 사실상 없을 때(1m 미만)만 저장 확인
-    if (session.distanceM < 1) {
-      const ok = await confirm({
-        title: t.workout_save_empty_title,
-        message: t.workout_save_empty_message,
-        confirmLabel: t.save,
-        cancelLabel: t.cancel,
-      });
-      if (currentUserUidRef.current !== ownerUid) return;
-      if (!ok) {
-        session.stop(ownerUid);
-        // 저장하지 않기로 확정 — 일시정지로 남기면 저장되지도 않을 거리가 15분간 보인다.
-        session.discardLiveRun(ownerUid);
-        setSaveError(null);
-        setGhost(null);
-        return;
-      }
-    }
-
-    const snapshot = session.stop(ownerUid);
-    if (!snapshot) return;
-    // 반드시 clearNsmProgress()보다 먼저 — 지운 뒤에는 몇 렙을 했는지 알 방법이 없다.
-    const nsmLog = buildNsmLog(nsmToday);
-    clearNsmProgress(); // 런 종료 — NSM 렙 진행 정리
-    if (snapshot.path.length === 0) {
-      // 경로가 없어 저장이 불가능 — 위와 같은 이유로 라이브 값을 남기지 않는다.
-      session.discardLiveRun(ownerUid);
-      setSaveError(t.workout_no_route);
-      setGhost(null);
-      return;
-    }
-    const ghostResult = ghost ? computeGhostRaceResult(snapshot.path, ghost.path) : null;
-    const ghostLabel = ghost?.label ?? null;
-    // 연패 장부 갱신(승·무는 리셋) + NSM CTA 판정 — 게이트 규칙(접전·연패·7일 캡)은 nsmCta.ts가 소유.
-    // trainingPlan이 undefined(미로딩·조회 실패)면 플랜 보유로 간주 — 플랜 있는 유저에게 잘못 노출하는 쪽보다 안 보여주는 쪽으로 실패.
-    const lossStreak =
-      ghost && ghostResult ? recordGhostLossStreak(ghost.id, isGhostLoss(ghostResult)) : 0;
-    const showNsmCta =
-      ghostResult != null &&
-      shouldShowNsmCta({ hasPlan: trainingPlan !== null, result: ghostResult, lossStreak });
-    const ghostWorkoutId = ghostResult ? (ghost?.id ?? null) : null;
-    setGhost(null); // 유령은 매 런마다 새로 고른다(등록형 라이벌 아님)
-    // POST 전에 먼저 로컬에 남겨 둔다 — 도중에 앱이 죽어도 이 스냅샷은 살아남는다.
-    savePendingWorkoutSave({
-      ownerUid,
-      snapshot,
-      ghostWorkoutId,
-      ghostResult,
-      ghostLabel,
-      showNsmCta,
-      nsmLog,
-    });
-    await saveSnapshot(
-      ownerUid,
-      snapshot,
-      ghostWorkoutId,
-      ghostResult,
-      ghostLabel,
-      showNsmCta,
-      nsmLog,
-    );
-  }, [
+  const handleStop = useWorkoutStop({
+    user: user ?? null,
     session,
-    user,
-    saveSnapshot,
-    confirm,
+    t,
     ghost,
+    clearGhost: ghostRace.clear,
     trainingPlan,
     nsmToday,
-    t.workout_no_route,
-    t.workout_save_empty_title,
-    t.workout_save_empty_message,
-    t.save,
-    t.cancel,
-  ]);
+    saveSnapshot,
+    currentUserUidRef,
+    setSaveError,
+  });
 
   if (loading || !user) {
     return <div className="flex flex-1 items-center justify-center text-sm text-zinc-600">{t.loading}</div>;
@@ -315,12 +169,9 @@ export default function WorkoutPageContent() {
       ) : null}
 
       <GhostPicker
-        open={ghostPickerOpen}
-        onClose={() => setGhostPickerOpen(false)}
-        onSelect={(g) => {
-          setGhost(g);
-          void track("ghost_race_started");
-        }}
+        open={ghostRace.pickerOpen}
+        onClose={ghostRace.closePicker}
+        onSelect={ghostRace.select}
         user={user}
       />
 
@@ -449,14 +300,14 @@ export default function WorkoutPageContent() {
                 <div className="flex shrink-0 gap-3">
                   <button
                     type="button"
-                    onClick={() => setGhostPickerOpen(true)}
+                    onClick={ghostRace.openPicker}
                     className="text-xs font-medium text-violet-700 underline"
                   >
                     {t.ghost_change}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setGhost(null)}
+                    onClick={ghostRace.clear}
                     className="text-xs font-medium text-violet-700 underline"
                   >
                     {t.ghost_clear}
@@ -466,7 +317,7 @@ export default function WorkoutPageContent() {
             ) : (
               <button
                 type="button"
-                onClick={() => setGhostPickerOpen(true)}
+                onClick={ghostRace.openPicker}
                 className="mb-3 flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
               >
                 <span className="min-w-0 flex-1 text-left">👻 {t.ghost_chip_label}</span>

@@ -5,54 +5,38 @@ import type { User } from "firebase/auth";
 import { usePathname } from "next/navigation";
 import {
   estimateCalories,
-  evaluateVehicleTier,
   formatClock,
   idleAutoPauseAt,
-  normalizeGpsAccuracyM,
-  pickWorkoutStartSeed,
-  pushAccuracySample,
-  slideIdleAnchor,
   type IdleAnchor,
   type LatLng,
   type VehicleDetectState,
   type VehicleTier,
   geolocationBlockedCode,
-  geolocationErrorCode,
   type GeoErrorCode,
   shouldResetIdleAnchorAfterForegroundGap,
   foregroundGapLooksLikeMovement,
-  WORKOUT_START_FIX_MAX_AGE_MS,
-  type WorkoutFinishSnapshot,
   type WorkoutStatus,
 } from "./workoutTrack";
-import { haversineMeters, shouldAppendPoint } from "./workoutPath";
 import {
   computeWorkoutElapsedSec,
-  computeWorkoutSpeedMps,
   initialVehicleDetectState,
 } from "./workoutSessionMath";
-import { clearWorkout } from "./workoutPersistence";
 import { useWorkoutPersistenceFlush } from "./useWorkoutPersistenceFlush";
 import { useUnit } from "./UnitContext";
 import { formatPace } from "./units";
-import { startBackgroundWatch, type GeoCoords } from "./backgroundGeo";
 import { track } from "./analytics";
-import { waitForNativePermissions } from "./nativePermissions";
-import { createClientWorkoutId } from "./workoutRequestId";
 import { useWorkoutLiveProgress } from "./useWorkoutLiveProgress";
 import {
   useWorkoutGpsWarmup,
   type GeoErrorState,
 } from "./useWorkoutGpsWarmup";
-import {
-  buildWorkoutFinishSnapshot,
-  isWorkoutSessionVisible,
-  resolveWorkoutGeoError,
-} from "./workoutSessionPresentation";
+import { isWorkoutSessionVisible, resolveWorkoutGeoError } from "./workoutSessionPresentation";
 import { useWorkoutRuntimeEffects } from "./useWorkoutRuntimeEffects";
 import { useWorkoutSessionRestore } from "./useWorkoutSessionRestore";
 import { clearWorkoutWatch, resetWorkoutRuntimeRefs } from "./workoutSessionRuntime";
-import { pauseWorkoutRuntime, resumeWorkoutRuntime } from "./workoutSessionTransitions";
+import { startWorkoutGpsWatch } from "./workoutGpsWatch";
+import { createWorkoutPositionTracker } from "./useWorkoutPositionTracking";
+import { useWorkoutSessionControls } from "./useWorkoutSessionControls";
 
 // ── 퍼시스턴스 ────────────────────────────────────────────────────────────────
 const GPS_RESTART_DEBOUNCE_MS = 2_000;
@@ -291,124 +275,39 @@ export function useWorkoutSession(
     return true;
   }, [clearWatch, clampIdlePauseAt, isCurrentSessionOwner, pauseLiveRun]);
 
-  const peekSpeedMps = useCallback(
-    (coords: GeoCoords, point: LatLng, now: number): number | null => {
-      let speed = coords.speed ?? null;
-      if (speed == null && lastRawPosRef.current && lastPosTimeRef.current) {
-        speed = computeWorkoutSpeedMps(lastRawPosRef.current, point, now - lastPosTimeRef.current);
-      }
-      return speed;
-    },
-    [],
-  );
-
-  const commitRawPosition = useCallback((point: LatLng, now: number) => {
-    lastRawPosRef.current = point;
-    lastPosTimeRef.current = now;
-  }, []);
-
-  const appendPosition = useCallback(
-    (coords: GeoCoords) => {
-      if (!isCurrentSessionOwner() || statusRef.current !== "running") return;
-      setGeoErrorState(null);
-      const now = Date.now();
-      lastGpsFixAtRef.current = now;
-      const accuracyM = normalizeGpsAccuracyM(coords.accuracy);
-      const point: LatLng = {
-        lat: coords.latitude,
-        lng: coords.longitude,
-      };
-      setPosition(point);
-
-      const speedMps = peekSpeedMps(coords, point, now);
-
-      const accuracyRecent = pushAccuracySample(
-        vehicleStateRef.current.accuracyRecent,
-        now,
-        accuracyM,
-      );
-
-      const previousTier = vehicleStateRef.current.tier;
-      const vehicle = evaluateVehicleTier({
-        speedMps,
-        accuracyM,
-        nowMs: now,
-        state: { ...vehicleStateRef.current, accuracyRecent },
-      });
-
-      vehicleStateRef.current = {
-        tier: vehicle.tier,
-        suspectHighSinceMs: vehicle.suspectHighSinceMs,
-        confirmedHighSinceMs: vehicle.confirmedHighSinceMs,
-        lowSpeedSinceMs: vehicle.lowSpeedSinceMs,
-        weakGpsSinceMs: vehicle.weakGpsSinceMs,
-        recoveringFromWeakGps: vehicle.recoveringFromWeakGps,
-        hasHadGoodFix: vehicle.hasHadGoodFix,
-        accuracyRecent: vehicle.accuracyRecent,
-      };
-      // 탈것 판정이 걸리면 핑이 멈춘다. 그 사실을 서버에 알리지 않으면 마지막 값이 신선한
-      // 동안(15분) 계속 "러닝 중"으로 보이고, 그 뒤 만료되면서 거리까지 한 번에 뒤로 내려앉는다
-      // — 일시정지 표시를 만든 이유와 같은 현상이다. 판정에 들어가는 순간 한 번만 알린다.
-      if (previousTier === "normal" && vehicle.tier !== "normal") {
-        const ownerUid = sessionOwnerUidRef.current;
-        if (ownerUid != null) pauseLiveRun(ownerUid);
-      } else if (previousTier !== "normal" && vehicle.tier === "normal") {
-        // 판정이 풀리면 즉시 복귀를 알린다. 주기 핑은 다음 틱(최대 60초)까지 안 나가고,
-        // 그동안 실제로 달리는 사람이 계속 "멈춘 사람"으로 표시된다. 재개와 같은 전이다.
-        sendLivePing({ force: true });
-      }
-      setVehicleTier(vehicle.tier);
-
-      // Even when we suppress path/distance accumulation, keep the raw GPS baseline
-      // current so recovery and speed estimation use the newest fix.
-      commitRawPosition(point, now);
-      const last = lastPathPointRef.current;
-
-      if (autoPauseIfIdle(now)) return;
-      if (vehicle.blockPathPoints) return;
-
-      const reanchor = vehicle.reanchorNextPoint || reanchorNextRef.current;
-      const elapsedMs =
-        runStartedRef.current != null
-          ? now - runStartedRef.current - pausedAccumRef.current
-          : undefined;
-      const pointWithT: LatLng = {
-        ...point,
-        ...(elapsedMs != null ? { t: elapsedMs } : {}),
-        // 거리와 무관한 명시적 단절 마커. 일시정지 중 120m 이하를 이동했더라도
-        // 저장 후 PB·스플릿·유령 계산이 이 구간을 다시 거리로 합산하지 않게 한다.
-        ...(reanchor && last ? { breakBefore: true } : {}),
-      };
-
-      // 증분 계산·ref 변이는 업데이터 밖에서 한다 — setState 업데이터는 순수해야 하며
-      // (StrictMode·concurrent 렌더에서 재실행될 수 있음) 안에 부수효과를 두면 거리가
-      // 이중 가산될 수 있다. GPS 콜백은 순차 실행이라 ref 기반 계산이 안전하다.
-      if (!reanchor && last && !shouldAppendPoint(last, pointWithT)) return;
-
-      const increment =
-        vehicle.blockDistance || reanchor || !last
-          ? 0
-          : haversineMeters(last, pointWithT);
-      distanceAccumRef.current += increment;
-      lastPathPointRef.current = pointWithT;
-      lastAppendWallMsRef.current = now;
-      reanchorNextRef.current = false;
-      // 인정 거리 100m + 공간 폭 50m를 함께 채울 때 방치 판정 창을 새로 시작한다.
-      // 차단(blockDistance) 중에는 앵커가 안 밀리므로, 탑승 상태가 이어지면 창이 차오른다.
-      if (!vehicle.blockDistance && idleAnchorRef.current != null) {
-        idleAnchorRef.current = slideIdleAnchor(
-          idleAnchorRef.current,
-          now,
-          distanceAccumRef.current,
-          point,
-        );
-      }
-      setPath((prev) => [...prev, pointWithT]);
-      setDistanceM(distanceAccumRef.current);
-    },
-    [peekSpeedMps, commitRawPosition, autoPauseIfIdle, isCurrentSessionOwner, pauseLiveRun,
-     sendLivePing],
-  );
+  const positionRuntime = useMemo(() => ({
+    status: statusRef,
+    sessionOwnerUid: sessionOwnerUidRef,
+    vehicleState: vehicleStateRef,
+    lastRawPosition: lastRawPosRef,
+    lastPositionTime: lastPosTimeRef,
+    lastPathPoint: lastPathPointRef,
+    lastAppendWallMs: lastAppendWallMsRef,
+    lastGpsFixAt: lastGpsFixAtRef,
+    distanceAccum: distanceAccumRef,
+    runStarted: runStartedRef,
+    pausedAccum: pausedAccumRef,
+    idleAnchor: idleAnchorRef,
+    reanchorNext: reanchorNextRef,
+  }), []);
+  const appendPosition = useMemo(() => createWorkoutPositionTracker({
+      runtime: positionRuntime,
+      isCurrentSessionOwner,
+      autoPauseIfIdle,
+      pauseLiveRun,
+      sendLivePing,
+      setGeoErrorState,
+      setPosition,
+      setVehicleTier,
+      setPath,
+      setDistanceM,
+    }), [
+      autoPauseIfIdle,
+      isCurrentSessionOwner,
+      pauseLiveRun,
+      positionRuntime,
+      sendLivePing,
+    ]);
 
   const startWatch = useCallback(() => {
     const watchOwnerUid = sessionOwnerUidRef.current;
@@ -418,57 +317,23 @@ export function useWorkoutSession(
       setGeoErrorState({ code: blocked });
       return;
     }
-    setGeoErrorState(null);
-    clearWatch();
-    watchStartedAtRef.current = Date.now();
-    const seq = watchSeqRef.current;
-    const isLiveWatch = () =>
-      watchSeqRef.current === seq
-      && statusRef.current === "running"
-      && isCurrentSessionOwner(watchOwnerUid);
-    // 네이티브 권한 순차 요청(FcmBootstrap)이 끝나기 전에는 addWatcher를 부르지 않는다.
-    // 플러그인의 addWatcher는 권한이 없어도 조기 반환하지 않고 알림을 만들어
-    // startForeground까지 진행한다. targetSdk 34+에서 type=location 포그라운드 서비스는
-    // 호출 시점에 위치 권한이 있어야 하므로, 권한 다이얼로그가 떠 있는 동안 호출되면
-    // SecurityException이 나고 플러그인이 그걸 삼킨 뒤 다시는 승격을 시도하지 않는다
-    // (onPermissionsGranted는 requestLocationUpdates만 재등록한다).
-    // 이 게이트는 첫 실행에서만 실제로 대기하고, 그 뒤로는 즉시 통과한다.
-    void waitForNativePermissions().then(() => {
-      if (!isLiveWatch()) return;
-      return startBackgroundWatch(
-        (coords) => {
-          if (!isLiveWatch()) return;
-          setGeoErrorState(null);
-          appendPosition(coords);
-        },
-        (msg) => {
-          if (isLiveWatch()) setGeoErrorState({ text: msg });
-        },
-        bgNotification?.title ?? "운동 기록 중",
-        bgNotification?.message ?? "RunRace가 백그라운드에서 경로를 기록하고 있습니다.",
-      )
-        .then((stop) => {
-          // 등록되는 사이 pause/stop/재시작이 있었으면 이 워처는 낡은 것 — 즉시 해제(누수 방지).
-          if (!isLiveWatch()) {
-            stop();
-            return;
-          }
-          stopWatchRef.current = stop;
-        })
-        .catch((e: unknown) => {
-          // addWatcher 자체가 실패(플러그인 초기화·권한 거부 reject)하면 기록이 조용히
-          // 시작되지 않는다 — 배너로 드러내 사용자가 알 수 있게 한다.
-          if (isLiveWatch()) {
-            setGeoErrorState({ text: e instanceof Error ? e.message : String(e) });
-          }
-        });
+    startWorkoutGpsWatch({
+      ownerUid: watchOwnerUid,
+      watchSequence: watchSeqRef,
+      status: statusRef,
+      stopWatch: stopWatchRef,
+      watchStartedAt: watchStartedAtRef,
+      isCurrentSessionOwner,
+      clearWatch,
+      appendPosition,
+      setGeoErrorState,
+      notification: bgNotification,
     });
   }, [
     appendPosition,
     clearWatch,
     isCurrentSessionOwner,
-    bgNotification?.title,
-    bgNotification?.message,
+    bgNotification,
   ]);
 
   const resetIdleAnchor = useCallback((nowMs: number) => {
@@ -596,241 +461,47 @@ export function useWorkoutSession(
     setStatus,
   });
 
-  // ── 공개 액션 ─────────────────────────────────────────────────────────────
-  /**
-   * 런을 시작한다. 실제로 시작됐는지 반환한다 — 인증 미확정·이미 진행 중·GPS 차단이면
-   * 조기 반환하므로, 호출부가 이 값을 보지 않으면 시작되지도 않은 런의 활동 이력이 남는다.
-   */
-  const start = useCallback((expectedUid: string): boolean => {
-    if (
-      authLoadingRef.current
-      || expectedUid !== currentUidRef.current
-      || currentUidRef.current == null
-      || statusRef.current !== "idle"
-    ) {
-      return false;
-    }
-    const blocked = geolocationBlockedCode();
-    if (blocked) {
-      setGeoErrorState({ code: blocked });
-      return false;
-    }
-    const now = Date.now();
-    const startSeed = pickWorkoutStartSeed(
-      warmupFixesRef.current,
-      expectedUid,
-      now,
-    );
-    warmupFixesRef.current = [];
-    const initialPath = startSeed ? [startSeed] : [];
-    sessionOwnerUidRef.current = expectedUid;
-    clientWorkoutIdRef.current = createClientWorkoutId();
-    restoreAttemptedUidRef.current = expectedUid;
-    setPath(initialPath);
-    pathRef.current = initialPath;
-    distanceAccumRef.current = 0;
-    lastPathPointRef.current = startSeed;
-    lastAppendWallMsRef.current = startSeed ? now : null;
-    reanchorNextRef.current = false;
-    setDistanceM(0);
-    setElapsedSec(0);
-    vehicleStateRef.current = initialVehicleDetectState();
-    setVehicleTier("normal");
-    pausedAccumRef.current = 0;
-    pauseStartedRef.current = null;
-    runStartedRef.current = now;
-    autoPausedRef.current = false;
-    idleAnchorRef.current = startSeed
-      ? slideIdleAnchor({ timeMs: now, distanceM: 0 }, now, 0, startSeed)
-      : { timeMs: now, distanceM: 0 };
-    setAutoPaused(false);
-    // 첫 라이브 fix의 OS speed가 비어도 seed→fix 속도를 검증해 GPS 점프를 거리로 세지 않는다.
-    lastRawPosRef.current = startSeed;
-    lastPosTimeRef.current = startSeed ? now : null;
-    setStatus("running");
-    statusRef.current = "running";
-    if (startSeed) setPosition(startSeed);
-    startWatch();
-    // 시작 즉시 한 번 보낸다. 주기 타이머는 마운트 시점에 걸려 런 시작과 위상이 맞지 않아,
-    // 이게 없으면 최대 60초 동안 남들 화면에 아무 변화가 없고 60초 미만 런은 아예 반영되지
-    // 않는다(그런데 종료 신호는 나가서 비대칭이 된다). 재개와 같은 이유다.
-    sendLivePing({ force: true });
-    // 같은 계정에서 직전 런을 끝내고 곧바로 새 런을 시작해도, 직전 getCurrentPosition
-    // 콜백이 새 런의 첫 좌표로 들어오지 않도록 워처 세대를 함께 고정한다.
-    const seedWatchSeq = watchSeqRef.current;
-    void track("running_start");
-
-    if (startSeed) return true;
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (
-          watchSeqRef.current !== seedWatchSeq
-          || !isCurrentSessionOwner(expectedUid)
-          || statusRef.current !== "running"
-          || lastPathPointRef.current != null
-        ) {
-          return;
-        }
-        const receivedAtMs = Date.now();
-        const selected = pickWorkoutStartSeed(
-          [{
-            ownerUid: expectedUid,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracyM: normalizeGpsAccuracyM(pos.coords.accuracy),
-            fixAtMs: pos.timestamp,
-            receivedAtMs,
-          }],
-          expectedUid,
-          receivedAtMs,
-        );
-        if (!selected) return;
-        // 시드 포인트에는 고도를 싣지 않는다 — 시작 직후 fix의 고도는 수렴 전이라 신뢰 불가.
-        const p: LatLng = {
-          ...selected,
-          // 시작 후에 얻은 콜드스타트 좌표는 실제 획득 시각을 기록한다.
-          t: runStartedRef.current != null ? receivedAtMs - runStartedRef.current : 0,
-        };
-        setPosition(p);
-        // 콜백이 GPS 워치보다 늦게 도착할 수 있다(최대 15초). 이미 워치가 경로를
-        // 쌓기 시작했거나(초기 포인트 유실·거리 어긋남 방지) 그 사이 종료됐다면 시드하지 않는다.
-        lastPathPointRef.current = p;
-        lastAppendWallMsRef.current = receivedAtMs;
-        lastRawPosRef.current = p;
-        lastPosTimeRef.current = receivedAtMs;
-        idleAnchorRef.current = slideIdleAnchor(
-          { timeMs: runStartedRef.current ?? receivedAtMs, distanceM: 0 },
-          receivedAtMs,
-          0,
-          p,
-        );
-        pathRef.current = [p];
-        setPath([p]);
-      },
-      (err) => {
-        if (
-          watchSeqRef.current === seedWatchSeq
-          && isCurrentSessionOwner(expectedUid)
-          && statusRef.current === "running"
-        ) {
-          setGeoErrorState({ code: geolocationErrorCode(err) });
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: WORKOUT_START_FIX_MAX_AGE_MS,
-        timeout: 15_000,
-      },
-    );
-    return true;
-  }, [isCurrentSessionOwner, startWatch, sendLivePing, warmupFixesRef]);
-
-  const pause = useCallback((expectedUid: string) => {
-    if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "running") return;
-    const now = Date.now();
-    // 백그라운드에서 JS 타이머가 멈춘 채 사용자가 먼저 일시정지를 눌러도, 현재 시각으로
-    // 덮기 전에 30분 방치 여부를 판정해 귀가 후 방치 시간을 소급 제외한다.
-    if (autoPauseIfIdle(now)) return;
-    pauseWorkoutRuntime({
-      pauseStarted: pauseStartedRef,
-      pausedAccum: pausedAccumRef,
-      autoPaused: autoPausedRef,
-      status: statusRef,
-    }, now);
-    setAutoPaused(false);
-    setStatus("paused");
-    clearWatch();
-    // 일시정지 = 지금 뛰고 있지 않다. 라이브 값을 남겨 두면 신선도 윈도(15분) 동안
-    // 남들에게 "러닝 중"으로 계속 보인다. 재개하면 아래에서 곧바로 다시 올린다.
-    pauseLiveRun(expectedUid);
-    void track("running_pause");
-    if (runStartedRef.current) {
-      setElapsedSec(
-        computeWorkoutElapsedSec(
-          runStartedRef.current,
-          pausedAccumRef.current,
-          pauseStartedRef.current,
-        ),
-      );
-    }
-  }, [clearWatch, autoPauseIfIdle, isCurrentSessionOwner, pauseLiveRun]);
-
-  const resume = useCallback((expectedUid: string) => {
-    if (!isCurrentSessionOwner(expectedUid) || statusRef.current !== "paused") return;
-    const now = Date.now();
-    resumeWorkoutRuntime({
-      pauseStarted: pauseStartedRef, pausedAccum: pausedAccumRef,
-      autoPaused: autoPausedRef, status: statusRef, idleAnchor: idleAnchorRef,
-      distanceAccum: distanceAccumRef, vehicleState: vehicleStateRef,
-      reanchorNext: reanchorNextRef, lastRawPos: lastRawPosRef,
-      lastPosTime: lastPosTimeRef,
-    }, now);
-    setAutoPaused(false);
-    setVehicleTier("normal");
-    setStatus("running");
-    startWatch();
-    // 일시정지 표시를 다음 주기(60초)까지 기다리지 않고 곧바로 푼다. force가 필수다 —
-    // 느린 핑이 아직 큐에 남아 있으면 일반 핑은 건너뛰어지고, 그러면 앞서 넣은 일시정지
-    // 요청이 마지막 의도로 남아 실제로는 달리는 중인데 계속 멈춘 것으로 보인다.
-    sendLivePing({ force: true });
-  }, [isCurrentSessionOwner, startWatch, sendLivePing]);
-
-  const stop = useCallback((expectedUid: string): WorkoutFinishSnapshot | null => {
-    if (
-      !isCurrentSessionOwner(expectedUid)
-      || statusRef.current === "idle"
-      || runStartedRef.current == null
-    ) {
-      return null;
-    }
-
-    const now = Date.now();
-    // 백그라운드에서 JS 타이머가 멈췄다가 종료 버튼과 함께 깨어난 경우도 마지막으로 보정한다 —
-    // 방치 창(30분)이 이미 넘어 있으면 종료 시각·활동시간을 앵커 시각으로 소급한다.
-    if (statusRef.current === "running" && idleAnchorRef.current != null) {
-      const inferred = idleAutoPauseAt(idleAnchorRef.current, now);
-      if (inferred != null) {
-        pauseStartedRef.current = clampIdlePauseAt(inferred);
-        autoPausedRef.current = true;
-      }
-    }
-    const effectiveEndedAt =
-      autoPausedRef.current && pauseStartedRef.current != null
-        ? pauseStartedRef.current
-        : now;
-    const snapshot = buildWorkoutFinishSnapshot({
-      clientWorkoutId: clientWorkoutIdRef.current ?? createClientWorkoutId(),
-      runStartedAt: runStartedRef.current,
-      pausedAccumMs: pausedAccumRef.current,
-      pauseStartedAt: pauseStartedRef.current,
-      endedAtMs: effectiveEndedAt,
-      distanceM: distanceAccumRef.current,
-      path: pathRef.current,
-      position,
-    });
-
-    clearWatch();
-    // 라이브(잠정) 진행률 즉시 해제 — 저장이 성공하면 서버가 어차피 리셋하지만, 저장에
-    // 실패하거나 기록을 버리면 아무도 지우지 않아 "러닝 중" 표시와 부풀려진 진행바가
-    // 신선도 윈도(15분) 동안 남는다. best-effort — 실패해도 종료 자체는 진행한다.
-    clearLiveRivalGaps();
-    pauseLiveRun(expectedUid);
-    // 이 런의 스냅샷일 때만 지운다 — 웹에서 다른 탭이 진행 중이면 그쪽을 날리지 않는다.
-    clearWorkout(runStartedRef.current ?? undefined);
-    restoreAttemptedUidRef.current = expectedUid;
-    resetRuntime();
-
-    return snapshot;
-  }, [
-    clearWatch,
-    position,
+  const { start, pause, resume, stop } = useWorkoutSessionControls({
+    authLoadingRef,
+    currentUidRef,
+    statusRef,
+    sessionOwnerUidRef,
+    clientWorkoutIdRef,
+    restoreAttemptedUidRef,
+    warmupFixesRef,
+    pathRef,
+    distanceAccumRef,
+    lastPathPointRef,
+    lastAppendWallMsRef,
+    reanchorNextRef,
+    vehicleStateRef,
+    pausedAccumRef,
+    pauseStartedRef,
+    runStartedRef,
+    autoPausedRef,
+    idleAnchorRef,
+    lastRawPosRef,
+    lastPosTimeRef,
+    watchSeqRef,
+    currentPosition: position,
+    isCurrentSessionOwner,
+    autoPauseIfIdle,
     clampIdlePauseAt,
+    startWatch,
+    clearWatch,
+    sendLivePing,
     pauseLiveRun,
     clearLiveRivalGaps,
-    isCurrentSessionOwner,
     resetRuntime,
-  ]);
+    setPath,
+    setPosition,
+    setDistanceM,
+    setElapsedSec,
+    setVehicleTier,
+    setAutoPaused,
+    setStatus,
+    setGeoErrorState,
+  });
 
   // Firebase가 로딩 중이거나 세션 소유자가 현재 계정과 달라진 렌더에서는 effect가 워처와
   // 런타임을 정리하기 전이라도 경로·통계·액션 상태를 즉시 숨긴다.

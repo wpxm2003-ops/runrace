@@ -6,7 +6,7 @@ import { purgeExpiredWorkout } from "./workoutPersistence";
 import { useLocale } from "./i18n";
 import { useAuth } from "./AuthProvider";
 
-type WorkoutSessionValue = ReturnType<typeof useWorkoutSession>;
+export type WorkoutSessionValue = ReturnType<typeof useWorkoutSession>;
 
 const WorkoutSessionContext = createContext<WorkoutSessionValue | null>(null);
 
