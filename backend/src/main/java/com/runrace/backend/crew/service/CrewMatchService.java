@@ -11,6 +11,8 @@ import com.runrace.backend.crew.repository.CrewMatchRosterRepository;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
 import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.event.CrewMatchEvents;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,6 +49,7 @@ public class CrewMatchService {
   private final CrewMatchRosterRepository crewMatchRosterRepository;
   private final CrewMatchScoringService scoringService;
   private final ApplicationEventPublisher eventPublisher;
+  private final EntityManager entityManager;
 
   // ── 도전장 생성/수락/거절/취소 ────────────────────────────────
 
@@ -237,6 +240,11 @@ public class CrewMatchService {
    * 없어서 이론상 NPE 여지가 있었음 — 통합하며 전부 안전한 쪽으로 맞춤).
    */
   boolean finalizeIfNeeded(CrewMatch match, OffsetDateTime now) {
+    if (match.getStatus() != CrewMatch.Status.ACCEPTED || match.isEnded()) return false;
+    if (match.getEndAt() == null || now.isBefore(match.getEndAt())) return false;
+    // 조회와 배치가 같은 미종료 행을 읽었더라도 한 트랜잭션만 확정한다.
+    // 이미 영속성 컨텍스트에 있는 객체라 잠금 조회만으로는 부족하다: 잠금과 함께 새로 읽는다.
+    entityManager.refresh(match, LockModeType.PESSIMISTIC_WRITE);
     if (match.getStatus() != CrewMatch.Status.ACCEPTED || match.isEnded()) return false;
     if (match.getEndAt() == null || now.isBefore(match.getEndAt())) return false;
     finalizeEnded(match);

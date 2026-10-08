@@ -9,6 +9,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +28,8 @@ import com.runrace.backend.crew.repository.CrewRepository;
 import com.runrace.backend.event.CrewMatchEvents;
 import com.runrace.backend.user.domain.AppUser;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +53,7 @@ class CrewMatchServiceTest {
   @Mock CrewMatchRosterRepository crewMatchRosterRepository;
   @Mock WorkoutSessionRepository workoutSessionRepository;
   @Mock ApplicationEventPublisher eventPublisher;
+  @Mock EntityManager entityManager;
 
   private CrewMatchService service;
   private CrewMatchQueryService queryService;
@@ -63,7 +69,7 @@ class CrewMatchServiceTest {
     CrewMatchScoringService scoringService = new CrewMatchScoringService(workoutSessionRepository);
     service = new CrewMatchService(
         crewRepository, crewMemberRepository, crewMatchRepository, crewMatchRosterRepository,
-        scoringService, eventPublisher);
+        scoringService, eventPublisher, entityManager);
     queryService = new CrewMatchQueryService(
         crewMemberRepository, crewMatchRepository, crewMatchRosterRepository,
         service, scoringService);
@@ -527,7 +533,32 @@ class CrewMatchServiceTest {
 
       assertTrue(finalized);
       assertTrue(match.isEnded());
-      verify(crewMatchRepository).save(match);
+      var order = inOrder(entityManager, crewMatchRosterRepository, crewMatchRepository);
+      order.verify(entityManager).refresh(match, LockModeType.PESSIMISTIC_WRITE);
+      order.verify(crewMatchRosterRepository).findAllByMatchId(10L);
+      order.verify(crewMatchRepository).save(match);
+    }
+
+    @Test void 잠금을_기다리는_동안_다른_요청이_종료했으면_재집계와_이벤트를_생략한다() {
+      OffsetDateTime now = OffsetDateTime.now();
+      CrewMatch stale = CrewMatch.builder()
+          .id(10L).challengerCrew(crew(1L, leaderId, "우리크루"))
+          .opponentCrew(crew(2L, UUID.randomUUID(), "상대크루"))
+          .status(CrewMatch.Status.ACCEPTED).rosterSize(3)
+          .startAt(now.minusDays(8)).endAt(now.minusDays(1)).createdAt(now.minusDays(9))
+          .build();
+      when(crewMatchRepository.findByIdWithCrews(10L)).thenReturn(Optional.of(stale));
+      doAnswer(invocation -> {
+        // 잠금 획득 후 읽은 DB에는 먼저 완료한 트랜잭션의 스냅샷이 있다.
+        stale.finish(2L, 3_000, 5_000);
+        return null;
+      }).when(entityManager).refresh(stale, LockModeType.PESSIMISTIC_WRITE);
+
+      assertFalse(service.finalizeIfTimeEnded(10L, now));
+      assertEquals(2L, stale.getWinnerCrewId());
+      assertEquals(5_000L, stale.getOpponentDistanceM());
+      verify(crewMatchRepository, never()).save(any());
+      verifyNoInteractions(crewMatchRosterRepository, workoutSessionRepository, eventPublisher);
     }
   }
 
