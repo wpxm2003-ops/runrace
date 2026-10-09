@@ -1,7 +1,7 @@
 package com.runrace.backend.workout.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.runrace.backend.workout.dto.PathPointDto;
 import java.util.List;
 
@@ -22,7 +22,7 @@ final class WorkoutPathSupport {
   static String toJson(ObjectMapper objectMapper, List<WorkoutService.PathPoint> path) {
     try {
       return objectMapper.writeValueAsString(roundForStorage(path));
-    } catch (JsonProcessingException exception) {
+    } catch (JacksonException exception) {
       throw new IllegalStateException("path_json_encode_failed", exception);
     }
   }
@@ -41,7 +41,7 @@ final class WorkoutPathSupport {
               roundElevation(point.ele()),
               point.breakBefore()))
           .toList();
-    } catch (JsonProcessingException exception) {
+    } catch (JacksonException exception) {
       throw new IllegalStateException("path_json_decode_failed", exception);
     }
   }

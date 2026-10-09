@@ -1,8 +1,8 @@
 package com.runrace.backend.workout.service;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
@@ -312,7 +312,7 @@ public class WorkoutService {
 
     try {
       return new GhostRaceData(ghostWorkoutId, objectMapper.writeValueAsString(result));
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       return GhostRaceData.EMPTY;
     }
   }

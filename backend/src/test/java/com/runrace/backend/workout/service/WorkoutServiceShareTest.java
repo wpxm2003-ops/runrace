@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.runrace.backend.workout.dto.PathPointDto;
 import java.util.List;
 import org.junit.jupiter.api.Nested;
@@ -24,7 +24,7 @@ class WorkoutServiceShareTest {
   private String toJson(List<WorkoutService.PathPoint> points) {
     try {
       return objectMapper.writeValueAsString(points);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException(e);
     }
   }

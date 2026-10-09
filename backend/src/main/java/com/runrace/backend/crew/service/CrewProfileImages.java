@@ -1,7 +1,7 @@
 package com.runrace.backend.crew.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.upload.ImageUploadService;
@@ -38,7 +38,7 @@ class CrewProfileImages {
         List<String> parsed = objectMapper.readValue(
             json, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
         return validate(parsed, crew.getImageUrl(), maxImages);
-      } catch (JsonProcessingException e) {
+      } catch (JacksonException e) {
         throw new IllegalStateException("crew_image_urls_decode_failed", e);
       }
     }
@@ -50,7 +50,7 @@ class CrewProfileImages {
     if (imageUrls == null || imageUrls.isEmpty()) return null;
     try {
       return objectMapper.writeValueAsString(imageUrls);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException("crew_image_urls_encode_failed", e);
     }
   }

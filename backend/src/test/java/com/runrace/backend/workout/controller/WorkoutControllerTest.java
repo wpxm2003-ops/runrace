@@ -19,6 +19,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.core.MethodParameter;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -38,17 +44,23 @@ class WorkoutControllerTest {
         mock(IndoorRunVoteService.class), mock(WorkoutMutationService.class),
         mock(PersonalBestService.class), mock(AchievementService.class),
         mock(ShoeService.class), mock(ActivityHistoryService.class));
-    mvc = MockMvcBuilders.standaloneSetup(controller)
-        .setControllerAdvice(new ApiExceptionHandler(errorLogService))
-        .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
-          public boolean supportsParameter(MethodParameter parameter) {
-            return parameter.getParameterType() == AuthPrincipal.class;
-          }
-          public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer container,
-              NativeWebRequest request, WebDataBinderFactory binderFactory) {
-            return new AuthPrincipal(UUID.randomUUID(), "runner");
-          }
-        }).build();
+    new ApplicationContextRunner()
+        .withInitializer(new ConfigDataApplicationContextInitializer())
+        .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
+        .run(context -> {
+          mvc = MockMvcBuilders.standaloneSetup(controller)
+              .setMessageConverters(new JacksonJsonHttpMessageConverter(context.getBean(JsonMapper.class)))
+              .setControllerAdvice(new ApiExceptionHandler(errorLogService))
+              .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                public boolean supportsParameter(MethodParameter parameter) {
+                  return parameter.getParameterType() == AuthPrincipal.class;
+                }
+                public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer container,
+                    NativeWebRequest request, WebDataBinderFactory binderFactory) {
+                  return new AuthPrincipal(UUID.randomUUID(), "runner");
+                }
+              }).build();
+        });
   }
 
   static Stream<Arguments> invalidBodies() {

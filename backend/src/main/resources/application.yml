@@ -2,6 +2,10 @@ server:
   port: 8081
 
 spring:
+  jackson:
+    # Preserve existing clients' missing primitive fields and JSON date formats
+    # while using the patched Jackson 3 implementation.
+    use-jackson2-defaults: true
   datasource:
     url: jdbc:postgresql://localhost:5432/${DB_NAME:}
     username: ${DB_USERNAME:}

@@ -1,7 +1,7 @@
 package com.runrace.backend.feedback.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.feedback.domain.Feedback;
 import com.runrace.backend.feedback.dto.CreateFeedbackRequest;
@@ -75,7 +75,7 @@ public class FeedbackService {
   private String toJson(List<String> imageUrls) {
     try {
       return objectMapper.writeValueAsString(imageUrls);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw ApiException.internal("feedback_images_encode_failed");
     }
   }

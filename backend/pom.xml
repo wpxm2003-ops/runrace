@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.4.5</version>
+    <version>4.1.1</version>
     <relativePath/>
   </parent>
 
@@ -19,13 +19,18 @@
 
   <properties>
     <java.version>21</java.version>
-    <querydsl.version>5.1.0</querydsl.version>
+    <runrace-querydsl.version>7.7</runrace-querydsl.version>
+    <!-- Security patches released after the Boot BOM. Keep both Jackson lines
+         patched: Firebase/JJWT still depend on Jackson 2. -->
+    <jackson-bom.version>3.1.7</jackson-bom.version>
+    <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+    <tomcat.version>11.0.26</tomcat.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
     </dependency>
     <!-- 로컬 개발 핫 리로드 — 클래스 변경 시 앱 자동 재시작.
          optional+runtime이라 다른 모듈로 전이되지 않고, 배포 fat jar에는
@@ -62,8 +67,8 @@
     </dependency>
 
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
@@ -79,7 +84,7 @@
     <dependency>
       <groupId>com.google.firebase</groupId>
       <artifactId>firebase-admin</artifactId>
-      <version>9.4.3</version>
+      <version>9.11.0</version>
     </dependency>
 
     <!-- 자체 JWT 발급/검증 (액세스 토큰) -->
@@ -105,7 +110,7 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>s3</artifactId>
-      <version>2.26.12</version>
+      <version>2.55.12</version>
     </dependency>
 
     <dependency>
@@ -114,17 +119,16 @@
       <optional>true</optional>
     </dependency>
 
-    <!-- QueryDSL (Spring Boot 3 / Hibernate 6 = jakarta) -->
+    <!-- Maintained QueryDSL fork; Jakarta is the default in 7.x. -->
     <dependency>
-      <groupId>com.querydsl</groupId>
+      <groupId>io.github.openfeign.querydsl</groupId>
       <artifactId>querydsl-jpa</artifactId>
-      <version>${querydsl.version}</version>
-      <classifier>jakarta</classifier>
+      <version>${runrace-querydsl.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
+      <artifactId>spring-boot-starter-webmvc-test</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -154,9 +158,9 @@
               <version>${lombok.version}</version>
             </path>
             <path>
-              <groupId>com.querydsl</groupId>
+              <groupId>io.github.openfeign.querydsl</groupId>
               <artifactId>querydsl-apt</artifactId>
-              <version>${querydsl.version}</version>
+              <version>${runrace-querydsl.version}</version>
               <classifier>jakarta</classifier>
             </path>
             <path>

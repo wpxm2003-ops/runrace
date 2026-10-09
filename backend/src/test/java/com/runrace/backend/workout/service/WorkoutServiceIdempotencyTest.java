@@ -11,7 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.challenge.service.ChallengeProgressService;
 import com.runrace.backend.challenge.service.IndoorApprovalService;
