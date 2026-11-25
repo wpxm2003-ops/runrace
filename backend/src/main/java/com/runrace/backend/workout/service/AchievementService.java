@@ -51,7 +51,7 @@ public class AchievementService {
   private static final long[] CREW_GOAL_BANDS = {50, 80};
   /**
    * 개인 주간 목표 달성. 이보다 위는 FIRST_RUN·ALL_TIME_DISTANCE(서로 배타)와 CREW_GOAL_REACHED뿐이라
-   * 최대 {@link #MAX_ACHIEVEMENTS}개 안에 항상 든다 — 잘려서 축하 없이 이번 주 기회가 소진되지 않게.
+   * 최대 {@link #MAX_ACHIEVEMENTS}개 안에 항상 든다. 혹시 잘리더라도 선점하지 않으므로 다음 저장에서 다시 뜬다.
    */
   private static final int WEEKLY_GOAL_TIER = 85;
 

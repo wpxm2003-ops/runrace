@@ -69,6 +69,10 @@ public class WeeklyGoalService {
 
   @Transactional
   public WeeklyGoalResponse update(UUID userId, WeeklyGoalRequest request) {
+    return update(userId, request, Instant.now());
+  }
+
+  WeeklyGoalResponse update(UUID userId, WeeklyGoalRequest request, Instant now) {
     if (request == null || request.type() == null || request.target() == null) {
       throw ApiException.badRequest("invalid_weekly_goal");
     }
@@ -82,13 +86,23 @@ public class WeeklyGoalService {
       throw ApiException.badRequest("invalid_weekly_goal");
     }
     weeklyGoalRepository.upsert(userId, type.name(), request.target());
-    return status(userId, Instant.now());
+    WeeklyGoalResponse status = status(userId, now);
+    long current = type == WeeklyGoalType.DISTANCE ? status.distanceM() : status.runs();
+    if (current >= request.target()) {
+      // 이미 넘긴 값으로 정하거나 낮춰서 달성된 주는 축하 없이 처리한 것으로 본다 —
+      // 다음 저장에서 뒤늦게 "이번 주 목표 달성"이 뜨지 않게(카드는 바로 달성 상태로 보인다).
+      weeklyGoalRepository.claimAchievedWeek(userId, LocalDate.parse(status.weekStart()));
+    }
+    return status;
   }
 
   /**
-   * 방금 저장한 운동으로 이번 주 목표를 처음 넘었는지 판정한다.
-   * 이 운동 전에는 미달이었고 지금은 달성, 그리고 이번 주에 아직 축하하지 않았을 때만 결과가 있다.
-   * 지난주로 소급 입력한 운동은 이번 주 진척과 무관하므로 제외한다.
+   * 방금 저장한 운동 시점에 이번 주 목표가 채워져 있고, 이번 주에 아직 축하하지 않았으면 결과가 있다.
+   *
+   * <p>"이번 운동으로 넘었는가"(직전 미달)로 판정하지 않는 이유: 300m 미만 기록(성과 계산 제외)이나
+   * 동시 저장, 판정 중 오류로 넘는 순간을 놓치면 그 주 축하가 영영 사라진다. 대신 목표를 이미 넘긴
+   * 값으로 정할 때 그 주를 축하 없이 선점해 두므로({@link #update}), 여기 오는 미축하 달성은
+   * 저장으로 채운 경우뿐이다. 지난주로 소급 입력한 운동은 이번 주 진척과 무관하므로 제외한다.
    */
   public Optional<WeeklyGoalReach> reachedBy(UUID userId, WorkoutSession saved) {
     return reachedBy(userId, saved, Instant.now());
@@ -104,11 +118,9 @@ public class WeeklyGoalService {
     }
 
     PeriodTotals totals = weeklyGoalRepository.sumBetween(userId, week.from(), week.to());
-    boolean distance = goal.getGoalType() == WeeklyGoalType.DISTANCE;
-    long current = distance ? totals.getDistanceM() : totals.getRuns();
-    long before = current - (distance ? saved.getDistanceM() : 1);
+    long current = goal.getGoalType() == WeeklyGoalType.DISTANCE ? totals.getDistanceM() : totals.getRuns();
     int target = goal.getTargetValue();
-    if (before >= target || current < target) return Optional.empty();
+    if (current < target) return Optional.empty();
 
     return Optional.of(new WeeklyGoalReach(
         week.start(),

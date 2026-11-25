@@ -214,6 +214,25 @@ class WeeklyGoalServiceTest {
       verify(repo, never()).upsert(any(), anyString(), anyInt());
     }
 
+    @Test void 이미_넘긴_값으로_정하면_축하_없이_이번_주를_처리한다() {
+      stubWeekTotals(16_000, 3);
+      service.update(userId, new WeeklyGoalRequest("DISTANCE", 15_000), WEDNESDAY);
+      verify(repo).claimAchievedWeek(userId, THIS_MONDAY);
+    }
+
+    @Test void 아직_못_채운_목표는_선점하지_않는다() {
+      stubWeekTotals(8_200, 2);
+      service.update(userId, new WeeklyGoalRequest("DISTANCE", 15_000), WEDNESDAY);
+      service.update(userId, new WeeklyGoalRequest("RUNS", 3), WEDNESDAY);
+      verify(repo, never()).claimAchievedWeek(any(), any());
+    }
+
+    @Test void 횟수로_바꿔_이미_채운_주도_축하_없이_처리한다() {
+      stubWeekTotals(8_200, 3);
+      service.update(userId, new WeeklyGoalRequest("RUNS", 3), WEDNESDAY);
+      verify(repo).claimAchievedWeek(userId, THIS_MONDAY);
+    }
+
     @Test void 경계값은_허용한다() {
       service.update(userId, new WeeklyGoalRequest("DISTANCE", 1_000));
       service.update(userId, new WeeklyGoalRequest("DISTANCE", 300_000));
@@ -246,10 +265,11 @@ class WeeklyGoalServiceTest {
       assertTrue(service.reachedBy(userId, runAtLocal(wednesdayMorning, 4_000), WEDNESDAY).isPresent());
     }
 
-    @Test void 이미_넘은_뒤의_운동은_다시_달성하지_않는다() {
+    @Test void 넘는_순간을_놓쳤어도_아직_축하_전이면_다음_저장에서_축하한다() {
+      // 300m 미만 기록·동시 저장·판정 오류로 넘는 순간을 놓친 경우 — 이번 운동 전에도 16km였다.
       stubGoal(WeeklyGoalType.DISTANCE, 15_000, null);
-      stubWeekTotals(21_000, 4); // 이번 운동 전에도 16km
-      assertFalse(service.reachedBy(userId, runAtLocal(wednesdayMorning, 5_000), WEDNESDAY).isPresent());
+      stubWeekTotals(21_000, 4);
+      assertTrue(service.reachedBy(userId, runAtLocal(wednesdayMorning, 5_000), WEDNESDAY).isPresent());
     }
 
     @Test void 아직_못_채웠으면_달성이_아니다() {
@@ -266,7 +286,9 @@ class WeeklyGoalServiceTest {
       assertEquals(3L, reach.get().achievement().value());
       assertEquals(1L, reach.get().achievement().value2());
 
-      stubWeekTotals(12_000, 4); // 네 번째 러닝은 이미 채운 뒤
+      // 세 번째에서 축하(선점)한 뒤의 네 번째 러닝은 다시 축하하지 않는다
+      stubGoal(WeeklyGoalType.RUNS, 3, THIS_MONDAY);
+      stubWeekTotals(12_000, 4);
       assertFalse(service.reachedBy(userId, runAtLocal(wednesdayMorning, 3_000), WEDNESDAY).isPresent());
     }
 
