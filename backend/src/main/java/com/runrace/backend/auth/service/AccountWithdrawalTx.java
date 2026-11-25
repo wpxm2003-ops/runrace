@@ -1,5 +1,6 @@
 package com.runrace.backend.auth.service;
 
+import com.runrace.backend.activity.repository.UserDailyActiveRepository;
 import com.runrace.backend.challenge.repository.ChallengeMemberRepository;
 import com.runrace.backend.challenge.repository.IndoorRunApprovalRepository;
 import com.runrace.backend.crew.service.CrewService;
@@ -39,6 +40,7 @@ class AccountWithdrawalTx {
   private final IndoorRunApprovalRepository indoorRunApprovalRepository;
   private final ChallengeMemberRepository challengeMemberRepository;
   private final DailyDistanceRepository dailyDistanceRepository;
+  private final UserDailyActiveRepository userDailyActiveRepository;
   private final CrewService crewService;
   private final ActivityHistoryService activityHistoryService;
 
@@ -67,6 +69,10 @@ class AccountWithdrawalTx {
     deviceTokenRepository.deleteAllByUser(userId);
     indoorRunApprovalRepository.deleteAllByVoter(userId);
     dailyDistanceRepository.deleteAllByUser(userId);
+    // 재방문 측정용 일일 활성 기록 — 레이스 정합성과 무관한 방문 이력이라 익명화로 남기지 않고
+    // 지운다(개인정보처리방침: 탈퇴 시 지체 없이 파기, 예외는 레이스용 익명 운동 기록뿐).
+    // 그래서 과거 날짜의 방문 기준 DAU는 탈퇴가 생기면 소급해서 조금 줄 수 있다.
+    userDailyActiveRepository.deleteAllByUser(userId);
     // 라이브(잠정) 진행률 — 러닝 중 탈퇴하면 익명화된 계정이 신선도 윈도(15분) 동안
     // "지금 뛰는 중"으로 리더보드에 남고 진행바까지 부풀어 있다. challenge_member 행 자체는
     // 레이스 정합성을 위해 보존하되 이 두 컬럼만 비운다.
