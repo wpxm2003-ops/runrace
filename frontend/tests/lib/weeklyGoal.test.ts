@@ -15,6 +15,8 @@ import {
   goalInputBounds,
   goalInputFromTarget,
   goalTargetFromInput,
+  goalTargetToSave,
+  suggestionInUnit,
   trackWeeklyGoalAchieved,
   weeklyGoalProgress,
 } from "@/lib/weeklyGoal";
@@ -128,6 +130,26 @@ describe("weekly goal units", () => {
     expect(clampGoalInput("RUNS", 0, "km")).toBe(1);
     expect(clampGoalInput("DISTANCE", Number.NaN, "km")).toBe(1);
     expect(goalTargetFromInput("RUNS", 3, "km")).toBe(3);
+  });
+
+  it("shows a saved goal at the nearest whole unit and keeps it unchanged when re-saved untouched", () => {
+    const kmGoal = { type: "DISTANCE" as const, target: 5_000 };
+    expect(goalInputFromTarget("DISTANCE", 5_000, "mi", "nearest")).toBe(3);
+    // 3 mi 그대로 저장하면 원래 5km 유지(반올림만큼 목표가 바뀌지 않음)
+    expect(goalTargetToSave("DISTANCE", 3, "mi", kmGoal)).toBe(5_000);
+    // 값을 바꾸면 새 값으로 저장
+    expect(goalTargetToSave("DISTANCE", 4, "mi", kmGoal)).toBe(6_437);
+    // 종류를 바꾸면 기존 목표와 무관
+    expect(goalTargetToSave("RUNS", 3, "mi", kmGoal)).toBe(3);
+    expect(goalTargetToSave("DISTANCE", 12, "km", null)).toBe(12_000);
+  });
+
+  it("formats the card suggestion with the same whole unit the sheet offers", () => {
+    // 5km 추천 → 시트는 4 mi를 제안(올림) → 카드도 4 mi
+    expect(suggestionInUnit({ type: "DISTANCE", target: 5_000 }, "mi")).toEqual({ type: "DISTANCE", target: 6_437 });
+    expect(formatWeeklyGoal(suggestionInUnit({ type: "DISTANCE", target: 5_000 }, "mi"), "mi", ko)).toBe("4 mi");
+    expect(suggestionInUnit({ type: "DISTANCE", target: 11_000 }, "km")).toEqual({ type: "DISTANCE", target: 11_000 });
+    expect(suggestionInUnit({ type: "RUNS", target: 2 }, "mi")).toEqual({ type: "RUNS", target: 2 });
   });
 
   it("never shows progress above the goal before it is reached", () => {

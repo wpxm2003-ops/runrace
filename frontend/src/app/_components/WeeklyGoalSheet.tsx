@@ -15,6 +15,7 @@ import {
   goalInputBounds,
   goalInputFromTarget,
   goalTargetFromInput,
+  goalTargetToSave,
   suggestedTarget,
 } from "@/lib/weeklyGoal";
 import { BottomSheet } from "@/app/_components/ui/BottomSheet";
@@ -39,7 +40,7 @@ export function WeeklyGoalSheet({
 
   const initialValueFor = (type: WeeklyGoalType) =>
     existing && existing.type === type
-      ? goalInputFromTarget(type, existing.target, unit)
+      ? goalInputFromTarget(type, existing.target, unit, "nearest")
       : goalInputFromTarget(type, suggestedTarget(status, type), unit);
 
   const [type, setType] = useState<WeeklyGoalType>(existing?.type ?? defaultGoalType(status));
@@ -74,7 +75,7 @@ export function WeeklyGoalSheet({
     if (saving) return;
     setSaving(true);
     setError(null);
-    const target = goalTargetFromInput(type, value, unit);
+    const target = goalTargetToSave(type, value, unit, existing);
     try {
       const next = await saveWeeklyGoal({ type, target }, user);
       void track("weekly_goal_set", {

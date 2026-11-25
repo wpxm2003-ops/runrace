@@ -8,6 +8,7 @@ import {
   formatWeeklyGoal,
   formatWeeklyGoalProgress,
   formatWeeklyGoalRemaining,
+  suggestionInUnit,
   weeklyGoalProgress,
 } from "@/lib/weeklyGoal";
 
@@ -61,7 +62,8 @@ export function WeeklyGoalCard({
   };
 
   if (state.kind === "none") {
-    const goal = formatWeeklyGoal(state.suggestion, unit, t);
+    // 시트가 제안하는 값과 같도록 사용자 단위 정수로 맞춘다(5km 추천을 mi로 보면 시트와 같은 4 mi).
+    const goal = formatWeeklyGoal(suggestionInUnit(state.suggestion, unit), unit, t);
     return (
       <button
         type="button"

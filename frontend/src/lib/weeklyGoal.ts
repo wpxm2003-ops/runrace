@@ -96,12 +96,45 @@ export function clampGoalInput(type: WeeklyGoalType, value: number, unit: Distan
   return Math.min(Math.max(whole, min), max);
 }
 
-/** 저장값 → 시트 입력값. 거리는 사용자 단위 정수로 올림(추천 6km를 mi로 바꾸면 4mi). */
-export function goalInputFromTarget(type: WeeklyGoalType, target: number, unit: DistanceUnit): number {
+/**
+ * 저장값 → 시트 입력값(사용자 단위 정수). 추천값은 올림("up", 추천 6km를 mi로 바꾸면 4mi),
+ * 이미 저장된 목표는 가장 가까운 값("nearest", 5km → 3mi)으로 보여 준다.
+ */
+export function goalInputFromTarget(
+  type: WeeklyGoalType,
+  target: number,
+  unit: DistanceUnit,
+  rounding: "up" | "nearest" = "up",
+): number {
   if (type === "RUNS") return clampGoalInput(type, target, unit);
-  // 부동소수 오차로 15.000001mi가 16으로 올라가지 않도록 소수 셋째 자리에서 정리한 뒤 올린다.
+  // 부동소수 오차로 15.000001mi가 16으로 올라가지 않도록 소수 셋째 자리에서 정리한 뒤 반올림한다.
   const units = Math.round((target / METERS_PER_UNIT[unit]) * 1000) / 1000;
-  return clampGoalInput(type, Math.ceil(units), unit);
+  return clampGoalInput(type, rounding === "up" ? Math.ceil(units) : Math.round(units), unit);
+}
+
+/** 추천 목표를 시트가 제안하는 것과 같은 사용자 단위 정수로 맞춘다(카드·시트 표기 일치). */
+export function suggestionInUnit(goal: WeeklyGoal, unit: DistanceUnit): WeeklyGoal {
+  return {
+    type: goal.type,
+    target: goalTargetFromInput(goal.type, goalInputFromTarget(goal.type, goal.target, unit), unit),
+  };
+}
+
+/**
+ * 시트 입력값 → 저장할 목표값. 기존 목표를 같은 종류로 열어 값을 건드리지 않았으면 원래 값을 그대로 둔다 —
+ * km로 정한 목표를 mi 화면에서 그냥 저장했을 때 반올림만큼 목표가 바뀌지 않게.
+ */
+export function goalTargetToSave(
+  type: WeeklyGoalType,
+  value: number,
+  unit: DistanceUnit,
+  existing: WeeklyGoal | null,
+): number {
+  if (existing && existing.type === type
+      && clampGoalInput(type, value, unit) === goalInputFromTarget(type, existing.target, unit, "nearest")) {
+    return existing.target;
+  }
+  return goalTargetFromInput(type, value, unit);
 }
 
 /** 시트 입력값 → 저장값(거리는 미터). */
