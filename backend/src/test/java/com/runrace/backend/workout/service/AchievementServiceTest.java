@@ -8,16 +8,21 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
+import com.runrace.backend.goal.service.WeeklyGoalService;
+import com.runrace.backend.goal.service.WeeklyGoalService.WeeklyGoalReach;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.dto.Achievement;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +35,9 @@ class AchievementServiceTest {
 
   private final WorkoutSessionRepository workoutRepo = mock(WorkoutSessionRepository.class);
   private final CrewMemberRepository crewRepo = mock(CrewMemberRepository.class);
-  private final AchievementService service = new AchievementService(workoutRepo, crewRepo);
+  private final WeeklyGoalService weeklyGoalService = mock(WeeklyGoalService.class);
+  private final AchievementService service =
+      new AchievementService(workoutRepo, crewRepo, weeklyGoalService);
   private final UUID userId = UUID.randomUUID();
 
   private static WorkoutSession run(int distanceM) {
@@ -287,6 +294,82 @@ class AchievementServiceTest {
       var result = codes(service.evaluate(userId, run(5_000)));
       assertFalse(result.contains("CREW_RANK"));
       assertFalse(result.contains("CREW_GOAL_REACHED"));
+    }
+  }
+
+  @Nested class 주간_목표 {
+    private final LocalDate weekStart = LocalDate.of(2026, 11, 23);
+    private final Achievement reached = Achievement.of("WEEKLY_GOAL_REACHED", 15_000, 0);
+
+    private void stubReached() {
+      when(weeklyGoalService.reachedBy(eq(userId), any()))
+          .thenReturn(Optional.of(new WeeklyGoalReach(weekStart, reached)));
+    }
+
+    @Test void 이번_운동으로_처음_채우면_선점하고_노출한다() {
+      stubSummary(20, 200_000);
+      stubReached();
+      when(weeklyGoalService.claim(userId, weekStart)).thenReturn(true);
+
+      var result = service.evaluate(userId, run(5_000));
+
+      assertTrue(result.contains(reached));
+      verify(weeklyGoalService).claim(userId, weekStart);
+    }
+
+    @Test void 같은_주에_이미_선점됐으면_노출하지_않는다() {
+      stubSummary(20, 200_000);
+      stubReached();
+      when(weeklyGoalService.claim(userId, weekStart)).thenReturn(false);
+
+      assertFalse(codes(service.evaluate(userId, run(5_000))).contains("WEEKLY_GOAL_REACHED"));
+    }
+
+    @Test void 달성이_아니면_선점을_시도하지_않는다() {
+      stubSummary(20, 200_000);
+
+      assertFalse(codes(service.evaluate(userId, run(5_000))).contains("WEEKLY_GOAL_REACHED"));
+      verify(weeklyGoalService, never()).claim(any(), any());
+    }
+
+    @Test void 강한_성과가_많아도_최대_3개_안에_든다() {
+      // 역대 최장(90) + 크루 월목표 달성(88) + 연속 7일(80) + 누적 100km(75)와 겹쳐도 잘리지 않는다.
+      stubSummary(30, 101_000);
+      when(workoutRepo.countRunsAtLeastDistanceSince(any(), any(), anyInt(), any())).thenReturn(0L);
+      when(workoutRepo.currentStreakDaysForUser(userId)).thenReturn(7);
+      Crew crew = mock(Crew.class);
+      when(crew.getId()).thenReturn(10L);
+      when(crew.getMonthGoalKm()).thenReturn(BigDecimal.valueOf(50));
+      CrewMember member = mock(CrewMember.class);
+      when(member.getCrew()).thenReturn(crew);
+      when(crewRepo.findByUserId(userId)).thenReturn(Optional.of(member));
+      when(crewRepo.countByCrewId(10L)).thenReturn(2);
+      var row = mock(CrewMemberRepository.MemberDistanceAgg.class);
+      when(row.getUserId()).thenReturn(userId);
+      when(row.getDistanceM()).thenReturn(52_000L);
+      when(crewRepo.sumMemberDistanceSince(eq(10L), any())).thenReturn(List.of(row));
+      stubReached();
+      when(weeklyGoalService.claim(userId, weekStart)).thenReturn(true);
+
+      var result = codes(service.evaluate(userId, run(10_000)));
+
+      assertEquals(3, result.size());
+      assertTrue(result.contains("WEEKLY_GOAL_REACHED"));
+    }
+
+    @Test void 첫_러닝이어도_주간_목표_달성은_함께_노출한다() {
+      stubSummary(1, 5_000);
+      stubReached();
+      when(weeklyGoalService.claim(userId, weekStart)).thenReturn(true);
+
+      assertEquals(
+          List.of("FIRST_RUN", "WEEKLY_GOAL_REACHED"),
+          codes(service.evaluate(userId, run(5_000))));
+    }
+
+    @Test void 너무_짧은_러닝은_주간_목표도_판정하지_않는다() {
+      assertTrue(service.evaluate(userId, run(200)).isEmpty());
+      verify(weeklyGoalService, never()).reachedBy(any(), any());
     }
   }
 }
