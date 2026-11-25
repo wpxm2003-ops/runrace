@@ -26,11 +26,13 @@ SPA 안에서 화면을 옮길 때의 `page_view`는 GA4 웹 스트림의 향상
 
 ## 2. 서버 일일 활성 핑
 
-- 엔드포인트: `POST /api/activity/ping` (인증 필수), 본문 `{ "platform": "android_app" | "web" | "ios_web" }`
+- 엔드포인트: `POST /api/activity/ping` (인증 필수), 본문 `{ "platform": "android_app" | "web" | "ios_web", "timeZone": "<기기 IANA 시간대, 선택>" }`
 - 응답: `{ "localDate": "yyyy-MM-dd", "recorded": true|false }` — `recorded=false`면 그 날 이미 기록된 것
 - 클라이언트(`frontend/src/lib/activityPing.ts`): 부팅·포그라운드 복귀(앱 `appStateChange`, 웹 `visibilitychange`) 때 부르되, 마지막 성공을 `localStorage`의 `runrace_activity_ping`(`uid|기기 현지 날짜`)에 기억해 하루 한 번만 보낸다. 실패하면 기억하지 않아 다음 복귀 때 다시 보낸다. 401이어도 로그인 화면으로 보내지 않는다.
-- 서버: 사용자 현지 날짜(`users.time_zone`, 비었거나 잘못됐으면 `Asia/Seoul`)로 `(user_id, local_date, platform)` 한 행을 `insert … on conflict do nothing`. 같은 날 여러 번, 동시에 와도 한 행이다.
-- 저장 값: 사용자 ID, 현지 날짜, 플랫폼, 그 날 첫 핑을 받은 서버 시각. **IP·기기 정보·위치·정확한 사용 시각 흐름은 저장하지 않는다.**
+- 서버: 사용자 현지 날짜로 `(user_id, local_date, platform)` 한 행을 `insert … on conflict do nothing`. 같은 날 여러 번, 동시에 와도 한 행이다.
+  - 현지 날짜의 시간대는 **핑에 실린 기기 시간대 → `users.time_zone` → `Asia/Seoul`** 순. 기기 값을 먼저 보는 이유: 가입 직후 `users.time_zone`은 기본값 `Asia/Seoul`이고 `LanguageSync`가 기기 값으로 고치기 전에 첫 핑이 먼저 오기 때문이다. 저장값만 쓰면 해외 가입자의 가입 당일 방문이 KST 날짜(대개 다음 날)로 박혀 D1 재방문으로 잘못 잡힌다.
+  - 탈퇴하지 않은 사용자만 기록한다. 사용자 행을 `for share`로 읽어, 탈퇴 트랜잭션이 진행 중이면 커밋을 기다린 뒤 건너뛴다(삭제 뒤에 핑 한 행이 남는 경쟁 방지).
+- 저장 값: 사용자 ID, 현지 날짜, 플랫폼, 그 날 첫 핑을 받은 서버 시각. **기기 시간대는 날짜 계산에만 쓰고 저장하지 않는다. IP·기기 정보·위치·정확한 사용 시각 흐름도 저장하지 않는다.**
 - 보존: 활동 이력과 같은 `runrace.history.retention-days`(기본 365일). `DailyActiveRetentionScheduler`가 매일 04:30 UTC에 정리한다.
 - 탈퇴: 탈퇴 익명화 트랜잭션(`AccountWithdrawalTx`)에서 그 사용자의 행을 모두 지운다(개인정보처리방침의 "탈퇴 시 지체 없이 파기"). 그래서 방문 기준 과거 수치는 탈퇴가 생기면 소급해 조금 줄 수 있다.
 
@@ -43,8 +45,9 @@ SPA 안에서 화면을 옮길 때의 `page_view`는 GA4 웹 스트림의 향상
   - **방문 기준**: `user_daily_active` — 로그인 상태로 앱·웹을 연 날. 배포 이후부터 쌓인다.
   - **달리기 기준**: `workout_session.started_at_local`의 날짜 — 운동을 시작한 날. 과거 데이터로 바로 계산된다.
 - 오늘 DAU: 오늘 활동한 사용자 수(오늘은 진행 중).
-- 최근 7일 평균 DAU: 오늘을 뺀 어제까지 7일의 일평균. 방문 기준은 수집이 완결되지 않은 날(첫 핑 전 시간이 섞인 날)을 빼고 평균한다.
-- WAU / MAU: 오늘 포함 최근 7일 / 30일 동안 한 번이라도 활동한 사용자 수. 방문 수집이 7일·30일보다 짧으면 화면에 "부분값"으로 표시한다.
+- 최근 7일 평균 DAU: 오늘을 뺀 어제(KST)까지 7일의 일평균. 방문 기준은 수집이 완결되지 않은 날(첫 핑 전 시간이 섞인 날)을 빼고 평균한다. KST 오후 이전에는 서쪽 시간대 사용자에게 "어제"가 아직 진행 중이라 그 몫이 약간 덜 잡힐 수 있다(사용자 대부분이 KST라 영향은 작다).
+- WAU / MAU: 오늘 포함 최근 7일 / 30일 동안 한 번이라도 활동한 사용자 수. 창의 첫날이 방문 기준 판정 첫 날(`visitCompleteFromDate`)보다 이르면 화면에 "부분값"으로 표시한다.
+- 방문 수집 시작일: 운영자를 뺀 가장 이른 핑의 KST 날짜. 운영자의 배포 전 확인 핑이 시작을 앞당기지 않는다.
 - 최근 7일 신규 가입: 현지 가입일이 오늘 포함 최근 7일인 가입자.
 - 가입 주 코호트: 현지 가입일 기준 월~일, 최근 8주. 탈퇴 회원 포함.
 - **D-n 재방문율**: 가입 후 **정확히 n일째**(가입일 다음 날이 D1) 현지 날짜에 활동한 가입자 비율. 그 사이 다른 날 활동은 세지 않는다.

@@ -35,6 +35,19 @@ export function visitCollectionDay(startDate: string | null, referenceDate: stri
   return Math.max(0, daysBetween(startDate, referenceDate) + 1);
 }
 
+/**
+ * 오늘 포함 최근 windowDays일 창(WAU=7, MAU=30)이 방문 수집 완결 이전 날짜를 품고 있는지.
+ * 창의 첫날(referenceDate − (windowDays−1))이 판정 첫 날보다 이르면 부분값이다. 수집 전이면 true.
+ */
+export function isWindowPartial(
+  completeFromDate: string | null,
+  referenceDate: string,
+  windowDays: number,
+): boolean {
+  if (!completeFromDate) return true;
+  return daysBetween(completeFromDate, referenceDate) < windowDays - 1;
+}
+
 /** 가입 주(월~일) 라벨 — "11/16~11/22". */
 export function cohortWeekLabel(weekStart: string, weekEnd: string): string {
   const short = (s: string) => {

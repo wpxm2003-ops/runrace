@@ -54,7 +54,7 @@ public class RetentionMetricsService {
     // 수집 첫날은 배포 시각 이전 방문이 빠진 부분 수집이라 완결된 날로 치지 않는다. 첫 핑 시각의
     // 가장 앞선 시간대(UTC+14) 날짜 다음 날부터 판정하면, 어느 시간대 사용자의 현지 날짜든 그 날은
     // 첫 핑 이후에 시작한 날이라 수집 전 시간이 섞이지 않는다. 화면에 보이는 수집 시작일은 KST 날짜.
-    OffsetDateTime firstVisitAt = repository.firstVisitAt().orElse(null);
+    OffsetDateTime firstVisitAt = repository.firstVisitAt(excludedNames).orElse(null);
     LocalDate visitCollectionStart = firstVisitAt == null
         ? null
         : firstVisitAt.atZoneSameInstant(REFERENCE_ZONE).toLocalDate();
@@ -88,6 +88,7 @@ public class RetentionMetricsService {
         today.toString(),
         REFERENCE_ZONE.getId(),
         visitCollectionStart == null ? null : visitCollectionStart.toString(),
+        visitCompleteFrom == null ? null : visitCompleteFrom.toString(),
         newSignups7d,
         visits,
         runs,

@@ -99,6 +99,8 @@ export type AdminRetention = {
   referenceTimeZone: string;
   /** 첫 방문 핑을 받은 날(KST, 보통 배포일). 아직 없으면 null. 판정은 그 다음 날부터. */
   visitCollectionStartDate: string | null;
+  /** 방문 기준으로 판정하는 첫 날. WAU·MAU 창의 첫날이 이보다 이르면 부분값. 없으면 null. */
+  visitCompleteFromDate: string | null;
   newSignups7d: number;
   visits: AdminActiveUsers;
   runs: AdminActiveUsers;

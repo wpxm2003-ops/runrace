@@ -62,7 +62,7 @@ class AdminDashboardControllerTest {
     UUID userId = UUID.randomUUID();
     when(appUserRepository.findById(userId)).thenReturn(Optional.empty());
     RetentionMetricsResponse metrics =
-        new RetentionMetricsResponse("2026-11-25", "Asia/Seoul", null, 0, null, null, List.of());
+        new RetentionMetricsResponse("2026-11-25", "Asia/Seoul", null, null, 0, null, null, List.of());
     when(retentionMetricsService.compute(List.of("노광고", "방지훈", "배하영"))).thenReturn(metrics);
 
     var result = controller("admin-uid").retention(new AuthPrincipal(userId, "admin-uid"));

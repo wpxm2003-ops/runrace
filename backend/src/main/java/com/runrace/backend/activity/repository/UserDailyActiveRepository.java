@@ -23,13 +23,21 @@ public class UserDailyActiveRepository {
    * 그 날 그 플랫폼의 첫 핑이면 한 행을 남기고, 이미 있으면 아무것도 하지 않는다.
    * 동시에 들어온 같은 핑도 기본 키 충돌로 한 행만 남는다.
    *
-   * @return 새로 기록했으면 true, 이미 있던 날이면 false
+   * <p>탈퇴하지 않은 사용자일 때만 넣는다. 사용자 행을 {@code for share}로 읽어서, 인증을 통과한
+   * 직후 탈퇴 트랜잭션(사용자 행 잠금 → 방문 기록 삭제 → 익명화)이 진행 중이면 그 커밋을 기다린 뒤
+   * withdrawn_at을 다시 보고 건너뛴다. 이 잠금이 없으면 삭제가 끝난 뒤에 들어간 핑 한 행이
+   * 보존 기간(365일) 동안 남았다.
+   *
+   * @return 새로 기록했으면 true, 이미 있던 날이거나 탈퇴(또는 없는) 사용자면 false
    */
   public boolean insertIfAbsent(
       UUID userId, LocalDate localDate, ClientPlatform platform, OffsetDateTime createdAt) {
     int inserted = jdbc.update("""
         insert into user_daily_active (user_id, local_date, platform, created_at)
-        values (:userId, :localDate, :platform, :createdAt)
+        select u.id, :localDate, :platform, :createdAt
+        from users u
+        where u.id = :userId and u.withdrawn_at is null
+        for share
         on conflict (user_id, local_date, platform) do nothing
         """,
         Map.of(

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   averageLabel,
   cohortWeekLabel,
+  isWindowPartial,
   retentionRateLabel,
   visitCollectionDay,
 } from "@/lib/adminRetention";
@@ -40,6 +41,27 @@ describe("방문 수집 일차", () => {
 
   it("수집 전이면 0", () => {
     expect(visitCollectionDay(null, "2026-11-25")).toBe(0);
+  });
+});
+
+describe("WAU·MAU 부분값 판정", () => {
+  it("창 첫날이 판정 첫 날보다 이르면 부분값", () => {
+    // WAU 창 11-19~11-25
+    expect(isWindowPartial("2026-11-20", "2026-11-25", 7)).toBe(true);
+    expect(isWindowPartial("2026-11-19", "2026-11-25", 7)).toBe(false);
+    expect(isWindowPartial("2026-10-01", "2026-11-25", 7)).toBe(false);
+    // MAU 창 10-27~11-25
+    expect(isWindowPartial("2026-10-28", "2026-11-25", 30)).toBe(true);
+    expect(isWindowPartial("2026-10-27", "2026-11-25", 30)).toBe(false);
+  });
+
+  it("수집 시작일이 창 첫날이어도(그 날은 부분 수집) 판정 첫 날 기준이라 부분값으로 본다", () => {
+    // 11-19 정오 첫 핑 → 판정 첫 날 11-20. 수집 7일째지만 WAU 창 첫날 11-19는 오전이 빠졌다.
+    expect(isWindowPartial("2026-11-20", "2026-11-25", 7)).toBe(true);
+  });
+
+  it("수집 전이면 부분값", () => {
+    expect(isWindowPartial(null, "2026-11-25", 7)).toBe(true);
   });
 });
 

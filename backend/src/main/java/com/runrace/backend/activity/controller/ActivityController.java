@@ -20,12 +20,16 @@ public class ActivityController {
    */
   @PostMapping("/ping")
   public PingResponse ping(AuthPrincipal principal, @RequestBody PingRequest body) {
-    var result = dailyActiveService.recordPing(principal.userId(), body.platform());
+    var result = dailyActiveService.recordPing(
+        principal.userId(), body.platform(), body.timeZone());
     return new PingResponse(result.localDate().toString(), result.recorded());
   }
 
-  /** @param platform android_app | web | ios_web */
-  public record PingRequest(String platform) {}
+  /**
+   * @param platform android_app | web | ios_web
+   * @param timeZone 기기 IANA 시간대(선택). 현지 날짜 계산에만 쓰고 저장하지 않는다
+   */
+  public record PingRequest(String platform, String timeZone) {}
 
   /** @param localDate 서버가 기록한 사용자 현지 날짜(yyyy-MM-dd) */
   public record PingResponse(String localDate, boolean recorded) {}

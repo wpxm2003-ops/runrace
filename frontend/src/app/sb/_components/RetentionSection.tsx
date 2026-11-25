@@ -11,6 +11,7 @@ import {
 import {
   averageLabel,
   cohortWeekLabel,
+  isWindowPartial,
   retentionRateLabel,
   visitCollectionDay,
 } from "@/lib/adminRetention";
@@ -35,9 +36,9 @@ function ActiveUsersPanel({
   title: string;
   description: string;
   stats: AdminActiveUsers;
-  /** 수집 기간이 7일 창보다 짧아 WAU가 부분값인지. */
+  /** WAU 7일 창에 수집이 완결되지 않은 날이 섞여 부분값인지. */
   partialWeek?: boolean;
-  /** 수집 기간이 30일 창보다 짧아 MAU가 부분값인지. */
+  /** MAU 30일 창에 수집이 완결되지 않은 날이 섞여 부분값인지. */
   partialMonth?: boolean;
 }) {
   const average = averageLabel(stats.avgDau7d);
@@ -52,8 +53,8 @@ function ActiveUsersPanel({
           value={average ?? "—"}
           note={average == null ? "집계할 날이 아직 없음" : `어제까지 ${stats.avgDauDays}일 평균`}
         />
-        <Stat label="WAU (7일)" value={String(stats.wau)} note={partialWeek ? "수집 7일 미만 — 부분값" : undefined} />
-        <Stat label="MAU (30일)" value={String(stats.mau)} note={partialMonth ? "수집 30일 미만 — 부분값" : undefined} />
+        <Stat label="WAU (7일)" value={String(stats.wau)} note={partialWeek ? "7일 창에 수집 전 날 포함 — 부분값" : undefined} />
+        <Stat label="MAU (30일)" value={String(stats.mau)} note={partialMonth ? "30일 창에 수집 전 날 포함 — 부분값" : undefined} />
       </div>
     </div>
   );
@@ -129,8 +130,8 @@ export function RetentionSection({ user }: { user: User }) {
                   : "앱·웹을 연 날(로그인 사용자) · 아직 수집된 방문 기록이 없음"
               }
               stats={data.visits}
-              partialWeek={collectionDay < 7}
-              partialMonth={collectionDay < 30}
+              partialWeek={isWindowPartial(data.visitCompleteFromDate, data.referenceDate, 7)}
+              partialMonth={isWindowPartial(data.visitCompleteFromDate, data.referenceDate, 30)}
             />
             <ActiveUsersPanel
               title="달리기 기준"

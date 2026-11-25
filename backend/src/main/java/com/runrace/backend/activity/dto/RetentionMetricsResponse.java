@@ -16,6 +16,8 @@ import java.util.List;
  * @param referenceDate 기준일(KST 오늘)
  * @param visitCollectionStartDate 첫 방문 핑을 받은 날(KST, 보통 배포일). 기록이 없으면 null.
  *     방문 기준 판정은 이 날이 아니라 그 다음 날부터 한다(첫날은 부분 수집)
+ * @param visitCompleteFromDate 방문 기준으로 판정하는 첫 날(수집 전 시간이 섞이지 않은 첫 현지 날짜).
+ *     WAU·MAU 창의 첫날이 이보다 이르면 그 값은 부분값이다. 기록이 없으면 null
  * @param newSignups7d 현지 가입일이 최근 7일(오늘 포함) 안인 가입자 수
  * @param cohorts 가입 주(월~일)별 코호트, 최근 주부터
  */
@@ -23,6 +25,7 @@ public record RetentionMetricsResponse(
     String referenceDate,
     String referenceTimeZone,
     String visitCollectionStartDate,
+    String visitCompleteFromDate,
     long newSignups7d,
     ActiveUsers visits,
     ActiveUsers runs,
@@ -30,7 +33,8 @@ public record RetentionMetricsResponse(
 
   /**
    * @param dau 오늘 활동한 사용자 수(오늘은 아직 진행 중)
-   * @param avgDau7d 어제까지 최근 7일의 일평균 DAU. 판정 가능한 날이 없으면 null
+   * @param avgDau7d 어제(KST)까지 최근 7일의 일평균 DAU. 판정 가능한 날이 없으면 null.
+   *     KST 오후 이전에는 서쪽 시간대 사용자에게 "어제"가 아직 진행 중이라 그 몫이 약간 덜 잡힐 수 있다
    * @param avgDauDays 평균에 쓴 날 수(방문 기준은 수집 첫날을 빼서 7보다 작을 수 있다)
    * @param wau 오늘 포함 최근 7일 동안 한 번이라도 활동한 사용자 수
    * @param mau 오늘 포함 최근 30일 동안 한 번이라도 활동한 사용자 수

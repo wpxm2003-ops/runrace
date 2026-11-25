@@ -38,12 +38,19 @@ class DailyActiveServiceTest {
 
   private final UUID userId = UUID.randomUUID();
 
-  private void userWithTimeZone(String timeZone) {
+  private void storedTimeZone(String timeZone) {
     AppUser user = AppUser.builder().id(userId).timeZone(timeZone).build();
     when(appUserRepository.getRequired(userId)).thenReturn(user);
   }
 
-  /** 같은 순간이라도 사용자 시간대에 따라 현지 날짜가 달라진다. 경계는 각 시간대의 자정이다. */
+  private void insertSucceeds() {
+    when(userDailyActiveRepository.insertIfAbsent(any(), any(), any(), any())).thenReturn(true);
+  }
+
+  /**
+   * 기기 시간대가 없으면 users.time_zone의 현지 날짜. 같은 순간이라도 시간대에 따라 날짜가 다르고,
+   * 경계는 각 시간대의 자정이다.
+   */
   @ParameterizedTest(name = "{1} @ {0} -> {2}")
   @CsvSource({
       // KST 자정 직전/직후
@@ -61,11 +68,11 @@ class DailyActiveServiceTest {
       "2026-11-24T15:00:00Z, '',                  2026-11-25",
       "2026-11-24T15:00:00Z, Not/AZone,           2026-11-25",
   })
-  void recordsTheUsersLocalDate(String now, String timeZone, String expected) {
-    userWithTimeZone(timeZone);
-    when(userDailyActiveRepository.insertIfAbsent(any(), any(), any(), any())).thenReturn(true);
+  void usesStoredTimeZoneWithoutDeviceTimeZone(String now, String timeZone, String expected) {
+    storedTimeZone(timeZone);
+    insertSucceeds();
 
-    var result = service.recordPing(userId, "android_app", Instant.parse(now));
+    var result = service.recordPing(userId, "android_app", null, Instant.parse(now));
 
     assertEquals(LocalDate.parse(expected), result.localDate());
     verify(userDailyActiveRepository).insertIfAbsent(
@@ -75,27 +82,54 @@ class DailyActiveServiceTest {
         eq(OffsetDateTime.ofInstant(Instant.parse(now), ZoneOffset.UTC)));
   }
 
+  /**
+   * 가입 직후 users.time_zone은 기본값 Asia/Seoul이라, 저장값을 쓰면 LA 신규 가입자의 가입 당일
+   * 방문(11-16 10:00 PST = 11-17 03:00 KST)이 11-17로 박혀 D1 재방문으로 잘못 잡힌다.
+   * 핑에 실린 기기 시간대가 있으면 그것을 쓰고, 저장값은 읽지도 않는다.
+   */
+  @Test
+  void deviceTimeZoneWinsOverDefaultStoredTimeZone() {
+    insertSucceeds();
+
+    var result = service.recordPing(
+        userId, "android_app", "America/Los_Angeles", Instant.parse("2026-11-16T18:00:00Z"));
+
+    assertEquals(LocalDate.parse("2026-11-16"), result.localDate());
+    verifyNoInteractions(appUserRepository);
+  }
+
+  /** 기기 값이 비었거나 모르는 값(오프셋 문자열 포함)이면 저장된 시간대로 돌아간다. */
+  @ParameterizedTest
+  @CsvSource(value = {"''", "Mars/Olympus", "+09:00", "NULL"}, nullValues = "NULL")
+  void fallsBackToStoredTimeZoneWhenDeviceTimeZoneIsInvalid(String deviceTimeZone) {
+    storedTimeZone("America/Los_Angeles");
+    insertSucceeds();
+
+    var result = service.recordPing(
+        userId, "web", deviceTimeZone, Instant.parse("2026-11-25T03:00:00Z"));
+
+    assertEquals(LocalDate.parse("2026-11-24"), result.localDate());
+  }
+
   /** 같은 날 두 번째 핑은 DB가 무시하고, 서비스는 recorded=false로 알려 준다. */
   @Test
   void reportsDuplicatePingAsNotRecorded() {
-    userWithTimeZone("Asia/Seoul");
     when(userDailyActiveRepository.insertIfAbsent(any(), any(), any(), any()))
         .thenReturn(true, false);
     Instant now = Instant.parse("2026-11-25T01:00:00Z");
 
-    assertTrue(service.recordPing(userId, "web", now).recorded());
-    assertFalse(service.recordPing(userId, "web", now.plusSeconds(60)).recorded());
+    assertTrue(service.recordPing(userId, "web", "Asia/Seoul", now).recorded());
+    assertFalse(service.recordPing(userId, "web", "Asia/Seoul", now.plusSeconds(60)).recorded());
   }
 
   @Test
   void acceptsEveryKnownPlatform() {
-    userWithTimeZone("Asia/Seoul");
-    when(userDailyActiveRepository.insertIfAbsent(any(), any(), any(), any())).thenReturn(true);
+    insertSucceeds();
     Instant now = Instant.parse("2026-11-25T01:00:00Z");
 
-    service.recordPing(userId, "android_app", now);
-    service.recordPing(userId, "web", now);
-    service.recordPing(userId, "ios_web", now);
+    service.recordPing(userId, "android_app", "Asia/Seoul", now);
+    service.recordPing(userId, "web", "Asia/Seoul", now);
+    service.recordPing(userId, "ios_web", "Asia/Seoul", now);
 
     verify(userDailyActiveRepository).insertIfAbsent(any(), any(), eq(ClientPlatform.ANDROID_APP), any());
     verify(userDailyActiveRepository).insertIfAbsent(any(), any(), eq(ClientPlatform.WEB), any());
@@ -107,7 +141,7 @@ class DailyActiveServiceTest {
   @CsvSource(value = {"ios_app", "ANDROID_APP", "''", "NULL"}, nullValues = "NULL")
   void rejectsUnknownPlatform(String platform) {
     ApiException e = assertThrows(ApiException.class,
-        () -> service.recordPing(userId, platform, Instant.parse("2026-11-25T01:00:00Z")));
+        () -> service.recordPing(userId, platform, null, Instant.parse("2026-11-25T01:00:00Z")));
 
     assertEquals("invalid_platform", e.code());
     verifyNoInteractions(appUserRepository, userDailyActiveRepository);

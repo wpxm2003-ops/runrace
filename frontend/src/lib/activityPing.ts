@@ -18,6 +18,19 @@ export function localDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * 기기 IANA 시간대. 서버가 그 날의 현지 날짜를 정하는 데만 쓰고 저장하지 않는다. 가입 직후에는
+ * users.time_zone이 아직 기본값(Asia/Seoul)이라 이 값이 없으면 해외 가입 당일 방문이 다른 날짜로
+ * 기록된다. 얻지 못하면 보내지 않는다(서버가 저장된 시간대로 계산).
+ */
+function deviceTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 let inFlight: { marker: string; promise: Promise<void> } | null = null;
 
 /**
@@ -40,7 +53,7 @@ export function pingDailyActivity(
   const promise = apiFetch<unknown>("/api/activity/ping", {
     method: "POST",
     user,
-    body: { platform },
+    body: { platform, timeZone: deviceTimeZone() },
     redirectOn401: false,
   })
     .then(() => {

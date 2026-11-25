@@ -29,6 +29,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("기기 현지 날짜 키", () => {
@@ -43,13 +44,28 @@ describe("일일 활성 핑", () => {
   const evening = new Date(2026, 10, 25, 22, 0);
   const nextDay = new Date(2026, 10, 26, 0, 1);
 
-  it("플랫폼을 담아 보내고, 401이어도 로그인 화면으로 보내지 않는다", async () => {
+  it("플랫폼과 기기 시간대를 담아 보내고, 401이어도 로그인 화면으로 보내지 않는다", async () => {
     await pingDailyActivity(user("u1"), "android_app", morning);
 
     expect(apiFetch).toHaveBeenCalledWith("/api/activity/ping", expect.objectContaining({
       method: "POST",
-      body: { platform: "android_app" },
+      body: {
+        platform: "android_app",
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
       redirectOn401: false,
+    }));
+  });
+
+  it("기기 시간대를 얻지 못해도 핑은 보낸다(서버가 저장된 시간대로 계산)", async () => {
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(() => {
+      throw new Error("no Intl");
+    });
+
+    await pingDailyActivity(user("u1"), "web", morning);
+
+    expect(apiFetch).toHaveBeenCalledWith("/api/activity/ping", expect.objectContaining({
+      body: { platform: "web", timeZone: undefined },
     }));
   });
 

@@ -102,10 +102,14 @@ public class RetentionMetricsRepository {
    * 가장 이른 방문 핑을 받은 서버 시각 — 수집 시작(배포) 시점 판정용. 기록이 없으면 empty.
    * local_date의 최솟값을 쓰지 않는 이유: 서쪽 시간대 사용자의 현지 날짜는 KST보다 하루 이를 수
    * 있어, 그 값을 기준으로 삼으면 KST 사용자에게는 아직 부분 수집인 배포 당일이 완결로 잡힌다.
+   * 운영자 핑(배포 직전 확인 등)이 수집 시작을 앞당기지 않도록 운영자는 뺀다.
    */
-  public Optional<OffsetDateTime> firstVisitAt() {
-    return Optional.ofNullable(jdbc.getJdbcTemplate().queryForObject(
-        "select min(created_at) from user_daily_active", OffsetDateTime.class));
+  public Optional<OffsetDateTime> firstVisitAt(List<String> excludedNames) {
+    String sql = "select min(a.created_at) " + from(Basis.VISITS)
+        + " where true" + operatorFilter(excludedNames);
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    addExcluded(params, excludedNames);
+    return Optional.ofNullable(jdbc.queryForObject(sql, params, OffsetDateTime.class));
   }
 
   /** 가입 시각이 {@code createdFrom} 이후인 사용자(탈퇴 회원 포함, 운영자 제외). */

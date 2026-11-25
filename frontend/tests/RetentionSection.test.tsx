@@ -20,6 +20,7 @@ const seeded: AdminRetention = {
   referenceDate: "2026-11-25",
   referenceTimeZone: "Asia/Seoul",
   visitCollectionStartDate: "2026-11-20",
+  visitCompleteFromDate: "2026-11-21",
   newSignups7d: 3,
   visits: { dau: 3, avgDau7d: 1.75, avgDauDays: 4, wau: 5, mau: 5 },
   runs: { dau: 3, avgDau7d: 2 / 7, avgDauDays: 7, wau: 4, mau: 6 },
@@ -70,9 +71,9 @@ describe("/sb 재방문 지표 카드", () => {
     const visitAvg = stat(visits, "최근 7일 평균 DAU");
     expect(within(visitAvg).getByText("1.8")).toBeTruthy();
     expect(within(visitAvg).getByText("어제까지 4일 평균")).toBeTruthy();
-    // 수집 6일째라 WAU·MAU는 부분값 표시
-    expect(within(stat(visits, "WAU (7일)")).getByText("수집 7일 미만 — 부분값")).toBeTruthy();
-    expect(within(stat(visits, "MAU (30일)")).getByText("수집 30일 미만 — 부분값")).toBeTruthy();
+    // 판정 첫 날(11-21)이 WAU 창 첫날(11-19)보다 늦어 WAU·MAU 모두 부분값
+    expect(within(stat(visits, "WAU (7일)")).getByText("7일 창에 수집 전 날 포함 — 부분값")).toBeTruthy();
+    expect(within(stat(visits, "MAU (30일)")).getByText("30일 창에 수집 전 날 포함 — 부분값")).toBeTruthy();
 
     const runs = panel("달리기 기준");
     const runAvg = stat(runs, "최근 7일 평균 DAU");
@@ -81,6 +82,17 @@ describe("/sb 재방문 지표 카드", () => {
     expect(within(stat(runs, "WAU (7일)")).getByText("4")).toBeTruthy();
     expect(within(stat(runs, "MAU (30일)")).getByText("6")).toBeTruthy();
     expect(within(runs).queryByText(/부분값/)).toBeNull();
+  });
+
+  it("판정 첫 날이 WAU 창 첫날과 같으면 WAU는 완결, MAU는 여전히 부분값", async () => {
+    vi.mocked(getAdminRetention).mockResolvedValue({ ...seeded, visitCompleteFromDate: "2026-11-19" });
+
+    render(<RetentionSection user={user} />);
+
+    await screen.findByText("방문 기준");
+    const visits = panel("방문 기준");
+    expect(within(stat(visits, "WAU (7일)")).queryByText(/부분값/)).toBeNull();
+    expect(within(stat(visits, "MAU (30일)")).getByText(/부분값/)).toBeTruthy();
   });
 
   it("코호트 표는 D1/D7/D30을 방문·달리기 순서로, 판정 불가 칸은 —로 보여 준다", async () => {
@@ -108,6 +120,7 @@ describe("/sb 재방문 지표 카드", () => {
     vi.mocked(getAdminRetention).mockResolvedValue({
       ...seeded,
       visitCollectionStartDate: null,
+      visitCompleteFromDate: null,
       visits: { dau: 0, avgDau7d: null, avgDauDays: 0, wau: 0, mau: 0 },
     });
 

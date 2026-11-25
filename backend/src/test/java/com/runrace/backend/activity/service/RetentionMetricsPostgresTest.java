@@ -25,6 +25,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -180,6 +181,58 @@ class RetentionMetricsPostgresTest {
     assertEquals(1, count("select count(*) from user_daily_active"));
   }
 
+  @Test
+  void pingForWithdrawnUserIsNotRecorded() {
+    UUID withdrawn = insertUser(null, "Asia/Seoul", "2026-11-01T00:00:00Z", "2026-11-20T00:00:00Z");
+
+    assertFalse(dailyActive.insertIfAbsent(
+        withdrawn, LocalDate.parse("2026-11-25"), ClientPlatform.WEB, NOW));
+    assertFalse(dailyActive.insertIfAbsent(
+        UUID.randomUUID(), LocalDate.parse("2026-11-25"), ClientPlatform.WEB, NOW));
+    assertEquals(0, count("select count(*) from user_daily_active"));
+  }
+
+  /**
+   * 인증을 통과한 핑이 탈퇴 트랜잭션(사용자 행 잠금 → 방문 기록 삭제 → 익명화) 도중에 들어오면,
+   * 그 커밋을 기다렸다가 탈퇴를 보고 건너뛰어야 한다. 그냥 넣으면 삭제 뒤에 한 행이 남는다.
+   * 탈퇴 쪽 잠금은 가장 약한 경우(for no key update — 키가 아닌 컬럼 UPDATE가 잡는 잠금)로 흉내 낸다.
+   */
+  @Test
+  void pingRacingWithdrawalLeavesNoRowBehind() throws Exception {
+    UUID user = insertUser("leaving", "Asia/Seoul", "2026-11-01T00:00:00Z", null);
+    LocalDate day = LocalDate.parse("2026-11-25");
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try (Connection withdrawal = dataSource.getConnection()) {
+      withdrawal.setAutoCommit(false);
+      try (var lock = withdrawal.prepareStatement(
+          "select id from users where id = ? for no key update")) {
+        lock.setObject(1, user);
+        lock.executeQuery().close();
+      }
+      try (var delete = withdrawal.prepareStatement(
+          "delete from user_daily_active where user_id = ?")) {
+        delete.setObject(1, user);
+        delete.executeUpdate();
+      }
+      try (var anonymize = withdrawal.prepareStatement(
+          "update users set withdrawn_at = now(), display_name = null where id = ?")) {
+        anonymize.setObject(1, user);
+        anonymize.executeUpdate();
+      }
+
+      Future<Boolean> ping = pool.submit(
+          () -> dailyActive.insertIfAbsent(user, day, ClientPlatform.WEB, NOW));
+      Thread.sleep(500);
+      assertFalse(ping.isDone(), "핑은 탈퇴 트랜잭션의 커밋을 기다려야 한다");
+
+      withdrawal.commit();
+      assertFalse(ping.get(10, TimeUnit.SECONDS));
+    } finally {
+      pool.shutdownNow();
+    }
+    assertEquals(0, count("select count(*) from user_daily_active"));
+  }
+
   // ── 집계 ─────────────────────────────────────────────────────────
 
   /**
@@ -244,6 +297,7 @@ class RetentionMetricsPostgresTest {
 
     assertEquals("2026-11-25", r.referenceDate());
     assertEquals("2026-11-20", r.visitCollectionStartDate());
+    assertEquals("2026-11-21", r.visitCompleteFromDate());
     // 현지 가입일 11-19~11-25: hana(11-19 00:00), carol(11-22), dave(11-23)
     assertEquals(3, r.newSignups7d());
 
@@ -323,9 +377,26 @@ class RetentionMetricsPostgresTest {
         new RetentionMetricsService(metricsRepository).compute(EXCLUDED, NOW.toInstant());
 
     assertEquals("2026-11-20", r.visitCollectionStartDate());
+    assertEquals("2026-11-21", r.visitCompleteFromDate());
     // 11-20은 부분 수집이라 빼고 11-21~11-24 4일 평균
     assertEquals(4, r.visits().avgDauDays());
     assertEquals(0.0, r.visits().avgDau7d(), 1e-9);
+  }
+
+  /** 운영자의 배포 전 확인 핑이 수집 시작을 앞당기면 그 사이 날짜가 0으로 평균·분모에 들어간다. */
+  @Test
+  void operatorPingsDoNotMoveCollectionStartEarlier() {
+    UUID operator = insertUser("노광고", "Asia/Seoul", "2026-01-01T00:00:00Z", null);
+    UUID runner = insertUser("runner", "Asia/Seoul", "2026-01-01T00:00:00Z", null);
+    visit(operator, "2026-11-18");
+    visit(runner, "2026-11-20");
+
+    RetentionMetricsResponse r =
+        new RetentionMetricsService(metricsRepository).compute(EXCLUDED, NOW.toInstant());
+
+    assertEquals("2026-11-20", r.visitCollectionStartDate());
+    assertEquals("2026-11-21", r.visitCompleteFromDate());
+    assertEquals(4, r.visits().avgDauDays());
   }
 
   @Test
