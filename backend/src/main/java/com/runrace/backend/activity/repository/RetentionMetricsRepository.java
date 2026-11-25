@@ -98,10 +98,14 @@ public class RetentionMetricsRepository {
         rs.getObject("user_id", UUID.class), rs.getObject("day", LocalDate.class)));
   }
 
-  /** 방문 기록의 가장 이른 날짜 — 수집 시작일(배포일) 판정용. 기록이 없으면 empty. */
-  public Optional<LocalDate> firstVisitDate() {
+  /**
+   * 가장 이른 방문 핑을 받은 서버 시각 — 수집 시작(배포) 시점 판정용. 기록이 없으면 empty.
+   * local_date의 최솟값을 쓰지 않는 이유: 서쪽 시간대 사용자의 현지 날짜는 KST보다 하루 이를 수
+   * 있어, 그 값을 기준으로 삼으면 KST 사용자에게는 아직 부분 수집인 배포 당일이 완결로 잡힌다.
+   */
+  public Optional<OffsetDateTime> firstVisitAt() {
     return Optional.ofNullable(jdbc.getJdbcTemplate().queryForObject(
-        "select min(local_date) from user_daily_active", LocalDate.class));
+        "select min(created_at) from user_daily_active", OffsetDateTime.class));
   }
 
   /** 가입 시각이 {@code createdFrom} 이후인 사용자(탈퇴 회원 포함, 운영자 제외). */

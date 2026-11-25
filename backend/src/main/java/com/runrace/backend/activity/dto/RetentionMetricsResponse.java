@@ -14,7 +14,8 @@ import java.util.List;
  * 날짜 필드는 yyyy-MM-dd 문자열이다.
  *
  * @param referenceDate 기준일(KST 오늘)
- * @param visitCollectionStartDate 방문 기록 첫 날짜(배포일). 기록이 없으면 null
+ * @param visitCollectionStartDate 첫 방문 핑을 받은 날(KST, 보통 배포일). 기록이 없으면 null.
+ *     방문 기준 판정은 이 날이 아니라 그 다음 날부터 한다(첫날은 부분 수집)
  * @param newSignups7d 현지 가입일이 최근 7일(오늘 포함) 안인 가입자 수
  * @param cohorts 가입 주(월~일)별 코호트, 최근 주부터
  */

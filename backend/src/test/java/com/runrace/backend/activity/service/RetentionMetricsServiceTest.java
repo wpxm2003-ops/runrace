@@ -56,7 +56,8 @@ class RetentionMetricsServiceTest {
    */
   @Test
   void averagesOnlyFullyCollectedDaysBeforeToday() {
-    when(repository.firstVisitDate()).thenReturn(Optional.of(d("2026-11-21")));
+    // 첫 핑 11-21 10:00 KST → 11-21은 부분 수집, 11-22부터 판정
+    when(repository.firstVisitAt()).thenReturn(Optional.of(OffsetDateTime.parse("2026-11-21T01:00:00Z")));
     when(repository.dailyActiveUsers(eq(Basis.VISITS), eq(d("2026-11-18")), eq(d("2026-11-24")), any()))
         .thenReturn(Map.of(d("2026-11-21"), 9L, d("2026-11-22"), 3L, d("2026-11-23"), 4L, d("2026-11-24"), 5L));
     when(repository.dailyActiveUsers(eq(Basis.RUNS), eq(d("2026-11-18")), eq(d("2026-11-24")), any()))
@@ -82,7 +83,7 @@ class RetentionMetricsServiceTest {
   /** 방문 기록이 아직 없으면 평균은 0이 아니라 "없음"(null)이고 수집 시작일도 비어 있다. */
   @Test
   void visitAverageIsEmptyBeforeAnyPing() {
-    when(repository.firstVisitDate()).thenReturn(Optional.empty());
+    when(repository.firstVisitAt()).thenReturn(Optional.empty());
 
     RetentionMetricsResponse result = service.compute(EXCLUDED, NOW);
 
@@ -93,12 +94,27 @@ class RetentionMetricsServiceTest {
   }
 
   /**
+   * 첫 핑이 KST 저녁(19시 이후)이면 UTC+14에서는 이미 다음 날이라, 그 날까지 부분 수집으로 보고
+   * 하루 더 늦게 판정을 시작한다(보수적). 화면의 수집 시작일은 KST 날짜 그대로다.
+   */
+  @Test
+  void lateEveningFirstPingDelaysCompleteDaysByOne() {
+    // 11-21 20:00 KST = 11-22 01:00 (UTC+14) → 11-23부터 판정
+    when(repository.firstVisitAt()).thenReturn(Optional.of(OffsetDateTime.parse("2026-11-21T11:00:00Z")));
+
+    RetentionMetricsResponse result = service.compute(EXCLUDED, NOW);
+
+    assertEquals("2026-11-21", result.visitCollectionStartDate());
+    assertEquals(2, result.visits().avgDauDays()); // 11-23, 11-24
+  }
+
+  /**
    * 최근 7일 신규 가입은 사용자 현지 가입일이 [오늘−6, 오늘]인 사람이다. 같은 UTC 순간이라도
    * 시간대에 따라 들어가고 빠진다.
    */
   @Test
   void countsNewSignupsByLocalSignupDate() {
-    when(repository.firstVisitDate()).thenReturn(Optional.empty());
+    when(repository.firstVisitAt()).thenReturn(Optional.empty());
     when(repository.signupsSince(any(), eq(EXCLUDED))).thenReturn(List.of(
         // KST 11-25 01:00 → 오늘 가입
         signup("2026-11-24T16:00:00Z", "Asia/Seoul"),
@@ -122,7 +138,7 @@ class RetentionMetricsServiceTest {
    */
   @Test
   void buildsEightMondayWeeksAndQueriesFromTheEarliestOffset() {
-    when(repository.firstVisitDate()).thenReturn(Optional.empty());
+    when(repository.firstVisitAt()).thenReturn(Optional.empty());
 
     RetentionMetricsResponse result = service.compute(EXCLUDED, NOW);
 
@@ -140,7 +156,7 @@ class RetentionMetricsServiceTest {
   /** UTC+14 하한 때문에 넘쳐 들어온 "가장 오래된 주 이전" 가입자는 코호트에 넣지 않는다. */
   @Test
   void dropsSignupsBeforeTheOldestCohortWeek() {
-    when(repository.firstVisitDate()).thenReturn(Optional.empty());
+    when(repository.firstVisitAt()).thenReturn(Optional.empty());
     when(repository.signupsSince(any(), any())).thenReturn(List.of(
         // KST 10-04(일) 23:30 → 가장 오래된 주(10-05~) 이전
         signup("2026-10-04T14:30:00Z", "Asia/Seoul"),

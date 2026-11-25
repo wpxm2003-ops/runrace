@@ -306,6 +306,28 @@ class RetentionMetricsPostgresTest {
     assertEquals("2026-10-05", cohorts.get(7).weekStart());
   }
 
+  /**
+   * 수집 시작은 가장 이른 local_date가 아니라 첫 핑을 받은 시각으로 정한다. 배포 직후 LA 사용자의
+   * 핑은 현지 날짜가 KST보다 하루 이르지만(11-19), 그 날을 수집 시작으로 삼으면 KST 사용자에게
+   * 아직 부분 수집인 11-20이 완결된 날로 잡힌다.
+   */
+  @Test
+  void collectionStartComesFromFirstPingInstantNotEarliestLocalDate() {
+    UUID la = insertUser("la", "America/Los_Angeles", "2026-01-01T00:00:00Z", null);
+    UUID seoul = insertUser("seoul", "Asia/Seoul", "2026-01-01T00:00:00Z", null);
+    OffsetDateTime deployedAt = OffsetDateTime.parse("2026-11-20T03:00:00Z"); // 11-20 12:00 KST
+    visit(la, LocalDate.parse("2026-11-19"), deployedAt); // LA 현지 11-19 19:00
+    visit(seoul, LocalDate.parse("2026-11-20"), deployedAt);
+
+    RetentionMetricsResponse r =
+        new RetentionMetricsService(metricsRepository).compute(EXCLUDED, NOW.toInstant());
+
+    assertEquals("2026-11-20", r.visitCollectionStartDate());
+    // 11-20은 부분 수집이라 빼고 11-21~11-24 4일 평균
+    assertEquals(4, r.visits().avgDauDays());
+    assertEquals(0.0, r.visits().avgDau7d(), 1e-9);
+  }
+
   @Test
   void emptyDatabaseProducesZerosAndNoVisitCollection() {
     RetentionMetricsResponse r =
@@ -335,9 +357,14 @@ class RetentionMetricsPostgresTest {
     return id;
   }
 
+  /** 그 날 12:00 KST에 첫 핑을 받은 것으로 넣는다(수집 시작 시각 판정이 created_at을 본다). */
   private void visit(UUID userId, String localDate) {
-    dailyActive.insertIfAbsent(
-        userId, LocalDate.parse(localDate), ClientPlatform.ANDROID_APP, NOW);
+    LocalDate day = LocalDate.parse(localDate);
+    visit(userId, day, day.atTime(12, 0).atOffset(java.time.ZoneOffset.ofHours(9)));
+  }
+
+  private void visit(UUID userId, LocalDate localDate, OffsetDateTime receivedAt) {
+    dailyActive.insertIfAbsent(userId, localDate, ClientPlatform.ANDROID_APP, receivedAt);
   }
 
   /** started_at(UTC)은 집계에 쓰지 않으므로 KST로 환산해 넣는다. */

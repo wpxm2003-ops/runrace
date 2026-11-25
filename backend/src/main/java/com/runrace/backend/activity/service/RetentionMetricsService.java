@@ -51,10 +51,16 @@ public class RetentionMetricsService {
   RetentionMetricsResponse compute(List<String> excludedNames, Instant now) {
     LocalDate today = now.atZone(REFERENCE_ZONE).toLocalDate();
 
-    // 수집 첫날은 배포 시각 이전 방문이 빠진 부분 수집이라 완결된 날로 치지 않는다.
-    LocalDate visitCollectionStart = repository.firstVisitDate().orElse(null);
-    LocalDate visitCompleteFrom =
-        visitCollectionStart == null ? null : visitCollectionStart.plusDays(1);
+    // 수집 첫날은 배포 시각 이전 방문이 빠진 부분 수집이라 완결된 날로 치지 않는다. 첫 핑 시각의
+    // 가장 앞선 시간대(UTC+14) 날짜 다음 날부터 판정하면, 어느 시간대 사용자의 현지 날짜든 그 날은
+    // 첫 핑 이후에 시작한 날이라 수집 전 시간이 섞이지 않는다. 화면에 보이는 수집 시작일은 KST 날짜.
+    OffsetDateTime firstVisitAt = repository.firstVisitAt().orElse(null);
+    LocalDate visitCollectionStart = firstVisitAt == null
+        ? null
+        : firstVisitAt.atZoneSameInstant(REFERENCE_ZONE).toLocalDate();
+    LocalDate visitCompleteFrom = firstVisitAt == null
+        ? null
+        : firstVisitAt.withOffsetSameInstant(EARLIEST_OFFSET).toLocalDate().plusDays(1);
 
     ActiveUsers visits = activeUsers(Basis.VISITS, today, visitCompleteFrom, excludedNames);
     ActiveUsers runs = activeUsers(Basis.RUNS, today, LocalDate.MIN, excludedNames);

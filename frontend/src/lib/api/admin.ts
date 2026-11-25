@@ -97,7 +97,7 @@ export type AdminRetention = {
   /** 기준일(KST 오늘, yyyy-MM-dd). */
   referenceDate: string;
   referenceTimeZone: string;
-  /** 방문 기록 첫 날짜(배포일). 아직 없으면 null. */
+  /** 첫 방문 핑을 받은 날(KST, 보통 배포일). 아직 없으면 null. 판정은 그 다음 날부터. */
   visitCollectionStartDate: string | null;
   newSignups7d: number;
   visits: AdminActiveUsers;
