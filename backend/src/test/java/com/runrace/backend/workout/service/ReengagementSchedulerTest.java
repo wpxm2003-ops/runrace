@@ -10,6 +10,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.runrace.backend.common.KstTime;
+import com.runrace.backend.goal.domain.WeeklyGoalType;
+import com.runrace.backend.goal.service.WeeklyGoalService;
 import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.push.repository.SystemPushHistoryRepository;
 import com.runrace.backend.push.service.PushService;
@@ -21,6 +23,7 @@ import com.runrace.backend.workout.repository.WorkoutSessionRepository.UserLastW
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,7 @@ class ReengagementSchedulerTest {
   @Mock SystemPushHistoryRepository systemPushHistoryRepository;
   @Mock PushService pushService;
   @Mock ErrorLogService errorLogService;
+  @Mock WeeklyGoalService weeklyGoalService;
 
   @InjectMocks ReengagementScheduler scheduler;
 
@@ -251,5 +255,66 @@ class ReengagementSchedulerTest {
       verify(errorLogService).recordServiceError(
           eq("reengage"), eq("RuntimeException"), eq("boom"), any(), eq("userId=" + failing));
     }
+
+    @Test void 주간_거리목표를_못채웠으면_남은_km를_본문에_넣는다() {
+      UUID userId = UUID.randomUUID();
+      when(workoutSessionRepository.findReengageCandidates(any()))
+          .thenReturn(List.of(streakCandidate(userId, today.minusDays(1), 6)));
+      when(weeklyGoalService.remainingThisWeek(userId, today))
+          .thenReturn(Optional.of(new WeeklyGoalService.Remaining(WeeklyGoalType.DISTANCE, 6_750)));
+
+      scheduler.sendStreakRiskPushes(streakNow);
+
+      verify(pushService).sendLocalized(
+          eq(userId), eq("reengage.streak_risk.title"), eq("reengage.streak_risk.body_goal_distance"),
+          eq("6"), eq("6.8"), eq("/workout/indoor"), eq("streak_risk"));
+    }
+
+    @Test void 주간_횟수목표를_못채웠으면_남은_횟수를_본문에_넣는다() {
+      UUID userId = UUID.randomUUID();
+      when(workoutSessionRepository.findReengageCandidates(any()))
+          .thenReturn(List.of(streakCandidate(userId, today.minusDays(1), 5)));
+      when(weeklyGoalService.remainingThisWeek(userId, today))
+          .thenReturn(Optional.of(new WeeklyGoalService.Remaining(WeeklyGoalType.RUNS, 2)));
+
+      scheduler.sendStreakRiskPushes(streakNow);
+
+      verify(pushService).sendLocalized(
+          eq(userId), eq("reengage.streak_risk.title"), eq("reengage.streak_risk.body_goal_runs"),
+          eq("5"), eq("2"), eq("/workout/indoor"), eq("streak_risk"));
+    }
+
+    @Test void 목표_조회가_실패해도_기본_문구로_그대로_발송한다() {
+      UUID userId = UUID.randomUUID();
+      when(workoutSessionRepository.findReengageCandidates(any()))
+          .thenReturn(List.of(streakCandidate(userId, today.minusDays(1), 5)));
+      when(weeklyGoalService.remainingThisWeek(userId, today))
+          .thenThrow(new RuntimeException("db down"));
+
+      scheduler.sendStreakRiskPushes(streakNow);
+
+      verify(pushService).sendLocalized(
+          eq(userId), eq("reengage.streak_risk.title"), eq("reengage.streak_risk.body"),
+          eq("5"), eq("/workout/indoor"), eq("streak_risk"));
+    }
+
+    @Test void 발송_조건이_아니면_목표도_조회하지_않는다() {
+      UUID userId = UUID.randomUUID();
+      when(workoutSessionRepository.findReengageCandidates(any()))
+          .thenReturn(List.of(streakCandidate(userId, today.minusDays(1), 4)));
+
+      scheduler.sendStreakRiskPushes(streakNow);
+
+      verify(weeklyGoalService, never()).remainingThisWeek(any(), any());
+      verify(pushService, never()).sendLocalized(any(), any(), any(), any(), any(), any());
+      verify(pushService, never()).sendLocalized(any(), any(), any(), any(), any(), any(), any());
+    }
+  }
+
+  @Test void 남은_거리는_0_1km_단위로_올림하고_끝자리_0은_뺀다() {
+    org.junit.jupiter.api.Assertions.assertEquals("6.8", ReengagementScheduler.remainingKm(6_750));
+    org.junit.jupiter.api.Assertions.assertEquals("7", ReengagementScheduler.remainingKm(7_000));
+    org.junit.jupiter.api.Assertions.assertEquals("0.1", ReengagementScheduler.remainingKm(1));
+    org.junit.jupiter.api.Assertions.assertEquals("12.5", ReengagementScheduler.remainingKm(12_450));
   }
 }

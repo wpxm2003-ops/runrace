@@ -1,6 +1,8 @@
 package com.runrace.backend.workout.service;
 
 import com.runrace.backend.common.KstTime;
+import com.runrace.backend.goal.domain.WeeklyGoalType;
+import com.runrace.backend.goal.service.WeeklyGoalService;
 import com.runrace.backend.observability.service.ErrorLogService;
 import com.runrace.backend.observability.service.SchedulerGuard;
 import com.runrace.backend.push.repository.SystemPushHistoryRepository;
@@ -10,12 +12,15 @@ import com.runrace.backend.user.repository.AppUserRepository.InactiveSignupCandi
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository.ReengageCandidate;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository.UserLastWorkoutDate;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -31,7 +36,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>신규 활성화(17:00) — 가입 3일째까지 운동 0건이면 첫 러닝 유도</li>
  *   <li>휴식 알림(17:00) — 3일째 가벼운 복귀 유도 / 7일째 마지막 복귀 유도(이후 휴면 유저는 미발송)</li>
- *   <li>스트릭 위험(20:00) — 어제까지 연속 5일↑인데 오늘 미운동 시 손실 회피 알림</li>
+ *   <li>스트릭 위험(20:00) — 어제까지 연속 5일↑인데 오늘 미운동 시 손실 회피 알림
+ *       (주간 목표를 아직 못 채웠으면 남은 양을 본문에 함께 적는다)</li>
  * </ul>
  *
  * <p>그 외 경과일(오늘 운동함·2·4·5·6일째·8일 이상)은 발송하지 않는다. 단일 인스턴스 전제(분산 락 없음).
@@ -60,6 +66,7 @@ public class ReengagementScheduler {
   private final SystemPushHistoryRepository systemPushHistoryRepository;
   private final PushService pushService;
   private final ErrorLogService errorLogService;
+  private final WeeklyGoalService weeklyGoalService;
 
   /** 휴식 복귀 유도 + 신규 가입자 활성화 — 매시간 검사 후 사용자 현지 17시에 발송. */
   @Scheduled(cron = "0 0 * * * *", zone = "UTC")
@@ -125,12 +132,46 @@ public class ReengagementScheduler {
       forEachSafely(c.getUserId(), () -> {
         long daysSince = ChronoUnit.DAYS.between(c.getLastDate(), today);
         if (daysSince == 1 && c.getCurrentStreak() >= MIN_STREAK_FOR_RISK) {
-          pushService.sendLocalized(
-              c.getUserId(), "reengage.streak_risk.title", "reengage.streak_risk.body",
-              String.valueOf(c.getCurrentStreak()), LINK_INDOOR, TYPE_STREAK_RISK);
+          sendStreakRisk(c.getUserId(), c.getCurrentStreak(), today);
         }
       });
     }
+  }
+
+  /**
+   * 발송 조건·빈도는 그대로 두고 문구만 고른다 — 주간 목표가 있고 아직 못 채웠으면
+   * 남은 양({1})을 본문에 넣는다. 목표 조회가 실패해도 기존 문구로 그대로 보낸다.
+   */
+  private void sendStreakRisk(UUID userId, int streak, LocalDate today) {
+    String streakArg = String.valueOf(streak);
+    Optional<WeeklyGoalService.Remaining> remaining;
+    try {
+      remaining = weeklyGoalService.remainingThisWeek(userId, today);
+    } catch (RuntimeException e) {
+      log.warn("스트릭 위험 푸시 — 주간 목표 조회 실패, 기본 문구로 발송 (userId={})", userId, e);
+      remaining = Optional.empty();
+    }
+    if (remaining.isEmpty()) {
+      pushService.sendLocalized(
+          userId, "reengage.streak_risk.title", "reengage.streak_risk.body",
+          streakArg, LINK_INDOOR, TYPE_STREAK_RISK);
+      return;
+    }
+    WeeklyGoalService.Remaining r = remaining.get();
+    boolean distance = r.type() == WeeklyGoalType.DISTANCE;
+    pushService.sendLocalized(
+        userId, "reengage.streak_risk.title",
+        distance ? "reengage.streak_risk.body_goal_distance" : "reengage.streak_risk.body_goal_runs",
+        streakArg, distance ? remainingKm(r.amount()) : String.valueOf(r.amount()),
+        LINK_INDOOR, TYPE_STREAK_RISK);
+  }
+
+  /** 남은 거리(m) → km 문자열. 0.1km 단위로 올려 "이만큼 뛰면 채운다"가 거짓이 되지 않게 한다(예: 6.8, 7). */
+  static String remainingKm(long meters) {
+    return BigDecimal.valueOf(meters)
+        .divide(BigDecimal.valueOf(1000), 1, RoundingMode.CEILING)
+        .stripTrailingZeros()
+        .toPlainString();
   }
 
   private static ZoneId safeZone(String timeZone) {

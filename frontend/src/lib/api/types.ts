@@ -5,3 +5,4 @@ export * from "./types/workout";
 export * from "./types/shoe";
 export * from "./types/training";
 export * from "./types/user";
+export * from "./types/weeklyGoal";

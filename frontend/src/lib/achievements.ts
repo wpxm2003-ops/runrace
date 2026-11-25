@@ -1,6 +1,6 @@
 import type { Achievement } from "./api/types";
 import type { Translations } from "./i18n/translations";
-import { formatDistance, type DistanceUnit } from "./units";
+import { formatDistance, formatGoalDistance, type DistanceUnit } from "./units";
 
 /** 성과 카드의 시각 강도 — 강한 성과일수록 눈에 띄게. */
 export type AchievementTone = "gold" | "crew" | "plain";
@@ -62,6 +62,11 @@ export function achievementView(
       return { icon: "👥", text: t.ach_crew_goal_progress(n), tone: "crew" };
     case "CREW_RANK":
       return { icon: "👥", text: t.ach_crew_rank(n, a.value2 ?? 0), tone: "crew" };
+    case "WEEKLY_GOAL_REACHED": {
+      // value=목표값, value2=종류(0=거리 m, 1=횟수).
+      const goal = a.value2 === 1 ? t.home_week_runs(n) : formatGoalDistance(n / 1000, unit);
+      return { icon: "🏅", text: t.ach_weekly_goal_reached(goal), tone: "gold" };
+    }
     default:
       return null;
   }

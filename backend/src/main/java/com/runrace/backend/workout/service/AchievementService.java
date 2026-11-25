@@ -4,6 +4,8 @@ import com.runrace.backend.common.KstTime;
 import com.runrace.backend.crew.domain.Crew;
 import com.runrace.backend.crew.domain.CrewMember;
 import com.runrace.backend.crew.repository.CrewMemberRepository;
+import com.runrace.backend.goal.service.WeeklyGoalService;
+import com.runrace.backend.goal.service.WeeklyGoalService.WeeklyGoalReach;
 import com.runrace.backend.workout.domain.WorkoutSession;
 import com.runrace.backend.workout.dto.Achievement;
 import com.runrace.backend.workout.repository.WorkoutSessionRepository;
@@ -16,6 +18,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,14 +49,24 @@ public class AchievementService {
   private static final long[] RUN_COUNT_MILESTONES = {10, 50, 100, 200, 500, 1000};
   private static final long[] DISTANCE_MILESTONES_KM = {100, 300, 500, 1000, 2000, 3000, 5000};
   private static final long[] CREW_GOAL_BANDS = {50, 80};
+  /**
+   * 개인 주간 목표 달성. 이보다 위는 FIRST_RUN·ALL_TIME_DISTANCE(서로 배타)와 CREW_GOAL_REACHED뿐이라
+   * 최대 {@link #MAX_ACHIEVEMENTS}개 안에 항상 든다. 혹시 잘리더라도 선점하지 않으므로 다음 저장에서 다시 뜬다.
+   */
+  private static final int WEEKLY_GOAL_TIER = 85;
 
   private final WorkoutSessionRepository workoutRepository;
   private final CrewMemberRepository crewMemberRepository;
+  private final WeeklyGoalService weeklyGoalService;
 
   /** 내부 정렬용 — tier가 클수록 강한(드문) 성과라 먼저 노출된다. */
   private record Scored(int tier, Achievement achievement) {}
 
-  @Transactional(readOnly = true)
+  /**
+   * 읽기 전용이 아니다: 주간 목표 달성은 "이번 주에 이미 축하했는지"를 기록해야 주당 1회가 지켜진다.
+   * 그 기록은 이 트랜잭션에 함께 묶여, 판정이 중간에 실패하면 같이 되돌아간다(다음 저장에서 다시 판정).
+   */
+  @Transactional
   public List<Achievement> evaluate(UUID userId, WorkoutSession saved) {
     int distanceM = saved.getDistanceM();
     if (distanceM < MIN_MEANINGFUL_DISTANCE_M) return List.of();
@@ -90,11 +103,29 @@ public class AchievementService {
       addCrewAchievements(out, userId, distanceM, monthStart);
     }
 
-    return out.stream()
+    // 주간 목표는 첫 러닝이어도 따로 의미가 있어(목표를 먼저 세우고 뛴 경우) 분기 밖에서 판정한다.
+    Optional<WeeklyGoalReach> weeklyGoal = weeklyGoalService.reachedBy(userId, saved);
+    weeklyGoal.ifPresent(reach -> out.add(new Scored(WEEKLY_GOAL_TIER, reach.achievement())));
+
+    List<Achievement> ranked = out.stream()
         .sorted(Comparator.comparingInt(Scored::tier).reversed())
         .limit(MAX_ACHIEVEMENTS)
         .map(Scored::achievement)
         .toList();
+    return claimWeeklyGoal(userId, weeklyGoal, ranked);
+  }
+
+  /**
+   * 노출 목록에 든 주간 목표 달성만 "이번 주 축하함"으로 선점한다. 동시 저장 등으로 이미 다른 요청이
+   * 선점했으면 이번 응답에서는 뺀다 — 같은 주에 축하 모달이 두 번 뜨지 않게.
+   */
+  private List<Achievement> claimWeeklyGoal(
+      UUID userId, Optional<WeeklyGoalReach> weeklyGoal, List<Achievement> ranked) {
+    if (weeklyGoal.isEmpty()) return ranked;
+    WeeklyGoalReach reach = weeklyGoal.get();
+    if (!ranked.contains(reach.achievement())) return ranked;
+    if (weeklyGoalService.claim(userId, reach.weekStart())) return ranked;
+    return ranked.stream().filter(a -> !a.equals(reach.achievement())).toList();
   }
 
   /** 역대 > 올해 > 최근 30일 > 이번 주 순으로 가장 강한 "최장 거리" 하나만 추가. */

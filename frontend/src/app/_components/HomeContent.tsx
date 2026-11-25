@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PageLayout } from "@/app/_components/PageLayout";
+import { WeeklyGoalCard } from "@/app/_components/WeeklyGoalCard";
+import { WeeklyGoalSheet } from "@/app/_components/WeeklyGoalSheet";
 import { WelcomeOnboarding } from "@/app/_components/WelcomeOnboarding";
 import { Card } from "@/app/_components/ui/Card";
 import { EmptyState } from "@/app/_components/ui/EmptyState";
@@ -21,6 +23,7 @@ import {
   useMe,
   useMyChallengeListInfinite,
   useRivals,
+  useWeeklyGoal,
   useWorkoutListByYear,
 } from "@/lib/api";
 import { challengeDetailHref } from "@/lib/challengeRoute";
@@ -54,6 +57,8 @@ export default function HomeContent() {
   const activeRace = myRaces.data?.[0]?.items[0] ?? null;
   const { data: activeRaceDetail, isLoading: raceDetailLoading } = useChallengeDetail(activeRace?.id ?? null, user);
   const { data: rivals = [] } = useRivals(user);
+  const weeklyGoal = useWeeklyGoal(user);
+  const [goalSheetOpen, setGoalSheetOpen] = useState(false);
 
   const allRelevantRecords = useMemo(
     () => needsPreviousYear ? [...previousYearRecords, ...yearRecords] : yearRecords,
@@ -100,6 +105,16 @@ export default function HomeContent() {
           {t.home_headline}
         </h1>
       </section>
+
+      {user || authRestoring ? (
+        <div className="mb-4">
+          <WeeklyGoalCard
+            status={weeklyGoal.data}
+            loading={authRestoring || weeklyGoal.isLoading}
+            onOpen={() => setGoalSheetOpen(true)}
+          />
+        </div>
+      ) : null}
 
       {user || authRestoring ? (
         <WeeklyActivityCard
@@ -246,6 +261,15 @@ export default function HomeContent() {
           {t.feedback_home_title}
         </Link>
       </section>
+
+      {goalSheetOpen && user && weeklyGoal.data ? (
+        <WeeklyGoalSheet
+          status={weeklyGoal.data}
+          user={user}
+          onClose={() => setGoalSheetOpen(false)}
+          onSaved={(next) => void weeklyGoal.mutate(next, { revalidate: false })}
+        />
+      ) : null}
     </PageLayout>
   );
 }
