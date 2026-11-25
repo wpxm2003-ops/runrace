@@ -12,6 +12,7 @@ import { normalizeGhostRaceResult, type GhostRaceResult } from "@/lib/ghostRace"
 import { clearPendingWorkoutSaveIfMatches, type PendingWorkoutSave } from "@/lib/workoutPendingSave";
 import { celebrationTone } from "@/lib/celebration";
 import { achievementViews } from "@/lib/achievements";
+import { trackWeeklyGoalAchieved } from "@/lib/weeklyGoal";
 import { nativeNavigate } from "@/lib/nativeNav";
 import type { Translations } from "@/lib/i18n/translations";
 import type { DistanceUnit } from "@/lib/units";
@@ -90,6 +91,7 @@ export function useWorkoutSave({ user, t, unit, currentUserUidRef, setSaveError,
           calories: snapshot.calories ?? 0,
         });
         void track("record_saved", { distance_bucket: distanceBucket(distanceKm) });
+        trackWeeklyGoalAchieved(res.achievements, "gps");
         if (ghostWorkoutId != null && ghostResult != null) {
           const deltaSec = Math.round(ghostResult.deltaMs / 1000);
           void track("ghost_race_completed", {

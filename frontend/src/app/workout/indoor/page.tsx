@@ -19,6 +19,7 @@ import { createClientWorkoutId } from "@/lib/workoutRequestId";
 import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration";
 import { achievementViews } from "@/lib/achievements";
 import { celebrationTone } from "@/lib/celebration";
+import { trackWeeklyGoalAchieved } from "@/lib/weeklyGoal";
 import type { Achievement } from "@/lib/api/types";
 
 type FieldErrors = {
@@ -139,6 +140,7 @@ export default function IndoorRunPage() {
         distance_bucket: distanceBucket(distanceKm),
         type: "indoor",
       });
+      trackWeeklyGoalAchieved(res.achievements, "indoor");
       // GPS와 같은 규칙: 보여줄 성과가 있으면 축하 모달, 없으면 바로 상세로.
       // (PB·고스트는 GPS 전용이라 실내런의 카드는 성과뿐이다.)
       const achievements = res.achievements ?? [];
