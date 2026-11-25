@@ -25,6 +25,7 @@ import {
 } from "@/lib/api";
 import { useIndoorRunApprovals } from "@/app/challenges/_components/useIndoorRunApprovals";
 import { track } from "@/lib/analytics";
+import { triggerPushPrompt } from "@/lib/pushPrompt";
 import { ChallengePhaseBadge } from "@/app/_components/ChallengePhaseBadge";
 import { ImageLightbox } from "@/app/_components/ImageLightbox";
 import { handleAuthFailure, redirectToLogin } from "@/lib/auth";
@@ -195,6 +196,7 @@ export default function ChallengeDetailContent() {
       invalidateChallengeLists();
       void track("race_joined", { challengeId: id, crew: !!detail?.crewName, goal_km: detail?.goalKm ?? 0 });
       toast.success(t.toast_race_joined);
+      triggerPushPrompt("race_joined");
       await mutate();
     } catch (e) {
       if (!handleAuthFailure(e, `/challenges/${id}`)) {

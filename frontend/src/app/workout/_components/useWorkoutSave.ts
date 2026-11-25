@@ -13,6 +13,7 @@ import { clearPendingWorkoutSaveIfMatches, type PendingWorkoutSave } from "@/lib
 import { celebrationTone } from "@/lib/celebration";
 import { achievementViews } from "@/lib/achievements";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { isFirstWorkoutSave, triggerPushPrompt } from "@/lib/pushPrompt";
 import type { Translations } from "@/lib/i18n/translations";
 import type { DistanceUnit } from "@/lib/units";
 
@@ -106,6 +107,8 @@ export function useWorkoutSave({ user, t, unit, currentUserUidRef, setSaveError,
         if (currentUserUidRef.current === ownerUid) {
           const personalBest = res.personalBest ?? null;
           const achievements = res.achievements ?? [];
+          // 첫 운동 저장 — 알림 사전 설명은 기록 화면을 벗어난 뒤(축하 모달 이후) 뜬다.
+          if (isFirstWorkoutSave(achievements)) triggerPushPrompt("first_workout");
           // 보여줄 카드가 없으면 모달을 건너뛰고 바로 상세로 — 안 그러면 종료된 운동 화면에 갇힌다.
           const { show } = celebrationTone({
             achievementCount: achievementViews(achievements, t, unit).length,
