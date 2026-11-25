@@ -14,6 +14,7 @@ export * from "./shoes";
 export * from "./training";
 export * from "./nudge";
 export * from "./workouts";
+export * from "./weeklyGoal";
 export * from "./hooks";
 export * from "./push";
 export * from "./admin";

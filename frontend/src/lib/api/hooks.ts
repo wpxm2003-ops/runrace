@@ -6,3 +6,4 @@ export * from "./rivalHooks";
 export * from "./shoeHooks";
 export * from "./trainingHooks";
 export * from "./workoutHooks";
+export * from "./weeklyGoalHooks";
