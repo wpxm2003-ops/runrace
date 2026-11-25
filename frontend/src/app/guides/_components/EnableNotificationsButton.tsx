@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@/app/_components/ui/Button";
+import {
+  NotificationSettingsCta,
+  useNotificationSettingsOpener,
+} from "@/app/_components/NotificationSettingsCta";
 import { redirectToLogin } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n";
 import { useAuthUser } from "@/lib/useAuthUser";
@@ -17,6 +21,7 @@ export function EnableNotificationsButton() {
   const { user } = useAuthUser();
   const [status, setStatus] = useState<PushPermissionOutcome | "idle">("idle");
   const [loading, setLoading] = useState(false);
+  const settingsOpener = useNotificationSettingsOpener("guide");
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -45,14 +50,13 @@ export function EnableNotificationsButton() {
     }
   }
 
+  // 거부됐으면 재설치 안내 대신 휴대폰 설정으로 보낸다(아래 NotificationSettingsCta).
   const statusMessage =
-    status === "denied"
-      ? t.guide_noti_denied
-      : status === "unsupported"
-        ? t.guide_noti_unsupported
-        : status === "login_required"
-          ? t.guide_noti_login
-          : null;
+    status === "unsupported"
+      ? t.guide_noti_unsupported
+      : status === "login_required"
+        ? t.guide_noti_login
+        : null;
 
   return (
     <>
@@ -68,6 +72,12 @@ export function EnableNotificationsButton() {
             : t.guide_noti_enable_btn}
       </Button>
       {statusMessage ? <p className="mt-2 text-xs text-zinc-600">{statusMessage}</p> : null}
+      {status === "denied" ? (
+        <>
+          <p className="mt-2 text-xs text-zinc-600">{t.push_settings_denied_desc}</p>
+          <NotificationSettingsCta opener={settingsOpener} className="mt-2" />
+        </>
+      ) : null}
     </>
   );
 }

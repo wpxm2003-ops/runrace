@@ -10,6 +10,12 @@ import { markNativePermissionsReady } from "@/lib/nativePermissions";
 import { reportClientError } from "@/lib/api";
 import { track } from "@/lib/analytics";
 import { nativeNavigate } from "@/lib/nativeNav";
+import {
+  checkNotificationPermission,
+  notifyPushTokenRegistered,
+  setPushTokenSyncHandler,
+} from "@/lib/pushPermission";
+import { PushPermissionPrompt } from "./PushPermissionPrompt";
 
 /** 백그라운드 복귀 직후 Play Services 미준비 시 Google Play 팝업이 뜨는 것을 줄이기 위한 대기 */
 const COLD_START_TOKEN_DELAY_MS = 1500;
@@ -19,15 +25,6 @@ const TOKEN_MAX_ATTEMPTS = 3;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function ensureNotificationPermission(): Promise<boolean> {
-  const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
-  let { receive } = await FirebaseMessaging.checkPermissions();
-  if (receive === "granted") return true;
-  if (receive === "denied") return false;
-  ({ receive } = await FirebaseMessaging.requestPermissions());
-  return receive === "granted";
 }
 
 /** 위치 권한 팝업이 닫힐 때까지 대기 (허용/거부 모두 다음 단계로 진행) */
@@ -49,40 +46,29 @@ export function FcmBootstrap() {
   const { user } = useAuth();
   const registeredRef = useRef<string | null>(null);
 
-  // 네이티브: GPS 권한 → 알림 권한 순차 요청
+  // 네이티브: 첫 실행 때는 GPS 권한만 요청한다.
+  // 알림 권한은 레이스 참가·생성, 첫 운동 저장처럼 알림이 의미 있는 순간에 사전 설명을 거쳐
+  // 요청한다(PushPermissionPrompt). 설명 없이 바로 물으면 거부가 늘고, 거부는 되돌리기 어렵다.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    let cancelled = false;
-
-    async function requestSequentially() {
-      try {
-        await requestLocationPermission();
-        if (!cancelled) {
-          await ensureNotificationPermission();
-        }
-      } finally {
-        markNativePermissionsReady();
-      }
-    }
-
-    requestSequentially().catch((e: unknown) => {
-      void reportClientError({
-        message: e instanceof Error ? e.message : String(e),
-        stack: e instanceof Error ? e.stack : undefined,
-        kind: "fcm_permission_failed",
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    requestLocationPermission()
+      .catch((e: unknown) => {
+        void reportClientError({
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+          kind: "fcm_permission_failed",
+        });
+      })
+      .finally(() => markNativePermissionsReady());
   }, []);
 
   // 로그인 후: FCM 토큰 등록 (콜드스타트·백그라운드 복귀 시 Play Services 준비 대기)
   useEffect(() => {
     if (!user || !Capacitor.isNativePlatform()) return;
 
+    // 계정이 바뀌면 같은 기기 토큰이라도 새 계정으로 다시 등록해야 한다.
+    registeredRef.current = null;
     let cancelled = false;
     let resumeTimer: ReturnType<typeof setTimeout> | undefined;
     let appListener: PluginListenerHandle | undefined;
@@ -107,34 +93,36 @@ export function FcmBootstrap() {
       return null;
     }
 
-    async function syncToken(initialDelayMs: number) {
-      if (cancelled) return;
-      if (initialDelayMs > 0) await sleep(initialDelayMs);
-      if (cancelled) return;
+    /** 토큰이 서버에 등록돼 있으면(이번에 등록했거나 이미 등록됨) true. */
+    async function syncTokenNow(): Promise<boolean> {
+      if (cancelled) return false;
 
       // FCM 토큰 취득 — Play Services 오류는 별도 집계
       let token: string | null = null;
       try {
-        const granted = await ensureNotificationPermission();
-        if (cancelled || !granted) return;
+        // 권한은 확인만 한다. 요청은 사전 설명 시트·설정 토글이 사용자 동작 직후에 한다.
+        const permission = await checkNotificationPermission();
+        if (cancelled || permission !== "granted") return false;
 
         token = await fetchFcmTokenWithRetry();
-        if (cancelled || !token || token === registeredRef.current) return;
+        if (cancelled || !token) return false;
+        if (token === registeredRef.current) return true;
       } catch (e) {
-        if (cancelled) return;
+        if (cancelled) return false;
         // Play Services/FCM 초기화 실패 — 빈도·대상 유저 집계용으로 기록
         void reportClientError({
           message: e instanceof Error ? e.message : String(e),
           stack: e instanceof Error ? e.stack : undefined,
           kind: "fcm_play_services",
         });
-        return;
+        return false;
       }
 
       // 서버 토큰 등록 — 일시적 네트워크 오류는 다음 앱 복귀 시 자동 재시도됨
       try {
         await registerDeviceToken(user as User, token, Capacitor.getPlatform());
         registeredRef.current = token;
+        notifyPushTokenRegistered();
 
         const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
         if (!tokenListenerAdded && !cancelled) {
@@ -145,12 +133,30 @@ export function FcmBootstrap() {
             registeredRef.current = newToken;
           });
         }
+        return true;
       } catch {
-        // 네트워크 오류 등 일시적 실패는 무시 — registeredRef가 null로 남으므로 복귀 시 재시도됨
+        // 네트워크 오류 등 일시적 실패 — registeredRef가 null로 남으므로 복귀 시 재시도됨
+        return registeredRef.current === token;
       }
     }
 
-    void syncToken(COLD_START_TOKEN_DELAY_MS);
+    // 콜드스타트·복귀·권한 허용 직후 요청이 겹쳐도 등록은 한 번만 돈다.
+    let inflight: Promise<boolean> | null = null;
+    function syncToken(): Promise<boolean> {
+      inflight ??= syncTokenNow().finally(() => {
+        inflight = null;
+      });
+      return inflight;
+    }
+
+    void sleep(COLD_START_TOKEN_DELAY_MS).then(() => syncToken());
+
+    // 사전 설명 시트·설정 토글에서 권한을 막 허용했을 때 — 진행 중인 동기화(허용 전 권한 확인일 수
+    // 있음)가 끝나길 기다린 뒤 새로 확인한다.
+    const releaseSyncHandler = setPushTokenSyncHandler(async () => {
+      if (inflight) await inflight;
+      return syncToken();
+    });
 
     // 알림 탭 시 분석 이벤트 — 푸시 효과/복귀 측정 (cleanup의 removeAllListeners로 해제)
     void import("@capacitor-firebase/messaging").then(async ({ FirebaseMessaging }) => {
@@ -171,14 +177,16 @@ export function FcmBootstrap() {
         clearTimeout(resumeTimer);
         resumeTimer = setTimeout(() => {
           // 이미 토큰이 등록됐으면 복귀 시 재요청하지 않는다 — Play Services 팝업 유발 방지(완화 ②)
+          // 휴대폰 설정에서 알림을 켜고 돌아온 경우는 여기서 토큰이 등록된다.
           if (registeredRef.current) return;
-          void syncToken(0);
+          void syncToken();
         }, RESUME_TOKEN_DELAY_MS);
       });
     });
 
     return () => {
       cancelled = true;
+      releaseSyncHandler();
       clearTimeout(resumeTimer);
       void appListener?.remove();
       import("@capacitor-firebase/messaging").then(({ FirebaseMessaging }) => {
@@ -189,5 +197,5 @@ export function FcmBootstrap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
-  return null;
+  return <PushPermissionPrompt />;
 }

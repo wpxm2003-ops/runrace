@@ -15,6 +15,7 @@ import { toWallClockIso } from "@/lib/format";
 import { useUnit } from "@/lib/UnitContext";
 import { metersFromInput } from "@/lib/units";
 import { nativeNavigate } from "@/lib/nativeNav";
+import { isFirstWorkoutSave, triggerPushPrompt } from "@/lib/pushPrompt";
 import { createClientWorkoutId } from "@/lib/workoutRequestId";
 import { WorkoutCelebration } from "@/app/workout/_components/WorkoutCelebration";
 import { achievementViews } from "@/lib/achievements";
@@ -144,6 +145,8 @@ export default function IndoorRunPage() {
       // GPS와 같은 규칙: 보여줄 성과가 있으면 축하 모달, 없으면 바로 상세로.
       // (PB·고스트는 GPS 전용이라 실내런의 카드는 성과뿐이다.)
       const achievements = res.achievements ?? [];
+      // 첫 운동 저장 — 알림 사전 설명은 기록 화면을 벗어난 뒤(축하 모달 이후) 뜬다.
+      if (isFirstWorkoutSave(achievements)) triggerPushPrompt("first_workout");
       const { show } = celebrationTone({
         achievementCount: achievementViews(achievements, t, unit).length,
         personalBest: null,

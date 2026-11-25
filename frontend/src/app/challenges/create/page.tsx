@@ -18,6 +18,7 @@ import { prizeMaxRank } from "@/lib/challengeForm";
 import { RACE_TEMPLATES, raceTemplateWindow, type RaceTemplate, type RaceTemplateKey } from "@/lib/raceTemplates";
 import { goalInputFromKm } from "@/lib/units";
 import { track } from "@/lib/analytics";
+import { triggerPushPrompt } from "@/lib/pushPrompt";
 import { toast } from "sonner";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useLocale } from "@/lib/i18n";
@@ -119,6 +120,7 @@ export default function CreateChallengePage() {
       if (crewMode) invalidateCrewRaces(user.uid);
       void track("race_created", { crew: crewMode });
       toast.success(t.create_success);
+      triggerPushPrompt("race_created");
       nativeNavigate(crewMode ? "/crew" : "/challenges");
     } catch (e) {
       // 원문(`ApiError: API 409: {"error":"active_room_limit"}`)이 그대로 노출되던 자리다.

@@ -26,6 +26,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // 앱 내장 플러그인은 브리지가 만들어지는 super.onCreate 전에 등록해야 JS에 노출된다.
+        registerPlugin(AppNotificationSettingsPlugin.class);
         super.onCreate(savedInstanceState);
         applyLightStatusBar();
         registerRendererRecovery();
