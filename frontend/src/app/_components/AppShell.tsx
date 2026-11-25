@@ -6,6 +6,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { NativeNavBootstrap } from "./NativeNavBootstrap";
 import { KakaoOAuthBootstrap } from "./KakaoOAuthBootstrap";
 import { DeepLinkBootstrap } from "./DeepLinkBootstrap";
+import { AnalyticsBootstrap } from "./AnalyticsBootstrap";
 import { KakaoInAppRedirect } from "./KakaoInAppRedirect";
 import { OpenInAppBanner } from "./OpenInAppBanner";
 import { BottomNavigation } from "./BottomNav";
@@ -93,6 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <KakaoOAuthBootstrap />
       <DeepLinkBootstrap />
       <KakaoInAppRedirect />
+      <AnalyticsBootstrap />
       <div className="flex min-h-0 min-h-dvh flex-1 flex-col bg-canvas text-ink">
         <OpenInAppBanner />
         <AppHeader />
