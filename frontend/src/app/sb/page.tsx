@@ -6,6 +6,7 @@ import { getAdminDashboard, type AdminDashboard } from "@/lib/api";
 import { LOCALES } from "@/lib/i18n";
 import { formatDistance } from "@/lib/units";
 import { useAuthUser } from "@/lib/useAuthUser";
+import { RetentionSection } from "./_components/RetentionSection";
 
 const dateTime = (value: string) =>
   new Date(value).toLocaleString("ko-KR", {
@@ -123,6 +124,8 @@ export default function AdminDashboardPage() {
         </div>
         <span className="rounded-pill bg-brand px-3 py-1.5 text-xs font-bold text-night">LIVE</span>
       </div>
+
+      <RetentionSection user={user} />
 
       <section className="mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
