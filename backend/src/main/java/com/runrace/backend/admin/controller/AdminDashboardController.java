@@ -2,6 +2,8 @@ package com.runrace.backend.admin.controller;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+import com.runrace.backend.activity.dto.RetentionMetricsResponse;
+import com.runrace.backend.activity.service.RetentionMetricsService;
 import com.runrace.backend.auth.AuthPrincipal;
 import com.runrace.backend.common.ApiException;
 import com.runrace.backend.common.IsoTime;
@@ -36,6 +38,7 @@ public class AdminDashboardController {
   private final WorkoutSessionRepository workoutSessionRepository;
   private final FeedbackRepository feedbackRepository;
   private final UserActivityHistoryRepository userActivityHistoryRepository;
+  private final RetentionMetricsService retentionMetricsService;
   private final ObjectMapper objectMapper;
 
   @Value("${runrace.admin.firebase-uids:}")
@@ -65,6 +68,16 @@ public class AdminDashboardController {
         .map(ActivityRow::from)
         .toList();
     return new DashboardResponse(members, workouts, activities, feedback);
+  }
+
+  /**
+   * 활성 사용자·가입 코호트 재방문 지표. 목록 응답과 분리해 집계가 실패하거나 느려도 목록은
+   * 그대로 뜨게 한다. 운영자 계정은 다른 목록과 같은 기준으로 뺀다.
+   */
+  @GetMapping("/retention")
+  public RetentionMetricsResponse retention(AuthPrincipal principal) {
+    ensureAdmin(principal);
+    return retentionMetricsService.compute(EXCLUDED_DISPLAY_NAMES);
   }
 
   private void ensureAdmin(AuthPrincipal principal) {
